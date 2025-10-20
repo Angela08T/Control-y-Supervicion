@@ -1,16 +1,62 @@
-# React + Vite
+#  SISTEMA DE CONTROL Y SUPERVICION - CENTINELA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema de Control y Supervisión para la Municipalidad de San Juan de Lurigancho
 
-Currently, two official plugins are available:
+![React](https://img.shields.io/badge/React-18.2.0-blue)
+![Vite](https://img.shields.io/badge/Vite-4.4.5-purple)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Descripción
 
-## React Compiler
+Sistema web moderno para la gestión y control de incidencias del personal de serenazgo de la Municipalidad de San Juan de Lurigancho. Desarrollado con React y tecnologías modernas para una experiencia de usuario óptima.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Características Principales
 
-## Expanding the ESLint configuration
+### **Sistema de Autenticación**
+- Interfaz de login visual con logo municipal
+- Validación frontend con CAPTCHA después de múltiples intentos
+- Fondo personalizado con imagen institucional
+- Modo desarrollo sin validación de backend
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### **Gestión de Incidencias**
+- Registro completo de incidencias del personal
+- Tipos de asuntos: Falta disciplinaria, Abandono de servicio, Inasistencia
+- Campos específicos por tipo de incidencia
+- Generación de informes en PDF profesionales
+
+### **Integración con Mapas**
+- Selector de ubicación con Leaflet
+- Geocoding inverso para obtener direcciones
+- Marcadores interactivos en el mapa
+- Coordenadas GPS precisas
+
+### **Interfaz Moderna**
+- Diseño responsive para todos los dispositivos
+- Modo oscuro/claro con persistencia
+- Animaciones y transiciones suaves
+- Iconografía consistente con React Icons
+
+## Tecnologías Utilizadas
+
+### **Frontend**
+- **React 18** - Biblioteca principal
+- **Vite** - Build tool y dev server
+- **React Leaflet** - Mapas interactivos
+- **jsPDF** - Generación de PDFs
+- **React Icons** - Iconografía
+
+### **Estilos**
+- **CSS3** con variables personalizadas
+- **Grid & Flexbox** para layouts
+- **Animaciones CSS** nativas
+- **Diseño responsive** mobile-first
+
+### **Herramientas**
+- **Git** - Control de versiones
+- **ESLint** - Linting de código
+- **Local Storage** - Persistencia temporal
+
+## Instalación y Configuración
+
+### **Prerrequisitos**
+- Node.js 16+ 
