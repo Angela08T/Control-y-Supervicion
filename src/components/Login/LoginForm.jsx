@@ -1,12 +1,28 @@
 import React, { useState } from 'react'
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaSync } from 'react-icons/fa'
+import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { login } from '../../store/slices/authSlice'
 
-export default function Login({ onLogin }) {
+// Usuarios de prueba (MODO DESARROLLO)
+const DEMO_USERS = {
+  admin: { password: 'admin123', role: 'admin', id: 1, username: 'admin' },
+  supervisor: { password: 'super123', role: 'supervisor', id: 2, username: 'supervisor' },
+  centinela: { password: 'cent123', role: 'centinela', id: 3, username: 'centinela' },
+}
+
+export default function LoginForm() {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showCaptcha, setShowCaptcha] = useState(false)
   const [captchaCode, setCaptchaCode] = useState('')
   const [userInput, setUserInput] = useState('')
   const [attempts, setAttempts] = useState(0)
+  const [error, setError] = useState('')
   
   // Generar código CAPTCHA simple
   const generateCaptcha = () => {
@@ -21,20 +37,49 @@ export default function Login({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    
-    // Simular validación (siempre permite acceso por ahora)
+    setError('')
+
+    // Verificar CAPTCHA si hay muchos intentos
     if (attempts >= 2) {
-      // Verificar CAPTCHA si hay muchos intentos
       if (userInput !== captchaCode) {
-        alert('Código CAPTCHA incorrecto')
+        setError('Código CAPTCHA incorrecto')
         generateCaptcha()
         setUserInput('')
         return
       }
     }
-    
-    // Acceso permitido (sin validación real hasta tener backend)
-    onLogin()
+
+    // Validar credenciales (MODO DESARROLLO)
+    const user = DEMO_USERS[username.toLowerCase()]
+
+    if (!user || user.password !== password) {
+      setError('Usuario o contraseña incorrectos')
+      setAttempts(prev => prev + 1)
+
+      if (attempts >= 1) {
+        setShowCaptcha(true)
+        generateCaptcha()
+      }
+      return
+    }
+
+    // Login exitoso - Guardar en Redux
+    const token = `demo-token-${Date.now()}` // Token simulado
+    dispatch(login({
+      token,
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    }))
+
+    // Redirigir según el rol
+    const roleRoutes = {
+      admin: '/dashboard/admin',
+      supervisor: '/dashboard/supervisor',
+      centinela: '/dashboard/centinela',
+    }
+
+    navigate(roleRoutes[user.role] || '/login')
   }
 
   const handlePasswordFocus = () => {
@@ -71,16 +116,26 @@ export default function Login({ onLogin }) {
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
+          {/* Mensajes de error */}
+          {error && (
+            <div style={{ padding: '10px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '15px' }}>
+              {error}
+            </div>
+          )}
+
           {/* Usuario */}
           <div className="form-group">
             <label>
               <FaUser className="input-icon" />
               Usuario
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Ingrese su usuario"
               className="login-input"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
             />
           </div>
 
@@ -91,13 +146,16 @@ export default function Login({ onLogin }) {
               Contraseña
             </label>
             <div className="password-input-container">
-              <input 
-                type={showPassword ? "text" : "password"} 
+              <input
+                type={showPassword ? "text" : "password"}
                 placeholder="Ingrese su contraseña"
                 className="login-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 onFocus={handlePasswordFocus}
+                required
               />
-              <button 
+              <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
@@ -140,8 +198,10 @@ export default function Login({ onLogin }) {
 
           {/* Mensaje informativo (sin backend) */}
           <div className="login-info">
-            <p>Modo desarrollo</p>
-            
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>MODO DESARROLLO - Usuarios de prueba:</p>
+            <p>Admin: admin / admin123</p>
+            <p>Supervisor: supervisor / super123</p>
+            <p>Centinela: centinela / cent123</p>
           </div>
         </form>
       </div>

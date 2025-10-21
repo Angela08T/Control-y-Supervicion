@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import IncidenciasTable from './IncidenciasTable'
-import ModalIncidencia from './ModalIncidencia'
-import ModalPDFInforme from './ModalPDFInforme'
-import { loadIncidencias, saveIncidencias } from '../utils/storage'
+import IncidenciasTable from '../../components/IncidenciasTable'
+import ModalIncidencia from '../../components/ModalIncidencia'
+import ModalPDFInforme from '../../components/ModalPDFInforme'
+import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { FaPlus, FaSearch, FaFilter } from 'react-icons/fa'
 
 export default function IncidenciasPage(){

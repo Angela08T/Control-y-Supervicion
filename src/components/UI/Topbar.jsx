@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { FaSun, FaMoon, FaBell, FaSignOutAlt } from 'react-icons/fa'
+import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { logout } from '../../store/slices/authSlice'
 
-export default function Topbar({ onLogout }) {
+export default function Topbar() {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const { username, role } = useSelector((state) => state.auth)
   const [isDarkMode, setIsDarkMode] = useState(true)
 
   useEffect(() => {
@@ -11,6 +17,11 @@ export default function Topbar({ onLogout }) {
       document.documentElement.setAttribute('data-theme', savedTheme)
     }
   }, [])
+
+  const handleLogout = () => {
+    dispatch(logout())
+    navigate('/login')
+  }
 
   const toggleTheme = () => {
     const newTheme = isDarkMode ? 'light' : 'dark'
@@ -42,15 +53,15 @@ export default function Topbar({ onLogout }) {
           {isDarkMode ? <FaSun /> : <FaMoon />}
         </button>
 
-        <span className="user-name">Supervisor</span>
+        <span className="user-name">{username || 'Usuario'}</span>
         <img
           src="/src/assets/user-avatar.png"
           alt="Usuario"
           className="user-avatar"
         />
-        
+
         {/* Botón de Salir */}
-        <button className="logout-btn" onClick={onLogout} title="Cerrar sesión">
+        <button className="logout-btn" onClick={handleLogout} title="Cerrar sesión">
           <FaSignOutAlt />
         </button>
       </div>
