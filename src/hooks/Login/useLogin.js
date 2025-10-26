@@ -14,36 +14,47 @@ const useLogin = () => {
     setError(null);
     try {
       const response = await login(credentials);
-      const { data } = response;
-      const { token, user } = data; // ← ✅ CAMBIO AQUÍ
 
-      if (token && user) {
-        const {id, username, role } = user;
-        
+      // La respuesta del backend tiene esta estructura:
+      // { message: "Login exitoso", data: { user: "diego", rol: "administrator", token: "..." } }
+      const { data } = response;
+      const { token, user, rol } = data;
+
+      if (token && user && rol) {
+        // Mapeo de roles del backend a los roles del frontend
+        const roleMapping = {
+          'administrator': 'admin',
+          'supervisor': 'supervisor',
+          'sentinel': 'centinela'
+        };
+
+        const normalizedRole = roleMapping[rol.toLowerCase()] || rol.toLowerCase();
+
         // Debug logging - remover después del deploy
-        console.log('Login Debug - Role from backend:', role);
-        console.log('Login Debug - Role normalized:', role.toLowerCase());
-        
+        console.log('Login Debug - Role from backend:', rol);
+        console.log('Login Debug - Role normalized:', normalizedRole);
+        console.log('Login Debug - Username:', user);
+
         dispatch(
           setAuth({
             token,
-            id,
-            username,
-            role: role.toLowerCase(),
-            
+            id: null, // El backend no devuelve ID, puedes agregarlo después si lo necesitas
+            username: user,
+            role: normalizedRole,
           })
         );
-   
+
         setToken(token);
-        return {success: true, role: user.role.toLowerCase()};
+        return { success: true, role: normalizedRole };
       } else {
-        console.error('Login fallido: respuesta inválida', response.data);
-        return false;
+        console.error('Login fallido: respuesta inválida', response);
+        setError('Respuesta del servidor inválida');
+        return { success: false, role: null };
       }
     } catch (err) {
-      // const errorMessage = err.message || 'Error al iniciar sesión';
       console.error('Error en login:', err.response ? err.response.data : err);
-      setError(`Error al iniciar sesión: ${err.response?.data?.message || err.message}`);
+      const errorMessage = err.response?.data?.message || err.message || 'Error al iniciar sesión';
+      setError(errorMessage);
       return { success: false, role: null };
     } finally {
       setLoading(false);
