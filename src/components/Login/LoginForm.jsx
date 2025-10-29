@@ -1,93 +1,37 @@
 import React, { useState } from 'react'
-import { FaUser, FaLock, FaEye, FaEyeSlash, FaSync } from 'react-icons/fa'
-import { useDispatch } from 'react-redux'
+import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
-import { login } from '../../store/slices/authSlice'
-
-// Usuarios de prueba (MODO DESARROLLO)
-const DEMO_USERS = {
-  admin: { password: 'admin123', role: 'admin', id: 1, username: 'admin' },
-  supervisor: { password: 'super123', role: 'supervisor', id: 2, username: 'supervisor' },
-  centinela: { password: 'cent123', role: 'centinela', id: 3, username: 'centinela' },
-}
+import useLogin from '../../hooks/Login/useLogin'
 
 export default function LoginForm() {
-  const dispatch = useDispatch()
   const navigate = useNavigate()
+  const { handleLogin, loading, error: loginError } = useLogin()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showCaptcha, setShowCaptcha] = useState(false)
-  const [captchaCode, setCaptchaCode] = useState('')
-  const [userInput, setUserInput] = useState('')
-  const [attempts, setAttempts] = useState(0)
-  const [error, setError] = useState('')
-  
-  // Generar código CAPTCHA simple
-  const generateCaptcha = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    let result = ''
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    setCaptchaCode(result)
-    return result
-  }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
 
-    // Verificar CAPTCHA si hay muchos intentos
-    if (attempts >= 2) {
-      if (userInput !== captchaCode) {
-        setError('Código CAPTCHA incorrecto')
-        generateCaptcha()
-        setUserInput('')
-        return
-      }
-    }
-
-    // Validar credenciales (MODO DESARROLLO)
-    const user = DEMO_USERS[username.toLowerCase()]
-
-    if (!user || user.password !== password) {
-      setError('Usuario o contraseña incorrectos')
-      setAttempts(prev => prev + 1)
-
-      if (attempts >= 1) {
-        setShowCaptcha(true)
-        generateCaptcha()
-      }
+    // Validación básica
+    if (!username || !password) {
       return
     }
 
-    // Login exitoso - Guardar en Redux
-    const token = `demo-token-${Date.now()}` // Token simulado
-    dispatch(login({
-      token,
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    }))
+    // Llamar al hook de login
+    const result = await handleLogin({ username, password })
 
-    // Redirigir según el rol
-    const roleRoutes = {
-      admin: '/dashboard/admin',
-      supervisor: '/dashboard/supervisor',
-      centinela: '/dashboard/centinela',
+    if (result.success) {
+      // Redirigir según el rol
+      const roleRoutes = {
+        admin: '/dashboard/admin',
+        supervisor: '/dashboard/supervisor',
+        centinela: '/dashboard/centinela',
+      }
+
+      navigate(roleRoutes[result.role] || '/dashboard/admin')
     }
-
-    navigate(roleRoutes[user.role] || '/login')
-  }
-
-  const handlePasswordFocus = () => {
-    if (attempts === 1) {
-      setShowCaptcha(true)
-      generateCaptcha()
-    }
-    setAttempts(prev => prev + 1)
   }
 
   return (
@@ -117,9 +61,18 @@ export default function LoginForm() {
 
         <form className="login-form" onSubmit={handleSubmit}>
           {/* Mensajes de error */}
-          {error && (
-            <div style={{ padding: '10px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '15px' }}>
-              {error}
+          {loginError && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: 'var(--danger)',
+              borderRadius: '10px',
+              marginBottom: '15px',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              fontSize: '13px',
+              fontWeight: '500'
+            }}>
+              {loginError}
             </div>
           )}
 
@@ -135,6 +88,7 @@ export default function LoginForm() {
               className="login-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              disabled={loading}
               required
             />
           </div>
@@ -152,57 +106,32 @@ export default function LoginForm() {
                 className="login-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onFocus={handlePasswordFocus}
+                disabled={loading}
                 required
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
           </div>
 
-          {/* CAPTCHA (solo aparece después de intentos fallidos) */}
-          {showCaptcha && (
-            <div className="captcha-section">
-              <label>Código de Verificación</label>
-              <div className="captcha-container">
-                <div className="captcha-code">
-                  {captchaCode}
-                </div>
-                <button 
-                  type="button"
-                  className="captcha-refresh"
-                  onClick={generateCaptcha}
-                >
-                  <FaSync />
-                </button>
-              </div>
-              <input 
-                type="text" 
-                placeholder="Ingrese el código mostrado"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                className="login-input"
-              />
-            </div>
-          )}
-
           {/* Botón de Ingreso */}
-          <button type="submit" className="login-btn">
-            INGRESAR AL SISTEMA
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? 'INGRESANDO...' : 'INGRESAR AL SISTEMA'}
           </button>
 
-          {/* Mensaje informativo (sin backend) */}
-          <div className="login-info">
-            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>MODO DESARROLLO - Usuarios de prueba:</p>
-            <p>Admin: admin / admin123</p>
-            <p>Supervisor: supervisor / super123</p>
-            <p>Centinela: centinela / cent123</p>
-          </div>
+          {/* Mensaje informativo */}
+          {import.meta.env.VITE_DEV_MODE === 'true' && (
+            <div className="login-info">
+              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>MODO DESARROLLO</p>
+              <p>Conectado a: {import.meta.env.VITE_API_URL}</p>
+            </div>
+          )}
         </form>
       </div>
     </div>

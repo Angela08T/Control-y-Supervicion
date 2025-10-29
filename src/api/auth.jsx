@@ -5,6 +5,16 @@ export const login = async (credentials) => {
         const response = await api.post('/auth/login', credentials);
         return response.data;
     } catch (error) {
-        throw new Error("Error al iniciar sesión: " + error.response?.data?.message || error.message);
+        // Propagar el error con más detalle
+        if (error.response) {
+            // El servidor respondió con un código de error
+            throw error;
+        } else if (error.request) {
+            // La petición fue hecha pero no hubo respuesta
+            throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
+        } else {
+            // Algo más pasó al configurar la petición
+            throw new Error('Error al iniciar sesión: ' + error.message);
+        }
     }
 };
