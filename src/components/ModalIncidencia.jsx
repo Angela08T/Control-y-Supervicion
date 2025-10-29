@@ -1,11 +1,11 @@
 ModalIncidencia.jsx
 import React, { useEffect, useState } from 'react'
 import MapSelector from './MapSelector'
-import { 
-  FaIdCard, 
-  FaClipboardList, 
-  FaExclamationTriangle, 
-  FaClock, 
+import {
+  FaIdCard,
+  FaClipboardList,
+  FaExclamationTriangle,
+  FaClock,
   FaVideo,
   FaMapMarkerAlt,
   FaUserTag,
@@ -16,14 +16,14 @@ import {
 } from 'react-icons/fa'
 
 const defaultState = {
-  dni: '', 
-  asunto: '', 
+  dni: '',
+  asunto: '',
   falta: '',
-  turno: '', 
-  medio: 'bodycam', 
-  fechaIncidente: '', 
-  horaIncidente: '', 
-  bodycamNumber: '', 
+  turno: '',
+  medio: 'bodycam',
+  fechaIncidente: '',
+  horaIncidente: '',
+  bodycamNumber: '',
   bodycamAsignadaA: '',
   encargadoBodycam: '',
   ubicacion: null,
@@ -42,17 +42,17 @@ const defaultState = {
 const subtipoPorAsunto = {
   'Falta disciplinaria': [
     'Dormir en horario laboral',
-    'Comer en horario laboral',
-    'Jugar en horario laboral'
+    'Omision de servicio',
+
   ],
   'Abandono de servicio': [
-    'Abandono injustificado del puesto',
+    'Abandono injustificado',
     'Abandono temporal reiterado',
     'Negativa a cumplir funciones asignadas'
   ],
   'Inasistencia': [
     'Inasistencia prolongada sin aviso',
-    'Llegó fuera de horario'
+    'Llegó fuera de horario o falto'
   ]
 }
 
@@ -84,32 +84,32 @@ const listaCompletaCC = [
   'Stewar'
 ]
 
-export default function ModalIncidencia({ initial, onClose, onSave }){
+export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
 
-  useEffect(()=>{
-    if(initial){
-      setForm({...defaultState, ...initial})
+  useEffect(() => {
+    if (initial) {
+      setForm({ ...defaultState, ...initial })
     } else {
       // Establecer fecha y hora automáticamente al crear
       const now = new Date()
       const fecha = now.toISOString().split('T')[0]
-      const hora = now.toTimeString().slice(0,5)
-      setForm(f => ({...f, fechaIncidente: fecha, horaIncidente: hora}))
+      const hora = now.toTimeString().slice(0, 5)
+      setForm(f => ({ ...f, fechaIncidente: fecha, horaIncidente: hora }))
     }
   }, [initial])
 
-  function setField(k, v){ 
+  function setField(k, v) {
     setForm(f => {
-      const newForm = {...f, [k]: v}
-      
+      const newForm = { ...f, [k]: v }
+
       // Si cambia el asunto, resetear falta y campos relacionados
-      if(k === 'asunto'){
+      if (k === 'asunto') {
         newForm.falta = ''
         newForm.tipoInasistencia = ''
         newForm.fechaFalta = ''
         // Resetear campos de bodycam si cambia a inasistencia
-        if(v === 'Inasistencia') {
+        if (v === 'Inasistencia') {
           newForm.medio = 'reporte'
           newForm.bodycamNumber = ''
           newForm.bodycamAsignadaA = ''
@@ -118,12 +118,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           newForm.medio = 'bodycam'
         }
       }
-      
+
       // Si cambia dirigidoA, resetear destinatario
-      if(k === 'dirigidoA'){
+      if (k === 'dirigidoA') {
         newForm.destinatario = ''
       }
-      
+
       return newForm
     })
   }
@@ -133,46 +133,46 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
     setField('dni', value)
   }
 
-  function toggleCC(persona){
+  function toggleCC(persona) {
     setForm(f => {
       const cc = f.cc || []
-      if(cc.includes(persona)){
-        return {...f, cc: cc.filter(p => p !== persona)}
+      if (cc.includes(persona)) {
+        return { ...f, cc: cc.filter(p => p !== persona) }
       } else {
-        return {...f, cc: [...cc, persona]}
+        return { ...f, cc: [...cc, persona] }
       }
     })
   }
 
-  function handleSubmit(ev){
+  function handleSubmit(ev) {
     ev.preventDefault()
-    
+
     // Validar campos obligatorios
-    if(!form.dni || form.dni.length !== 8){
+    if (!form.dni || form.dni.length !== 8) {
       alert('El DNI debe tener exactamente 8 dígitos')
       return
     }
-    
+
     // Validaciones comunes
-    if(!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab){
+    if (!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
       alert('Completa todos los campos obligatorios')
       return
     }
 
     // Validaciones específicas para inasistencia
-    if(form.asunto === 'Inasistencia') {
-      if(!form.tipoInasistencia || !form.fechaFalta) {
+    if (form.asunto === 'Inasistencia') {
+      if (!form.tipoInasistencia || !form.fechaFalta) {
         alert('Para inasistencia, completa el tipo y la fecha de falta')
         return
       }
     } else {
       // Validaciones para otros asuntos (requieren bodycam)
-      if(!form.bodycamNumber || !form.bodycamAsignadaA || !form.encargadoBodycam) {
+      if (!form.bodycamNumber || !form.bodycamAsignadaA || !form.encargadoBodycam) {
         alert('Completa los campos de bodycam')
         return
       }
     }
-    
+
     onSave(form)
   }
 
@@ -190,11 +190,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
         </div>
         <form className="modal-body" onSubmit={handleSubmit}>
           <label>
-            <FaIdCard style={{marginRight: '8px'}} />
+            <FaIdCard style={{ marginRight: '8px' }} />
             DNI * (8 dígitos)
           </label>
-          <input 
-            value={form.dni} 
+          <input
+            value={form.dni}
             onChange={handleDNIChange}
             placeholder="Ingresa 8 dígitos del DNI"
             maxLength={8}
@@ -202,12 +202,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           />
 
           <label>
-            <FaClipboardList style={{marginRight: '8px'}} />
+            <FaClipboardList style={{ marginRight: '8px' }} />
             Seleccionar asunto *
           </label>
-          <select 
-            value={form.asunto} 
-            onChange={e=> setField('asunto', e.target.value)}
+          <select
+            value={form.asunto}
+            onChange={e => setField('asunto', e.target.value)}
           >
             <option value="">Selecciona</option>
             <option value="Falta disciplinaria">Falta disciplinaria</option>
@@ -218,12 +218,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           {form.asunto && (
             <>
               <label>
-                <FaExclamationTriangle style={{marginRight: '8px'}} />
+                <FaExclamationTriangle style={{ marginRight: '8px' }} />
                 Seleccionar falta *
               </label>
-              <select 
-                value={form.falta} 
-                onChange={e=> setField('falta', e.target.value)}
+              <select
+                value={form.falta}
+                onChange={e => setField('falta', e.target.value)}
               >
                 <option value="">Selecciona</option>
                 {subtipesDisponibles.map(subtipo => (
@@ -237,12 +237,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           {mostrarCamposInasistencia && (
             <>
               <label>
-                <FaExclamationTriangle style={{marginRight: '8px'}} />
+                <FaExclamationTriangle style={{ marginRight: '8px' }} />
                 Tipo de inasistencia *
               </label>
-              <select 
-                value={form.tipoInasistencia} 
-                onChange={e=> setField('tipoInasistencia', e.target.value)}
+              <select
+                value={form.tipoInasistencia}
+                onChange={e => setField('tipoInasistencia', e.target.value)}
               >
                 <option value="">Selecciona tipo</option>
                 <option value="Justificada">Justificada</option>
@@ -250,21 +250,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
               </select>
 
               <label>Fecha de falta *</label>
-              <input 
-                type="date" 
-                value={form.fechaFalta} 
-                onChange={e=> setField('fechaFalta', e.target.value)} 
+              <input
+                type="date"
+                value={form.fechaFalta}
+                onChange={e => setField('fechaFalta', e.target.value)}
               />
             </>
           )}
 
           <label>
-            <FaClock style={{marginRight: '8px'}} />
+            <FaClock style={{ marginRight: '8px' }} />
             Turno *
           </label>
-          <select 
-            value={form.turno} 
-            onChange={e=> setField('turno', e.target.value)}
+          <select
+            value={form.turno}
+            onChange={e => setField('turno', e.target.value)}
           >
             <option value="">Selecciona</option>
             <option value="Mañana">Mañana</option>
@@ -273,22 +273,22 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           </select>
 
           <label>
-            <FaUserTie style={{marginRight: '8px'}} />
+            <FaUserTie style={{ marginRight: '8px' }} />
             Cargo *
           </label>
-          <input 
-            value={form.cargo} 
-            onChange={e=> setField('cargo', e.target.value)} 
+          <input
+            value={form.cargo}
+            onChange={e => setField('cargo', e.target.value)}
             placeholder="Ingresa el cargo"
           />
 
           <label>
-            <FaIdBadge style={{marginRight: '8px'}} />
+            <FaIdBadge style={{ marginRight: '8px' }} />
             Reg. Lab *
           </label>
-          <input 
-            value={form.regLab} 
-            onChange={e=> setField('regLab', e.target.value)} 
+          <input
+            value={form.regLab}
+            onChange={e => setField('regLab', e.target.value)}
             placeholder="Ingresa Reg. Lab"
           />
 
@@ -296,81 +296,81 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           {mostrarCamposBodycam && (
             <>
               <label>
-                <FaVideo style={{marginRight: '8px'}} />
+                <FaVideo style={{ marginRight: '8px' }} />
                 Medio *
               </label>
-              <select 
-                value={form.medio} 
-                onChange={e=> setField('medio', e.target.value)}
+              <select
+                value={form.medio}
+                onChange={e => setField('medio', e.target.value)}
               >
                 <option value="bodycam">Bodycam</option>
               </select>
 
               <label>N° de Bodycam *</label>
-              <input 
-                value={form.bodycamNumber} 
-                onChange={e=> setField('bodycamNumber', e.target.value)} 
-                placeholder="Número de bodycam" 
+              <input
+                value={form.bodycamNumber}
+                onChange={e => setField('bodycamNumber', e.target.value)}
+                placeholder="Número de bodycam"
               />
 
               <label>Bodycam asignada a: *</label>
-              <input 
-                value={form.bodycamAsignadaA} 
-                onChange={e=> setField('bodycamAsignadaA', e.target.value)} 
-                placeholder="Persona a quien está asignada la bodycam" 
+              <input
+                value={form.bodycamAsignadaA}
+                onChange={e => setField('bodycamAsignadaA', e.target.value)}
+                placeholder="Persona a quien está asignada la bodycam"
               />
 
               <label>Encargado de bodycam: *</label>
-              <input 
-                value={form.encargadoBodycam} 
-                onChange={e=> setField('encargadoBodycam', e.target.value)} 
-                placeholder="Encargado de la bodycam" 
+              <input
+                value={form.encargadoBodycam}
+                onChange={e => setField('encargadoBodycam', e.target.value)}
+                placeholder="Encargado de la bodycam"
               />
             </>
           )}
 
           <div className="row">
-            <div style={{flex:1}}>
+            <div style={{ flex: 1 }}>
               <label>Fecha del Incidente *</label>
-              <input 
-                type="date" 
-                value={form.fechaIncidente} 
-                onChange={e=> setField('fechaIncidente', e.target.value)} 
+              <input
+                type="date"
+                value={form.fechaIncidente}
+                onChange={e => setField('fechaIncidente', e.target.value)}
               />
             </div>
-            <div style={{flex:1}}>
+            <div style={{ flex: 1 }}>
               <label>Hora del Incidente *</label>
-              <input 
-                type="time" 
-                value={form.horaIncidente} 
-                onChange={e=> setField('horaIncidente', e.target.value)} 
+              <input
+                type="time"
+                value={form.horaIncidente}
+                onChange={e => setField('horaIncidente', e.target.value)}
               />
             </div>
           </div>
 
           <label>
-            <FaBalanceScale style={{marginRight: '8px'}} />
+            <FaBalanceScale style={{ marginRight: '8px' }} />
             Jurisdicción *
           </label>
-          <input 
-            value={form.jurisdiccion} 
-            onChange={e=> setField('jurisdiccion', e.target.value)} 
+          <input
+            value={form.jurisdiccion}
+            onChange={e => setField('jurisdiccion', e.target.value)}
             placeholder="Ingresa la jurisdicción"
           />
 
           <label>
-            <FaMapMarkerAlt style={{marginRight: '8px'}} />
+            <FaMapMarkerAlt style={{ marginRight: '8px' }} />
             Ubicación del Infractor
           </label>
           <MapSelector value={form.ubicacion} onChange={p => setField('ubicacion', p)} />
 
           <label>
-            <FaUserTag style={{marginRight: '8px'}} />
+            <FaUserTag style={{ marginRight: '8px' }} />
             Destinatario *
           </label>
-          <select 
-            value={form.dirigidoA} 
-            onChange={e=> setField('dirigidoA', e.target.value)}
+          <select
+            value={form.dirigidoA}
+            onChange={e => setField('dirigidoA', e.target.value)}
           >
             <option value="">Selecciona</option>
             <option value="Jefe de operaciones">Jefe de operaciones</option>
@@ -381,9 +381,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
           {form.dirigidoA && (
             <>
               <label>Persona *</label>
-              <select 
-                value={form.destinatario} 
-                onChange={e=> setField('destinatario', e.target.value)}
+              <select
+                value={form.destinatario}
+                onChange={e => setField('destinatario', e.target.value)}
               >
                 <option value="">Selecciona</option>
                 {destinatariosDisponibles.map(dest => (
@@ -395,12 +395,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
 
           {/* Botón CC */}
           <div className="cc-section">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="btn-cc"
-              onClick={()=> setField('conCopia', !form.conCopia)}
+              onClick={() => setField('conCopia', !form.conCopia)}
             >
-              <FaUsers style={{marginRight: '8px'}} />
+              <FaUsers style={{ marginRight: '8px' }} />
               {form.conCopia ? '✓ Con copia (CC)' : '+ Agregar CC'}
             </button>
           </div>
@@ -412,10 +412,10 @@ export default function ModalIncidencia({ initial, onClose, onSave }){
               <div className="checkbox-group">
                 {listaCompletaCC.map(persona => (
                   <label key={persona} className="checkbox-label">
-                    <input 
+                    <input
                       type="checkbox"
                       checked={(form.cc || []).includes(persona)}
-                      onChange={()=> toggleCC(persona)}
+                      onChange={() => toggleCC(persona)}
                     />
                     <span>{persona}</span>
                   </label>

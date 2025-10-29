@@ -1,5 +1,5 @@
 :root {
-  
+
   /* Colores Principales */
   --primary: #1e3a8a;
   --secondary: #3b82f6;
@@ -12,7 +12,7 @@
   --bg-secondary: rgba(255, 255, 255, 0.95);
   --card: rgba(255, 255, 255, 0.90);
   --card-hover: rgba(255, 255, 255, 0.95);
-  
+
   --text-primary: #1e293b;
   --text-secondary: #475569;
   --text-muted: #64748b;
@@ -40,11 +40,11 @@
   --bg-secondary: rgba(15, 23, 42, 0.95);
   --card: rgba(15, 23, 42, 0.90);
   --card-hover: rgba(15, 23, 42, 0.95);
-  
+
   --text-primary: #f8fafc;
   --text-secondary: #e2e8f0;
   --text-muted: #94a3b8;
-  
+
   --border: rgba(59, 130, 246, 0.3);
   --shadow: rgba(30, 58, 138, 0.3);
   --shadow-hover: rgba(30, 58, 138, 0.4);
@@ -120,9 +120,12 @@ body,
 }
 
 @keyframes gradientShift {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
@@ -140,6 +143,7 @@ body,
     opacity: 0;
     transform: translateX(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -172,6 +176,7 @@ body,
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -189,6 +194,7 @@ body,
     opacity: 0;
     transform: translateX(30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -371,6 +377,7 @@ body,
     opacity: 0;
     transform: translateX(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -385,6 +392,7 @@ body,
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -491,13 +499,13 @@ body,
 }
 
 /* ============================================
-   WELCOME CARD 
+   WELCOME CARD - CON IMAGEN DE LOBO
    ============================================ */
 .welcome-card {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 50%, #93c5fd 100%);
   border-radius: 16px;
   padding: 30px;
-  box-shadow: 0 8px 30px rgba(30, 58, 138, 0.3);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25);
   position: relative;
   overflow: hidden;
   backdrop-filter: blur(10px);
@@ -516,33 +524,32 @@ body,
 }
 
 .welcome-label {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: #FFFFFF;
   font-size: 14px;
   margin-bottom: 4px;
+  font-weight: 600;
 }
 
 .welcome-name {
-  color: white !important;
+  color: #FFFFFF;
   font-size: 32px;
   font-weight: 700;
   margin: 0 0 8px 0;
 }
 
 .welcome-message {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: #FFFFFF;
   font-size: 14px;
   margin-bottom: 20px;
   max-width: 280px;
   line-height: 1.5;
+  font-weight: 500;
 }
 
-/* ============================================
-  BOTÓN "Tipo lo reporte..." 
-   ============================================ */
 .welcome-btn {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
-  color: white !important;
+  color: #FFFFFF;
   border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 10px 20px;
   border-radius: 8px;
@@ -555,19 +562,27 @@ body,
 .welcome-btn:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: translateX(5px);
-  color: white !important;
 }
 
 .welcome-illustration {
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.wolf-svg {
+.wolf-image {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.3));
+  transition: all 0.3s ease;
+}
+
+.wolf-image:hover {
+  transform: scale(1.05);
 }
 
 /* ============================================
@@ -646,6 +661,7 @@ body,
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -767,6 +783,7 @@ body,
     opacity: 0;
     transform: translateY(-50px) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1121,6 +1138,7 @@ body,
     max-height: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     max-height: 500px;

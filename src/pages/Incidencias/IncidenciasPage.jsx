@@ -5,55 +5,55 @@ import ModalPDFInforme from '../../components/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { FaPlus, FaSearch, FaFilter } from 'react-icons/fa'
 
-export default function IncidenciasPage(){
+export default function IncidenciasPage() {
   const [incidencias, setIncidencias] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showPDFModal, setShowPDFModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
-  const [filters, setFilters] = useState({ 
-    asunto: 'Todos', 
-    turno: 'Todos', 
+  const [filters, setFilters] = useState({
+    asunto: 'Todos',
+    turno: 'Todos',
     tipoInasistencia: 'Todos',
-    search: '' 
+    search: ''
   })
 
-  useEffect(()=>{
+  useEffect(() => {
     setIncidencias(loadIncidencias())
   }, [])
 
-  useEffect(()=>{
+  useEffect(() => {
     saveIncidencias(incidencias)
   }, [incidencias])
 
-  function handleCreate(data){
-    if(editItem){
+  function handleCreate(data) {
+    if (editItem) {
       setIncidencias(prev => prev.map(i => i.id === editItem.id ? { ...i, ...data, updatedAt: new Date().toISOString() } : i))
       setEditItem(null)
-    }else{
-      const newItem = { 
-        id: Date.now().toString(), 
-        createdAt: new Date().toISOString(), 
-        updatedAt: new Date().toISOString(), 
-        ...data 
+    } else {
+      const newItem = {
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...data
       }
       setIncidencias(prev => [newItem, ...prev])
     }
     setShowModal(false)
   }
 
-  function handleDelete(id){
-    if(!confirm('¿Estás seguro de que deseas eliminar esta incidencia?')) return
+  function handleDelete(id) {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta incidencia?')) return
     setIncidencias(prev => prev.filter(p => p.id !== id))
   }
 
-  function handleEdit(item){
+  function handleEdit(item) {
     setEditItem(item)
     setShowPDFModal(true)
   }
 
   // Obtener inasistencias por DNI para el PDF
   function getInasistenciasPorDNI(dni) {
-    return incidencias.filter(inc => 
+    return incidencias.filter(inc =>
       inc.dni === dni && inc.asunto === 'Inasistencia'
     )
   }
@@ -62,9 +62,9 @@ export default function IncidenciasPage(){
   const filteredData = incidencias.filter(item => {
     const matchAsunto = filters.asunto === 'Todos' || item.asunto === filters.asunto
     const matchTurno = filters.turno === 'Todos' || item.turno === filters.turno
-    const matchTipoInasistencia = filters.tipoInasistencia === 'Todos' || 
-                                 item.tipoInasistencia === filters.tipoInasistencia
-    const matchSearch = !filters.search || 
+    const matchTipoInasistencia = filters.tipoInasistencia === 'Todos' ||
+      item.tipoInasistencia === filters.tipoInasistencia
+    const matchSearch = !filters.search ||
       item.dni?.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.asunto?.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.falta?.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -72,12 +72,12 @@ export default function IncidenciasPage(){
       item.cargo?.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.regLab?.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.jurisdiccion?.toLowerCase().includes(filters.search.toLowerCase())
-    
+
     // Si el asunto es Inasistencia, aplicar filtro de tipo
     if (filters.asunto === 'Inasistencia') {
       return matchAsunto && matchTurno && matchTipoInasistencia && matchSearch
     }
-    
+
     return matchAsunto && matchTurno && matchSearch
   })
 
@@ -86,9 +86,9 @@ export default function IncidenciasPage(){
       <header className="page-header">
         <h2>CONTROL Y SUPERVISIÓN</h2>
         <div className="controls">
-          <select 
+          <select
             value={filters.asunto}
-            onChange={(e)=> setFilters(f => ({...f, asunto: e.target.value, tipoInasistencia: 'Todos'}))}
+            onChange={(e) => setFilters(f => ({ ...f, asunto: e.target.value, tipoInasistencia: 'Todos' }))}
           >
             <option value="Todos">Filtrar por asunto</option>
             <option value="Falta disciplinaria">Falta disciplinaria</option>
@@ -96,11 +96,11 @@ export default function IncidenciasPage(){
             <option value="Inasistencia">Inasistencia</option>
           </select>
 
-          {/* Filtro de tipo de inasistencia (solo visible cuando asunto es Inasistencia) */}
+          {/* Filtro de tipo de inasistencia */}
           {filters.asunto === 'Inasistencia' && (
-            <select 
+            <select
               value={filters.tipoInasistencia}
-              onChange={(e)=> setFilters(f => ({...f, tipoInasistencia: e.target.value}))}
+              onChange={(e) => setFilters(f => ({ ...f, tipoInasistencia: e.target.value }))}
             >
               <option value="Todos">Todos los tipos</option>
               <option value="Justificada">Justificada</option>
@@ -108,9 +108,9 @@ export default function IncidenciasPage(){
             </select>
           )}
 
-          <select 
+          <select
             value={filters.turno}
-            onChange={(e)=> setFilters(f => ({...f, turno: e.target.value}))}
+            onChange={(e) => setFilters(f => ({ ...f, turno: e.target.value }))}
           >
             <option value="Todos">Todos los turnos</option>
             <option value="Mañana">Mañana</option>
@@ -118,7 +118,7 @@ export default function IncidenciasPage(){
             <option value="Noche">Noche</option>
           </select>
 
-          <div style={{position: 'relative'}}>
+          <div style={{ position: 'relative' }}>
             <FaSearch style={{
               position: 'absolute',
               left: '12px',
@@ -126,19 +126,19 @@ export default function IncidenciasPage(){
               transform: 'translateY(-50%)',
               color: 'var(--muted)'
             }} />
-            <input 
-              placeholder="Buscar incidencia..." 
+            <input
+              placeholder="Buscar incidencia..."
               value={filters.search}
-              onChange={(e)=> setFilters(f => ({...f, search: e.target.value}))}
-              style={{paddingLeft: '35px'}}
+              onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
+              style={{ paddingLeft: '35px' }}
             />
           </div>
 
-          <button 
-            className="btn-primary" 
-            onClick={()=> { setEditItem(null); setShowModal(true) }}
+          <button
+            className="btn-primary"
+            onClick={() => { setEditItem(null); setShowModal(true) }}
           >
-            <FaPlus style={{marginRight: '8px'}} />
+            <FaPlus style={{ marginRight: '8px' }} />
             Agregar
           </button>
         </div>
@@ -154,7 +154,7 @@ export default function IncidenciasPage(){
       {showModal && (
         <ModalIncidencia
           initial={editItem}
-          onClose={()=> { setShowModal(false); setEditItem(null) }}
+          onClose={() => { setShowModal(false); setEditItem(null) }}
           onSave={handleCreate}
         />
       )}
@@ -163,7 +163,7 @@ export default function IncidenciasPage(){
         <ModalPDFInforme
           incidencia={editItem}
           inasistenciasHistoricas={getInasistenciasPorDNI(editItem.dni)}
-          onClose={()=> { setShowPDFModal(false); setEditItem(null) }}
+          onClose={() => { setShowPDFModal(false); setEditItem(null) }}
         />
       )}
     </div>
