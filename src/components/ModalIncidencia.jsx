@@ -449,7 +449,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                   value={bodycamSearchTerm}
                   onChange={handleBodycamInputChange}
                   onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                  placeholder="Escribe para buscar bodycam (ej: SG004)"
+                  placeholder="Escribe para buscar bodycam (ej: SG004 o FISCA004)"
                   autoComplete="off"
                 />
                 {bodycamLoading && (

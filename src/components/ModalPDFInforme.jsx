@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import { useSelector } from 'react-redux'
+import logoSJL from '../assets/logo-sjl.png'
 
 function formatearFecha(fecha) {
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
@@ -171,21 +172,26 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   function generarPDF() {
     const doc = new jsPDF()
-    
+
+    // Agregar logo de la municipalidad centrado
+    try {
+      const img = new Image()
+      img.src = logoSJL
+      // Logo más ancho y centrado (105 es el centro - 25 para centrar logo de 50x30)
+      doc.addImage(img, 'PNG', 80, 10, 50, 30)
+    } catch (error) {
+      console.error('Error al cargar logo:', error)
+    }
+
+    // Encabezado
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(14)
-    
-    doc.text('SAN JUAN DE LURIGANCHO', 105, 20, { align: 'center' })
-    doc.setFontSize(10)
-    doc.text('es momento de crecer', 105, 26, { align: 'center' })
-    
     doc.setFontSize(9)
-    doc.text('"Año de la recuperación y consolidación de la economía peruana"', 105, 35, { align: 'center' })
-    
+    doc.text('"Año de la recuperación y consolidación de la economía peruana"', 105, 45, { align: 'center' })
+
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
-    
-    const startY = 45
+
+    const startY = 55
     let currentLine = startY
     
     doc.text(`INFORME N° ${formData.numeroInforme}`, 20, currentLine)
@@ -220,50 +226,50 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     
     doc.setFontSize(9)
     
-    doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine)
-    currentLine += 8
-    
+    doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine, { align: 'justify', maxWidth: 170 })
+    currentLine += 5
+
     let textoIncidente = ''
-    
+
     if (incidencia.asunto === 'Inasistencia') {
       textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
     } else {
       // USAR SOLO LA DIRECCIÓN EN EL TEXTO DEL PDF
       textoIncidente = `Siendo las ${formData.horaIncidente} pm, del día ${formData.fechaIncidente}, en ${formData.ubicacion}, jurisdicción de ${formData.jurisdiccion}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, fue encontrado incurriendo en la presente falta disciplinaria de ${formData.falta.toUpperCase()}, durante el monitoreo de Control y Supervisión por el ${formData.supervisor} a través de la BODYCAM (${formData.bodycam}).`
     }
-    
+
     const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
-    doc.text(lineasIncidente, 20, currentLine)
-    currentLine += (lineasIncidente.length * 5) + 5
-    
+    doc.text(lineasIncidente, 20, currentLine, { align: 'justify', maxWidth: 170 })
+    currentLine += (lineasIncidente.length * 5) + 3
+
     if (incidencia.asunto !== 'Inasistencia') {
       const textoBodycam = `La BODYCAM (${formData.bodycam}) asignada a ${formData.bodycamAsignadaA}, bajo responsabilidad de ${formData.encargadoBodycam}, fue la que enfocó al Sereno Conductor infringiendo el Artículo ${formData.articulo}.`
       const lineasBodycam = doc.splitTextToSize(textoBodycam, 170)
-      doc.text(lineasBodycam, 20, currentLine)
-      currentLine += (lineasBodycam.length * 5) + 5
+      doc.text(lineasBodycam, 20, currentLine, { align: 'justify', maxWidth: 170 })
+      currentLine += (lineasBodycam.length * 5) + 3
     }
-    
+
     doc.setFont('helvetica', 'italic')
     const cita = `Que cita: "${formData.falta} en las instalaciones del centro de labores, sin importar si dicha acción se realiza o no en jornada laboral, la cual conlleva a la aplicación de la sanción de la amonestación escrita", ya que el personal operativo debe estar en cumplimiento de sus funciones y deberes durante su jornada laboral, por lo tanto, deberían estar atentos y alertas al punto asignado por si ocurriese alguna emergencia o algún tipo de apoyo.`
-    
+
     const lineasCita = doc.splitTextToSize(cita, 170)
-    doc.text(lineasCita, 20, currentLine)
-    currentLine += (lineasCita.length * 5) + 5
-    
+    doc.text(lineasCita, 20, currentLine, { align: 'justify', maxWidth: 170 })
+    currentLine += (lineasCita.length * 5) + 3
+
     doc.setFont('helvetica', 'normal')
     const nombreParaPDF = formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno
     const infoAdicional = incidencia.asunto === 'Inasistencia'
       ? `Se adjunta al presente, la información del señor ${nombreParaPDF} y el historial de inasistencias correspondiente.`
       : `Se adjunta al presente, la información del señor ${nombreParaPDF}, las tomas fotográficas de la BODYCAM (${formData.bodycam}) dentro del módulo Santa Rosa.`
-    
+
     const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
-    doc.text(lineasInfo, 20, currentLine)
-    currentLine += (lineasInfo.length * 5) + 5
-    
+    doc.text(lineasInfo, 20, currentLine, { align: 'justify', maxWidth: 170 })
+    currentLine += (lineasInfo.length * 5) + 3
+
     if (formData.descripcionAdicional) {
       const lineasAdicional = doc.splitTextToSize(formData.descripcionAdicional, 170)
-      doc.text(lineasAdicional, 20, currentLine)
-      currentLine += (lineasAdicional.length * 5) + 10
+      doc.text(lineasAdicional, 20, currentLine, { align: 'justify', maxWidth: 170 })
+      currentLine += (lineasAdicional.length * 5) + 5
     }
     
     if (incidencia.asunto === 'Inasistencia' && inasistenciasHistoricas.length > 0) {
