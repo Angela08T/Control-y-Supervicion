@@ -16,27 +16,28 @@ const icon = L.icon({
   shadowSize: [41, 41]
 })
 
-function ClickHandler({ setPosition, setAddress }) {
+function ClickHandler({ onLocationSelect }) {
   useMapEvents({
     async click(e) {
       const newPos = [e.latlng.lat, e.latlng.lng]
-      setPosition(newPos)
-      
+
       // Obtener dirección usando geocoding inverso
       try {
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPos[0]}&lon=${newPos[1]}&zoom=18&addressdetails=1`
         )
         const data = await response.json()
-        
+
+        let newAddress = 'Dirección no encontrada'
         if (data && data.display_name) {
-          setAddress(data.display_name)
-        } else {
-          setAddress('Dirección no encontrada')
+          newAddress = data.display_name
         }
+
+        // Llamar al callback con AMBOS valores actualizados
+        onLocationSelect(newPos, newAddress)
       } catch (error) {
         console.error('Error obteniendo dirección:', error)
-        setAddress('Error al obtener dirección')
+        onLocationSelect(newPos, 'Error al obtener dirección')
       }
     }
   })
@@ -54,10 +55,14 @@ export default function MapSelector({ value, onChange }) {
     }
   }, [value])
 
-  function handlePositionChange(newPos, newAddress) {
+  function handleLocationSelect(newPos, newAddress) {
     setPosition(newPos)
     setAddress(newAddress)
-    
+
+    console.log('📍 MapSelector - Ubicación seleccionada:')
+    console.log('   Coordenadas:', newPos)
+    console.log('   Dirección:', newAddress)
+
     if (onChange) {
       onChange({
         coordinates: newPos,
@@ -79,9 +84,8 @@ export default function MapSelector({ value, onChange }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
-          <ClickHandler 
-            setPosition={(pos) => handlePositionChange(pos, address)} 
-            setAddress={setAddress}
+          <ClickHandler
+            onLocationSelect={handleLocationSelect}
           />
           {position && <Marker position={position} icon={icon} />}
         </MapContainer>

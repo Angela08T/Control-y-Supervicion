@@ -1,6 +1,9 @@
 ModalIncidencia.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import MapSelector from './MapSelector'
+import useBodycamSearch from '../hooks/Bodycam/useBodycamSearch'
+import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
+import './Autocomplete.css'
 import {
   FaIdCard,
   FaClipboardList,
@@ -17,6 +20,7 @@ import {
 
 const defaultState = {
   dni: '',
+  nombreCompleto: '',  // Nuevo campo para nombre completo del offender
   asunto: '',
   falta: '',
   turno: '',
@@ -87,9 +91,43 @@ const listaCompletaCC = [
 export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
 
+  // Hook para búsqueda de bodycam
+  const {
+    searchTerm: bodycamSearchTerm,
+    setSearchTerm: setBodycamSearchTerm,
+    results: bodycamResults,
+    loading: bodycamLoading,
+    error: bodycamError,
+    showSuggestions: showBodycamSuggestions,
+    setShowSuggestions: setShowBodycamSuggestions,
+    selectBodycam
+  } = useBodycamSearch()
+
+  // Hook para búsqueda de offender (DNI)
+  const {
+    searchTerm: dniSearchTerm,
+    setSearchTerm: setDniSearchTerm,
+    results: offenderResults,
+    loading: offenderLoading,
+    error: offenderError,
+    showSuggestions: showOffenderSuggestions,
+    setShowSuggestions: setShowOffenderSuggestions,
+    selectOffender
+  } = useOffenderSearch()
+
+  const bodycamAutocompleteRef = useRef(null)
+  const dniAutocompleteRef = useRef(null)
+
   useEffect(() => {
     if (initial) {
       setForm({ ...defaultState, ...initial })
+      // Si estamos editando, establecer los searchTerms existentes
+      if (initial.bodycamNumber) {
+        setBodycamSearchTerm(initial.bodycamNumber)
+      }
+      if (initial.dni) {
+        setDniSearchTerm(initial.dni)
+      }
     } else {
       // Establecer fecha y hora automáticamente al crear
       const now = new Date()
@@ -99,9 +137,30 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     }
   }, [initial])
 
+  // Cerrar sugerencias al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (bodycamAutocompleteRef.current && !bodycamAutocompleteRef.current.contains(event.target)) {
+        setShowBodycamSuggestions(false)
+      }
+      if (dniAutocompleteRef.current && !dniAutocompleteRef.current.contains(event.target)) {
+        setShowOffenderSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   function setField(k, v) {
     setForm(f => {
       const newForm = { ...f, [k]: v }
+
+      // Log cuando se actualiza la ubicación
+      if (k === 'ubicacion') {
+        console.log('🗺️ ModalIncidencia - Ubicación guardada en form:')
+        console.log('   Coordenadas:', v?.coordinates)
+        console.log('   Dirección:', v?.address)
+      }
 
       // Si cambia el asunto, resetear falta y campos relacionados
       if (k === 'asunto') {
@@ -130,7 +189,29 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
   function handleDNIChange(e) {
     const value = e.target.value.replace(/\D/g, '').slice(0, 8)
+    setDniSearchTerm(value)
     setField('dni', value)
+  }
+
+  function handleOffenderSelect(offender) {
+    // Seleccionar offender usando el hook
+    selectOffender(offender)
+
+    // Rellenar el formulario con los datos del offender
+    // Estructura del API: { dni, job, regime, shift, name, lastname }
+    const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim()
+
+    setForm(f => ({
+      ...f,
+      dni: offender.dni || '',
+      nombreCompleto: nombreCompleto,   // Guardar nombre completo
+      turno: offender.shift || '',      // shift → turno
+      cargo: offender.job || '',         // job → cargo
+      regLab: offender.regime || ''      // regime → regLab
+    }))
+
+    // Actualizar también el searchTerm
+    setDniSearchTerm(offender.dni || '')
   }
 
   function toggleCC(persona) {
@@ -142,6 +223,30 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
         return { ...f, cc: [...cc, persona] }
       }
     })
+  }
+
+  function handleBodycamSelect(bodycam) {
+    // Seleccionar bodycam usando el hook
+    selectBodycam(bodycam)
+
+    // Rellenar el formulario con los datos de la bodycam
+    // Campos del API: id, name
+    setForm(f => ({
+      ...f,
+      bodycamNumber: bodycam.name || bodycam.id || '',
+      // Los campos de asignación deben ser completados manualmente o venir del API
+      bodycamAsignadaA: bodycam.asignadoA || bodycam.asignado || bodycam.usuario || '',
+      encargadoBodycam: bodycam.encargado || bodycam.responsable || bodycam.asignadoA || bodycam.asignado || bodycam.usuario || ''
+    }))
+
+    // Actualizar también el searchTerm
+    setBodycamSearchTerm(bodycam.name || bodycam.id || '')
+  }
+
+  function handleBodycamInputChange(e) {
+    const value = e.target.value
+    setBodycamSearchTerm(value)
+    setField('bodycamNumber', value)
   }
 
   function handleSubmit(ev) {
@@ -193,13 +298,46 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaIdCard style={{ marginRight: '8px' }} />
             DNI * (8 dígitos)
           </label>
-          <input
-            value={form.dni}
-            onChange={handleDNIChange}
-            placeholder="Ingresa 8 dígitos del DNI"
-            maxLength={8}
-            pattern="[0-9]{8}"
-          />
+          <div className="autocomplete-container" ref={dniAutocompleteRef}>
+            <input
+              value={dniSearchTerm}
+              onChange={handleDNIChange}
+              onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
+              placeholder="Ingresa 8 dígitos del DNI"
+              maxLength={8}
+              pattern="[0-9]{8}"
+              autoComplete="off"
+            />
+            {offenderLoading && (
+              <div className="autocomplete-loading">Buscando...</div>
+            )}
+            {offenderError && (
+              <div className="autocomplete-error">{offenderError}</div>
+            )}
+            {showOffenderSuggestions && offenderResults.length > 0 && (
+              <div className="autocomplete-suggestions">
+                {offenderResults.map((offender, index) => (
+                  <div
+                    key={offender.gestionate_id || offender.id || index}
+                    className="autocomplete-item"
+                    onClick={() => handleOffenderSelect(offender)}
+                  >
+                    <div className="autocomplete-item-code">
+                      DNI: {offender.dni} - {offender.name} {offender.lastname}
+                    </div>
+                    <div className="autocomplete-item-details">
+                      {offender.job} | {offender.shift} | {offender.regime}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
+              <div className="autocomplete-no-results">
+                No se encontraron registros
+              </div>
+            )}
+          </div>
 
           <label>
             <FaClipboardList style={{ marginRight: '8px' }} />
@@ -262,15 +400,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaClock style={{ marginRight: '8px' }} />
             Turno *
           </label>
-          <select
+          <input
             value={form.turno}
-            onChange={e => setField('turno', e.target.value)}
-          >
-            <option value="">Selecciona</option>
-            <option value="Mañana">Mañana</option>
-            <option value="Tarde">Tarde</option>
-            <option value="Noche">Noche</option>
-          </select>
+            readOnly
+            placeholder="Se llenará automáticamente con el DNI"
+            style={{ cursor: 'not-allowed' }}
+          />
 
           <label>
             <FaUserTie style={{ marginRight: '8px' }} />
@@ -278,8 +413,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           </label>
           <input
             value={form.cargo}
-            onChange={e => setField('cargo', e.target.value)}
-            placeholder="Ingresa el cargo"
+            readOnly
+            placeholder="Se llenará automáticamente con el DNI"
+            style={{ cursor: 'not-allowed' }}
           />
 
           <label>
@@ -288,8 +424,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           </label>
           <input
             value={form.regLab}
-            onChange={e => setField('regLab', e.target.value)}
-            placeholder="Ingresa Reg. Lab"
+            readOnly
+            placeholder="Se llenará automáticamente con el DNI"
+            style={{ cursor: 'not-allowed' }}
           />
 
           {/* Campos de bodycam (solo para NO inasistencia) */}
@@ -307,11 +444,46 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               </select>
 
               <label>N° de Bodycam *</label>
-              <input
-                value={form.bodycamNumber}
-                onChange={e => setField('bodycamNumber', e.target.value)}
-                placeholder="Número de bodycam"
-              />
+              <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                <input
+                  value={bodycamSearchTerm}
+                  onChange={handleBodycamInputChange}
+                  onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
+                  placeholder="Escribe para buscar bodycam (ej: SG004)"
+                  autoComplete="off"
+                />
+                {bodycamLoading && (
+                  <div className="autocomplete-loading">Buscando...</div>
+                )}
+                {bodycamError && (
+                  <div className="autocomplete-error">{bodycamError}</div>
+                )}
+                {showBodycamSuggestions && bodycamResults.length > 0 && (
+                  <div className="autocomplete-suggestions">
+                    {bodycamResults.map((bodycam, index) => (
+                      <div
+                        key={bodycam.id || index}
+                        className="autocomplete-item"
+                        onClick={() => handleBodycamSelect(bodycam)}
+                      >
+                        <div className="autocomplete-item-code">
+                          {bodycam.name || bodycam.id}
+                        </div>
+                        {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
+                          <div className="autocomplete-item-details">
+                            {bodycam.asignadoA || bodycam.asignado || bodycam.usuario}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading && (
+                  <div className="autocomplete-no-results">
+                    No se encontraron bodycams
+                  </div>
+                )}
+              </div>
 
               <label>Bodycam asignada a: *</label>
               <input

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
+import { useSelector } from 'react-redux'
 
 function formatearFecha(fecha) {
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
@@ -26,6 +27,9 @@ const articulosPorFalta = {
 }
 
 export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose }) {
+  // Obtener usuario logueado de Redux
+  const { username } = useSelector((state) => state.auth)
+
   const [formData, setFormData] = useState({
     numeroInforme: '',
     destinatarioCargo: '',
@@ -39,7 +43,8 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     dni: '',
     cargo: '',
     regLab: '',
-    caseta: '',
+    turno: '',  // Agregar turno
+    nombreCompleto: '',  // Agregar nombre completo
     falta: '',
     articulo: '',
     bodycam: '',
@@ -88,17 +93,18 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         fechaIncidente: formatearFecha(incidencia.fechaIncidente),
         ubicacion: obtenerDireccion(), // SOLO DIRECCIÓN
         jurisdiccion: incidencia.jurisdiccion || '',
-        sereno: 'PILLACA HUARHUACHI PAUL KING',
+        sereno: incidencia.nombreCompleto ? incidencia.nombreCompleto.toUpperCase() : '',  // Auto-rellenar con nombre completo
         dni: incidencia.dni || '',
+        nombreCompleto: incidencia.nombreCompleto || '',  // Agregar nombre completo
         cargo: incidencia.cargo || '',
         regLab: incidencia.regLab || '',
-        caseta: 'Caseta 1057',
+        turno: incidencia.turno || '',  // Agregar turno
         falta: incidencia.falta || '',
         articulo,
         bodycam: incidencia.bodycamNumber || '',
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
         encargadoBodycam: incidencia.encargadoBodycam || '',
-        supervisor: 'CENTINELA ALVARADO LAUREANO FRANCO HECTOR',
+        supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
         descripcionAdicional: '',
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: incidencia.fechaFalta || '',
@@ -201,6 +207,10 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     
     doc.text(`ASUNTO  :    ${incidencia.asunto.toUpperCase()}`, 20, currentLine)
     currentLine += 7
+
+    // Agregar tipo de falta debajo del asunto
+    doc.text(`FALTA   :    ${formData.falta.toUpperCase()}`, 20, currentLine)
+    currentLine += 7
     
     doc.text(`FECHA   :    San Juan de Lurigancho, ${formData.fecha}`, 20, currentLine)
     currentLine += 6
@@ -216,10 +226,10 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     let textoIncidente = ''
     
     if (incidencia.asunto === 'Inasistencia') {
-      textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.sereno}, (${formData.caseta}), con cargo de ${formData.cargo} y Reg. Lab ${formData.regLab}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
+      textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
     } else {
       // USAR SOLO LA DIRECCIÓN EN EL TEXTO DEL PDF
-      textoIncidente = `Siendo las ${formData.horaIncidente} pm, del día ${formData.fechaIncidente}, en ${formData.ubicacion}, jurisdicción de ${formData.jurisdiccion}, el sereno, ${formData.sereno}, (${formData.caseta}), con cargo de ${formData.cargo} y Reg. Lab ${formData.regLab}, fue encontrado incurriendo en la presente falta disciplinaria de ${formData.falta.toUpperCase()}, durante el monitoreo de Control y Supervisión por el ${formData.supervisor} a través de la BODYCAM (${formData.bodycam}).`
+      textoIncidente = `Siendo las ${formData.horaIncidente} pm, del día ${formData.fechaIncidente}, en ${formData.ubicacion}, jurisdicción de ${formData.jurisdiccion}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, fue encontrado incurriendo en la presente falta disciplinaria de ${formData.falta.toUpperCase()}, durante el monitoreo de Control y Supervisión por el ${formData.supervisor} a través de la BODYCAM (${formData.bodycam}).`
     }
     
     const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
@@ -241,9 +251,10 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     currentLine += (lineasCita.length * 5) + 5
     
     doc.setFont('helvetica', 'normal')
-    const infoAdicional = incidencia.asunto === 'Inasistencia' 
-      ? `Se adjunta al presente, la información del señor ${formData.sereno} y el historial de inasistencias correspondiente.`
-      : `Se adjunta al presente, la información del señor ${formData.sereno}, las tomas fotográficas de la BODYCAM (${formData.bodycam}) dentro del módulo Santa Rosa.`
+    const nombreParaPDF = formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno
+    const infoAdicional = incidencia.asunto === 'Inasistencia'
+      ? `Se adjunta al presente, la información del señor ${nombreParaPDF} y el historial de inasistencias correspondiente.`
+      : `Se adjunta al presente, la información del señor ${nombreParaPDF}, las tomas fotográficas de la BODYCAM (${formData.bodycam}) dentro del módulo Santa Rosa.`
     
     const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
     doc.text(lineasInfo, 20, currentLine)
@@ -452,10 +463,11 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
               <div className="editable-section">
                 <label>Ubicación (Dirección):</label>
-                <input 
+                <input
                   type="text"
                   value={formData.ubicacion}
-                  onChange={e => handleChange('ubicacion', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                   placeholder="Dirección completa del incidente"
                 />
               </div>
@@ -471,55 +483,51 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
               <div className="editable-section">
                 <label>Sereno:</label>
-                <input 
+                <input
                   type="text"
                   value={formData.sereno}
-                  onChange={e => handleChange('sereno', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
 
               <div className="editable-section">
                 <label>DNI:</label>
-                <input 
+                <input
                   type="text"
                   value={formData.dni}
-                  onChange={e => handleChange('dni', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
 
               <div className="editable-section">
                 <label>Cargo:</label>
-                <input 
+                <input
                   type="text"
                   value={formData.cargo}
-                  onChange={e => handleChange('cargo', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
 
               <div className="editable-section">
                 <label>Reg. Lab:</label>
-                <input 
+                <input
                   type="text"
                   value={formData.regLab}
-                  onChange={e => handleChange('regLab', e.target.value)}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Caseta:</label>
-                <input 
-                  type="text"
-                  value={formData.caseta}
-                  onChange={e => handleChange('caseta', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
 
               <div className="editable-section">
                 <label>Falta:</label>
-                <input 
+                <input
                   type="text"
                   value={formData.falta}
-                  onChange={e => handleChange('falta', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
 
@@ -558,10 +566,11 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
                   <div className="editable-section">
                     <label>N° Bodycam:</label>
-                    <input 
+                    <input
                       type="text"
                       value={formData.bodycam}
-                      onChange={e => handleChange('bodycam', e.target.value)}
+                      readOnly
+                      style={{ cursor: 'not-allowed' }}
                     />
                   </div>
 
@@ -587,10 +596,11 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
               <div className="editable-section">
                 <label>Supervisor:</label>
-                <input 
+                <input
                   type="text"
                   value={formData.supervisor}
-                  onChange={e => handleChange('supervisor', e.target.value)}
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
 
