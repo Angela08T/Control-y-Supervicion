@@ -16,6 +16,7 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
       <table className="inc-table">
         <thead>
           <tr>
+            <th>Acciones</th>
             <th>DNI</th>
             <th>Asunto</th>
             <th>Falta</th>
@@ -38,7 +39,6 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
             <th>Destinatario</th>
             <th>Creado En</th>
             <th>Actualizado</th>
-            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -55,6 +55,14 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
           )}
           {data.map(item => (
             <tr key={item.id}>
+              <td className="actions">
+                <button title="Generar PDF" onClick={()=> onEdit(item)}>
+                  <FaFilePdf/>
+                </button>
+                <button title="Eliminar" onClick={()=> onDelete(item.id)}>
+                  <FaTrash/>
+                </button>
+              </td>
               <td>{item.dni}</td>
               <td>{item.asunto}</td>
               <td>{item.falta}</td>
@@ -77,14 +85,6 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
               <td>{item.destinatario || '-'}</td>
               <td>{formatDate(item.createdAt)}</td>
               <td>{formatDate(item.updatedAt)}</td>
-              <td className="actions">
-                <button title="Generar PDF" onClick={()=> onEdit(item)}>
-                  <FaFilePdf/>
-                </button>
-                <button title="Eliminar" onClick={()=> onDelete(item.id)}>
-                  <FaTrash/>
-                </button>
-              </td>
             </tr>
           ))}
         </tbody>
