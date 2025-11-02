@@ -1,8 +1,12 @@
 ModalIncidencia.jsx
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import MapSelector from './MapSelector'
 import useBodycamSearch from '../hooks/Bodycam/useBodycamSearch'
 import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
+import useJobs from '../hooks/Job/useJobs'
+import useLeads from '../hooks/Job/useLeads'
+import useAllLeads from '../hooks/Job/useAllLeads'
+import useSubjects from '../hooks/Subject/useSubjects'
 import './Autocomplete.css'
 import {
   FaIdCard,
@@ -34,62 +38,23 @@ const defaultState = {
   jurisdiccion: '',
   dirigidoA: '',
   destinatario: '',
+  cargoDestinatario: '', // Cargo de la persona destinataria (para el PDF)
   cargo: '',
   regLab: '',
   tipoInasistencia: '',
   fechaFalta: '',
   conCopia: false,
-  cc: []
+  cc: [],
+  subjectId: null,  // ID del asunto para la API
+  lackId: null      // ID de la falta para la API
 }
 
-// Mapeo de subtipos por asunto
-const subtipoPorAsunto = {
-  'Falta disciplinaria': [
-    'Dormir en horario laboral',
-    'Omision de servicio',
-
-  ],
-  'Abandono de servicio': [
-    'Abandono injustificado',
-    'Abandono temporal reiterado',
-    'Negativa a cumplir funciones asignadas'
-  ],
-  'Inasistencia': [
-    'Inasistencia prolongada sin aviso',
-    'Llegó fuera de horario o falto'
-  ]
-}
-
-// Mapeo de destinatarios por tipo
-const destinatariosPorTipo = {
-  'Jefe de operaciones': [
-    'Shols Tello Jose Rodrigo',
-    'Gutierrez Moreno Edwin Alexander'
-  ],
-  'Coordinadores': [
-    'Vieri Flores',
-    'Smith Carhuchahua',
-    'Diego Matute'
-  ],
-  'Subgerente': [
-    'David Sanchez',
-    'Stewar'
-  ]
-}
-
-// Lista completa para CC
-const listaCompletaCC = [
-  'Shols Tello Jose Rodrigo',
-  'Gutierrez Moreno Edwin Alexander',
-  'Vieri Flores',
-  'Smith Carhuchahua',
-  'Diego Matute',
-  'David Sanchez',
-  'Stewar'
-]
+// Nota: Los asuntos, faltas, destinatarios y la lista de CC ahora se cargan dinámicamente desde la API
 
 export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
+  const [selectedJobId, setSelectedJobId] = useState(null) // ID del job seleccionado
+  const [selectedLeadId, setSelectedLeadId] = useState('') // ID del lead seleccionado
 
   // Hook para búsqueda de bodycam
   const {
@@ -114,6 +79,63 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     setShowSuggestions: setShowOffenderSuggestions,
     selectOffender
   } = useOffenderSearch()
+
+  // Hook para obtener lista de jobs (cargos)
+  const {
+    jobs,
+    loading: jobsLoading,
+    error: jobsError
+  } = useJobs()
+
+  // Hook para obtener lista de leads (personas) según el job seleccionado
+  const {
+    leads,
+    loading: leadsLoading,
+    error: leadsError
+  } = useLeads(selectedJobId)
+
+  // Hook para obtener TODOS los leads (para la sección CC)
+  const {
+    allLeads,
+    loading: allLeadsLoading,
+    error: allLeadsError
+  } = useAllLeads()
+
+  // Hook para obtener subjects (asuntos) y lacks (faltas)
+  const {
+    subjects,
+    loading: subjectsLoading,
+    error: subjectsError
+  } = useSubjects()
+
+  // Filtrar lista de CC para excluir a la persona seleccionada
+  const listaCC = useMemo(() => {
+    if (!allLeads || allLeads.length === 0) return []
+
+    // Filtrar para excluir al destinatario seleccionado
+    return allLeads.filter(lead => {
+      const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
+      return nombreCompleto !== form.destinatario
+    })
+  }, [allLeads, form.destinatario])
+
+  // Crear mapa de asuntos y faltas desde la API
+  const subjectMap = useMemo(() => {
+    const map = {}
+    subjects.forEach(subject => {
+      map[subject.name] = {
+        id: subject.id,
+        lacks: subject.lacks || []
+      }
+    })
+    return map
+  }, [subjects])
+
+  // Obtener faltas disponibles según el asunto seleccionado
+  const lacksDisponibles = useMemo(() => {
+    if (!form.asunto || !subjectMap[form.asunto]) return []
+    return subjectMap[form.asunto].lacks
+  }, [form.asunto, subjectMap])
 
   const bodycamAutocompleteRef = useRef(null)
   const dniAutocompleteRef = useRef(null)
@@ -165,8 +187,17 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       // Si cambia el asunto, resetear falta y campos relacionados
       if (k === 'asunto') {
         newForm.falta = ''
+        newForm.lackId = null
         newForm.tipoInasistencia = ''
         newForm.fechaFalta = ''
+
+        // Guardar el ID del asunto desde la API
+        if (subjectMap[v]) {
+          newForm.subjectId = subjectMap[v].id
+        } else {
+          newForm.subjectId = null
+        }
+
         // Resetear campos de bodycam si cambia a inasistencia
         if (v === 'Inasistencia') {
           newForm.medio = 'reporte'
@@ -178,6 +209,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
         }
       }
 
+      // Si cambia la falta, guardar el ID de la falta
+      if (k === 'falta') {
+        const lack = lacksDisponibles.find(l => l.name === v)
+        newForm.lackId = lack ? lack.id : null
+      }
+
       // Si cambia dirigidoA, resetear destinatario
       if (k === 'dirigidoA') {
         newForm.destinatario = ''
@@ -185,6 +222,33 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
       return newForm
     })
+  }
+
+  // Función para manejar cambio de job/destinatario
+  function handleJobChange(jobId, jobName) {
+    setSelectedJobId(jobId) // Actualizar el ID para cargar los leads
+    setSelectedLeadId('') // Resetear la persona seleccionada
+    setField('dirigidoA', jobName) // Guardar el nombre en el formulario
+  }
+
+  // Función para manejar selección de persona (lead)
+  function handleLeadChange(leadId) {
+    setSelectedLeadId(leadId) // Guardar ID para el select
+    const selectedLead = leads.find(lead => lead.id === leadId)
+    if (selectedLead) {
+      const nombreCompleto = `${selectedLead.name} ${selectedLead.lastname}`.trim()
+      setForm(f => ({
+        ...f,
+        destinatario: nombreCompleto,
+        cargoDestinatario: selectedLead.job?.name || form.dirigidoA // Guardar el cargo del lead
+      }))
+    } else {
+      setForm(f => ({
+        ...f,
+        destinatario: '',
+        cargoDestinatario: ''
+      }))
+    }
   }
 
   function handleDNIChange(e) {
@@ -207,20 +271,28 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       nombreCompleto: nombreCompleto,   // Guardar nombre completo
       turno: offender.shift || '',      // shift → turno
       cargo: offender.job || '',         // job → cargo
-      regLab: offender.regime || ''      // regime → regLab
+      regLab: offender.regime || '',     // regime → regLab
+      bodycamAsignadaA: nombreCompleto   // Auto-llenar bodycam asignada a
     }))
 
     // Actualizar también el searchTerm
     setDniSearchTerm(offender.dni || '')
   }
 
-  function toggleCC(persona) {
+  function toggleCC(leadId) {
     setForm(f => {
       const cc = f.cc || []
-      if (cc.includes(persona)) {
-        return { ...f, cc: cc.filter(p => p !== persona) }
+      // Buscar el lead completo
+      const lead = allLeads.find(l => l.id === leadId)
+      if (!lead) return f
+
+      const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
+
+      // Verificar si ya está en la lista
+      if (cc.includes(nombreCompleto)) {
+        return { ...f, cc: cc.filter(p => p !== nombreCompleto) }
       } else {
-        return { ...f, cc: [...cc, persona] }
+        return { ...f, cc: [...cc, nombreCompleto] }
       }
     })
   }
@@ -233,10 +305,10 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     // Campos del API: id, name
     setForm(f => ({
       ...f,
-      bodycamNumber: bodycam.name || bodycam.id || '',
-      // Los campos de asignación deben ser completados manualmente o venir del API
-      bodycamAsignadaA: bodycam.asignadoA || bodycam.asignado || bodycam.usuario || '',
-      encargadoBodycam: bodycam.encargado || bodycam.responsable || bodycam.asignadoA || bodycam.asignado || bodycam.usuario || ''
+      bodycamId: bodycam.id || '',  // Guardar ID para la API
+      bodycamNumber: bodycam.name || bodycam.id || ''
+      // NO sobrescribir bodycamAsignadaA ni encargadoBodycam
+      // Estos campos ya se llenaron con handleOffenderSelect
     }))
 
     // Actualizar también el searchTerm
@@ -278,11 +350,10 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       }
     }
 
-    onSave(form)
+    // Pasar tanto el formulario como la lista de leads para poder mapear los cargos en el CC
+    onSave(form, allLeads)
   }
 
-  const subtipesDisponibles = form.asunto ? subtipoPorAsunto[form.asunto] || [] : []
-  const destinatariosDisponibles = form.dirigidoA ? destinatariosPorTipo[form.dirigidoA] || [] : []
   const mostrarCamposInasistencia = form.asunto === 'Inasistencia'
   const mostrarCamposBodycam = form.asunto !== 'Inasistencia'
 
@@ -343,15 +414,25 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaClipboardList style={{ marginRight: '8px' }} />
             Seleccionar asunto *
           </label>
-          <select
-            value={form.asunto}
-            onChange={e => setField('asunto', e.target.value)}
-          >
-            <option value="">Selecciona</option>
-            <option value="Falta disciplinaria">Falta disciplinaria</option>
-            <option value="Abandono de servicio">Abandono de servicio</option>
-            <option value="Inasistencia">Inasistencia</option>
-          </select>
+          {subjectsLoading ? (
+            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              Cargando asuntos...
+            </div>
+          ) : subjectsError ? (
+            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+              {subjectsError}
+            </div>
+          ) : (
+            <select
+              value={form.asunto}
+              onChange={e => setField('asunto', e.target.value)}
+            >
+              <option value="">Selecciona</option>
+              {subjects.map(subject => (
+                <option key={subject.id} value={subject.name}>{subject.name}</option>
+              ))}
+            </select>
+          )}
 
           {form.asunto && (
             <>
@@ -364,8 +445,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 onChange={e => setField('falta', e.target.value)}
               >
                 <option value="">Selecciona</option>
-                {subtipesDisponibles.map(subtipo => (
-                  <option key={subtipo} value={subtipo}>{subtipo}</option>
+                {lacksDisponibles.map(lack => (
+                  <option key={lack.id} value={lack.name}>{lack.name}</option>
                 ))}
               </select>
             </>
@@ -488,8 +569,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               <label>Bodycam asignada a: *</label>
               <input
                 value={form.bodycamAsignadaA}
-                onChange={e => setField('bodycamAsignadaA', e.target.value)}
-                placeholder="Persona a quien está asignada la bodycam"
+                readOnly
+                placeholder="Se llenará automáticamente con el DNI"
+                style={{ cursor: 'not-allowed' }}
               />
 
               <label>Encargado de bodycam: *</label>
@@ -540,28 +622,57 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaUserTag style={{ marginRight: '8px' }} />
             Destinatario *
           </label>
-          <select
-            value={form.dirigidoA}
-            onChange={e => setField('dirigidoA', e.target.value)}
-          >
-            <option value="">Selecciona</option>
-            <option value="Jefe de operaciones">Jefe de operaciones</option>
-            <option value="Coordinadores">Coordinadores</option>
-            <option value="Subgerente">Subgerente</option>
-          </select>
+          {jobsLoading ? (
+            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              Cargando cargos...
+            </div>
+          ) : jobsError ? (
+            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+              {jobsError}
+            </div>
+          ) : (
+            <select
+              value={form.dirigidoA}
+              onChange={e => {
+                const selectedJob = jobs.find(job => job.name === e.target.value)
+                if (selectedJob) {
+                  handleJobChange(selectedJob.id, selectedJob.name)
+                } else {
+                  handleJobChange(null, '')
+                }
+              }}
+            >
+              <option value="">Selecciona</option>
+              {jobs.map(job => (
+                <option key={job.id} value={job.name}>{job.name}</option>
+              ))}
+            </select>
+          )}
 
           {form.dirigidoA && (
             <>
               <label>Persona *</label>
-              <select
-                value={form.destinatario}
-                onChange={e => setField('destinatario', e.target.value)}
-              >
-                <option value="">Selecciona</option>
-                {destinatariosDisponibles.map(dest => (
-                  <option key={dest} value={dest}>{dest}</option>
-                ))}
-              </select>
+              {leadsLoading ? (
+                <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  Cargando personas...
+                </div>
+              ) : leadsError ? (
+                <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+                  {leadsError}
+                </div>
+              ) : (
+                <select
+                  value={selectedLeadId}
+                  onChange={e => handleLeadChange(e.target.value)}
+                >
+                  <option value="">Selecciona</option>
+                  {leads.map(lead => (
+                    <option key={lead.id} value={lead.id}>
+                      {lead.name} {lead.lastname}
+                    </option>
+                  ))}
+                </select>
+              )}
             </>
           )}
 
@@ -581,18 +692,36 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           {form.conCopia && (
             <div className="cc-list">
               <label>Seleccionar personas para copia:</label>
-              <div className="checkbox-group">
-                {listaCompletaCC.map(persona => (
-                  <label key={persona} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={(form.cc || []).includes(persona)}
-                      onChange={() => toggleCC(persona)}
-                    />
-                    <span>{persona}</span>
-                  </label>
-                ))}
-              </div>
+              {allLeadsLoading ? (
+                <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  Cargando personas...
+                </div>
+              ) : allLeadsError ? (
+                <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+                  {allLeadsError}
+                </div>
+              ) : (
+                <div className="checkbox-group">
+                  {listaCC.map(lead => {
+                    const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
+                    return (
+                      <label key={lead.id} className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={(form.cc || []).includes(nombreCompleto)}
+                          onChange={() => toggleCC(lead.id)}
+                        />
+                        <span>{nombreCompleto} - {lead.job?.name || 'Sin cargo'}</span>
+                      </label>
+                    )
+                  })}
+                  {listaCC.length === 0 && !allLeadsLoading && (
+                    <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                      No hay otras personas disponibles
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
