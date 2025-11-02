@@ -63,11 +63,15 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   useEffect(() => {
     if (incidencia) {
       const numeroInforme = `${String(Math.floor(Math.random() * 999)).padStart(3, '0')}-2025-CS-SS-GOP/MDSJL`
-      
-      let cargo = ''
-      if (incidencia.dirigidoA === 'Jefe de operaciones') cargo = 'Jefe de Operaciones'
-      else if (incidencia.dirigidoA === 'Coordinadores') cargo = 'Coordinador'
-      else if (incidencia.dirigidoA === 'Subgerente') cargo = 'Subgerente'
+
+      // Usar el cargo del destinatario de la API si está disponible, sino usar el mapeo antiguo
+      let cargo = incidencia.cargoDestinatario || ''
+      if (!cargo) {
+        // Fallback al mapeo antiguo si no hay cargoDestinatario
+        if (incidencia.dirigidoA === 'Jefe de operaciones') cargo = 'Jefe de Operaciones'
+        else if (incidencia.dirigidoA === 'Coordinadores') cargo = 'Coordinador'
+        else if (incidencia.dirigidoA === 'Subgerente') cargo = 'Subgerente'
+      }
 
       const articulo = articulosPorFalta[incidencia.falta] || ''
 
