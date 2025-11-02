@@ -5,50 +5,149 @@ import api from './config';
  * @param {Object} formData - Datos del formulario de incidencia
  * @param {Array} allLeads - Lista completa de leads para buscar cargos
  * @returns {Object} - Datos formateados para la API
+ * @returns {Promise<Array>} - Lista de incidencias mapeadas al formato de tabla
  */
-export const mapFormDataToAPI = (formData, allLeads = []) => {
-  // Construir el objeto "to" (destinatario)
-  const toObject = {
-    name: `Sr. ${formData.destinatario?.toUpperCase() || ''}`,
-    job: formData.cargoDestinatario || formData.dirigidoA || ''
+export function mapFormDataToAPI(form, allLeads) {
+  console.log('🔍 mapFormDataToAPI - Iniciando mapeo...');
+  console.log('📋 form recibido:', form);
+  console.log('👥 allLeads:', allLeads);
+
+  // Leaflet usa [latitude, longitude] - el orden ya es correcto
+  const coords = form.ubicacion?.coordinates || [null, null];
+
+  // Buscar el job del destinatario (dirigidoA)
+  const to = {
+    name: form.destinatario || '',
+    job: form.dirigidoA || ''
   };
 
-  // Construir el array "cc" (con copia)
-  const ccArray = (formData.cc || []).map(personaCC => {
-    // Buscar el cargo de la persona en allLeads
-    const lead = allLeads.find(l => {
-      const nombreCompleto = `${l.name} ${l.lastname}`.trim();
-      return nombreCompleto === personaCC;
-    });
-
+  // Mapeamos la lista CC a objetos con name y job
+  let cc = (form.cc || []).map(nombre => {
+    const lead = allLeads.find(l => `${l.name} ${l.lastname}`.trim() === nombre);
     return {
-      name: `Sr. ${personaCC.toUpperCase()}`,
+      name: nombre || '',
       job: lead?.job?.name || ''
     };
   });
 
-  // Construir el objeto para la API
-  const apiData = {
-    header: {
-      to: toObject,
-      cc: ccArray
-    },
-    address: formData.ubicacion?.address || '',
-    latitude: formData.ubicacion?.coordinates?.[0] || null,
-    longitude: formData.ubicacion?.coordinates?.[1] || null,
-    date: formData.fechaIncidente && formData.horaIncidente
-      ? new Date(`${formData.fechaIncidente}T${formData.horaIncidente}:00.00Z`).toISOString()
-      : new Date().toISOString(),
-    bodycam_dni: formData.dni || '',
-    bodycam_supervisor: formData.encargadoBodycam || '', // Supervisor/encargado de la bodycam
-    offender_dni: formData.dni || '',
-    bodycam_id: formData.bodycamId || null,  // ID de la bodycam seleccionada
-    lack_id: formData.lackId || null,        // ID de la falta seleccionada
-    subject_id: formData.subjectId || null   // ID del asunto seleccionado
+  // Si no hay CC, agregar un array vacío (la API puede requerirlo)
+  if (cc.length === 0) {
+    console.warn('⚠️ No hay elementos en CC. La API requiere al menos 1.');
+  }
+
+  // Convertir fecha + hora en formato ISO (ejemplo: "2025-10-11T10:14:12.00Z")
+  const dateString = `${form.fechaIncidente}T${form.horaIncidente}:00`;
+  const date = new Date(dateString).toISOString();
+
+  console.log('📍 Coordenadas recibidas:', coords);
+  console.log('📍 Latitude (coords[0]):', coords[0]);
+  console.log('📍 Longitude (coords[1]):', coords[1]);
+
+  // Construir el payload base
+  const payload = {
+    header: { to, cc },
+    address: form.ubicacion?.address || '',
+    latitude: coords[0] !== null ? parseFloat(coords[0]) : null,  // coords[0] es latitude
+    longitude: coords[1] !== null ? parseFloat(coords[1]) : null, // coords[1] es longitude
+    date,
+    offender_dni: form.dni || '',
+    lack_id: form.lackId || null,
+    subject_id: form.subjectId || null
   };
 
-  return apiData;
-};
+  // Solo agregar campos de bodycam si NO es Inasistencia (es decir, si hay bodycamId)
+  if (form.bodycamId) {
+    payload.bodycam_id = form.bodycamId;
+    payload.bodycam_dni = form.dni || '';
+    payload.bodycam_supervisor = form.encargadoBodycam || '';
+  }
+
+  console.log('📤 Payload final a enviar:', JSON.stringify(payload, null, 2));
+
+  return payload;
+}
+
+/**
+ * Obtener reportes con paginación
+ * @param {number} page - Número de página (default: 1)
+ * @param {number} limit - Cantidad de items por página (default: 10)
+ * @returns {Promise<Object>} - Objeto con data (reportes) y pagination (metadata)
+ */
+export const getReports = async (page = 1, limit = 10) => {
+  try {
+    const response = await api.get(`/report?page=${page}&limit=${limit}`)
+    console.log('📡 Respuesta completa de API:', response.data)
+
+    const reports = response.data?.data?.data || []
+    const paginationData = response.data?.data || {}
+
+    console.log('📊 Estructura de paginación recibida:', {
+      currentPage: paginationData.currentPage,
+      pageCount: paginationData.pageCount,
+      totalCount: paginationData.totalCount,
+      totalPages: paginationData.totalPages
+    })
+
+    // Transformar al formato plano para la tabla
+    const transformedReports = reports.map(r => ({
+      id: r.id,
+      dni: r.offender?.dni || '',
+      asunto: r.subject?.name || '',
+      falta: r.lack?.name || '',
+      tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
+      medio: r.bodycam ? 'Bodycam' : 'Otro',
+      fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
+      horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+      turno: r.offender?.shift || '',
+      cargo: r.offender?.job || '',
+      regLab: r.offender?.regime || '',
+      jurisdiccion: r.offender?.subgerencia || '',
+      bodycamNumber: r.bodycam?.name || '',
+      bodycamAsignadaA: r.bodycam_user || '',
+      encargadoBodycam: r.user ? `${r.user.name} ${r.user.lastname}` : '',
+      dirigidoA: r.header?.to?.job || '',
+      destinatario: r.header?.to?.name || '',
+      createdAt: r.lack?.created_at || r.date,
+      updatedAt: r.lack?.updated_at || r.date
+    }))
+
+    // Calcular paginación correctamente
+    // pageCount = items en la página ACTUAL (no es el límite por página)
+    // limit = lo que enviamos en el request, es el límite real por página
+    const currentPageNum = paginationData.currentPage || page
+    const totalNum = paginationData.totalCount || transformedReports.length
+    const perPageNum = limit // Usar el limit que enviamos, no pageCount
+    const totalPagesNum = Math.ceil(totalNum / perPageNum)
+
+    const from = totalNum === 0 ? 0 : ((currentPageNum - 1) * perPageNum) + 1
+    const to = Math.min(currentPageNum * perPageNum, totalNum)
+
+    console.log('📊 Paginación calculada:', {
+      currentPage: currentPageNum,
+      totalPages: totalPagesNum,
+      perPage: perPageNum,
+      total: totalNum,
+      from: from,
+      to: to
+    })
+
+    // Retornar data y metadata de paginación adaptada
+    return {
+      data: transformedReports,
+      pagination: {
+        currentPage: currentPageNum,
+        totalPages: totalPagesNum,
+        perPage: perPageNum,
+        total: totalNum,
+        from: from,
+        to: to
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error al obtener reportes:', error)
+    throw new Error('No se pudieron obtener los reportes')
+  }
+}
 
 /**
  * Crear un nuevo reporte/incidencia
