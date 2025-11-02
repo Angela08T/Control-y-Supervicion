@@ -43,7 +43,7 @@ const defaultState = {
   regLab: '',
   tipoInasistencia: '',
   fechaFalta: '',
-  conCopia: false,
+  conCopia: true,  // Cambiado a true porque la API requiere al menos 1 CC
   cc: [],
   subjectId: null,  // ID del asunto para la API
   lackId: null      // ID de la falta para la API
@@ -265,6 +265,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     // Estructura del API: { dni, job, regime, shift, name, lastname }
     const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim()
 
+    console.log('👤 Offender seleccionado:', offender)
+    console.log('📝 Nombre completo:', nombreCompleto)
+
     setForm(f => ({
       ...f,
       dni: offender.dni || '',
@@ -321,37 +324,71 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     setField('bodycamNumber', value)
   }
 
-  function handleSubmit(ev) {
-    ev.preventDefault()
+  async function handleSubmit(ev) {
+    ev.preventDefault();
 
     // Validar campos obligatorios
     if (!form.dni || form.dni.length !== 8) {
-      alert('El DNI debe tener exactamente 8 dígitos')
-      return
+      alert('El DNI debe tener exactamente 8 dígitos');
+      return;
     }
 
-    // Validaciones comunes
     if (!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
-      alert('Completa todos los campos obligatorios')
-      return
+      alert('Completa todos los campos obligatorios');
+      return;
+    }
+
+    // Validar que se hayan cargado los IDs necesarios de la API
+    if (!form.subjectId) {
+      alert('Error: No se pudo obtener el ID del asunto. Por favor, reselecciona el asunto.');
+      return;
+    }
+
+    if (!form.lackId) {
+      alert('Error: No se pudo obtener el ID de la falta. Por favor, reselecciona la falta.');
+      return;
+    }
+
+    // Validar que haya al menos 1 persona en CC (la API lo requiere)
+    if (!form.cc || form.cc.length === 0) {
+      alert('Debes seleccionar al menos 1 persona para copia (CC)');
+      return;
+    }
+
+    // Validar ubicación (la API requiere coordenadas y dirección)
+    if (!form.ubicacion || !form.ubicacion.coordinates || !form.ubicacion.address) {
+      alert('Debes seleccionar una ubicación en el mapa');
+      return;
     }
 
     // Validaciones específicas para inasistencia
     if (form.asunto === 'Inasistencia') {
       if (!form.tipoInasistencia || !form.fechaFalta) {
-        alert('Para inasistencia, completa el tipo y la fecha de falta')
-        return
+        alert('Para inasistencia, completa el tipo y la fecha de falta');
+        return;
       }
     } else {
       // Validaciones para otros asuntos (requieren bodycam)
       if (!form.bodycamNumber || !form.bodycamAsignadaA || !form.encargadoBodycam) {
-        alert('Completa los campos de bodycam')
-        return
+        alert('Completa los campos de bodycam');
+        return;
+      }
+
+      if (!form.bodycamId) {
+        alert('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
+        return;
       }
     }
 
-    // Pasar tanto el formulario como la lista de leads para poder mapear los cargos en el CC
-    onSave(form, allLeads)
+    console.log('📋 Datos del formulario antes de enviar:', form);
+
+    // Notificar al padre con los datos del formulario y allLeads
+    if (onSave) {
+      onSave(form, allLeads);
+    }
+
+    // Cerrar modal
+    onClose();
   }
 
   const mostrarCamposInasistencia = form.asunto === 'Inasistencia'
@@ -569,9 +606,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               <label>Bodycam asignada a: *</label>
               <input
                 value={form.bodycamAsignadaA}
-                readOnly
-                placeholder="Se llenará automáticamente con el DNI"
-                style={{ cursor: 'not-allowed' }}
+                onChange={e => setField('bodycamAsignadaA', e.target.value)}
+                placeholder="Se llenará automáticamente al seleccionar DNI"
               />
 
               <label>Encargado de bodycam: *</label>
@@ -614,7 +650,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
           <label>
             <FaMapMarkerAlt style={{ marginRight: '8px' }} />
-            Ubicación del Infractor
+            Ubicación del Infractor *
           </label>
           <MapSelector value={form.ubicacion} onChange={p => setField('ubicacion', p)} />
 
@@ -676,16 +712,15 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             </>
           )}
 
-          {/* Botón CC */}
+          {/* Sección CC - Obligatoria */}
           <div className="cc-section">
-            <button
-              type="button"
-              className="btn-cc"
-              onClick={() => setField('conCopia', !form.conCopia)}
-            >
-              <FaUsers style={{ marginRight: '8px' }} />
-              {form.conCopia ? '✓ Con copia (CC)' : '+ Agregar CC'}
-            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+              <FaUsers />
+              Con copia (CC) - Obligatorio *
+            </label>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Selecciona al menos 1 persona para enviar copia del reporte
+            </p>
           </div>
 
           {/* Lista de personas para CC */}
