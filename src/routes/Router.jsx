@@ -11,6 +11,8 @@ import UnauthorizedPage from "../pages/UnauthorizedPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import DashboardPage from "../pages/Dashboard/DashboardPage";
 import IncidenciasPage from "../pages/Incidencias/IncidenciasPage";
+import AuditoriaPage from "../pages/Auditoria/AuditoriaPage";
+import BodycamPage from "../pages/Bodycam/BodycamPage";
 
 import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
@@ -35,6 +37,7 @@ export default function Router() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="bodycam" element={<BodycamPage />} />
           {/* Placeholder para futuras rutas */}
           <Route path="supervisores" element={<div className="main-area"><h1>Supervisores</h1><p>Próximamente...</p></div>} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
@@ -42,6 +45,7 @@ export default function Router() {
           <Route path="camaras" element={<div className="main-area"><h1>Cámaras</h1><p>Próximamente...</p></div>} />
           <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
           <Route path="configuracion" element={<div className="main-area"><h1>Configuración</h1><p>Próximamente...</p></div>} />
+          <Route path="auditoria" element={<AuditoriaPage />} />
         </Route>
 
         {/* Rutas protegidas - SUPERVISOR */}
@@ -55,6 +59,7 @@ export default function Router() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="bodycam" element={<BodycamPage />} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
           <Route path="estadisticas" element={<div className="main-area"><h1>Estadísticas</h1><p>Próximamente...</p></div>} />
           <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
@@ -71,6 +76,7 @@ export default function Router() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="bodycam" element={<BodycamPage />} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
         </Route>
 

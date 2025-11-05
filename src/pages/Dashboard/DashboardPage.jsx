@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias } from '../../utils/storage'
+import { getReports } from '../../api/report'
+import { getFieldSupervisionStats, getAllOffenders } from '../../api/statistics'
 import StatCard from './components/StatCard'
 import WelcomeCard from './components/WelcomeCard'
 import CircularProgress from './components/CircularProgress'
@@ -15,6 +17,63 @@ export default function DashboardPage() {
   const [incidencias, setIncidencias] = useState(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
   const [dateRange, setDateRange] = useState({ start: null, end: null })
+  const [serenosActivos, setSerenosActivos] = useState(0)
+  const [supervisionData, setSupervisionData] = useState({
+    serenosEnCampo: 0,
+    serenosSinConexion: 0,
+    nivelCumplimiento: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  // Cargar datos de la API al montar el componente
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      // Intentar obtener reportes de la API
+      const reportsResponse = await getReports(1, 1000)
+      if (reportsResponse?.data) {
+        // Actualizar incidencias con datos de la API
+        setIncidencias(reportsResponse.data)
+      }
+    } catch (error) {
+      console.warn('No se pudieron cargar reportes de la API, usando localStorage:', error)
+    }
+
+    try {
+      // Obtener cantidad de serenos activos
+      const offendersResponse = await getAllOffenders()
+      const activeCount = offendersResponse?.data?.filter(o => o.status === 'active').length || 0
+      setSerenosActivos(activeCount)
+    } catch (error) {
+      console.warn('No se pudo obtener información de serenos:', error)
+      setSerenosActivos(23) // Valor por defecto
+    }
+
+    try {
+      // Obtener datos de supervisión de campo
+      const supervisionResponse = await getFieldSupervisionStats()
+      if (supervisionResponse?.data) {
+        setSupervisionData({
+          serenosEnCampo: supervisionResponse.data.serenosEnCampo || 18,
+          serenosSinConexion: supervisionResponse.data.serenosSinConexion || 2,
+          nivelCumplimiento: supervisionResponse.data.nivelCumplimiento || 92
+        })
+      }
+    } catch (error) {
+      console.warn('No se pudo obtener datos de supervisión:', error)
+      // Mantener valores por defecto
+      setSupervisionData({
+        serenosEnCampo: 18,
+        serenosSinConexion: 2,
+        nivelCumplimiento: 92
+      })
+    }
+
+    setLoading(false)
+  }
 
   // Calcular estadísticas
   const stats = useMemo(() => {
@@ -34,9 +93,8 @@ export default function DashboardPage() {
     // Calcular porcentaje de cambio (comparando con mes anterior - simulado)
     const cambioIncidencias = totalIncidencias > 0 ? '+10%' : '0%'
 
-    // Serenos activos (simulado - en producción vendría de API)
-    const serenosActivos = 23
-    const cambioSerenos = '+5%'
+    // Cambios/porcentajes (calculados o simulados)
+    const cambioSerenos = serenosActivos > 20 ? '+5%' : '0%'
 
     // Incidencia crítica (la más frecuente)
     const conteoAsuntos = {}
@@ -56,22 +114,22 @@ export default function DashboardPage() {
         conteoJurisdicciones[inc.jurisdiccion] = (conteoJurisdicciones[inc.jurisdiccion] || 0) + 1
       }
     })
-    const zonaConMas = Object.keys(conteoJurisdicciones).reduce((a, b) => 
-      conteoJurisdicciones[a] > conteoJurisdicciones[b] ? a : b, 
+    const zonaConMas = Object.keys(conteoJurisdicciones).reduce((a, b) =>
+      conteoJurisdicciones[a] > conteoJurisdicciones[b] ? a : b,
       'Sin datos'
     )
     const totalZona = conteoJurisdicciones[zonaConMas] || 0
 
     // Cumplimiento de reportes (PDFs descargados - simulado por ahora)
     const pdfDescargados = Math.floor(totalIncidencias * 0.95) // 95% de reportes
-    const porcentajeCumplimiento = totalIncidencias > 0 
-      ? Math.round((pdfDescargados / totalIncidencias) * 100) 
+    const porcentajeCumplimiento = totalIncidencias > 0
+      ? Math.round((pdfDescargados / totalIncidencias) * 100)
       : 0
 
     // Evolución por mes
     const incidenciasPorMes = {}
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    
+
     meses.forEach((mes, idx) => {
       incidenciasPorMes[mes] = {
         'Falta disciplinaria': 0,
@@ -113,7 +171,6 @@ export default function DashboardPage() {
     return {
       totalIncidencias,
       cambioIncidencias,
-      serenosActivos,
       cambioSerenos,
       asuntoMasFrecuente,
       totalCriticas,
@@ -124,7 +181,7 @@ export default function DashboardPage() {
       incidenciasPorTurno,
       incidenciasPorAsunto
     }
-  }, [incidencias, dateRange])
+  }, [incidencias, dateRange, serenosActivos])
 
   const handleDateRangeChange = (start, end) => {
     setDateRange({ start, end })
@@ -146,7 +203,7 @@ export default function DashboardPage() {
         
         <StatCard
           title="Serenos Activos"
-          value={stats.serenosActivos}
+          value={serenosActivos}
           change={stats.cambioSerenos}
           icon={<FaUsers />}
           color="#5a67d8"
@@ -173,20 +230,20 @@ export default function DashboardPage() {
 
       {/* Segunda fila: Welcome, Cumplimiento y Supervisión */}
       <div className="middle-grid">
-        <WelcomeCard 
+        <WelcomeCard
           message="Revisa el control de las incidencias y el desempeño del equipo"
         />
-        
+
         <CircularProgress
           title="Cumplimiento de Reportes"
           percentage={stats.porcentajeCumplimiento}
           subtitle="de reportes realizados"
         />
-        
+
         <SupervisionCard
-          serenosEnCampo={18}
-          serenosSinConexion={2}
-          nivelCumplimiento={92}
+          serenosEnCampo={supervisionData.serenosEnCampo}
+          serenosSinConexion={supervisionData.serenosSinConexion}
+          nivelCumplimiento={supervisionData.nivelCumplimiento}
         />
       </div>
 

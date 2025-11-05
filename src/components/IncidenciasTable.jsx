@@ -7,7 +7,7 @@ function formatDate(iso){
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
 }
 
-export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAsunto = 'Todos' }){
+export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAsunto = 'Todos', startIndex = 0 }){
   const mostrarTipoInasistencia = filtroAsunto === 'Inasistencia'
   const mostrarCamposBodycam = filtroAsunto !== 'Inasistencia'
   
@@ -17,6 +17,7 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
         <table className="inc-table">
           <thead>
             <tr>
+              <th>#</th>
               <th>Acciones</th>
               <th>DNI</th>
               <th>Asunto</th>
@@ -38,8 +39,6 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
               )}
               <th>Dirigido a</th>
               <th>Destinatario</th>
-              <th>Creado En</th>
-              <th>Actualizado</th>
             </tr>
           </thead>
           <tbody>
@@ -47,15 +46,18 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
               <tr>
                 <td colSpan={
                   mostrarTipoInasistencia ?
-                  (mostrarCamposBodycam ? 19 : 16) :
-                  (mostrarCamposBodycam ? 18 : 15)
+                  (mostrarCamposBodycam ? 18 : 15) :
+                  (mostrarCamposBodycam ? 17 : 14)
                 } style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
                   No hay incidencias registradas
                 </td>
               </tr>
             )}
-            {data.map(item => (
+            {data.map((item, index) => (
               <tr key={item.id}>
+                <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
+                  {startIndex + index + 1}
+                </td>
                 <td className="actions">
                   <button title="Generar PDF" onClick={()=> onEdit(item)}>
                     <FaFilePdf/>
@@ -84,8 +86,6 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
                 )}
                 <td>{item.dirigidoA || '-'}</td>
                 <td>{item.destinatario || '-'}</td>
-                <td>{formatDate(item.createdAt)}</td>
-                <td>{formatDate(item.updatedAt)}</td>
               </tr>
             ))}
           </tbody>

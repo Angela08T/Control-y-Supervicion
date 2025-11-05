@@ -3,7 +3,7 @@ import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
-import { createReport, mapFormDataToAPI, getReports } from '../../api/report' 
+import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport } from '../../api/report' 
 import useSubjects from '../../hooks/Subject/useSubjects'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
@@ -30,6 +30,8 @@ export default function IncidenciasPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger para forzar recarga
+  const [searchResult, setSearchResult] = useState(null) // Resultado de búsqueda por ID
+  const [isSearching, setIsSearching] = useState(false) // Indica si está buscando
 
   const { subjects, loading: subjectsLoading } = useSubjects()
 
@@ -115,9 +117,33 @@ export default function IncidenciasPage() {
     }
   }
 
-  function handleDelete(id) {
+  async function handleDelete(id) {
     if (!confirm('¿Estás seguro de eliminar esta incidencia?')) return
-    setIncidencias(prev => prev.filter(p => p.id !== id))
+
+    try {
+      console.log('🗑️ Eliminando incidencia con ID:', id)
+      const response = await deleteReport(id)
+      console.log('✅ Respuesta de eliminación:', response)
+
+      alert(response.data?.message || response.message || 'Incidencia eliminada exitosamente')
+
+      // Recargar datos desde la API
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      console.error('❌ Error al eliminar incidencia:', error)
+
+      let errorMessage = 'Error al eliminar la incidencia'
+
+      if (error.response?.data?.message) {
+        errorMessage = Array.isArray(error.response.data.message)
+          ? error.response.data.message.join('\n')
+          : error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      alert(errorMessage)
+    }
   }
 
   function handleEdit(item) {
@@ -150,28 +176,124 @@ export default function IncidenciasPage() {
     setCurrentPage(1) // Volver a la primera página al cambiar items por página
   }
 
-  // 🔹 Filtros
-  const filteredData = incidencias.filter(item => {
-    const matchAsunto = filters.asunto === 'Todos' || item.asunto === filters.asunto
-    const matchTurno = filters.turno === 'Todos' || item.turno === filters.turno
-    const matchTipoInasistencia =
-      filters.tipoInasistencia === 'Todos' || item.tipoInasistencia === filters.tipoInasistencia
-    const matchSearch =
-      !filters.search ||
-      item.dni?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.asunto?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.falta?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.destinatario?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.cargo?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.regLab?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.jurisdiccion?.toLowerCase().includes(filters.search.toLowerCase())
+  // 🔹 Verificar si el término de búsqueda es un UUID
+  const isUUID = (str) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return uuidRegex.test(str)
+  }
 
-    if (filters.asunto === 'Inasistencia') {
-      return matchAsunto && matchTurno && matchTipoInasistencia && matchSearch
+  // 🔹 Buscar incidencia por ID o por otros campos cuando el usuario escribe
+  useEffect(() => {
+    const searchTerm = filters.search.trim()
+
+    // Si no hay término de búsqueda, limpiar resultados
+    if (!searchTerm) {
+      setSearchResult(null)
+      return
     }
 
-    return matchAsunto && matchTurno && matchSearch
-  })
+    // Si es un UUID, buscar por ID
+    if (isUUID(searchTerm)) {
+      const searchById = async () => {
+        setIsSearching(true)
+        try {
+          console.log('🔍 Buscando incidencia por ID:', searchTerm)
+          const result = await getReportById(searchTerm)
+
+          if (result.found && result.data.length > 0) {
+            console.log('✅ Incidencia encontrada:', result.data[0])
+            setSearchResult(result.data)
+          } else {
+            console.log('⚠️ No se encontró incidencia con ese ID')
+            setSearchResult([])
+          }
+        } catch (error) {
+          console.error('❌ Error al buscar por ID:', error)
+          setSearchResult(null)
+        } finally {
+          setIsSearching(false)
+        }
+      }
+
+      searchById()
+    } else {
+      // Si NO es UUID, buscar por DNI, nombre, etc. en toda la base de datos
+      const searchByFields = async () => {
+        setIsSearching(true)
+        try {
+          console.log('🔍 Buscando incidencia por campos:', searchTerm)
+          const response = await searchReport(searchTerm)
+
+          // DEBUG: Ver la respuesta completa de la API
+          console.log('📡 Respuesta COMPLETA de searchReport:', response)
+          console.log('📡 response.data:', response?.data)
+          console.log('📡 response.data.data:', response?.data?.data)
+
+          // La API devuelve los datos en response.data?.data?.data
+          const results = response?.data?.data || []
+
+          console.log('📊 Resultados extraídos:', results)
+          console.log('📊 Cantidad de resultados:', results.length)
+
+          if (results.length > 0) {
+            console.log('✅ Incidencias encontradas:', results)
+            // Transformar los resultados al formato esperado
+            const transformed = results.map(r => ({
+              id: r.id,
+              dni: r.offender?.dni || '',
+              asunto: r.subject?.name || '',
+              falta: r.lack?.name || '',
+              tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
+              medio: r.bodycam ? 'Bodycam' : 'Otro',
+              fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
+              horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+              turno: r.offender?.shift || '',
+              cargo: r.offender?.job || '',
+              regLab: r.offender?.regime || '',
+              jurisdiccion: r.offender?.subgerencia || '',
+              bodycamNumber: r.bodycam?.name || '',
+              bodycamAsignadaA: r.bodycam_user || '',
+              encargadoBodycam: r.user ? `${r.user.name} ${r.user.lastname}` : '',
+              dirigidoA: r.header?.to?.job || '',
+              destinatario: r.header?.to?.name || '',
+              nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
+              createdAt: r.lack?.created_at || r.date,
+              updatedAt: r.lack?.updated_at || r.date
+            }))
+            setSearchResult(transformed)
+          } else {
+            console.log('⚠️ No se encontraron incidencias con ese término')
+            setSearchResult([])
+          }
+        } catch (error) {
+          console.error('❌ Error al buscar por campos:', error)
+          console.error('❌ Error completo:', error.response || error)
+          setSearchResult(null)
+        } finally {
+          setIsSearching(false)
+        }
+      }
+
+      searchByFields()
+    }
+  }, [filters.search])
+
+  // 🔹 Filtros
+  const filteredData = searchResult !== null
+    ? searchResult // Si hay resultado de búsqueda, mostrar los resultados de la API
+    : incidencias.filter(item => {
+        // Solo aplicar filtros cuando NO hay búsqueda activa
+        const matchAsunto = filters.asunto === 'Todos' || item.asunto === filters.asunto
+        const matchTurno = filters.turno === 'Todos' || item.turno === filters.turno
+        const matchTipoInasistencia =
+          filters.tipoInasistencia === 'Todos' || item.tipoInasistencia === filters.tipoInasistencia
+
+        if (filters.asunto === 'Inasistencia') {
+          return matchAsunto && matchTurno && matchTipoInasistencia
+        }
+
+        return matchAsunto && matchTurno
+      })
 
   return (
     <div className="incidencias-page">
@@ -231,11 +353,25 @@ export default function IncidenciasPage() {
                 }}
               />
               <input
-                placeholder="Buscar incidencia..."
+                placeholder="Buscar por DNI, nombre o ID"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px' }}
+                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
               />
+              {isSearching && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--primary)',
+                    animation: 'spin 1s linear infinite'
+                  }}
+                >
+                  ⏳
+                </div>
+              )}
             </div>
 
             <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
@@ -257,26 +393,63 @@ export default function IncidenciasPage() {
         </div>
       ) : (
         <div className="table-container-wrapper">
+          {/* Mensaje cuando se busca pero no se encuentra */}
+          {searchResult !== null && searchResult.length === 0 && !isSearching && (
+            <div style={{
+              textAlign: 'center',
+              padding: '30px',
+              backgroundColor: 'var(--card)',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              border: '2px dashed var(--border)'
+            }}>
+              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
+                🔍 No se encontró ninguna incidencia con: <strong>{filters.search}</strong>
+              </p>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                Verifica que el DNI, nombre o ID sea correcto.
+              </p>
+            </div>
+          )}
+
+          {/* Mensaje cuando se encuentra incidencia(s) */}
+          {searchResult !== null && searchResult.length > 0 && (
+            <div style={{
+              textAlign: 'center',
+              padding: '12px',
+              backgroundColor: 'rgba(74, 222, 128, 0.1)',
+              borderRadius: '8px',
+              marginBottom: '15px',
+              border: '1px solid rgba(74, 222, 128, 0.3)'
+            }}>
+              <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
+                ✅ {searchResult.length} incidencia(s) encontrada(s)
+              </p>
+            </div>
+          )}
+
           <IncidenciasTable
             data={filteredData}
             onDelete={handleDelete}
             onEdit={handleEdit}
             filtroAsunto={filters.asunto}
+            startIndex={searchResult !== null ? 0 : pagination.from - 1}
           />
 
-          {/* Controles de paginación */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px',
-            marginTop: '20px',
-            background: 'var(--card-bg)',
-            borderRadius: '8px',
-            border: '1px solid var(--border)',
-            flexWrap: 'wrap',
-            gap: '15px'
-          }}>
+          {/* Controles de paginación (ocultar cuando se busca por ID) */}
+          {searchResult === null && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '20px',
+              marginTop: '20px',
+              background: 'var(--card-bg)',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              flexWrap: 'wrap',
+              gap: '15px'
+            }}>
             {/* Lado izquierdo: Contador y selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
               <div style={{
@@ -405,6 +578,7 @@ export default function IncidenciasPage() {
               </button>
             </div>
           </div>
+          )}
         </div>
       )}
 
