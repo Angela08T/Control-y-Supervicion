@@ -126,7 +126,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   function handleImageUpload(e) {
     const files = Array.from(e.target.files)
-    
+
     files.forEach(file => {
       const reader = new FileReader()
       reader.onload = (event) => {
@@ -135,12 +135,22 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
           imagenes: [...prev.imagenes, {
             name: file.name,
             url: URL.createObjectURL(file),
-            base64: event.target.result
+            base64: event.target.result,
+            anexo: ''
           }]
         }))
       }
       reader.readAsDataURL(file)
     })
+  }
+
+  function updateImageAnexo(index, anexo) {
+    setFormData(prev => ({
+      ...prev,
+      imagenes: prev.imagenes.map((img, i) =>
+        i === index ? { ...img, anexo } : img
+      )
+    }))
   }
 
   function removeImage(index) {
@@ -315,15 +325,38 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     }
     
     if (formData.imagenes.length > 0) {
-      formData.imagenes.forEach((img) => {
-        if (currentLine > 250) {
+      formData.imagenes.forEach((img, index) => {
+        // Verificar si hay espacio suficiente para imagen + anexo
+        const espacioNecesario = img.anexo ? 85 : 70
+        if (currentLine > (280 - espacioNecesario)) {
           doc.addPage()
           currentLine = 20
         }
-        
+
         try {
-          doc.addImage(img.base64, 'JPEG', 20, currentLine, 80, 60)
-          currentLine += 70
+          // Configuración de imagen
+          const pageWidth = doc.internal.pageSize.getWidth()
+          const imageWidth = 100  // Ancho de la imagen en mm
+          const imageHeight = 75  // Alto de la imagen en mm
+          const imageX = (pageWidth - imageWidth) / 2  // Centrar horizontalmente
+
+          // Agregar imagen centrada
+          doc.addImage(img.base64, 'JPEG', imageX, currentLine, imageWidth, imageHeight)
+          currentLine += imageHeight + 5
+
+          // Agregar anexo si existe
+          if (img.anexo) {
+            doc.setFont('helvetica', 'italic')
+            doc.setFontSize(8)
+            const lineasAnexo = doc.splitTextToSize(`Anexo ${index + 1}: ${img.anexo}`, 170)
+            // Centrar el texto usando pageWidth / 2
+            doc.text(lineasAnexo, pageWidth / 2, currentLine, { align: 'center', maxWidth: 170 })
+            currentLine += (lineasAnexo.length * 4) + 10
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(9)
+          } else {
+            currentLine += 5
+          }
         } catch (error) {
           console.error('Error al agregar imagen:', error)
         }
@@ -672,15 +705,37 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
                 {formData.imagenes.length > 0 && (
                   <div className="images-preview">
                     {formData.imagenes.map((img, index) => (
-                      <div key={index} className="image-item">
-                        <img src={img.url} alt={img.name} />
-                        <button 
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="btn-remove-img"
-                        >
-                          ×
-                        </button>
+                      <div key={index} className="image-item-container">
+                        <div className="image-item">
+                          <img src={img.url} alt={img.name} />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="btn-remove-img"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div style={{marginTop: '8px'}}>
+                          <label style={{fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px'}}>
+                            Anexo {index + 1} (opcional):
+                          </label>
+                          <textarea
+                            value={img.anexo || ''}
+                            onChange={(e) => updateImageAnexo(index, e.target.value)}
+                            placeholder="Descripción o nota para esta imagen..."
+                            rows={2}
+                            style={{
+                              width: '100%',
+                              padding: '6px',
+                              fontSize: '11px',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              fontFamily: 'inherit',
+                              resize: 'vertical'
+                            }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -18,7 +18,7 @@ export default function WelcomeCard({ message }) {
         
         <div className="welcome-illustration">
           <img 
-            src="/src/assets/wolf.png"
+            src="/src/assets/lobo.png"
             alt="Lobo Centinela" 
             className="wolf-image"
           />
