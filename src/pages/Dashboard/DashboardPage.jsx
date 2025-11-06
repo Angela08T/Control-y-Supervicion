@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
-import { loadIncidencias } from '../../utils/storage'
+import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
 import { getFieldSupervisionStats, getAllOffenders } from '../../api/statistics'
 import StatCard from './components/StatCard'
+import DateCard from './components/DateCard'
 import WelcomeCard from './components/WelcomeCard'
 import CircularProgress from './components/CircularProgress'
-import SupervisionCard from './components/SupervisionCard'
 import LineChart from './components/LineChart'
 import BarChart from './components/BarChart'
 import PersonalTable from './components/PersonalTable'
@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const [showDateModal, setShowDateModal] = useState(false)
   const [dateRange, setDateRange] = useState({ start: null, end: null })
   const [serenosActivos, setSerenosActivos] = useState(0)
+  const [pdfStats, setPdfStats] = useState(getPDFDownloadStats())
   const [supervisionData, setSupervisionData] = useState({
     serenosEnCampo: 0,
     serenosSinConexion: 0,
@@ -74,6 +75,11 @@ export default function DashboardPage() {
 
     setLoading(false)
   }
+
+  // Actualizar estadísticas de PDF cuando cambian las incidencias
+  useEffect(() => {
+    setPdfStats(getPDFDownloadStats())
+  }, [incidencias])
 
   // Calcular estadísticas
   const stats = useMemo(() => {
@@ -192,6 +198,8 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       {/* Cards superiores */}
       <div className="stats-grid">
+        <DateCard />
+
         <StatCard
           title="Total de Incidencias"
           value={stats.totalIncidencias}
@@ -200,15 +208,7 @@ export default function DashboardPage() {
           color="#4a9b8e"
           onIconClick={() => setShowDateModal(true)}
         />
-        
-        <StatCard
-          title="Serenos Activos"
-          value={serenosActivos}
-          change={stats.cambioSerenos}
-          icon={<FaUsers />}
-          color="#5a67d8"
-        />
-        
+
         <StatCard
           title="Incidencias Críticas"
           value={stats.totalCriticas}
@@ -217,7 +217,7 @@ export default function DashboardPage() {
           icon={<FaExclamationTriangle />}
           color="#ed8936"
         />
-        
+
         <StatCard
           title="Zona con Más Incidencias"
           value={stats.totalZona}
@@ -228,7 +228,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Segunda fila: Welcome, Cumplimiento y Supervisión */}
+      {/* Segunda fila: Welcome, Cumplimiento y Turnos */}
       <div className="middle-grid">
         <WelcomeCard
           message="Revisa el control de las incidencias y el desempeño del equipo"
@@ -236,14 +236,12 @@ export default function DashboardPage() {
 
         <CircularProgress
           title="Cumplimiento de Reportes"
-          percentage={stats.porcentajeCumplimiento}
+          percentage={pdfStats.percentage}
           subtitle="de reportes realizados"
         />
 
-        <SupervisionCard
-          serenosEnCampo={supervisionData.serenosEnCampo}
-          serenosSinConexion={supervisionData.serenosSinConexion}
-          nivelCumplimiento={supervisionData.nivelCumplimiento}
+        <TurnoList
+          data={stats.incidenciasPorTurno}
         />
       </div>
 
@@ -251,24 +249,23 @@ export default function DashboardPage() {
       <div className="charts-grid">
         <LineChart
           title="Evolución de Incidencias"
-          subtitle="Por mes del año actual"
+          subtitle="Últimos días registrados"
           data={stats.incidenciasPorMes}
+          incidencias={incidencias}
+          onOpenDateModal={() => setShowDateModal(true)}
         />
-        
+
         <BarChart
           title="Incidencias"
-          subtitle="Por tipo de asunto"
+          subtitle="Por tipo de asunto y día"
           data={stats.incidenciasPorAsunto}
+          incidencias={incidencias}
         />
       </div>
 
-      {/* Última fila: Tabla y Turnos */}
-      <div className="bottom-grid">
+      {/* Última fila: Tabla de Centinelas */}
+      <div className="bottom-grid-full">
         <PersonalTable />
-        
-        <TurnoList
-          data={stats.incidenciasPorTurno}
-        />
       </div>
 
       {/* Modal de rango de fechas */}
