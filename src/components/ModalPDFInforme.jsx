@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import { useSelector } from 'react-redux'
 import logoSJL from '../assets/logo-sjl.png'
+import { trackPDFDownload } from '../utils/storage'
 
 function formatearFecha(fecha) {
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
@@ -404,8 +405,11 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     doc.setFontSize(8)
     doc.text('Sede CECOM de la Sub Gerencia de Serenazgo:', 20, 280)
     doc.text('Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427', 20, 285)
-    
+
     doc.save(`Informe_${incidencia.dni}_${Date.now()}.pdf`)
+
+    // Registrar la descarga del PDF
+    trackPDFDownload(incidencia.id)
   }
 
   const esInasistencia = incidencia.asunto === 'Inasistencia'
