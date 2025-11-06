@@ -22,6 +22,7 @@ export default function PersonalTable() {
 
         return {
           nombre: offender.name || 'Sin nombre',
+          rol: offender.role || 'Sereno',
           turno: offender.shift || 'No asignado',
           activo: offender.status === 'active',
           avatar: initials,
@@ -34,11 +35,11 @@ export default function PersonalTable() {
       console.warn('No se pudo cargar el personal desde la API, usando datos de ejemplo:', error)
       // Fallback a datos de ejemplo si la API falla
       setPersonal([
-        { nombre: 'Carmen Rodríguez', turno: 'Noche', activo: true, avatar: 'CR' },
-        { nombre: 'José Martinez', turno: 'Mañana', activo: false, avatar: 'JM' },
-        { nombre: 'Ana Torres', turno: 'Tarde', activo: true, avatar: 'AT' },
-        { nombre: 'Carlos Vega', turno: 'Noche', activo: true, avatar: 'CV' },
-        { nombre: 'María Sánchez', turno: 'Mañana', activo: false, avatar: 'MS' }
+        { nombre: 'Carmen Rodríguez', rol: 'Sereno', turno: 'Noche', activo: true, avatar: 'CR' },
+        { nombre: 'José Martinez', rol: 'Supervisor', turno: 'Mañana', activo: false, avatar: 'JM' },
+        { nombre: 'Ana Torres', rol: 'Sereno', turno: 'Tarde', activo: true, avatar: 'AT' },
+        { nombre: 'Carlos Vega', rol: 'Sereno', turno: 'Noche', activo: true, avatar: 'CV' },
+        { nombre: 'María Sánchez', rol: 'Coordinador', turno: 'Mañana', activo: false, avatar: 'MS' }
       ])
     } finally {
       setLoading(false)
@@ -86,6 +87,7 @@ export default function PersonalTable() {
             <tr>
               <th>#</th>
               <th>Personal</th>
+              <th>Rol</th>
               <th>Turno</th>
               <th>Estado</th>
             </tr>
@@ -93,7 +95,7 @@ export default function PersonalTable() {
           <tbody>
             {personal.length === 0 && (
               <tr>
-                <td colSpan={4} style={{textAlign: 'center', padding: '20px', color: 'var(--text-muted)'}}>
+                <td colSpan={5} style={{textAlign: 'center', padding: '20px', color: 'var(--text-muted)'}}>
                   No hay personal registrado
                 </td>
               </tr>
@@ -112,6 +114,9 @@ export default function PersonalTable() {
                       <div className="personal-avatar">{persona.avatar}</div>
                       <span>{persona.nombre}</span>
                     </div>
+                  </td>
+                  <td>
+                    <span className="personal-rol">{persona.rol}</span>
                   </td>
                   <td>
                     <span className="personal-turno">{persona.turno}</span>

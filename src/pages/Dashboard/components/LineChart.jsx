@@ -1,57 +1,164 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { FaCalendarAlt } from 'react-icons/fa'
+import CalendarModal from './CalendarModal'
 
-export default function LineChart({ title, subtitle, data }) {
-  const meses = Object.keys(data)
-  const maxValue = Math.max(...meses.map(mes => 
-    Object.values(data[mes]).reduce((a, b) => a + b, 0)
-  ), 1)
-  
+export default function LineChart({ title, subtitle, data, incidencias, onOpenDateModal }) {
+  const [filtrosActivos, setFiltrosActivos] = useState({
+    'Falta disciplinaria': true,
+    'Abandono de servicio': true,
+    'Inasistencia': true
+  })
+  const [rangoTiempo, setRangoTiempo] = useState('30D') // 7D, 15D, 30D, custom
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [customDateRange, setCustomDateRange] = useState(null)
+  const [animationKey, setAnimationKey] = useState(0)
+
+  // Re-ejecutar animación cuando cambian los datos
+  useEffect(() => {
+    setAnimationKey(prev => prev + 1)
+  }, [rangoTiempo, customDateRange])
+
+  // Función para obtener datos filtrados por tiempo
+  const getDatosFiltrados = () => {
+    if (!incidencias || incidencias.length === 0) {
+      return data // Fallback a datos originales
+    }
+
+    let fechaInicio, fechaFin
+
+    // Si hay rango personalizado, usarlo
+    if (rangoTiempo === 'custom' && customDateRange) {
+      fechaInicio = customDateRange.start
+      fechaFin = customDateRange.end
+    } else {
+      // Usar rangos predefinidos
+      const ahora = new Date()
+      let diasAtras = 30
+
+      if (rangoTiempo === '7D') diasAtras = 7
+      else if (rangoTiempo === '15D') diasAtras = 15
+      else if (rangoTiempo === '30D') diasAtras = 30
+
+      fechaInicio = new Date(ahora)
+      fechaInicio.setDate(ahora.getDate() - diasAtras)
+      fechaFin = ahora
+    }
+
+    const fechaLimite = fechaInicio
+
+    // Filtrar incidencias por fecha
+    const incidenciasFiltradas = incidencias.filter(inc => {
+      if (!inc.fechaIncidente) return false
+      const fechaInc = new Date(inc.fechaIncidente)
+      return fechaInc >= fechaInicio && fechaInc <= fechaFin
+    })
+
+    // Calcular días entre inicio y fin
+    const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
+
+    // Crear estructura de datos por día
+    const datosPorDia = {}
+    for (let i = 0; i <= diasDiferencia; i++) {
+      const fecha = new Date(fechaInicio)
+      fecha.setDate(fechaInicio.getDate() + i)
+      const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
+      datosPorDia[dia] = {
+        'Falta disciplinaria': 0,
+        'Abandono de servicio': 0,
+        'Inasistencia': 0
+      }
+    }
+
+    // Contar incidencias por día
+    incidenciasFiltradas.forEach(inc => {
+      const fecha = new Date(inc.fechaIncidente)
+      const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
+      if (datosPorDia[dia] && datosPorDia[dia][inc.asunto] !== undefined) {
+        datosPorDia[dia][inc.asunto]++
+      }
+    })
+
+    return datosPorDia
+  }
+
+  const datosActuales = getDatosFiltrados()
+  const meses = Object.keys(datosActuales)
+
+  // Calcular máximo valor basado en los filtros activos
+  const getMaxValue = () => {
+    const valores = meses.map(mes => {
+      let suma = 0
+      Object.keys(filtrosActivos).forEach(asunto => {
+        if (filtrosActivos[asunto]) {
+          suma += datosActuales[mes][asunto] || 0
+        }
+      })
+      return suma
+    })
+    return Math.max(...valores, 1)
+  }
+
+  const maxValue = getMaxValue()
+
   // Calcular puntos para cada asunto
   const asuntos = ['Falta disciplinaria', 'Abandono de servicio', 'Inasistencia']
   const colores = {
-    'Falta disciplinaria': '#4a6cf7',
-    'Abandono de servicio': '#8a4af3',
-    'Inasistencia': '#4caf50'
+    'Falta disciplinaria': '#0ea5e9', // Azul cielo
+    'Abandono de servicio': '#8b5cf6', // Morado
+    'Inasistencia': '#10b981' // Verde
+  }
+
+  const toggleFiltro = (asunto) => {
+    setFiltrosActivos(prev => ({
+      ...prev,
+      [asunto]: !prev[asunto]
+    }))
+  }
+
+  const handleCalendarApply = (start, end) => {
+    setCustomDateRange({ start, end })
+    setRangoTiempo('custom')
+  }
+
+  const formatDateRange = () => {
+    if (rangoTiempo === 'custom' && customDateRange) {
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+      const start = customDateRange.start
+      const end = customDateRange.end
+      return `${start.getDate()} ${meses[start.getMonth()]} - ${end.getDate()} ${meses[end.getMonth()]}`
+    }
+    return '6 oct - 4 nov'
   }
   
-  const width = 600
-  const height = 300
+  const width = 800
+  const height = 400
   const padding = 40
   const chartWidth = width - padding * 2
   const chartHeight = height - padding * 2
   
   const getX = (index) => padding + (index / (meses.length - 1)) * chartWidth
   const getY = (value) => padding + chartHeight - (value / maxValue) * chartHeight
-  
-  // Crear path suave para cada línea
-  const createSmoothPath = (values) => {
+
+  // Crear path con curvas suaves
+  const createPath = (values) => {
     if (values.length === 0) return ''
-    
+    if (values.length === 1) return `M ${getX(0)} ${getY(values[0])}`
+
     let path = `M ${getX(0)} ${getY(values[0])}`
-    
+
     for (let i = 0; i < values.length - 1; i++) {
       const x1 = getX(i)
       const y1 = getY(values[i])
       const x2 = getX(i + 1)
       const y2 = getY(values[i + 1])
-      
-      const cx = (x1 + x2) / 2
-      
-      path += ` Q ${cx} ${y1}, ${x2} ${y2}`
+
+      // Calcular punto de control para curva suave
+      const controlPointX = (x1 + x2) / 2
+      const tension = 0.4 // Factor de tensión de la curva
+
+      path += ` Q ${controlPointX} ${y1}, ${x2} ${y2}`
     }
-    
-    return path
-  }
-  
-  // Crear área bajo la curva
-  const createArea = (values) => {
-    if (values.length === 0) return ''
-    
-    let path = createSmoothPath(values)
-    path += ` L ${getX(values.length - 1)} ${height - padding}`
-    path += ` L ${getX(0)} ${height - padding}`
-    path += ' Z'
-    
+
     return path
   }
   
@@ -62,10 +169,34 @@ export default function LineChart({ title, subtitle, data }) {
           <h3 className="chart-title">{title}</h3>
           <p className="chart-subtitle">{subtitle}</p>
         </div>
-        <select className="chart-select">
-          <option>2025</option>
-          <option>2024</option>
-        </select>
+
+        <div className="time-range-controls">
+          <div className="time-range-buttons">
+            <button
+              className={`time-btn ${rangoTiempo === '7D' ? 'active' : ''}`}
+              onClick={() => setRangoTiempo('7D')}
+            >
+              7D
+            </button>
+            <button
+              className={`time-btn ${rangoTiempo === '15D' ? 'active' : ''}`}
+              onClick={() => setRangoTiempo('15D')}
+            >
+              15D
+            </button>
+            <button
+              className={`time-btn ${rangoTiempo === '30D' ? 'active' : ''}`}
+              onClick={() => setRangoTiempo('30D')}
+            >
+              30D
+            </button>
+          </div>
+
+          <button className="date-range-btn" onClick={() => setShowCalendar(true)}>
+            <FaCalendarAlt />
+            <span>{formatDateRange()}</span>
+          </button>
+        </div>
       </div>
       
       <svg className="line-chart-svg" viewBox={`0 0 ${width} ${height}`}>
@@ -79,81 +210,126 @@ export default function LineChart({ title, subtitle, data }) {
               y1={y}
               x2={width - padding}
               y2={y}
-              stroke="rgba(0,0,0,0.05)"
+              stroke="var(--grid-line-color)"
               strokeWidth="1"
+              strokeDasharray="4 4"
             />
           )
         })}
-        
-        {/* Áreas y líneas para cada asunto */}
-        {asuntos.map(asunto => {
-          const values = meses.map(mes => data[mes][asunto])
+
+        {/* Líneas para cada asunto */}
+        {asuntos.map((asunto, asuntoIndex) => {
+          if (!filtrosActivos[asunto]) return null
+
+          const values = meses.map(mes => datosActuales[mes][asunto])
           const color = colores[asunto]
-          
+          const pathId = `path-${asunto.replace(/\s+/g, '-')}`
+
           return (
-            <g key={asunto}>
-              {/* Área con gradiente */}
-              <defs>
-                <linearGradient id={`gradient-${asunto}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-                  <stop offset="100%" stopColor={color} stopOpacity="0.05" />
-                </linearGradient>
-              </defs>
-              
+            <g key={`${asunto}-${animationKey}`}>
+              {/* Línea con estilo de picos y animación */}
               <path
-                d={createArea(values)}
-                fill={`url(#gradient-${asunto})`}
-              />
-              
-              {/* Línea */}
-              <path
-                d={createSmoothPath(values)}
+                id={pathId}
+                d={createPath(values)}
                 fill="none"
                 stroke={color}
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="chart-line chart-line-animated"
+                style={{
+                  strokeDasharray: '1000',
+                  strokeDashoffset: '1000',
+                  animation: `drawLine 2.5s cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                  animationDelay: `${asuntoIndex * 0.2}s`
+                }}
               />
-              
-              {/* Puntos */}
+
+              {/* Puntos en cada vértice */}
               {values.map((value, i) => (
-                <circle
-                  key={i}
-                  cx={getX(i)}
-                  cy={getY(value)}
-                  r="4"
-                  fill={color}
-                  className="chart-point"
-                />
+                <g
+                  key={`${asunto}-${i}`}
+                  className="chart-point-group"
+                  style={{
+                    animation: `fadeInPoint 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards`,
+                    animationDelay: `${asuntoIndex * 0.2 + (i * 0.08)}s`,
+                    opacity: 0
+                  }}
+                >
+                  <circle
+                    cx={getX(i)}
+                    cy={getY(value)}
+                    r="4"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="2"
+                    className="chart-point-outer"
+                  />
+                  {value > 0 && (
+                    <circle
+                      cx={getX(i)}
+                      cy={getY(value)}
+                      r="2"
+                      fill={color}
+                      className="chart-point-inner"
+                    />
+                  )}
+                </g>
               ))}
             </g>
           )
         })}
-        
+
         {/* Etiquetas del eje X */}
-        {meses.map((mes, i) => (
-          <text
-            key={mes}
-            x={getX(i)}
-            y={height - 10}
-            textAnchor="middle"
-            fill="var(--text-secondary)"
-            fontSize="12"
-          >
-            {mes}
-          </text>
-        ))}
+        {meses.map((mes, i) => {
+          // Mostrar solo algunas etiquetas para evitar sobrecarga
+          const shouldShow = rangoTiempo === '7D' ||
+                             (rangoTiempo === '15D' && i % 2 === 0) ||
+                             (rangoTiempo === '30D' && i % 3 === 0)
+
+          if (!shouldShow) return null
+
+          return (
+            <text
+              key={mes}
+              x={getX(i)}
+              y={height - 8}
+              textAnchor="middle"
+              fill="var(--text-muted)"
+              fontSize="10"
+              fontWeight="600"
+              className="chart-label"
+            >
+              {mes}
+            </text>
+          )
+        })}
       </svg>
-      
-      {/* Leyenda */}
-      <div className="chart-legend">
+
+      {/* Botones de filtro */}
+      <div className="chart-filters">
         {asuntos.map(asunto => (
-          <div key={asunto} className="legend-item">
-            <span className="legend-dot" style={{ backgroundColor: colores[asunto] }}></span>
-            <span className="legend-label">{asunto}</span>
-          </div>
+          <button
+            key={asunto}
+            className={`filter-button ${filtrosActivos[asunto] ? 'active' : ''}`}
+            style={{
+              '--filter-color': colores[asunto]
+            }}
+            onClick={() => toggleFiltro(asunto)}
+          >
+            <span className="filter-dot" style={{ backgroundColor: colores[asunto] }}></span>
+            <span className="filter-label">{asunto}</span>
+          </button>
         ))}
       </div>
+
+      {/* Calendar Modal */}
+      {showCalendar && (
+        <CalendarModal
+          onClose={() => setShowCalendar(false)}
+          onApply={handleCalendarApply}
+        />
+      )}
     </div>
   )
 }
