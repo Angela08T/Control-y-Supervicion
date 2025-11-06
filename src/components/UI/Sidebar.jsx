@@ -32,6 +32,16 @@ const menuItems = {
       )
     },
     {
+      path: '/dashboard/admin/usuarios',
+      label: 'Usuarios',
+      svg: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      )
+    },
+    /*
+    {
       path: '/dashboard/admin/supervisores',
       label: 'Supervisores',
       svg: (
@@ -40,6 +50,8 @@ const menuItems = {
         </svg>
       )
     },
+    */
+    /*
     {
       path: '/dashboard/admin/alertas',
       label: 'Alertas',
@@ -49,6 +61,8 @@ const menuItems = {
         </svg>
       )
     },
+    */
+    /*
     {
       path: '/dashboard/admin/estadisticas',
       label: 'Estadísticas',
@@ -58,6 +72,8 @@ const menuItems = {
         </svg>
       )
     },
+    */
+   /*
     {
       path: '/dashboard/admin/camaras',
       label: 'Cámaras',
@@ -67,6 +83,8 @@ const menuItems = {
         </svg>
       )
     },
+    */
+   /*
     {
       path: '/dashboard/admin/reportes',
       label: 'Reportes',
@@ -86,6 +104,7 @@ const menuItems = {
         </svg>
       )
     },
+    */
     {
       path: '/dashboard/admin/auditoria',
       label: 'Auditoría',
@@ -122,6 +141,15 @@ const menuItems = {
       svg: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
+      path: '/dashboard/supervisor/usuarios',
+      label: 'Usuarios',
+      svg: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
       )
     },
@@ -178,6 +206,15 @@ const menuItems = {
       svg: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
+      path: '/dashboard/centinela/usuarios',
+      label: 'Usuarios',
+      svg: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
       )
     },

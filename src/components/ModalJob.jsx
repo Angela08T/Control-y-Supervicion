@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react'
-import { FaVideo, FaBarcode } from 'react-icons/fa'
+import { FaBriefcase } from 'react-icons/fa'
 
 const defaultState = {
-  name: '',
-  serie: ''
+  name: ''
 }
 
-export default function ModalBodycam({ initial, onClose, onSave }) {
+export default function ModalJob({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
     if (initial) {
       setForm({
-        name: initial.name || '',
-        serie: initial.serie || ''
+        name: initial.name || ''
       })
     }
   }, [initial])
@@ -31,11 +29,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
     const newErrors = {}
 
     if (!form.name.trim()) {
-      newErrors.name = 'El nombre es requerido'
-    }
-
-    if (!form.serie.trim()) {
-      newErrors.serie = 'La serie es requerida'
+      newErrors.name = 'El nombre del cargo es requerido'
     }
 
     setErrors(newErrors)
@@ -50,8 +44,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
     }
 
     const dataToSave = {
-      name: form.name.trim(),
-      serie: form.serie.trim()
+      name: form.name.trim()
     }
 
     onSave(dataToSave)
@@ -61,41 +54,25 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>{initial ? 'Editar Bodycam' : 'Nueva Bodycam'}</h3>
+          <h3>{initial ? 'Editar Cargo' : 'Nuevo Cargo'}</h3>
           <button className="close" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
-          {/* Nombre de la Bodycam */}
+          {/* Nombre del Cargo */}
           <div className="form-group">
             <label>
-              <FaVideo style={{ marginRight: '8px' }} />
-              Nombre de la Bodycam *
+              <FaBriefcase style={{ marginRight: '8px' }} />
+              Nombre del Cargo *
             </label>
             <input
               type="text"
-              placeholder="Ej: FISCA091, SG999"
+              placeholder="Ej: TENIENTE, CAPITÁN, SUBGERENTE"
               value={form.name}
               onChange={(e) => handleChange('name', e.target.value)}
               className={errors.name ? 'input-error' : ''}
             />
             {errors.name && <span className="error-message">{errors.name}</span>}
-          </div>
-
-          {/* Serie de la Bodycam */}
-          <div className="form-group">
-            <label>
-              <FaBarcode style={{ marginRight: '8px' }} />
-              N�mero de Serie *
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: 22709A0381, 23726A9999"
-              value={form.serie}
-              onChange={(e) => handleChange('serie', e.target.value)}
-              className={errors.serie ? 'input-error' : ''}
-            />
-            {errors.serie && <span className="error-message">{errors.serie}</span>}
           </div>
 
           {/* Nota informativa */}
@@ -108,16 +85,16 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
             color: 'var(--text-secondary)',
             marginTop: '10px'
           }}>
-            <strong>Nota:</strong> Todos los campos marcados con (*) son requeridos.
+            <strong>Nota:</strong> El cargo creado estará disponible para asignar al personal.
           </div>
 
-          {/* Botones de acci�n */}
+          {/* Botones de acción */}
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>
               CANCELAR
             </button>
             <button type="submit" className="btn-primary">
-              {initial ? 'ACTUALIZAR BODYCAM' : 'CREAR BODYCAM'}
+              {initial ? 'ACTUALIZAR CARGO' : 'CREAR CARGO'}
             </button>
           </div>
         </form>
