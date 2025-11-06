@@ -7,6 +7,7 @@ import useJobs from '../hooks/Job/useJobs'
 import useLeads from '../hooks/Job/useLeads'
 import useAllLeads from '../hooks/Job/useAllLeads'
 import useSubjects from '../hooks/Subject/useSubjects'
+import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import './Autocomplete.css'
 import {
   FaIdCard,
@@ -36,6 +37,7 @@ const defaultState = {
   encargadoBodycam: '',
   ubicacion: null,
   jurisdiccion: '',
+  jurisdictionId: null,  // ID de la jurisdicción para la API
   dirigidoA: '',
   destinatario: '',
   cargoDestinatario: '', // Cargo de la persona destinataria (para el PDF)
@@ -107,6 +109,13 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     loading: subjectsLoading,
     error: subjectsError
   } = useSubjects()
+
+  // Hook para obtener jurisdicciones
+  const {
+    jurisdictions,
+    loading: jurisdictionsLoading,
+    error: jurisdictionsError
+  } = useJurisdictions()
 
   // Filtrar lista de CC para excluir a la persona seleccionada
   const listaCC = useMemo(() => {
@@ -346,6 +355,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     if (!form.lackId) {
       alert('Error: No se pudo obtener el ID de la falta. Por favor, reselecciona la falta.');
+      return;
+    }
+
+    if (!form.jurisdictionId) {
+      alert('Error: No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.');
       return;
     }
 
@@ -642,11 +656,42 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaBalanceScale style={{ marginRight: '8px' }} />
             Jurisdicción *
           </label>
-          <input
-            value={form.jurisdiccion}
-            onChange={e => setField('jurisdiccion', e.target.value)}
-            placeholder="Ingresa la jurisdicción"
-          />
+          {jurisdictionsLoading ? (
+            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              Cargando jurisdicciones...
+            </div>
+          ) : jurisdictionsError ? (
+            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+              {jurisdictionsError}
+            </div>
+          ) : (
+            <select
+              value={form.jurisdiccion}
+              onChange={e => {
+                const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
+                if (selectedJurisdiction) {
+                  setForm(f => ({
+                    ...f,
+                    jurisdiccion: selectedJurisdiction.name,
+                    jurisdictionId: selectedJurisdiction.id
+                  }))
+                } else {
+                  setForm(f => ({
+                    ...f,
+                    jurisdiccion: '',
+                    jurisdictionId: null
+                  }))
+                }
+              }}
+            >
+              <option value="">Selecciona una jurisdicción</option>
+              {jurisdictions.map(jurisdiction => (
+                <option key={jurisdiction.id} value={jurisdiction.name}>
+                  {jurisdiction.name}
+                </option>
+              ))}
+            </select>
+          )}
 
           <label>
             <FaMapMarkerAlt style={{ marginRight: '8px' }} />
