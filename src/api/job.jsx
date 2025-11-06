@@ -1,29 +1,90 @@
 import api from './config';
 
 /**
- * Obtener lista de cargos/puestos (jobs)
- * @returns {Promise} - Respuesta con lista de jobs
+ * API para gestión de Cargos (Jobs)
  */
-export const getJobs = async () => {
+
+// Obtener todos los cargos con paginación
+export const getJobs = async (page = 1, limit = 10) => {
   try {
-    const response = await api.get('/job');
+    const response = await api.get('/job', {
+      params: { page, limit }
+    });
+    console.log('✅ Cargos obtenidos:', response.data);
     return response.data;
   } catch (error) {
-    if (error.response) {
-      throw error;
-    } else if (error.request) {
-      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
-    } else {
-      throw new Error('Error al obtener cargos: ' + error.message);
-    }
+    console.error('❌ Error al obtener cargos:', error);
+    throw error;
+  }
+};
+
+// Obtener un cargo por ID
+export const getJobById = async (jobId) => {
+  try {
+    const response = await api.get(`/job/${jobId}`);
+    console.log('✅ Cargo obtenido por ID:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al obtener cargo por ID:', error);
+    throw error;
+  }
+};
+
+// Buscar cargos por nombre
+export const searchJob = async (searchTerm) => {
+  try {
+    const response = await api.get('/job', {
+      params: { search: searchTerm }
+    });
+    console.log('✅ Búsqueda de cargos:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al buscar cargos:', error);
+    throw error;
+  }
+};
+
+// Crear un nuevo cargo
+export const createJob = async (jobData) => {
+  try {
+    const response = await api.post('/job', jobData);
+    console.log('✅ Cargo creado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al crear cargo:', error);
+    throw error;
+  }
+};
+
+// Actualizar un cargo existente
+export const updateJob = async (jobId, jobData) => {
+  try {
+    const response = await api.put(`/job/${jobId}`, jobData);
+    console.log('✅ Cargo actualizado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al actualizar cargo:', error);
+    throw error;
+  }
+};
+
+// Eliminar un cargo
+export const deleteJob = async (jobId) => {
+  try {
+    const response = await api.delete(`/job/${jobId}`);
+    console.log('✅ Cargo eliminado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al eliminar cargo:', error);
+    throw error;
   }
 };
 
 /**
- * Obtener lista de líderes/personas según el cargo (job)
- * @param {string} jobId - ID del cargo/puesto
- * @returns {Promise} - Respuesta con lista de líderes
+ * Funciones heredadas para compatibilidad con código existente
  */
+
+// Obtener lista de líderes/personas según el cargo (job)
 export const getLeadsByJob = async (jobId) => {
   try {
     const response = await api.get('/lead', {
@@ -41,10 +102,7 @@ export const getLeadsByJob = async (jobId) => {
   }
 };
 
-/**
- * Obtener lista completa de líderes/personas (sin filtro)
- * @returns {Promise} - Respuesta con lista completa de líderes
- */
+// Obtener lista completa de líderes/personas (sin filtro)
 export const getAllLeads = async () => {
   try {
     const response = await api.get('/lead');
