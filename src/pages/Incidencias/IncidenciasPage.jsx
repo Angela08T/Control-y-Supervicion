@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
-import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport } from '../../api/report' 
+import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport } from '../../api/report'
 import useSubjects from '../../hooks/Subject/useSubjects'
+import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function IncidenciasPage() {
+  const { role: userRole } = useSelector((state) => state.auth)
+  const permissions = getModulePermissions(userRole, 'incidencias')
+
   const [incidencias, setIncidencias] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showPDFModal, setShowPDFModal] = useState(false)
@@ -374,13 +379,31 @@ export default function IncidenciasPage() {
               )}
             </div>
 
-            <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-              <FaPlus style={{ marginRight: '8px' }} />
-              Agregar
-            </button>
+            {permissions.canCreate && (
+              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus style={{ marginRight: '8px' }} />
+                Agregar
+              </button>
+            )}
           </div>
         </div>
       </header>
+
+      {/* Mensaje informativo para CENTINELA */}
+      {!permissions.canDelete && permissions.canCreate && (
+        <div style={{
+          textAlign: 'center',
+          padding: '12px',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderRadius: '8px',
+          margin: '20px',
+          border: '1px solid rgba(59, 130, 246, 0.3)'
+        }}>
+          <p style={{ fontSize: '0.9rem', color: '#3b82f6', margin: '0' }}>
+            ℹ️ Solo puedes crear incidencias. No puedes eliminar incidencias existentes.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div style={{
@@ -434,6 +457,7 @@ export default function IncidenciasPage() {
             onEdit={handleEdit}
             filtroAsunto={filters.asunto}
             startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            canDelete={permissions.canDelete}
           />
 
           {/* Controles de paginación (ocultar cuando se busca por ID) */}

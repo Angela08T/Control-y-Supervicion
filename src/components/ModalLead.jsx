@@ -19,10 +19,18 @@ export default function ModalLead({ initial, onClose, onSave }) {
     async function fetchJobs() {
       setLoadingJobs(true)
       try {
+        console.log('🔄 Cargando cargos disponibles...')
         const response = await getJobs(1, 1000) // Obtener todos los cargos
-        setJobs(response.data || [])
+        console.log('📦 Respuesta completa de cargos:', response)
+
+        // Extraer los datos correctamente según la estructura de la API
+        const jobsData = response.data?.data || response.data || []
+        console.log('✅ Cargos extraídos:', jobsData)
+
+        setJobs(jobsData)
       } catch (error) {
-        console.error('Error al cargar cargos:', error)
+        console.error('❌ Error al cargar cargos:', error)
+        alert('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
       } finally {
         setLoadingJobs(false)
       }
@@ -78,8 +86,11 @@ export default function ModalLead({ initial, onClose, onSave }) {
     const dataToSave = {
       name: form.name.trim(),
       lastname: form.lastname.trim(),
-      job_id: form.job_id
+      job_id: parseInt(form.job_id, 10) // Convertir a número
     }
+
+    console.log('📋 Datos preparados para enviar:', dataToSave)
+    console.log('📋 Tipo de job_id:', typeof dataToSave.job_id)
 
     onSave(dataToSave)
   }
@@ -142,7 +153,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
                 className={errors.job_id ? 'input-error' : ''}
               >
                 <option value="">Selecciona un cargo</option>
-                {jobs.map(job => (
+                {Array.isArray(jobs) && jobs.map(job => (
                   <option key={job.id} value={job.id}>{job.name}</option>
                 ))}
               </select>

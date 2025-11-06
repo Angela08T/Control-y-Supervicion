@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import BodycamTable from '../../components/BodycamTable'
 import ModalBodycam from '../../components/ModalBodycam'
 import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '../../api/bodycam'
+import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function BodycamPage() {
+  const { role: userRole } = useSelector((state) => state.auth)
+  const permissions = getModulePermissions(userRole, 'bodycam')
+
   const [bodycams, setBodycams] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
@@ -278,13 +283,31 @@ export default function BodycamPage() {
               )}
             </div>
 
-            <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-              <FaPlus style={{ marginRight: '8px' }} />
-              Agregar Bodycam
-            </button>
+            {permissions.canCreate && (
+              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus style={{ marginRight: '8px' }} />
+                Agregar Bodycam
+              </button>
+            )}
           </div>
         </div>
       </header>
+
+      {/* Mensaje informativo para roles con permisos de solo lectura */}
+      {!permissions.canCreate && permissions.canView && (
+        <div style={{
+          textAlign: 'center',
+          padding: '12px',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderRadius: '8px',
+          margin: '20px',
+          border: '1px solid rgba(59, 130, 246, 0.3)'
+        }}>
+          <p style={{ fontSize: '0.9rem', color: '#3b82f6', margin: '0' }}>
+            ℹ️ Tienes permisos de solo lectura. No puedes crear, editar o eliminar bodycams.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div style={{
@@ -337,6 +360,8 @@ export default function BodycamPage() {
             onDelete={handleDelete}
             onEdit={handleEdit}
             startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            canEdit={permissions.canEdit}
+            canDelete={permissions.canDelete}
           />
 
           {/* Controles de paginación (ocultar cuando se busca) */}

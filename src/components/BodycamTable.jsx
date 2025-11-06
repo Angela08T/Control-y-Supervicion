@@ -1,7 +1,9 @@
 import React from 'react'
-import { FaEdit, FaTrash } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaEye } from 'react-icons/fa'
 
-export default function BodycamTable({ data = [], onDelete, onEdit, startIndex = 0 }) {
+export default function BodycamTable({ data = [], onDelete, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+  const showActions = canEdit || canDelete
+
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -9,7 +11,7 @@ export default function BodycamTable({ data = [], onDelete, onEdit, startIndex =
           <thead>
             <tr>
               <th>#</th>
-              <th>Acciones</th>
+              {showActions && <th>Acciones</th>}
               <th>Nombre</th>
               <th>Serie</th>
             </tr>
@@ -17,7 +19,7 @@ export default function BodycamTable({ data = [], onDelete, onEdit, startIndex =
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                <td colSpan={showActions ? 4 : 3} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                   No hay bodycams registradas
                 </td>
               </tr>
@@ -27,14 +29,20 @@ export default function BodycamTable({ data = [], onDelete, onEdit, startIndex =
                 <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px' }}>
                   {startIndex + index + 1}
                 </td>
-                <td className="actions">
-                  <button title="Editar" onClick={() => onEdit(item)}>
-                    <FaEdit />
-                  </button>
-                  <button title="Eliminar" onClick={() => onDelete(item.id)}>
-                    <FaTrash />
-                  </button>
-                </td>
+                {showActions && (
+                  <td className="actions">
+                    {canEdit && (
+                      <button title="Editar" onClick={() => onEdit(item)}>
+                        <FaEdit />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button title="Eliminar" onClick={() => onDelete(item.id)}>
+                        <FaTrash />
+                      </button>
+                    )}
+                  </td>
+                )}
                 <td>{item.name}</td>
                 <td>{item.serie}</td>
               </tr>
