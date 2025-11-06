@@ -83,7 +83,8 @@ export function mapFormDataToAPI(form, allLeads) {
     date,
     offender_dni: form.dni || '',
     lack_id: form.lackId || null,
-    subject_id: form.subjectId || null
+    subject_id: form.subjectId || null,
+    jurisdiction_id: form.jurisdictionId || null
   };
 
   // Solo agregar campos de bodycam si NO es Inasistencia (es decir, si hay bodycamId)
@@ -120,27 +121,50 @@ export const getReports = async (page = 1, limit = 10) => {
     })
 
     // Transformar al formato plano para la tabla
-    const transformedReports = reports.map(r => ({
-      id: r.id,
-      dni: r.offender?.dni || '',
-      asunto: r.subject?.name || '',
-      falta: r.lack?.name || '',
-      tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-      medio: r.bodycam ? 'Bodycam' : 'Otro',
-      fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
-      horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
-      turno: r.offender?.shift || '',
-      cargo: r.offender?.job || '',
-      regLab: r.offender?.regime || '',
-      jurisdiccion: r.offender?.subgerencia || '',
-      bodycamNumber: r.bodycam?.name || '',
-      bodycamAsignadaA: r.bodycam_user || '',
-      encargadoBodycam: r.user ? `${r.user.name} ${r.user.lastname}` : '',
-      dirigidoA: r.header?.to?.job || '',
-      destinatario: r.header?.to?.name || '',
-      createdAt: r.lack?.created_at || r.date,
-      updatedAt: r.lack?.updated_at || r.date
-    }))
+    const transformedReports = reports.map(r => {
+      // Debug: mostrar todos los campos relacionados con bodycam
+      console.log('🔍 Datos del reporte desde API:', {
+        id: r.id,
+        bodycam_supervisor: r.bodycam_supervisor,
+        bodycamSupervisor: r.bodycamSupervisor,
+        bodycam_user: r.bodycam_user,
+        bodycamUser: r.bodycamUser,
+        supervisor: r.supervisor,
+        user: r.user,
+        'Todos los campos del objeto r:': Object.keys(r)
+      })
+
+      // Intentar obtener el encargado de bodycam de múltiples posibles campos
+      const encargadoBodycam =
+        r.bodycam_supervisor ||
+        r.bodycamSupervisor ||
+        r.supervisor ||
+        (r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '')
+
+      console.log('✅ encargadoBodycam final:', encargadoBodycam)
+
+      return {
+        id: r.id,
+        dni: r.offender?.dni || '',
+        asunto: r.subject?.name || '',
+        falta: r.lack?.name || '',
+        tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
+        medio: r.bodycam ? 'Bodycam' : 'Otro',
+        fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
+        horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+        turno: r.offender?.shift || '',
+        cargo: r.offender?.job || '',
+        regLab: r.offender?.regime || '',
+        jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
+        bodycamNumber: r.bodycam?.name || '',
+        bodycamAsignadaA: r.bodycam_user || r.bodycamUser || '',
+        encargadoBodycam: encargadoBodycam,
+        dirigidoA: r.header?.to?.job || '',
+        destinatario: r.header?.to?.name || '',
+        createdAt: r.lack?.created_at || r.date,
+        updatedAt: r.lack?.updated_at || r.date
+      }
+    })
 
     // Calcular paginación correctamente
     // pageCount = items en la página ACTUAL (no es el límite por página)
@@ -225,10 +249,10 @@ export const getReportById = async (reportId) => {
         turno: r.offender?.shift || '',
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
-        jurisdiccion: r.offender?.subgerencia || '',
+        jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         bodycamNumber: r.bodycam?.name || '',
         bodycamAsignadaA: r.bodycam_user || '',
-        encargadoBodycam: r.user ? `${r.user.name} ${r.user.lastname}` : '',
+        encargadoBodycam: r.bodycam_supervisor || (r.user ? `${r.user.name} ${r.user.lastname}` : ''),
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
