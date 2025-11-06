@@ -86,7 +86,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
           <div className="form-group">
             <label>
               <FaBarcode style={{ marginRight: '8px' }} />
-              N�mero de Serie *
+              Número de Serie *
             </label>
             <input
               type="text"
@@ -111,7 +111,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
             <strong>Nota:</strong> Todos los campos marcados con (*) son requeridos.
           </div>
 
-          {/* Botones de acci�n */}
+          {/* Botones de acción */}
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>
               CANCELAR

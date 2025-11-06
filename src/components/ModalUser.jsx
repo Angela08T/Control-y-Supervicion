@@ -7,7 +7,7 @@ const defaultState = {
   username: '',
   password: '',
   email: '',
-  role: 'sentinel' // Por defecto sentinel
+  rol: 'SENTINEL' // Por defecto SENTINEL
 }
 
 export default function ModalUser({ initial, onClose, onSave, userRole }) {
@@ -25,7 +25,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
         username: initial.username || '',
         password: '', // No mostrar password existente
         email: initial.email || '',
-        role: initial.role || 'sentinel'
+        rol: initial.rol || initial.role || 'SENTINEL'
       })
     }
   }, [initial])
@@ -54,26 +54,26 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
     }
 
     if (!initial && !form.password.trim()) {
-      newErrors.password = 'La contrase�a es requerida'
+      newErrors.password = 'La contraseña es requerida'
     }
 
     if (form.password && form.password.length < 8) {
-      newErrors.password = 'La contrase�a debe tener al menos 8 caracteres'
+      newErrors.password = 'La contraseña debe tener al menos 8 caracteres'
     }
 
     if (!form.email.trim()) {
       newErrors.email = 'El email es requerido'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = 'Email inv�lido'
+      newErrors.email = 'Email inválido'
     }
 
-    if (!form.role) {
-      newErrors.role = 'El rol es requerido'
+    if (!form.rol) {
+      newErrors.rol = 'El rol es requerido'
     }
 
-    // Si no es admin y est� intentando crear supervisor
-    if (!canCreateSupervisor && form.role === 'supervisor') {
-      newErrors.role = 'No tienes permisos para crear supervisores'
+    // Si no es admin y está intentando crear supervisor
+    if (!canCreateSupervisor && form.rol === 'SUPERVISOR') {
+      newErrors.rol = 'No tienes permisos para crear supervisores'
     }
 
     setErrors(newErrors)
@@ -92,10 +92,10 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
       lastname: form.lastname.trim(),
       username: form.username.trim(),
       email: form.email.trim(),
-      role: form.role
+      rol: form.rol
     }
 
-    // Solo incluir password si se est� creando o si se modific�
+    // Solo incluir password si se está creando o si se modificó
     if (!initial || form.password) {
       dataToSave.password = form.password
     }
@@ -136,7 +136,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
             </label>
             <input
               type="text"
-              placeholder="Ej: P�rez"
+              placeholder="Ej: Perez"
               value={form.lastname}
               onChange={(e) => handleChange('lastname', e.target.value)}
               className={errors.lastname ? 'input-error' : ''}
@@ -176,15 +176,15 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
             {errors.email && <span className="error-message">{errors.email}</span>}
           </div>
 
-          {/* Contrase�a */}
+          {/* Contraseña */}
           <div className="form-group">
             <label>
               <FaLock style={{ marginRight: '8px' }} />
-              Contrase�a {!initial && '*'}
+              Contraseña {!initial && '*'}
             </label>
             <input
               type="password"
-              placeholder={initial ? 'Dejar vac�o para no cambiar' : 'M�nimo 8 caracteres'}
+              placeholder={initial ? 'Dejar vacío para no cambiar' : 'Mínimo 8 caracteres'}
               value={form.password}
               onChange={(e) => handleChange('password', e.target.value)}
               className={errors.password ? 'input-error' : ''}
@@ -199,15 +199,15 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
               Rol *
             </label>
             <select
-              value={form.role}
-              onChange={(e) => handleChange('role', e.target.value)}
-              className={errors.role ? 'input-error' : ''}
+              value={form.rol}
+              onChange={(e) => handleChange('rol', e.target.value)}
+              className={errors.rol ? 'input-error' : ''}
               disabled={initial} // No permitir cambiar rol al editar
             >
-              <option value="sentinel">Sentinel</option>
-              {canCreateSupervisor && <option value="supervisor">Supervisor</option>}
+              <option value="SENTINEL">Sentinel</option>
+              {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}
             </select>
-            {errors.role && <span className="error-message">{errors.role}</span>}
+            {errors.rol && <span className="error-message">{errors.rol}</span>}
             {!canCreateSupervisor && (
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                 Solo puedes crear Sentinels
@@ -228,7 +228,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
             <strong>Nota:</strong> Los campos marcados con (*) son requeridos.
           </div>
 
-          {/* Botones de acci�n */}
+          {/* Botones de acción */}
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>
               CANCELAR

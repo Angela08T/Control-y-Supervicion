@@ -12,13 +12,12 @@ export default function BodycamTable({ data = [], onDelete, onEdit, startIndex =
               <th>Acciones</th>
               <th>Nombre</th>
               <th>Serie</th>
-              <th>ID</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                   No hay bodycams registradas
                 </td>
               </tr>
@@ -38,9 +37,6 @@ export default function BodycamTable({ data = [], onDelete, onEdit, startIndex =
                 </td>
                 <td>{item.name}</td>
                 <td>{item.serie}</td>
-                <td style={{ fontFamily: 'monospace', fontSize: '0.85em', color: 'var(--text-muted)' }}>
-                  {item.id}
-                </td>
               </tr>
             ))}
           </tbody>

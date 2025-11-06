@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import JobTable from '../../components/JobTable'
-import ModalJob from '../../components/ModalJob'
-import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from '../../api/job'
+import LeadTable from '../../components/LeadTable'
+import ModalLead from '../../components/ModalLead'
+import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
-export default function JobsPage() {
-  const [jobs, setJobs] = useState([])
+export default function LeadsPage() {
+  const [leads, setLeads] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [filters, setFilters] = useState({
@@ -26,17 +26,17 @@ export default function JobsPage() {
   const [searchResult, setSearchResult] = useState(null)
   const [isSearching, setIsSearching] = useState(false)
 
-  // Cargar cargos desde la API con paginación
+  // Cargar personal desde la API con paginación
   useEffect(() => {
-    async function fetchJobs() {
+    async function fetchLeads() {
       setLoading(true)
       try {
-        console.log(`📡 Obteniendo cargos desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
-        const result = await getJobs(currentPage, itemsPerPage)
-        console.log('✅ Cargos obtenidos:', result)
+        console.log(`📡 Obteniendo personal desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
+        const result = await getLeads(currentPage, itemsPerPage)
+        console.log('✅ Personal obtenido:', result)
 
-        const jobsData = result.data?.data || result.data || []
-        setJobs(jobsData)
+        const leadsData = result.data?.data || result.data || []
+        setLeads(leadsData)
 
         // Manejar paginación si existe, sino usar valores por defecto
         if (result.pagination) {
@@ -45,22 +45,22 @@ export default function JobsPage() {
           // Si no hay paginación, calcular valores básicos
           setPagination({
             currentPage: currentPage,
-            totalPages: Math.ceil(jobsData.length / itemsPerPage),
+            totalPages: Math.ceil(leadsData.length / itemsPerPage),
             perPage: itemsPerPage,
-            total: jobsData.length,
-            from: jobsData.length > 0 ? 1 : 0,
-            to: jobsData.length
+            total: leadsData.length,
+            from: leadsData.length > 0 ? 1 : 0,
+            to: leadsData.length
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar cargos:', error)
-        alert('No se pudieron cargar los cargos')
+        console.error('⚠️ Error al cargar personal:', error)
+        alert('No se pudo cargar el personal')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchJobs()
+    fetchLeads()
   }, [currentPage, itemsPerPage, refreshTrigger])
 
   // Verificar si el término de búsqueda es un UUID
@@ -69,7 +69,7 @@ export default function JobsPage() {
     return uuidRegex.test(str)
   }
 
-  // Buscar cargo por ID o nombre cuando el usuario escribe
+  // Buscar personal por ID o nombre cuando el usuario escribe
   useEffect(() => {
     const searchTerm = filters.search.trim()
 
@@ -84,14 +84,14 @@ export default function JobsPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando cargo por ID:', searchTerm)
-          const result = await getJobById(searchTerm)
+          console.log('🔍 Buscando personal por ID:', searchTerm)
+          const result = await getLeadById(searchTerm)
 
           if (result.found && result.data.length > 0) {
-            console.log('✅ Cargo encontrado:', result.data[0])
+            console.log('✅ Personal encontrado:', result.data[0])
             setSearchResult(result.data)
           } else {
-            console.log('⚠️ No se encontró cargo con ese ID')
+            console.log('⚠️ No se encontró personal con ese ID')
             setSearchResult([])
           }
         } catch (error) {
@@ -108,17 +108,17 @@ export default function JobsPage() {
       const searchByName = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando cargo por nombre:', searchTerm)
-          const response = await searchJob(searchTerm)
+          console.log('🔍 Buscando personal por nombre:', searchTerm)
+          const response = await searchLead(searchTerm)
 
           // La API devuelve los datos en response.data?.data
           const results = response?.data?.data || []
 
           if (results.length > 0) {
-            console.log('✅ Cargos encontrados:', results)
+            console.log('✅ Personal encontrado:', results)
             setSearchResult(results)
           } else {
-            console.log('⚠️ No se encontraron cargos con ese término')
+            console.log('⚠️ No se encontró personal con ese término')
             setSearchResult([])
           }
         } catch (error) {
@@ -133,24 +133,24 @@ export default function JobsPage() {
     }
   }, [filters.search])
 
-  // Crear o editar cargo
+  // Crear o editar personal
   async function handleSave(data) {
     if (editItem) {
-      // Actualizar cargo existente
+      // Actualizar personal existente
       try {
-        console.log('📤 Actualizando cargo:', editItem.id, data)
-        const response = await updateJob(editItem.id, data)
-        console.log('✅ Cargo actualizado:', response)
+        console.log('📤 Actualizando personal:', editItem.id, data)
+        const response = await updateLead(editItem.id, data)
+        console.log('✅ Personal actualizado:', response)
 
-        alert(response.data?.message || response.message || 'Cargo actualizado exitosamente')
+        alert(response.data?.message || response.message || 'Personal actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar cargo:', error)
+        console.error('❌ Error al actualizar personal:', error)
 
-        let errorMessage = 'Error al actualizar el cargo'
+        let errorMessage = 'Error al actualizar el personal'
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
@@ -163,21 +163,21 @@ export default function JobsPage() {
         alert(errorMessage)
       }
     } else {
-      // Crear nuevo cargo
+      // Crear nuevo personal
       try {
-        console.log('📤 Creando cargo:', data)
-        const response = await createJob(data)
-        console.log('✅ Cargo creado:', response)
+        console.log('📤 Creando personal:', data)
+        const response = await createLead(data)
+        console.log('✅ Personal creado:', response)
 
-        alert(response.data?.message || response.message || 'Cargo creado exitosamente')
+        alert(response.data?.message || response.message || 'Personal creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear cargo:', error)
+        console.error('❌ Error al crear personal:', error)
 
-        let errorMessage = 'Error al crear el cargo'
+        let errorMessage = 'Error al crear el personal'
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
@@ -193,20 +193,20 @@ export default function JobsPage() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar este cargo?')) return
+    if (!confirm('¿Estás seguro de eliminar este personal?')) return
 
     try {
-      console.log('🗑️ Eliminando cargo con ID:', id)
-      const response = await deleteJob(id)
+      console.log('🗑️ Eliminando personal con ID:', id)
+      const response = await deleteLead(id)
       console.log('✅ Respuesta de eliminación:', response)
 
-      alert(response.data?.message || response.message || 'Cargo eliminado exitosamente')
+      alert(response.data?.message || response.message || 'Personal eliminado exitosamente')
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al eliminar cargo:', error)
+      console.error('❌ Error al eliminar personal:', error)
 
-      let errorMessage = 'Error al eliminar el cargo'
+      let errorMessage = 'Error al eliminar el personal'
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
@@ -247,13 +247,13 @@ export default function JobsPage() {
   }
 
   // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : jobs
+  const filteredData = searchResult !== null ? searchResult : leads
 
   return (
     <div className="incidencias-page">
       <header className="page-header">
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE CARGOS</h2>
+          <h2>GESTIÓN DE PERSONAL</h2>
           <div className="controls">
             <div style={{ position: 'relative' }}>
               <FaSearch
@@ -289,7 +289,7 @@ export default function JobsPage() {
 
             <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
               <FaPlus style={{ marginRight: '8px' }} />
-              Agregar Cargo
+              Agregar Personal
             </button>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function JobsPage() {
           color: 'var(--text-muted)',
           fontSize: '1.1rem'
         }}>
-          Cargando cargos...
+          Cargando personal...
         </div>
       ) : (
         <div className="table-container-wrapper">
@@ -317,7 +317,7 @@ export default function JobsPage() {
               border: '2px dashed var(--border)'
             }}>
               <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
-                🔍 No se encontró ningún cargo con: <strong>{filters.search}</strong>
+                🔍 No se encontró ningún personal con: <strong>{filters.search}</strong>
               </p>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
                 Verifica que el nombre o ID sea correcto.
@@ -325,7 +325,7 @@ export default function JobsPage() {
             </div>
           )}
 
-          {/* Mensaje cuando se encuentra cargo */}
+          {/* Mensaje cuando se encuentra personal */}
           {searchResult !== null && searchResult.length > 0 && (
             <div style={{
               textAlign: 'center',
@@ -336,12 +336,12 @@ export default function JobsPage() {
               border: '1px solid rgba(74, 222, 128, 0.3)'
             }}>
               <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
-                ✅ {searchResult.length} cargo(s) encontrado(s)
+                ✅ {searchResult.length} persona(s) encontrada(s)
               </p>
             </div>
           )}
 
-          <JobTable
+          <LeadTable
             data={filteredData}
             onDelete={handleDelete}
             onEdit={handleEdit}
@@ -495,7 +495,7 @@ export default function JobsPage() {
       )}
 
       {showModal && (
-        <ModalJob
+        <ModalLead
           initial={editItem}
           onClose={() => { setShowModal(false); setEditItem(null) }}
           onSave={handleSave}
