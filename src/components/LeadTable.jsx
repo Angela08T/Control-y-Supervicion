@@ -1,7 +1,7 @@
 import React from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
 
-export default function JobTable({ data = [], onDelete, onEdit, startIndex = 0 }) {
+export default function LeadTable({ data = [], onDelete, onEdit, startIndex = 0 }) {
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -10,14 +10,16 @@ export default function JobTable({ data = [], onDelete, onEdit, startIndex = 0 }
             <tr>
               <th>#</th>
               <th>Acciones</th>
-              <th>Nombre del Cargo</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Cargo</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
-                  No hay cargos registrados
+                <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                  No hay personal registrado
                 </td>
               </tr>
             )}
@@ -35,6 +37,19 @@ export default function JobTable({ data = [], onDelete, onEdit, startIndex = 0 }
                   </button>
                 </td>
                 <td style={{ fontWeight: '600', color: 'var(--text)' }}>{item.name}</td>
+                <td style={{ fontWeight: '600', color: 'var(--text)' }}>{item.lastname}</td>
+                <td>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '0.85rem',
+                    fontWeight: '500',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    color: '#3b82f6'
+                  }}>
+                    {item.job?.name || 'Sin cargo'}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

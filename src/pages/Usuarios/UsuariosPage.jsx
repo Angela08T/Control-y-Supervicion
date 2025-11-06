@@ -3,16 +3,11 @@ import { useSelector } from 'react-redux'
 import UserTable from '../../components/UserTable'
 import ModalUser from '../../components/ModalUser'
 import {
-  getSupervisors,
-  getSentinels,
-  searchSupervisor,
-  searchSentinel,
-  createSupervisor,
-  createSentinel,
-  updateSupervisor,
-  updateSentinel,
-  deleteSupervisor,
-  deleteSentinel
+  getUsers,
+  searchUser,
+  createUser,
+  updateUser,
+  deleteUser
 } from '../../api/user'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
@@ -23,13 +18,13 @@ export default function UsuariosPage() {
   const [editItem, setEditItem] = useState(null)
   const [filters, setFilters] = useState({
     search: '',
-    roleFilter: 'all' // all, supervisor, sentinel
+    roleFilter: 'all' // all, SUPERVISOR, SENTINEL
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [isSearching, setIsSearching] = useState(false)
 
-  // Permisos seg�n rol
+  // Permisos según rol
   const canCreateSupervisor = userRole === 'admin'
   const canCreateSentinel = userRole === 'admin' || userRole === 'supervisor'
   const canCreate = canCreateSentinel || canCreateSupervisor
@@ -41,28 +36,8 @@ export default function UsuariosPage() {
     async function fetchUsers() {
       setLoading(true)
       try {
-        let allUsers = []
-
-        // Cargar supervisores (solo si es admin)
-        if (userRole === 'admin') {
-          try {
-            const supervisorResponse = await getSupervisors(1, 1000)
-            const supervisors = supervisorResponse?.data?.data || []
-            allUsers = allUsers.concat(supervisors.map(s => ({ ...s, role: 'supervisor' })))
-          } catch (error) {
-            console.error('Error al cargar supervisores:', error)
-          }
-        }
-
-        // Cargar sentinels
-        try {
-          const sentinelResponse = await getSentinels(1, 1000)
-          const sentinels = sentinelResponse?.data?.data || []
-          allUsers = allUsers.concat(sentinels.map(s => ({ ...s, role: 'sentinel' })))
-        } catch (error) {
-          console.error('Error al cargar sentinels:', error)
-        }
-
+        const response = await getUsers(1, 1000)
+        const allUsers = response?.data?.data || []
         setUsers(allUsers)
       } catch (error) {
         console.error('Error al cargar usuarios:', error)
@@ -73,7 +48,7 @@ export default function UsuariosPage() {
     }
 
     fetchUsers()
-  }, [refreshTrigger, userRole])
+  }, [refreshTrigger])
 
   // Buscar usuarios
   useEffect(() => {
@@ -86,29 +61,10 @@ export default function UsuariosPage() {
     const searchUsers = async () => {
       setIsSearching(true)
       try {
-        let searchResults = []
+        const response = await searchUser(searchTerm)
+        const searchResults = response?.data || []
 
-        // Buscar supervisores (solo si es admin)
-        if (userRole === 'admin') {
-          try {
-            const supervisorResponse = await searchSupervisor(searchTerm)
-            const supervisors = supervisorResponse?.data || []
-            searchResults = searchResults.concat(supervisors.map(s => ({ ...s, role: 'supervisor' })))
-          } catch (error) {
-            console.error('Error al buscar supervisores:', error)
-          }
-        }
-
-        // Buscar sentinels
-        try {
-          const sentinelResponse = await searchSentinel(searchTerm)
-          const sentinels = sentinelResponse?.data || []
-          searchResults = searchResults.concat(sentinels.map(s => ({ ...s, role: 'sentinel' })))
-        } catch (error) {
-          console.error('Error al buscar sentinels:', error)
-        }
-
-        // Si hay b�squeda activa, reemplazar los usuarios actuales
+        // Si hay búsqueda activa, reemplazar los usuarios actuales
         if (searchTerm) {
           setUsers(searchResults)
         }
@@ -120,15 +76,14 @@ export default function UsuariosPage() {
     }
 
     searchUsers()
-  }, [filters.search, userRole])
+  }, [filters.search])
 
   // Crear o editar usuario
   async function handleSave(data) {
     if (editItem) {
       // Actualizar usuario existente
       try {
-        const updateFunction = editItem.role === 'supervisor' ? updateSupervisor : updateSentinel
-        const response = await updateFunction(editItem.id, data)
+        const response = await updateUser(editItem.id, data)
 
         alert(response.data?.message || response.message || 'Usuario actualizado exitosamente')
 
@@ -142,7 +97,7 @@ export default function UsuariosPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validaci�n:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
@@ -153,10 +108,8 @@ export default function UsuariosPage() {
     } else {
       // Crear nuevo usuario
       try {
-        const createFunction = data.role === 'supervisor' ? createSupervisor : createSentinel
-
         // Verificar permisos antes de crear
-        if (data.role === 'supervisor' && !canCreateSupervisor) {
+        if (data.rol === 'SUPERVISOR' && !canCreateSupervisor) {
           alert('No tienes permisos para crear supervisores')
           return
         }
@@ -166,7 +119,7 @@ export default function UsuariosPage() {
           return
         }
 
-        const response = await createFunction(data)
+        const response = await createUser(data)
 
         alert(response.data?.message || response.message || 'Usuario creado exitosamente')
 
@@ -179,7 +132,7 @@ export default function UsuariosPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validaci�n:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
@@ -190,12 +143,11 @@ export default function UsuariosPage() {
     }
   }
 
-  async function handleDelete(id, role) {
-    if (!confirm('�Est�s seguro de eliminar este usuario?')) return
+  async function handleDelete(id) {
+    if (!confirm('¿Estás seguro de eliminar este usuario?')) return
 
     try {
-      const deleteFunction = role === 'supervisor' ? deleteSupervisor : deleteSentinel
-      const response = await deleteFunction(id)
+      const response = await deleteUser(id)
 
       alert(response.data?.message || response.message || 'Usuario eliminado exitosamente')
 
@@ -225,7 +177,7 @@ export default function UsuariosPage() {
   // Filtrar por rol
   const filteredData = users.filter(user => {
     if (filters.roleFilter === 'all') return true
-    return user.role === filters.roleFilter
+    return user.rol === filters.roleFilter || user.role === filters.roleFilter
   })
 
   return (
@@ -240,11 +192,11 @@ export default function UsuariosPage() {
               onChange={e => setFilters(f => ({ ...f, roleFilter: e.target.value }))}
             >
               <option value="all">Todos los roles</option>
-              {userRole === 'admin' && <option value="supervisor">Supervisores</option>}
-              <option value="sentinel">Sentinels</option>
+              {userRole === 'admin' && <option value="SUPERVISOR">Supervisores</option>}
+              <option value="SENTINEL">Sentinels</option>
             </select>
 
-            {/* B�squeda */}
+            {/* Búsqueda */}
             <div style={{ position: 'relative' }}>
               <FaSearch
                 style={{
@@ -272,12 +224,12 @@ export default function UsuariosPage() {
                     animation: 'spin 1s linear infinite'
                   }}
                 >
-                  �
+                  ⏳
                 </div>
               )}
             </div>
 
-            {/* Bot�n agregar (solo si tiene permisos) */}
+            {/* Botón agregar (solo si tiene permisos) */}
             {canCreate && (
               <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
                 <FaPlus style={{ marginRight: '8px' }} />
@@ -299,7 +251,7 @@ export default function UsuariosPage() {
         </div>
       ) : (
         <div className="table-container-wrapper">
-          {/* Mensaje informativo seg�n permisos */}
+          {/* Mensaje informativo según permisos */}
           {!canCreate && (
             <div style={{
               textAlign: 'center',
@@ -310,7 +262,7 @@ export default function UsuariosPage() {
               border: '1px solid rgba(251, 191, 36, 0.3)'
             }}>
               <p style={{ fontSize: '0.9rem', color: '#f59e0b', margin: '0' }}>
-                9 Como Sentinel, solo puedes ver los usuarios registrados
+                ⚠️ Como Sentinel, solo puedes ver los usuarios registrados
               </p>
             </div>
           )}
