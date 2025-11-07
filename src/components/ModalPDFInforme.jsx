@@ -76,16 +76,45 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
       // OBTENER SOLO LA DIRECCIÓN, NO LAS COORDENADAS
       const obtenerDireccion = () => {
+        console.log('📍 Ubicación completa:', incidencia.ubicacion)
+
         if (incidencia.ubicacion?.address) {
+          console.log('✅ Dirección encontrada:', incidencia.ubicacion.address)
           return incidencia.ubicacion.address
         } else if (incidencia.ubicacion?.coordinates) {
-          // Si no hay dirección pero sí coordenadas, mostrar un mensaje
+          console.log('⚠️ Solo coordenadas disponibles')
           return 'Dirección no especificada (solo coordenadas)'
         } else if (Array.isArray(incidencia.ubicacion)) {
-          // Para ubicaciones antiguas (solo array de coordenadas)
+          console.log('⚠️ Formato antiguo de ubicación')
           return 'Dirección no especificada (solo coordenadas)'
         }
+        console.log('❌ Sin ubicación')
         return 'No especificada'
+      }
+
+      // Generar descripción adicional predeterminada
+      const generarDescripcionAdicional = () => {
+        const hora = obtenerHoraFormateada(incidencia.horaIncidente)
+        const fecha = formatearFecha(incidencia.fechaIncidente)
+        const direccion = obtenerDireccion()
+        const nombreInfractor = incidencia.nombreCompleto || 'NOMBRE NO DISPONIBLE'
+        const cargoPersona = incidencia.cargo || 'GIR'
+        const falta = incidencia.falta || 'Falta no especificada'
+        const supervisorNombre = username ? username.toUpperCase() : 'SUPERVISOR'
+        const bodycamNum = incidencia.bodycamNumber || 'N/A'
+        const bodycamAsignada = incidencia.bodycamAsignadaA || 'persona no especificada'
+        const articuloNum = articulo || 'N/A'
+
+        // Texto de la cita del artículo
+        const citaArticulo = `"${falta} en las instalaciones del centro de labores, sin importar si dicha acción se realiza o no en la jornada laboral, la cual conlleva a la aplicación de la sanción de la amonestación escrita"`
+
+        return `Siendo las ${hora}, del día ${fecha}, en la dirección ${direccion}, la persona ${bodycamAsignada}, con cargo ${cargoPersona}, fue encontrada incurriendo en la presunta falta disciplinaria de ${falta}, durante el monitoreo de Control y Supervisión por el CENTINELA ${supervisorNombre} a través de la BODYCAM ${bodycamNum}.
+
+La BODYCAM ${bodycamNum}, asignada a ${bodycamAsignada} según el KARDEX, fue la que enfocó al ${cargoPersona} infringiendo el Artículo ${articuloNum}.
+
+Que cita: ${citaArticulo}, ya que el personal operativo debe estar en cumplimiento de sus funciones y deberes durante su jornada laboral, por lo tanto, deberían estar atentos y alertas al punto asignado por si ocurriese alguna emergencia o algún tipo de apoyo.
+
+Se adjunta al presente la información de la persona ${bodycamAsignada}, así como las tomas fotográficas de la BODYCAM ${bodycamNum}.`
       }
 
       setFormData({
@@ -108,7 +137,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         bodycam: incidencia.bodycamNumber || '',
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
         supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
-        descripcionAdicional: '',
+        descripcionAdicional: incidencia.asunto === 'Inasistencia' ? '' : generarDescripcionAdicional(),
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: incidencia.fechaFalta || '',
         imagenes: [],
@@ -212,51 +241,36 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     currentLine += 8
     
     doc.setFontSize(9)
-    
+
     doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine, { align: 'justify', maxWidth: 170 })
-    currentLine += 5
+    currentLine += 8
 
-    let textoIncidente = ''
+    // Para incidencias que NO son inasistencias, usar la descripción adicional personalizada
+    if (incidencia.asunto !== 'Inasistencia' && formData.descripcionAdicional) {
+      doc.setFont('helvetica', 'normal')
+      const lineasDescripcion = doc.splitTextToSize(formData.descripcionAdicional, 170)
+      doc.text(lineasDescripcion, 20, currentLine, { align: 'justify', maxWidth: 170 })
+      currentLine += (lineasDescripcion.length * 5) + 5
+    } else if (incidencia.asunto === 'Inasistencia') {
+      // Para inasistencias, mantener el texto original
+      const textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
 
-    if (incidencia.asunto === 'Inasistencia') {
-      textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
-    } else {
-      // USAR SOLO LA DIRECCIÓN EN EL TEXTO DEL PDF
-      textoIncidente = `Siendo las ${formData.horaIncidente} pm, del día ${formData.fechaIncidente}, en ${formData.ubicacion}, jurisdicción de ${formData.jurisdiccion}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, fue encontrado incurriendo en la presente falta disciplinaria de ${formData.falta.toUpperCase()}, durante el monitoreo de Control y Supervisión por el ${formData.supervisor} a través de la BODYCAM (${formData.bodycam}).`
-    }
+      const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
+      doc.text(lineasIncidente, 20, currentLine, { align: 'justify', maxWidth: 170 })
+      currentLine += (lineasIncidente.length * 5) + 3
 
-    const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
-    doc.text(lineasIncidente, 20, currentLine, { align: 'justify', maxWidth: 170 })
-    currentLine += (lineasIncidente.length * 5) + 3
+      const nombreParaPDF = formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno
+      const infoAdicional = `Se adjunta al presente, la información del señor ${nombreParaPDF} y el historial de inasistencias correspondiente.`
 
-    if (incidencia.asunto !== 'Inasistencia') {
-      const textoBodycam = `La BODYCAM (${formData.bodycam}) asignada a ${formData.bodycamAsignadaA} fue la que enfocó al Sereno Conductor infringiendo el Artículo ${formData.articulo}.`
-      const lineasBodycam = doc.splitTextToSize(textoBodycam, 170)
-      doc.text(lineasBodycam, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasBodycam.length * 5) + 3
-    }
+      const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
+      doc.text(lineasInfo, 20, currentLine, { align: 'justify', maxWidth: 170 })
+      currentLine += (lineasInfo.length * 5) + 3
 
-    doc.setFont('helvetica', 'italic')
-    const cita = `Que cita: "${formData.falta} en las instalaciones del centro de labores, sin importar si dicha acción se realiza o no en jornada laboral, la cual conlleva a la aplicación de la sanción de la amonestación escrita", ya que el personal operativo debe estar en cumplimiento de sus funciones y deberes durante su jornada laboral, por lo tanto, deberían estar atentos y alertas al punto asignado por si ocurriese alguna emergencia o algún tipo de apoyo.`
-
-    const lineasCita = doc.splitTextToSize(cita, 170)
-    doc.text(lineasCita, 20, currentLine, { align: 'justify', maxWidth: 170 })
-    currentLine += (lineasCita.length * 5) + 3
-
-    doc.setFont('helvetica', 'normal')
-    const nombreParaPDF = formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno
-    const infoAdicional = incidencia.asunto === 'Inasistencia'
-      ? `Se adjunta al presente, la información del señor ${nombreParaPDF} y el historial de inasistencias correspondiente.`
-      : `Se adjunta al presente, la información del señor ${nombreParaPDF}, las tomas fotográficas de la BODYCAM (${formData.bodycam}) dentro del módulo Santa Rosa.`
-
-    const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
-    doc.text(lineasInfo, 20, currentLine, { align: 'justify', maxWidth: 170 })
-    currentLine += (lineasInfo.length * 5) + 3
-
-    if (formData.descripcionAdicional) {
-      const lineasAdicional = doc.splitTextToSize(formData.descripcionAdicional, 170)
-      doc.text(lineasAdicional, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasAdicional.length * 5) + 5
+      if (formData.descripcionAdicional) {
+        const lineasAdicional = doc.splitTextToSize(formData.descripcionAdicional, 170)
+        doc.text(lineasAdicional, 20, currentLine, { align: 'justify', maxWidth: 170 })
+        currentLine += (lineasAdicional.length * 5) + 5
+      }
     }
     
     if (incidencia.asunto === 'Inasistencia' && inasistenciasHistoricas.length > 0) {
@@ -464,8 +478,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
                 <input
                   type="text"
                   value={formData.ubicacion}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
+                  onChange={e => handleChange('ubicacion', e.target.value)}
                   placeholder="Dirección completa del incidente"
                 />
               </div>
@@ -595,11 +608,16 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
               <div className="editable-section">
                 <label>Descripción adicional (opcional):</label>
-                <textarea 
+                <textarea
                   value={formData.descripcionAdicional}
                   onChange={e => handleChange('descripcionAdicional', e.target.value)}
                   placeholder="Agregar información adicional..."
-                  rows={4}
+                  rows={12}
+                  style={{
+                    fontSize: '12px',
+                    lineHeight: '1.6',
+                    fontFamily: 'inherit'
+                  }}
                 />
               </div>
 
