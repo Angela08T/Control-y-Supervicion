@@ -3,15 +3,17 @@ import api from './config';
 /**
  * Buscar reportes por término (DNI, nombre, etc.)
  * @param {string} searchTerm - Término de búsqueda
+ * @param {number} page - Número de página (default: 1)
+ * @param {number} limit - Cantidad de items por página (default: 10)
  * @returns {Promise} - Respuesta con datos de reportes
  */
-export const searchReport = async (searchTerm) => {
+export const searchReport = async (searchTerm, page = 1, limit = 10) => {
   try {
-    console.log('🔎 searchReport - Parámetro recibido:', searchTerm)
-    console.log('🔎 Haciendo request a: /report con params:', { search: searchTerm })
+    console.log('🔎 searchReport - Parámetros recibidos:', { searchTerm, page, limit })
+    console.log('🔎 Haciendo request a: /report con params:', { search: searchTerm, page, limit })
 
     const response = await api.get(`/report`, {
-      params: { search: searchTerm }
+      params: { search: searchTerm, page, limit }
     });
 
     console.log('🔎 searchReport - Respuesta recibida:', response)
@@ -99,14 +101,25 @@ export function mapFormDataToAPI(form, allLeads) {
 }
 
 /**
- * Obtener reportes con paginación
+ * Obtener reportes con paginación y filtros
  * @param {number} page - Número de página (default: 1)
  * @param {number} limit - Cantidad de items por página (default: 10)
+ * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId }
  * @returns {Promise<Object>} - Objeto con data (reportes) y pagination (metadata)
  */
-export const getReports = async (page = 1, limit = 10) => {
+export const getReports = async (page = 1, limit = 10, filters = {}) => {
   try {
-    const response = await api.get(`/report?page=${page}&limit=${limit}`)
+    // Construir parámetros de consulta
+    const params = { page, limit }
+
+    // Agregar filtros si existen
+    if (filters.lackId) params.lack = filters.lackId
+    if (filters.subjectId) params.subject = filters.subjectId
+    if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId
+
+    console.log('📡 Parámetros de consulta:', params)
+
+    const response = await api.get('/report', { params })
     console.log('📡 Respuesta completa de API:', response.data)
 
     const reports = response.data?.data?.data || []
@@ -309,5 +322,120 @@ export const deleteReport = async (reportId) => {
     } else {
       throw new Error('Error al eliminar reporte: ' + error.message)
     }
+  }
+};
+
+/**
+ * Actualizar un reporte con evidencias (imágenes) y descripción adicional
+ * @param {string} reportId - ID del reporte (UUID)
+ * @param {Array<File>} files - Array de archivos de imagen
+ * @param {Array<string>} descriptions - Array de descripciones (una por cada imagen)
+ * @param {string} message - Descripción adicional del reporte
+ * @returns {Promise<Object>} - Objeto con el reporte actualizado
+ */
+export const updateReportWithEvidences = async (reportId, files = [], descriptions = [], message = '') => {
+  try {
+    const formData = new FormData()
+
+    // Agregar cada imagen al FormData
+    files.forEach((file, index) => {
+      formData.append('files', file)
+    })
+
+    // Agregar cada descripción al FormData
+    descriptions.forEach((desc, index) => {
+      formData.append('descriptions', desc)
+    })
+
+    // Agregar el mensaje (descripción adicional)
+    if (message) {
+      formData.append('message', message)
+    }
+
+    console.log('📤 Actualizando reporte con evidencias:', {
+      reportId,
+      filesCount: files.length,
+      descriptionsCount: descriptions.length,
+      hasMessage: !!message
+    })
+
+    const response = await api.patch(`/report/${reportId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    console.log('✅ Reporte actualizado:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('❌ Error al actualizar reporte:', error)
+    if (error.response) {
+      throw error
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
+    } else {
+      throw new Error('Error al actualizar reporte: ' + error.message)
+    }
+  }
+};
+
+/**
+ * Obtener URL de imagen de evidencia
+ * @param {string} evidencePath - Path de la evidencia (ej: evidence/2025-11-07/7d25c20e-5b8f-4318-885f-087442b2925a.jpeg)
+ * @returns {string} - URL completa para acceder a la imagen
+ */
+export const getEvidenceImageUrl = (evidencePath) => {
+  // Usar la URL base del API configurada (ej: http://192.168.137.217:3021/api)
+  const baseURL = api.defaults.baseURL || 'http://localhost:3000'
+
+  // Asegurarse de que no haya doble slash y que el path no empiece con /
+  const cleanPath = evidencePath.startsWith('/') ? evidencePath.substring(1) : evidencePath
+
+  // Construir URL: baseURL + cleanPath
+  // Ejemplo: http://192.168.137.217:3021/api + / + evidence/2025-11-07/7d25c20e-5b8f-4318-885f-087442b2925a.jpeg
+  const finalURL = `${baseURL}/${cleanPath}`
+  console.log('🖼️ URL de evidencia construida:', finalURL)
+
+  return finalURL
+};
+
+/**
+ * Obtener los detalles completos de un reporte con evidencias
+ * @param {string} reportId - ID del reporte (UUID)
+ * @returns {Promise<Object>} - Objeto con el reporte completo incluyendo evidencias
+ */
+export const getReportWithEvidences = async (reportId) => {
+  try {
+    const response = await api.get(`/report/${reportId}`)
+    console.log('📡 Reporte obtenido con evidencias:', response.data)
+
+    if (response.data?.data) {
+      const report = response.data.data
+
+      // Mapear las evidencias a un formato más manejable
+      const evidences = (report.evidences || []).map(ev => ({
+        id: ev.id,
+        description: ev.description,
+        path: ev.path,
+        imageUrl: getEvidenceImageUrl(ev.path), // Usar path en lugar de id
+        mimetype: ev.mimetype,
+        size: ev.size,
+        createdAt: ev.created_at
+      }))
+
+      return {
+        ...report,
+        evidences,
+        message: report.message || '' // Descripción adicional del reporte
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error('❌ Error al obtener reporte con evidencias:', error)
+    if (error.response?.status === 404) {
+      return null
+    }
+    throw new Error('Error al obtener reporte: ' + error.message)
   }
 };

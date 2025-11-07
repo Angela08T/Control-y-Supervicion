@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf'
 import { useSelector } from 'react-redux'
 import logoSJL from '../assets/logo-sjl.png'
 import { trackPDFDownload } from '../utils/storage'
+import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl } from '../api/report'
 
 function formatearFecha(fecha) {
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
@@ -58,6 +59,10 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     imagenes: [],
     links: ''
   })
+
+  const [loadingEvidences, setLoadingEvidences] = useState(false)
+  const [savingReport, setSavingReport] = useState(false)
+  const [validationErrors, setValidationErrors] = useState([])
 
   useEffect(() => {
     if (incidencia) {
@@ -146,6 +151,102 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
     }
   }, [incidencia])
 
+  // Cargar evidencias existentes del reporte
+  useEffect(() => {
+    async function loadExistingEvidences() {
+      if (!incidencia || !incidencia.id) return
+
+      setLoadingEvidences(true)
+      try {
+        console.log('📥 Cargando evidencias del reporte:', incidencia.id)
+        const reportData = await getReportWithEvidences(incidencia.id)
+
+        if (reportData && reportData.evidences && reportData.evidences.length > 0) {
+          console.log('✅ Evidencias cargadas:', reportData.evidences)
+
+          // Cargar las imágenes existentes y convertirlas a base64 para el PDF
+          const imagenesExistentes = await Promise.all(
+            reportData.evidences.map(async (ev) => {
+              try {
+                console.log('🖼️ Intentando cargar imagen:', ev.imageUrl)
+
+                // Obtener el token de localStorage
+                const getToken = () => {
+                  try {
+                    const persistRoot = localStorage.getItem('persist:root')
+                    if (persistRoot) {
+                      const parsed = JSON.parse(persistRoot)
+                      if (parsed.auth) {
+                        const authState = JSON.parse(parsed.auth)
+                        return authState.token
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error al obtener token:', error)
+                  }
+                  return null
+                }
+
+                const token = getToken()
+
+                // Obtener la imagen como blob con autenticación
+                const response = await fetch(ev.imageUrl, {
+                  method: 'GET',
+                  headers: token ? {
+                    'Authorization': `Bearer ${token}`
+                  } : {}
+                })
+
+                if (!response.ok) {
+                  throw new Error(`Error al cargar imagen: ${response.status} ${response.statusText}`)
+                }
+
+                const blob = await response.blob()
+                console.log('✅ Imagen cargada, tamaño:', blob.size, 'bytes')
+
+                // Convertir blob a base64
+                const base64 = await new Promise((resolve) => {
+                  const reader = new FileReader()
+                  reader.onloadend = () => resolve(reader.result)
+                  reader.readAsDataURL(blob)
+                })
+
+                return {
+                  id: ev.id,
+                  name: `evidence_${ev.id}.jpg`,
+                  url: ev.imageUrl,
+                  base64: base64,
+                  anexo: ev.description || '',
+                  isExisting: true // Marcar como imagen existente
+                }
+              } catch (error) {
+                console.error('❌ Error al cargar imagen:', ev.imageUrl, error)
+                return null
+              }
+            })
+          )
+
+          // Filtrar imágenes que se cargaron exitosamente
+          const imagenesValidas = imagenesExistentes.filter(img => img !== null)
+
+          console.log(`✅ ${imagenesValidas.length} de ${reportData.evidences.length} imágenes cargadas exitosamente`)
+
+          setFormData(prev => ({
+            ...prev,
+            imagenes: imagenesValidas,
+            descripcionAdicional: reportData.message || prev.descripcionAdicional
+          }))
+        }
+      } catch (error) {
+        console.error('❌ Error al cargar evidencias:', error)
+      } finally {
+        setLoadingEvidences(false)
+      }
+    }
+
+    loadExistingEvidences()
+  }, [incidencia])
+
   function handleChange(field, value) {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
@@ -162,12 +263,17 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
             name: file.name,
             url: URL.createObjectURL(file),
             base64: event.target.result,
-            anexo: ''
+            anexo: '',
+            file: file, // Guardar el archivo File para poder subirlo
+            isExisting: false // Marcar como imagen nueva
           }]
         }))
       }
       reader.readAsDataURL(file)
     })
+
+    // Limpiar validación al agregar imágenes
+    setValidationErrors([])
   }
 
   function updateImageAnexo(index, anexo) {
@@ -177,6 +283,11 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         i === index ? { ...img, anexo } : img
       )
     }))
+
+    // Limpiar errores de validación cuando se agrega descripción
+    if (anexo.trim()) {
+      setValidationErrors(prev => prev.filter(i => i !== index))
+    }
   }
 
   function removeImage(index) {
@@ -186,7 +297,59 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
     }))
   }
 
-  function generarPDF() {
+  async function generarPDF() {
+    // Validar que todas las imágenes tengan descripción
+    const errores = []
+    formData.imagenes.forEach((img, index) => {
+      if (!img.anexo || !img.anexo.trim()) {
+        errores.push(index)
+      }
+    })
+
+    if (errores.length > 0) {
+      setValidationErrors(errores)
+      alert(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
+      return
+    }
+
+    // Si hay imágenes nuevas, actualizar el reporte en el backend
+    const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
+
+    if (nuevasImagenes.length > 0 || formData.descripcionAdicional) {
+      setSavingReport(true)
+      try {
+        console.log('💾 Guardando evidencias en el backend...')
+
+        const files = nuevasImagenes.map(img => img.file).filter(Boolean)
+        const descriptions = nuevasImagenes.map(img => img.anexo)
+
+        await updateReportWithEvidences(
+          incidencia.id,
+          files,
+          descriptions,
+          formData.descripcionAdicional
+        )
+
+        console.log('✅ Evidencias guardadas exitosamente')
+      } catch (error) {
+        console.error('❌ Error al guardar evidencias:', error)
+
+        let errorMessage = 'Error al guardar las evidencias en el servidor'
+        if (error.response?.data?.message) {
+          errorMessage = Array.isArray(error.response.data.message)
+            ? 'Errores:\n' + error.response.data.message.join('\n')
+            : error.response.data.message
+        }
+
+        alert(errorMessage)
+        setSavingReport(false)
+        return
+      } finally {
+        setSavingReport(false)
+      }
+    }
+
+    // Generar el PDF
     const doc = new jsPDF()
 
     // Agregar logo de la municipalidad centrado
@@ -662,46 +825,94 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
 
               <div className="editable-section">
                 <label>Adjuntar imágenes:</label>
-                <input 
+                <input
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={handleImageUpload}
+                  disabled={loadingEvidences || savingReport}
                   style={{padding: '8px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px'}}
                 />
+
+                {loadingEvidences && (
+                  <div style={{
+                    padding: '12px',
+                    textAlign: 'center',
+                    color: 'var(--primary)',
+                    fontSize: '0.9rem'
+                  }}>
+                    ⏳ Cargando evidencias existentes...
+                  </div>
+                )}
+
                 {formData.imagenes.length > 0 && (
                   <div className="images-preview">
                     {formData.imagenes.map((img, index) => (
                       <div key={index} className="image-item-container">
                         <div className="image-item">
-                          <img src={img.url} alt={img.name} />
+                          <img src={img.base64 || img.url} alt={img.name} />
+                          {img.isExisting && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '5px',
+                              left: '5px',
+                              background: 'rgba(59, 130, 246, 0.9)',
+                              color: 'white',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 'bold'
+                            }}>
+                              GUARDADA
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
                             className="btn-remove-img"
+                            disabled={savingReport}
                           >
                             ×
                           </button>
                         </div>
                         <div style={{marginTop: '8px'}}>
-                          <label style={{fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px'}}>
-                            Anexo {index + 1} (opcional):
+                          <label style={{
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            display: 'block',
+                            marginBottom: '4px',
+                            color: validationErrors.includes(index) ? '#dc2626' : 'inherit'
+                          }}>
+                            Anexo {index + 1} (OBLIGATORIO):
                           </label>
                           <textarea
                             value={img.anexo || ''}
                             onChange={(e) => updateImageAnexo(index, e.target.value)}
-                            placeholder="Descripción o nota para esta imagen..."
+                            placeholder="⚠️ Descripción OBLIGATORIA para esta imagen..."
                             rows={2}
+                            disabled={savingReport}
                             style={{
                               width: '100%',
                               padding: '6px',
                               fontSize: '11px',
-                              border: '1px solid #ddd',
+                              border: validationErrors.includes(index) ? '2px solid #dc2626' : '1px solid #ddd',
                               borderRadius: '4px',
                               fontFamily: 'inherit',
-                              resize: 'vertical'
+                              resize: 'vertical',
+                              background: validationErrors.includes(index) ? '#fee2e2' : 'white'
                             }}
                           />
+                          {validationErrors.includes(index) && (
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#dc2626',
+                              display: 'block',
+                              marginTop: '4px',
+                              fontWeight: '500'
+                            }}>
+                              ⚠️ Esta imagen requiere una descripción
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -728,9 +939,35 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         </div>
 
         <div className="modal-actions">
-          <button className="btn-secondary" onClick={onClose}>Cancelar</button>
-          <button className="btn-primary" onClick={generarPDF}>Descargar PDF</button>
+          <button
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={savingReport}
+          >
+            Cancelar
+          </button>
+          <button
+            className="btn-primary"
+            onClick={generarPDF}
+            disabled={savingReport || loadingEvidences}
+          >
+            {savingReport ? '💾 Guardando evidencias...' : 'Descargar PDF'}
+          </button>
         </div>
+
+        {formData.imagenes.length > 0 && (
+          <div style={{
+            padding: '12px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '6px',
+            marginTop: '10px',
+            fontSize: '0.9rem',
+            color: 'var(--text-secondary)'
+          }}>
+            <strong>ℹ️ Información:</strong> Al hacer clic en "Descargar PDF", las imágenes nuevas y la descripción adicional se guardarán automáticamente en el servidor.
+          </div>
+        )}
       </div>
     </div>
   )
