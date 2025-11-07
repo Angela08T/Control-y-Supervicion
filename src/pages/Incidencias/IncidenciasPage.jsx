@@ -6,6 +6,8 @@ import ModalPDFInforme from '../../components/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport } from '../../api/report'
 import useSubjects from '../../hooks/Subject/useSubjects'
+import useLacks from '../../hooks/Lack/useLacks'
+import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
@@ -21,7 +23,10 @@ export default function IncidenciasPage() {
     asunto: 'Todos',
     turno: 'Todos',
     tipoInasistencia: 'Todos',
-    search: ''
+    search: '',
+    lackId: '', // Filtro por ID de falta
+    subjectId: '', // Filtro por ID de asunto
+    jurisdictionId: '' // Filtro por ID de jurisdicción
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
@@ -37,16 +42,28 @@ export default function IncidenciasPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger para forzar recarga
   const [searchResult, setSearchResult] = useState(null) // Resultado de búsqueda por ID
   const [isSearching, setIsSearching] = useState(false) // Indica si está buscando
+  const [searchPagination, setSearchPagination] = useState(null) // Paginación de búsqueda
+  const [isSearchMode, setIsSearchMode] = useState(false) // Indica si está en modo búsqueda
 
   const { subjects, loading: subjectsLoading } = useSubjects()
+  const { lacks, loading: lacksLoading } = useLacks()
+  const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
 
-  // 🔹 NUEVO: cargar incidencias desde la API con paginación
+  // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
     async function fetchIncidencias() {
       setLoading(true)
       try {
+        // Construir objeto de filtros solo con valores no vacíos
+        const apiFilters = {}
+        if (filters.lackId) apiFilters.lackId = filters.lackId
+        if (filters.subjectId) apiFilters.subjectId = filters.subjectId
+        if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
+
         console.log(`📡 Obteniendo incidencias desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
-        const result = await getReports(currentPage, itemsPerPage)
+        console.log('🔍 Filtros aplicados:', apiFilters)
+
+        const result = await getReports(currentPage, itemsPerPage, apiFilters)
         console.log('✅ Incidencias obtenidas:', result)
         console.log('📊 Paginación:', {
           currentPage: result.pagination.currentPage,
@@ -68,7 +85,7 @@ export default function IncidenciasPage() {
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger])
+  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -162,7 +179,10 @@ export default function IncidenciasPage() {
 
   // 🔹 Funciones de paginación
   function handlePageChange(newPage) {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
+    // Usar searchPagination si está en modo búsqueda, sino usar pagination normal
+    const paginationToUse = isSearchMode && searchPagination ? searchPagination : pagination
+
+    if (newPage >= 1 && newPage <= paginationToUse.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' }) // Scroll to top al cambiar página
     }
@@ -191,11 +211,23 @@ export default function IncidenciasPage() {
   useEffect(() => {
     const searchTerm = filters.search.trim()
 
-    // Si no hay término de búsqueda, limpiar resultados
+    // Si no hay término de búsqueda, limpiar resultados y salir del modo búsqueda
     if (!searchTerm) {
       setSearchResult(null)
+      setSearchPagination(null)
+      // Solo resetear página si estábamos en modo búsqueda
+      if (isSearchMode) {
+        setCurrentPage(1)
+      }
+      setIsSearchMode(false)
       return
     }
+
+    // Activar modo búsqueda (y resetear a página 1 solo si acabamos de entrar al modo búsqueda)
+    if (!isSearchMode) {
+      setCurrentPage(1)
+    }
+    setIsSearchMode(true)
 
     // Si es un UUID, buscar por ID
     if (isUUID(searchTerm)) {
@@ -208,13 +240,16 @@ export default function IncidenciasPage() {
           if (result.found && result.data.length > 0) {
             console.log('✅ Incidencia encontrada:', result.data[0])
             setSearchResult(result.data)
+            setSearchPagination(null) // Búsqueda por ID no tiene paginación
           } else {
             console.log('⚠️ No se encontró incidencia con ese ID')
             setSearchResult([])
+            setSearchPagination(null)
           }
         } catch (error) {
           console.error('❌ Error al buscar por ID:', error)
           setSearchResult(null)
+          setSearchPagination(null)
         } finally {
           setIsSearching(false)
         }
@@ -226,22 +261,23 @@ export default function IncidenciasPage() {
       const searchByFields = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando incidencia por campos:', searchTerm)
-          const response = await searchReport(searchTerm)
+          console.log('🔍 Buscando incidencia por campos:', searchTerm, 'página:', currentPage)
+
+          // Construir la URL con paginación
+          const response = await searchReport(searchTerm, currentPage, itemsPerPage)
 
           // DEBUG: Ver la respuesta completa de la API
           console.log('📡 Respuesta COMPLETA de searchReport:', response)
-          console.log('📡 response.data:', response?.data)
-          console.log('📡 response.data.data:', response?.data?.data)
 
           // La API devuelve los datos en response.data?.data?.data
           const results = response?.data?.data || []
+          const paginationData = response?.data || {}
 
           console.log('📊 Resultados extraídos:', results)
-          console.log('📊 Cantidad de resultados:', results.length)
+          console.log('📊 Paginación:', paginationData)
 
           if (results.length > 0) {
-            console.log('✅ Incidencias encontradas:', results)
+            console.log('✅ Incidencias encontradas:', results.length)
             // Transformar los resultados al formato esperado
             const transformed = results.map(r => ({
               id: r.id,
@@ -265,15 +301,35 @@ export default function IncidenciasPage() {
               createdAt: r.lack?.created_at || r.date,
               updatedAt: r.lack?.updated_at || r.date
             }))
+
             setSearchResult(transformed)
+
+            // Guardar paginación de búsqueda
+            const currentPageNum = paginationData.currentPage || currentPage
+            const totalNum = paginationData.totalCount || transformed.length
+            const perPageNum = itemsPerPage
+            const totalPagesNum = paginationData.totalPages || Math.ceil(totalNum / perPageNum)
+            const from = totalNum === 0 ? 0 : ((currentPageNum - 1) * perPageNum) + 1
+            const to = Math.min(currentPageNum * perPageNum, totalNum)
+
+            setSearchPagination({
+              currentPage: currentPageNum,
+              totalPages: totalPagesNum,
+              perPage: perPageNum,
+              total: totalNum,
+              from: from,
+              to: to
+            })
           } else {
             console.log('⚠️ No se encontraron incidencias con ese término')
             setSearchResult([])
+            setSearchPagination(null)
           }
         } catch (error) {
           console.error('❌ Error al buscar por campos:', error)
           console.error('❌ Error completo:', error.response || error)
           setSearchResult(null)
+          setSearchPagination(null)
         } finally {
           setIsSearching(false)
         }
@@ -281,23 +337,15 @@ export default function IncidenciasPage() {
 
       searchByFields()
     }
-  }, [filters.search])
+  }, [filters.search, currentPage, itemsPerPage])
 
-  // 🔹 Filtros
+  // 🔹 Filtros locales (solo turno, los demás se aplican en el backend)
   const filteredData = searchResult !== null
     ? searchResult // Si hay resultado de búsqueda, mostrar los resultados de la API
     : incidencias.filter(item => {
-        // Solo aplicar filtros cuando NO hay búsqueda activa
-        const matchAsunto = filters.asunto === 'Todos' || item.asunto === filters.asunto
+        // Solo aplicar filtro de turno localmente (los demás ya vienen filtrados del backend)
         const matchTurno = filters.turno === 'Todos' || item.turno === filters.turno
-        const matchTipoInasistencia =
-          filters.tipoInasistencia === 'Todos' || item.tipoInasistencia === filters.tipoInasistencia
-
-        if (filters.asunto === 'Inasistencia') {
-          return matchAsunto && matchTurno && matchTipoInasistencia
-        }
-
-        return matchAsunto && matchTurno
+        return matchTurno
       })
 
   return (
@@ -306,34 +354,76 @@ export default function IncidenciasPage() {
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
           <h2>CONTROL Y SUPERVISIÓN</h2>
           <div className="controls">
+            {/* Filtro por Asunto (Subject) - Envía ID al backend */}
             {subjectsLoading ? (
               <select disabled>
                 <option>Cargando asuntos...</option>
               </select>
             ) : (
               <select
-                value={filters.asunto}
-                onChange={e =>
-                  setFilters(f => ({ ...f, asunto: e.target.value, tipoInasistencia: 'Todos' }))
-                }
+                value={filters.subjectId}
+                onChange={e => {
+                  const selectedId = e.target.value
+                  const selectedSubject = subjects.find(s => s.id === selectedId)
+                  setFilters(f => ({
+                    ...f,
+                    subjectId: selectedId,
+                    asunto: selectedSubject ? selectedSubject.name : 'Todos',
+                    tipoInasistencia: 'Todos'
+                  }))
+                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                }}
               >
-                <option value="Todos">Filtrar por asunto</option>
+                <option value="">Filtrar por asunto</option>
                 {subjects.map(subject => (
-                  <option key={subject.id} value={subject.name}>
+                  <option key={subject.id} value={subject.id}>
                     {subject.name}
                   </option>
                 ))}
               </select>
             )}
 
-            {filters.asunto === 'Inasistencia' && (
+            {/* Filtro por Falta (Lack) - Envía ID al backend */}
+            {lacksLoading ? (
+              <select disabled>
+                <option>Cargando faltas...</option>
+              </select>
+            ) : (
               <select
-                value={filters.tipoInasistencia}
-                onChange={e => setFilters(f => ({ ...f, tipoInasistencia: e.target.value }))}
+                value={filters.lackId}
+                onChange={e => {
+                  setFilters(f => ({ ...f, lackId: e.target.value }))
+                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                }}
               >
-                <option value="Todos">Todos los tipos</option>
-                <option value="Justificada">Justificada</option>
-                <option value="Injustificada">Injustificada</option>
+                <option value="">Filtrar por falta</option>
+                {lacks.map(lack => (
+                  <option key={lack.id} value={lack.id}>
+                    {lack.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Filtro por Jurisdicción - Envía ID al backend */}
+            {jurisdictionsLoading ? (
+              <select disabled>
+                <option>Cargando jurisdicciones...</option>
+              </select>
+            ) : (
+              <select
+                value={filters.jurisdictionId}
+                onChange={e => {
+                  setFilters(f => ({ ...f, jurisdictionId: e.target.value }))
+                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                }}
+              >
+                <option value="">Filtrar por jurisdicción</option>
+                {jurisdictions.map(jurisdiction => (
+                  <option key={jurisdiction.id} value={jurisdiction.id}>
+                    {jurisdiction.name}
+                  </option>
+                ))}
               </select>
             )}
 
@@ -456,153 +546,158 @@ export default function IncidenciasPage() {
             onDelete={handleDelete}
             onEdit={handleEdit}
             filtroAsunto={filters.asunto}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={searchResult !== null ? ((isSearchMode && searchPagination) ? searchPagination.from - 1 : 0) : pagination.from - 1}
             canDelete={permissions.canDelete}
           />
 
-          {/* Controles de paginación (ocultar cuando se busca por ID) */}
-          {searchResult === null && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              marginTop: '20px',
-              background: 'var(--card-bg)',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-              gap: '15px'
-            }}>
-            {/* Lado izquierdo: Contador y selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          {/* Controles de paginación (mostrar para búsqueda con paginación o listado normal) */}
+          {(!isSearchMode || (isSearchMode && searchPagination)) && (() => {
+            // Usar searchPagination si está en modo búsqueda, sino usar pagination normal
+            const paginationData = isSearchMode && searchPagination ? searchPagination : pagination
+
+            return (
               <div style={{
-                color: 'var(--text)',
-                fontSize: '0.95rem',
-                fontWeight: '500'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '20px',
+                marginTop: '20px',
+                background: 'var(--card-bg)',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                flexWrap: 'wrap',
+                gap: '15px'
               }}>
-                {pagination.from}-{pagination.to} de {pagination.total}
-              </div>
-
-              {/* Selector de items por página */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Mostrar:
-                </label>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg)',
+                {/* Lado izquierdo: Contador y selector */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{
                     color: 'var(--text)',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem'
-                  }}
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                    fontSize: '0.95rem',
+                    fontWeight: '500'
+                  }}>
+                    {paginationData.from}-{paginationData.to} de {paginationData.total}
+                  </div>
+
+                  {/* Selector de items por página */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                      Mostrar:
+                    </label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        color: 'var(--text)',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Lado derecho: Botones de navegación */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className="btn-secondary"
+                    style={{
+                      padding: '8px 16px',
+                      opacity: currentPage === 1 ? 0.5 : 1,
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    ← Anterior
+                  </button>
+
+                  {/* Números de página - solo si hay más de 1 página */}
+                  {paginationData.totalPages > 1 && (
+                    <div style={{
+                      display: 'flex',
+                      gap: '5px',
+                      alignItems: 'center'
+                    }}>
+                      {Array.from({ length: Math.min(5, paginationData.totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (paginationData.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= paginationData.totalPages - 2) {
+                          pageNum = paginationData.totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            style={{
+                              padding: '8px 12px',
+                              background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
+                              color: currentPage === pageNum ? 'white' : 'var(--text)',
+                              border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontWeight: currentPage === pageNum ? 'bold' : 'normal',
+                              minWidth: '40px'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Indicador de página actual si solo hay 1 página */}
+                  {paginationData.totalPages === 1 && (
+                    <div style={{
+                      padding: '8px 12px',
+                      background: 'var(--primary)',
+                      color: 'white',
+                      border: '1px solid var(--primary)',
+                      borderRadius: '4px',
+                      fontWeight: 'bold',
+                      minWidth: '40px',
+                      textAlign: 'center'
+                    }}>
+                      1
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleNextPage}
+                    disabled={currentPage === paginationData.totalPages}
+                    className="btn-secondary"
+                    style={{
+                      padding: '8px 16px',
+                      opacity: currentPage === paginationData.totalPages ? 0.5 : 1,
+                      cursor: currentPage === paginationData.totalPages ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    Siguiente →
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Lado derecho: Botones de navegación */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <button
-                onClick={handlePreviousPage}
-                disabled={currentPage === 1}
-                className="btn-secondary"
-                style={{
-                  padding: '8px 16px',
-                  opacity: currentPage === 1 ? 0.5 : 1,
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
-              >
-                ← Anterior
-              </button>
-
-              {/* Números de página - solo si hay más de 1 página */}
-              {pagination.totalPages > 1 && (
-                <div style={{
-                  display: 'flex',
-                  gap: '5px',
-                  alignItems: 'center'
-                }}>
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (pagination.totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= pagination.totalPages - 2) {
-                      pageNum = pagination.totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        style={{
-                          padding: '8px 12px',
-                          background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                          color: currentPage === pageNum ? 'white' : 'var(--text)',
-                          border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                          minWidth: '40px'
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Indicador de página actual si solo hay 1 página */}
-              {pagination.totalPages === 1 && (
-                <div style={{
-                  padding: '8px 12px',
-                  background: 'var(--primary)',
-                  color: 'white',
-                  border: '1px solid var(--primary)',
-                  borderRadius: '4px',
-                  fontWeight: 'bold',
-                  minWidth: '40px',
-                  textAlign: 'center'
-                }}>
-                  1
-                </div>
-              )}
-
-              <button
-                onClick={handleNextPage}
-                disabled={currentPage === pagination.totalPages}
-                className="btn-secondary"
-                style={{
-                  padding: '8px 16px',
-                  opacity: currentPage === pagination.totalPages ? 0.5 : 1,
-                  cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
-              >
-                Siguiente →
-              </button>
-            </div>
-          </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
