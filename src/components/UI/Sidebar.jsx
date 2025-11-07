@@ -26,8 +26,15 @@ const menuItems = {
       path: '/dashboard/admin/bodycam',
       label: 'Bodycams',
       svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <rect x="7" y="2" width="10" height="20" rx="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="7" r="2.5"/>
+          <circle cx="12" cy="7" r="1" fill="currentColor"/>
+          <circle cx="9.5" cy="4" r="0.5" fill="currentColor"/>
+          <circle cx="14.5" cy="4" r="0.5" fill="currentColor"/>
+          <line x1="9" y1="13" x2="15" y2="13" strokeLinecap="round"/>
+          <rect x="9.5" y="17" width="5" height="1.5" rx="0.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="9" y1="20" x2="15" y2="20" strokeLinecap="round"/>
         </svg>
       )
     },
@@ -157,8 +164,15 @@ const menuItems = {
       path: '/dashboard/supervisor/bodycam',
       label: 'Bodycams',
       svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <rect x="7" y="2" width="10" height="20" rx="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="7" r="2.5"/>
+          <circle cx="12" cy="7" r="1" fill="currentColor"/>
+          <circle cx="9.5" cy="4" r="0.5" fill="currentColor"/>
+          <circle cx="14.5" cy="4" r="0.5" fill="currentColor"/>
+          <line x1="9" y1="13" x2="15" y2="13" strokeLinecap="round"/>
+          <rect x="9.5" y="17" width="5" height="1.5" rx="0.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="9" y1="20" x2="15" y2="20" strokeLinecap="round"/>
         </svg>
       )
     },
@@ -195,8 +209,15 @@ const menuItems = {
       path: '/dashboard/centinela/bodycam',
       label: 'Bodycams',
       svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <rect x="7" y="2" width="10" height="20" rx="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="7" r="2.5"/>
+          <circle cx="12" cy="7" r="1" fill="currentColor"/>
+          <circle cx="9.5" cy="4" r="0.5" fill="currentColor"/>
+          <circle cx="14.5" cy="4" r="0.5" fill="currentColor"/>
+          <line x1="9" y1="13" x2="15" y2="13" strokeLinecap="round"/>
+          <rect x="9.5" y="17" width="5" height="1.5" rx="0.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="9" y1="20" x2="15" y2="20" strokeLinecap="round"/>
         </svg>
       )
     }

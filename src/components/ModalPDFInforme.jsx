@@ -51,14 +51,12 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     articulo: '',
     bodycam: '',
     bodycamAsignadaA: '',
-    encargadoBodycam: '',
     supervisor: '',
     descripcionAdicional: '',
     tipoInasistencia: '',
     fechaFalta: '',
     imagenes: [],
-    links: '',
-    firma: null
+    links: ''
   })
 
   useEffect(() => {
@@ -109,14 +107,12 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         articulo,
         bodycam: incidencia.bodycamNumber || '',
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
-        encargadoBodycam: incidencia.encargadoBodycam || '',
         supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
         descripcionAdicional: '',
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: incidencia.fechaFalta || '',
         imagenes: [],
-        links: '',
-        firma: null
+        links: ''
       })
     }
   }, [incidencia])
@@ -158,30 +154,6 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     setFormData(prev => ({
       ...prev,
       imagenes: prev.imagenes.filter((_, i) => i !== index)
-    }))
-  }
-
-  function handleFirmaUpload(e) {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setFormData(prev => ({
-          ...prev,
-          firma: {
-            name: file.name,
-            base64: event.target.result
-          }
-        }))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  function removeFirma() {
-    setFormData(prev => ({
-      ...prev,
-      firma: null
     }))
   }
 
@@ -258,7 +230,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     currentLine += (lineasIncidente.length * 5) + 3
 
     if (incidencia.asunto !== 'Inasistencia') {
-      const textoBodycam = `La BODYCAM (${formData.bodycam}) asignada a ${formData.bodycamAsignadaA}, bajo responsabilidad de ${formData.encargadoBodycam}, fue la que enfocó al Sereno Conductor infringiendo el Artículo ${formData.articulo}.`
+      const textoBodycam = `La BODYCAM (${formData.bodycam}) asignada a ${formData.bodycamAsignadaA} fue la que enfocó al Sereno Conductor infringiendo el Artículo ${formData.articulo}.`
       const lineasBodycam = doc.splitTextToSize(textoBodycam, 170)
       doc.text(lineasBodycam, 20, currentLine, { align: 'justify', maxWidth: 170 })
       currentLine += (lineasBodycam.length * 5) + 3
@@ -377,27 +349,6 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
       const lineasLinks = doc.splitTextToSize(formData.links, 170)
       doc.text(lineasLinks, 20, currentLine)
       currentLine += (lineasLinks.length * 5) + 10
-    }
-    
-    if (formData.firma) {
-      if (currentLine > 200) {
-        doc.addPage()
-        currentLine = 20
-      }
-      
-      try {
-        doc.addImage(formData.firma.base64, 'JPEG', 20, currentLine, 60, 30)
-        currentLine += 35
-        
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(9)
-        doc.text('Firma Digital', 20, currentLine)
-        currentLine += 5
-        doc.setFont('helvetica', 'normal')
-        doc.text('Control y Supervisión', 20, currentLine)
-      } catch (error) {
-        console.error('Error al agregar firma:', error)
-      }
     }
     
     const pageCount = doc.internal.getNumberOfPages()
@@ -623,19 +574,10 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
                   <div className="editable-section">
                     <label>Bodycam asignada a:</label>
-                    <input 
+                    <input
                       type="text"
                       value={formData.bodycamAsignadaA}
                       onChange={e => handleChange('bodycamAsignadaA', e.target.value)}
-                    />
-                  </div>
-
-                  <div className="editable-section">
-                    <label>Encargado de bodycam:</label>
-                    <input 
-                      type="text"
-                      value={formData.encargadoBodycam}
-                      onChange={e => handleChange('encargadoBodycam', e.target.value)}
                     />
                   </div>
                 </>
@@ -748,45 +690,12 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
               <div className="editable-section">
                 <label>Links de referencia:</label>
-                <textarea 
+                <textarea
                   value={formData.links}
                   onChange={e => handleChange('links', e.target.value)}
                   placeholder="https://ejemplo.com&#10;https://otro-link.com"
                   rows={3}
                 />
-              </div>
-
-              <div className="editable-section">
-                <label>Firma digital (imagen):</label>
-                <input 
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFirmaUpload}
-                  style={{padding: '8px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px'}}
-                />
-                {formData.firma && (
-                  <div style={{marginTop: '10px', padding: '8px', background: '#f0f8f0', border: '1px solid #90EE90', borderRadius: '4px'}}>
-                    <p style={{fontSize: '12px', color: '#006400', margin: '0'}}>
-                      ✓ Firma cargada correctamente. Se incluirá en el PDF con fondo blanco.
-                    </p>
-                    <button 
-                      type="button"
-                      onClick={removeFirma}
-                      style={{
-                        marginTop: '5px',
-                        background: '#ff4444',
-                        color: 'white',
-                        border: 'none',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Eliminar firma
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 

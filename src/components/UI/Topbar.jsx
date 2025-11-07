@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { FaSun, FaMoon, FaBell, FaSignOutAlt } from 'react-icons/fa'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
@@ -8,14 +8,11 @@ export default function Topbar() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { username, role } = useSelector((state) => state.auth)
-  const [isDarkMode, setIsDarkMode] = useState(true)
 
+  // Forzar modo claro siempre (modo oscuro deshabilitado temporalmente)
   useEffect(() => {
-    const savedTheme = localStorage.getItem('centinela-theme')
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark')
-      document.documentElement.setAttribute('data-theme', savedTheme)
-    }
+    document.documentElement.setAttribute('data-theme', 'light')
+    localStorage.setItem('centinela-theme', 'light')
   }, [])
 
   const handleLogout = () => {
@@ -23,11 +20,10 @@ export default function Topbar() {
     navigate('/login')
   }
 
+  // Función deshabilitada - para reactivar más adelante
   const toggleTheme = () => {
-    const newTheme = isDarkMode ? 'light' : 'dark'
-    setIsDarkMode(!isDarkMode)
-    document.documentElement.setAttribute('data-theme', newTheme)
-    localStorage.setItem('centinela-theme', newTheme)
+    // Deshabilitado temporalmente
+    console.log('Cambio de tema deshabilitado temporalmente')
   }
 
   return (
@@ -48,9 +44,14 @@ export default function Topbar() {
           <span className="notification-badge">3</span>
         </div>
 
-        {/* Toggle de tema */}
-        <button className="theme-toggle" onClick={toggleTheme} title={isDarkMode ? 'Modo claro' : 'Modo oscuro'}>
-          {isDarkMode ? <FaSun /> : <FaMoon />}
+        {/* Toggle de tema - Deshabilitado temporalmente */}
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title="Cambio de tema deshabilitado temporalmente"
+          style={{ opacity: 0.5, cursor: 'not-allowed' }}
+        >
+          <FaSun />
         </button>
 
         <span className="user-name">{username || 'Usuario'}</span>

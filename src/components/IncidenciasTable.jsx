@@ -34,7 +34,6 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
                 <>
                   <th>N° Bodycam</th>
                   <th>Bodycam Asignada</th>
-                  <th>Encargado Bodycam</th>
                 </>
               )}
               <th>Dirigido a</th>
@@ -46,8 +45,8 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
               <tr>
                 <td colSpan={
                   mostrarTipoInasistencia ?
-                  (mostrarCamposBodycam ? 18 : 15) :
-                  (mostrarCamposBodycam ? 17 : 14)
+                  (mostrarCamposBodycam ? 17 : 15) :
+                  (mostrarCamposBodycam ? 16 : 14)
                 } style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
                   No hay incidencias registradas
                 </td>
@@ -83,7 +82,6 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
                   <>
                     <td>{item.bodycamNumber || '-'}</td>
                     <td>{item.bodycamAsignadaA || '-'}</td>
-                    <td>{item.encargadoBodycam || '-'}</td>
                   </>
                 )}
                 <td>{item.dirigidoA || '-'}</td>
