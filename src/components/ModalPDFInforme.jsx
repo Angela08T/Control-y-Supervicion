@@ -191,85 +191,88 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
 
     // Agregar logo de la municipalidad centrado
     try {
+      // Crear una nueva imagen y esperar a que se cargue
       const img = new Image()
+      img.crossOrigin = 'Anonymous'
       img.src = logoSJL
+
       // Logo más ancho y centrado (105 es el centro - 25 para centrar logo de 50x30)
-      doc.addImage(img, 'PNG', 80, 10, 50, 30)
+      doc.addImage(logoSJL, 'PNG', 80, 10, 50, 30)
     } catch (error) {
       console.error('Error al cargar logo:', error)
     }
 
     // Encabezado
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
+    doc.setFontSize(10)
     doc.text('"Año de la recuperación y consolidación de la economía peruana"', 105, 45, { align: 'center' })
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
+    doc.setFontSize(11)
 
     const startY = 55
     let currentLine = startY
-    
+
     doc.text(`INFORME N° ${formData.numeroInforme}`, 20, currentLine)
-    currentLine += 8
-    
+    currentLine += 9
+
     doc.text(`A       :    Sr. ${formData.destinatarioNombre.toUpperCase()}`, 20, currentLine)
-    currentLine += 5
-    
+    currentLine += 6
+
     doc.text(`             ${formData.destinatarioCargo}`, 20, currentLine)
-    currentLine += 7
-    
+    currentLine += 8
+
     if (incidencia.cc && incidencia.cc.length > 0) {
       doc.text(`CC      :    ${incidencia.cc.join(', ')}`, 20, currentLine)
-      currentLine += 7
+      currentLine += 8
     }
-    
+
     doc.text(`DE      :    CONTROL Y SUPERVISIÓN`, 20, currentLine)
-    currentLine += 7
-    
+    currentLine += 8
+
     doc.text(`ASUNTO  :    ${incidencia.asunto.toUpperCase()}`, 20, currentLine)
-    currentLine += 7
+    currentLine += 8
 
     // Agregar tipo de falta debajo del asunto
     doc.text(`FALTA   :    ${formData.falta.toUpperCase()}`, 20, currentLine)
+    currentLine += 8
+
+    doc.text(`FECHA   :    San Juan de Lurigancho, ${formData.fecha}`, 20, currentLine)
     currentLine += 7
     
-    doc.text(`FECHA   :    San Juan de Lurigancho, ${formData.fecha}`, 20, currentLine)
-    currentLine += 6
-    
     doc.line(20, currentLine, 190, currentLine)
-    currentLine += 8
-    
-    doc.setFontSize(9)
+    currentLine += 10
+
+    doc.setFontSize(11)
 
     doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine, { align: 'justify', maxWidth: 170 })
-    currentLine += 8
+    currentLine += 10
 
     // Para incidencias que NO son inasistencias, usar la descripción adicional personalizada
     if (incidencia.asunto !== 'Inasistencia' && formData.descripcionAdicional) {
       doc.setFont('helvetica', 'normal')
       const lineasDescripcion = doc.splitTextToSize(formData.descripcionAdicional, 170)
       doc.text(lineasDescripcion, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasDescripcion.length * 5) + 5
+      currentLine += (lineasDescripcion.length * 6) + 8
     } else if (incidencia.asunto === 'Inasistencia') {
       // Para inasistencias, mantener el texto original
       const textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
 
       const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
       doc.text(lineasIncidente, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasIncidente.length * 5) + 3
+      currentLine += (lineasIncidente.length * 6) + 5
 
       const nombreParaPDF = formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno
       const infoAdicional = `Se adjunta al presente, la información del señor ${nombreParaPDF} y el historial de inasistencias correspondiente.`
 
       const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
       doc.text(lineasInfo, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasInfo.length * 5) + 3
+      currentLine += (lineasInfo.length * 6) + 5
 
       if (formData.descripcionAdicional) {
         const lineasAdicional = doc.splitTextToSize(formData.descripcionAdicional, 170)
         doc.text(lineasAdicional, 20, currentLine, { align: 'justify', maxWidth: 170 })
-        currentLine += (lineasAdicional.length * 5) + 5
+        currentLine += (lineasAdicional.length * 6) + 8
       }
     }
     
@@ -278,71 +281,71 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         doc.addPage()
         currentLine = 20
       }
-      
+
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
+      doc.setFontSize(11)
       doc.text('HISTORIAL DE INASISTENCIAS DEL PERSONAL:', 20, currentLine)
-      currentLine += 8
-      
+      currentLine += 10
+
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      
+      doc.setFontSize(10)
+
       doc.text('Fecha', 20, currentLine)
       doc.text('Falta', 60, currentLine)
       doc.text('Tipo', 120, currentLine)
       doc.text('Fecha Falta', 150, currentLine)
-      currentLine += 4
+      currentLine += 5
       doc.line(20, currentLine, 190, currentLine)
-      currentLine += 6
-      
-      inasistenciasHistoricas.forEach((inasistencia, index) => {
+      currentLine += 8
+
+      inasistenciasHistoricas.forEach((inasistencia) => {
         if (currentLine > 270) {
           doc.addPage()
           currentLine = 20
         }
-        
+
         doc.text(formatearFecha(inasistencia.fechaIncidente), 20, currentLine)
         doc.text(inasistencia.falta, 60, currentLine)
         doc.text(inasistencia.tipoInasistencia || 'No especificado', 120, currentLine)
         doc.text(inasistencia.fechaFalta || inasistencia.fechaIncidente, 150, currentLine)
-        currentLine += 6
+        currentLine += 7
       })
-      
-      currentLine += 10
+
+      currentLine += 12
     }
     
     if (formData.imagenes.length > 0) {
-      formData.imagenes.forEach((img, index) => {
+      formData.imagenes.forEach((img, imgIndex) => {
         // Verificar si hay espacio suficiente para imagen + anexo
-        const espacioNecesario = img.anexo ? 85 : 70
+        const espacioNecesario = img.anexo ? 100 : 85
         if (currentLine > (280 - espacioNecesario)) {
           doc.addPage()
           currentLine = 20
         }
 
         try {
-          // Configuración de imagen
+          // Configuración de imagen - más grande para que llene mejor la página
           const pageWidth = doc.internal.pageSize.getWidth()
-          const imageWidth = 100  // Ancho de la imagen en mm
-          const imageHeight = 75  // Alto de la imagen en mm
+          const imageWidth = 120  // Ancho de la imagen en mm (aumentado)
+          const imageHeight = 90  // Alto de la imagen en mm (aumentado)
           const imageX = (pageWidth - imageWidth) / 2  // Centrar horizontalmente
 
           // Agregar imagen centrada
           doc.addImage(img.base64, 'JPEG', imageX, currentLine, imageWidth, imageHeight)
-          currentLine += imageHeight + 5
+          currentLine += imageHeight + 8
 
           // Agregar anexo si existe
           if (img.anexo) {
             doc.setFont('helvetica', 'italic')
-            doc.setFontSize(8)
-            const lineasAnexo = doc.splitTextToSize(`Anexo ${index + 1}: ${img.anexo}`, 170)
+            doc.setFontSize(10)
+            const lineasAnexo = doc.splitTextToSize(`Anexo ${imgIndex + 1}: ${img.anexo}`, 170)
             // Centrar el texto usando pageWidth / 2
             doc.text(lineasAnexo, pageWidth / 2, currentLine, { align: 'center', maxWidth: 170 })
-            currentLine += (lineasAnexo.length * 4) + 10
+            currentLine += (lineasAnexo.length * 5) + 12
             doc.setFont('helvetica', 'normal')
-            doc.setFontSize(9)
+            doc.setFontSize(11)
           } else {
-            currentLine += 5
+            currentLine += 8
           }
         } catch (error) {
           console.error('Error al agregar imagen:', error)
@@ -356,18 +359,18 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         currentLine = 20
       }
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
+      doc.setFontSize(11)
       doc.text('Links de referencia:', 20, currentLine)
-      currentLine += 5
+      currentLine += 7
       doc.setFont('helvetica', 'normal')
       const lineasLinks = doc.splitTextToSize(formData.links, 170)
       doc.text(lineasLinks, 20, currentLine)
-      currentLine += (lineasLinks.length * 5) + 10
+      currentLine += (lineasLinks.length * 6) + 10
     }
-    
+
     const pageCount = doc.internal.getNumberOfPages()
     doc.setPage(pageCount)
-    doc.setFontSize(8)
+    doc.setFontSize(9)
     doc.text('Sede CECOM de la Sub Gerencia de Serenazgo:', 20, 280)
     doc.text('Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427', 20, 285)
 
