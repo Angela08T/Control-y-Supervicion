@@ -91,7 +91,6 @@ export function mapFormDataToAPI(form, allLeads) {
   if (form.bodycamId) {
     payload.bodycam_id = form.bodycamId;
     payload.bodycam_dni = form.dni || '';
-    payload.bodycam_supervisor = form.encargadoBodycam || '';
   }
 
   console.log('📤 Payload final a enviar:', JSON.stringify(payload, null, 2));

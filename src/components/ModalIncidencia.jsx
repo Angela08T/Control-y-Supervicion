@@ -14,7 +14,6 @@ import {
   FaClipboardList,
   FaExclamationTriangle,
   FaClock,
-  FaVideo,
   FaMapMarkerAlt,
   FaUserTag,
   FaUsers,
@@ -22,6 +21,7 @@ import {
   FaIdBadge,
   FaBalanceScale
 } from 'react-icons/fa'
+import { BsCameraVideo } from 'react-icons/bs'
 
 const defaultState = {
   dni: '',
@@ -34,7 +34,6 @@ const defaultState = {
   horaIncidente: '',
   bodycamNumber: '',
   bodycamAsignadaA: '',
-  encargadoBodycam: '',
   ubicacion: null,
   jurisdiccion: '',
   jurisdictionId: null,  // ID de la jurisdicción para la API
@@ -212,7 +211,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           newForm.medio = 'reporte'
           newForm.bodycamNumber = ''
           newForm.bodycamAsignadaA = ''
-          newForm.encargadoBodycam = ''
         } else {
           newForm.medio = 'bodycam'
         }
@@ -383,7 +381,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       }
     } else {
       // Validaciones para otros asuntos (requieren bodycam)
-      if (!form.bodycamNumber || !form.bodycamAsignadaA || !form.encargadoBodycam) {
+      if (!form.bodycamNumber || !form.bodycamAsignadaA) {
         alert('Completa los campos de bodycam');
         return;
       }
@@ -565,7 +563,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           {mostrarCamposBodycam && (
             <>
               <label>
-                <FaVideo style={{ marginRight: '8px' }} />
+                <MdVideocam style={{ marginRight: '8px' }} />
                 Medio *
               </label>
               <select
@@ -622,13 +620,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 value={form.bodycamAsignadaA}
                 onChange={e => setField('bodycamAsignadaA', e.target.value)}
                 placeholder="Se llenará automáticamente al seleccionar DNI"
-              />
-
-              <label>Encargado de bodycam: *</label>
-              <input
-                value={form.encargadoBodycam}
-                onChange={e => setField('encargadoBodycam', e.target.value)}
-                placeholder="Encargado de la bodycam"
               />
             </>
           )}
