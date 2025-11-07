@@ -562,10 +562,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           {/* Campos de bodycam (solo para NO inasistencia) */}
           {mostrarCamposBodycam && (
             <>
-              <label>
-                <MdVideocam style={{ marginRight: '8px' }} />
-                Medio *
-              </label>
               <select
                 value={form.medio}
                 onChange={e => setField('medio', e.target.value)}
