@@ -86,10 +86,6 @@ export default function Router() {
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
           <Route path="bodycam" element={<BodycamPage />} />
-          <Route path="usuarios" element={<UsuariosPage />} />
-          <Route path="cargos" element={<JobsPage />} />
-          <Route path="personal" element={<LeadsPage />} />
-          <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
         </Route>
 
         {/* Página 404 */}

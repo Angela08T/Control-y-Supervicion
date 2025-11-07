@@ -7,10 +7,10 @@ function formatDate(iso){
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
 }
 
-export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAsunto = 'Todos', startIndex = 0 }){
+export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAsunto = 'Todos', startIndex = 0, canDelete = true }){
   const mostrarTipoInasistencia = filtroAsunto === 'Inasistencia'
   const mostrarCamposBodycam = filtroAsunto !== 'Inasistencia'
-  
+
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -58,12 +58,14 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
                   {startIndex + index + 1}
                 </td>
                 <td className="actions">
-                  <button title="Generar PDF" onClick={()=> onEdit(item)}>
+                  <button title="Ver/Generar PDF" onClick={()=> onEdit(item)}>
                     <FaFilePdf/>
                   </button>
-                  <button title="Eliminar" onClick={()=> onDelete(item.id)}>
-                    <FaTrash/>
-                  </button>
+                  {canDelete && (
+                    <button title="Eliminar" onClick={()=> onDelete(item.id)}>
+                      <FaTrash/>
+                    </button>
+                  )}
                 </td>
                 <td>{item.dni}</td>
                 <td>{item.asunto}</td>

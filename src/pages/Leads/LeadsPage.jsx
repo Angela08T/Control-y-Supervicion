@@ -166,6 +166,11 @@ export default function LeadsPage() {
       // Crear nuevo personal
       try {
         console.log('📤 Creando personal:', data)
+        console.log('📤 Tipo de datos:', {
+          name: typeof data.name,
+          lastname: typeof data.lastname,
+          job_id: typeof data.job_id
+        })
         const response = await createLead(data)
         console.log('✅ Personal creado:', response)
 
@@ -176,6 +181,8 @@ export default function LeadsPage() {
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         console.error('❌ Error al crear personal:', error)
+        console.error('❌ Error completo:', error.response)
+        console.error('❌ Datos del error:', error.response?.data)
 
         let errorMessage = 'Error al crear el personal'
 
