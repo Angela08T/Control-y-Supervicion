@@ -155,11 +155,19 @@ export const getReports = async (page = 1, limit = 10) => {
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
+        jurisdictionId: r.jurisdiction?.id || null,
         bodycamNumber: r.bodycam?.name || '',
         bodycamAsignadaA: r.bodycam_user || r.bodycamUser || '',
         encargadoBodycam: encargadoBodycam,
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
+        cargoDestinatario: r.header?.to?.job || '',
+        cc: (r.header?.cc || []).map(c => c.name),
+        ubicacion: {
+          address: r.address || '',
+          coordinates: [r.latitude || null, r.longitude || null]
+        },
+        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
         createdAt: r.lack?.created_at || r.date,
         updatedAt: r.lack?.updated_at || r.date
       }
@@ -249,12 +257,19 @@ export const getReportById = async (reportId) => {
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
+        jurisdictionId: r.jurisdiction?.id || null,
         bodycamNumber: r.bodycam?.name || '',
         bodycamAsignadaA: r.bodycam_user || '',
         encargadoBodycam: r.bodycam_supervisor || (r.user ? `${r.user.name} ${r.user.lastname}` : ''),
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
-        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
+        cargoDestinatario: r.header?.to?.job || '',
+        cc: (r.header?.cc || []).map(c => c.name),
+        ubicacion: {
+          address: r.address || '',
+          coordinates: [r.latitude || null, r.longitude || null]
+        },
+        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
         createdAt: r.lack?.created_at || r.date,
         updatedAt: r.lack?.updated_at || r.date
       }
