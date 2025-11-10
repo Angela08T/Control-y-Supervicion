@@ -132,24 +132,36 @@ export default function DashboardPage() {
       ? Math.round((pdfDescargados / totalIncidencias) * 100)
       : 0
 
-    // Evolución por mes
+    // Evolución por mes - Con los nuevos 6 asuntos
     const incidenciasPorMes = {}
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    const nuevosAsuntos = [
+      'Conductas relacionadas con el cumplimiento del horario y asistencia',
+      'Conductas relacionadas con el cumplimiento de funciones o desempeño',
+      'Conductas relacionadas con el uso de recursos o bienes municipales',
+      'Conductas relacionadas con la imagen o representación institucional',
+      'Conductas relacionadas con la convivencia y comportamiento institucional',
+      'Conductas que podrían afectar la seguridad o la integridad de las personas'
+    ]
 
     meses.forEach((mes, idx) => {
-      incidenciasPorMes[mes] = {
-        'Falta disciplinaria': 0,
-        'Abandono de servicio': 0,
-        'Inasistencia': 0
-      }
+      incidenciasPorMes[mes] = {}
+      nuevosAsuntos.forEach(asunto => {
+        incidenciasPorMes[mes][asunto] = 0
+      })
     })
 
     filtered.forEach(inc => {
       if (inc.fechaIncidente) {
         const fecha = new Date(inc.fechaIncidente)
         const mes = meses[fecha.getMonth()]
-        if (incidenciasPorMes[mes] && incidenciasPorMes[mes][inc.asunto] !== undefined) {
-          incidenciasPorMes[mes][inc.asunto]++
+        if (incidenciasPorMes[mes]) {
+          // Si el asunto existe en el mes, incrementar, sino inicializar en 1
+          if (incidenciasPorMes[mes][inc.asunto] !== undefined) {
+            incidenciasPorMes[mes][inc.asunto]++
+          } else {
+            incidenciasPorMes[mes][inc.asunto] = 1
+          }
         }
       }
     })
@@ -167,12 +179,22 @@ export default function DashboardPage() {
       }
     })
 
-    // Conteo por asunto para las barras
-    const incidenciasPorAsunto = {
-      'Falta disciplinaria': conteoAsuntos['Falta disciplinaria'] || 0,
-      'Abandono de servicio': conteoAsuntos['Abandono de servicio'] || 0,
-      'Inasistencia': conteoAsuntos['Inasistencia'] || 0
-    }
+    // Conteo por asunto para las barras - Con los nuevos 6 asuntos
+    const incidenciasPorAsunto = {}
+    nuevosAsuntos.forEach(asunto => {
+      incidenciasPorAsunto[asunto] = conteoAsuntos[asunto] || 0
+    })
+
+    // También agregar el conteo de faltas por asunto
+    const faltasPorAsunto = {}
+    filtered.forEach(inc => {
+      if (inc.asunto && inc.falta) {
+        if (!faltasPorAsunto[inc.asunto]) {
+          faltasPorAsunto[inc.asunto] = {}
+        }
+        faltasPorAsunto[inc.asunto][inc.falta] = (faltasPorAsunto[inc.asunto][inc.falta] || 0) + 1
+      }
+    })
 
     return {
       totalIncidencias,
@@ -185,7 +207,8 @@ export default function DashboardPage() {
       porcentajeCumplimiento,
       incidenciasPorMes,
       incidenciasPorTurno,
-      incidenciasPorAsunto
+      incidenciasPorAsunto,
+      faltasPorAsunto
     }
   }, [incidencias, dateRange, serenosActivos])
 
@@ -245,21 +268,26 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Tercera fila: Gráficos */}
-      <div className="charts-grid">
+      {/* Tercera fila: Evolución de Incidencias (full width) */}
+      <div className="charts-grid-full">
         <LineChart
           title="Evolución de Incidencias"
           subtitle="Últimos días registrados"
           data={stats.incidenciasPorMes}
           incidencias={incidencias}
+          faltasPorAsunto={stats.faltasPorAsunto}
           onOpenDateModal={() => setShowDateModal(true)}
         />
+      </div>
 
+      {/* Cuarta fila: Incidencias (full width) */}
+      <div className="charts-grid-full">
         <BarChart
           title="Incidencias"
           subtitle="Por tipo de asunto y día"
           data={stats.incidenciasPorAsunto}
           incidencias={incidencias}
+          faltasPorAsunto={stats.faltasPorAsunto}
         />
       </div>
 

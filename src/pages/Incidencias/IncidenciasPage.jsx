@@ -5,11 +5,51 @@ import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport } from '../../api/report'
-import useSubjects from '../../hooks/Subject/useSubjects'
-import useLacks from '../../hooks/Lack/useLacks'
+// import useSubjects from '../../hooks/Subject/useSubjects' // DESHABILITADO temporalmente
+// import useLacks from '../../hooks/Lack/useLacks' // DESHABILITADO temporalmente
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+
+// 🔹 ESTRUCTURA TEMPORAL DE ASUNTOS Y FALTAS (hasta que el backend actualice)
+const asuntosFaltasTemporales = {
+  'Conductas relacionadas con el cumplimiento del horario y asistencia': [
+    'Inasistencia - Justificada',
+    'Inasistencia - Injustificada',
+    'Abandono temporal del puesto',
+    'Abandono injustificado',
+    'Salida antes del horario sin autorización',
+    'Tardanza reiterada'
+  ],
+  'Conductas relacionadas con el cumplimiento de funciones o desempeño': [
+    'Incumplimiento de disposiciones de servicio',
+    'Negativa a cumplir funciones asignadas',
+    'Omisión o negligencia en la labor',
+    'Dormir en horario laboral',
+    'Uso excesivo de celular',
+    'Demora injustificada en tareas asignadas'
+  ],
+  'Conductas relacionadas con el uso de recursos o bienes municipales': [
+    'Uso indebido o no autorizado de bienes, materiales o vehículos institucionales'
+  ],
+  'Conductas relacionadas con la imagen o representación institucional': [
+    'Comportamientos que afecten la imagen del servicio, el uniforme o la institución durante la jornada o en actos públicos'
+  ],
+  'Conductas relacionadas con la convivencia y comportamiento institucional': [
+    'Trato inadecuado',
+    'Incumplimiento de normas de presentación o conducta',
+    'Conflictos interpersonales',
+    'Uso de lenguaje inapropiado'
+  ],
+  'Conductas que podrían afectar la seguridad o la integridad de las personas': [
+    'Incumplimiento de medidas de seguridad',
+    'Actos temerarios',
+    'Inobservancia de protocolos que pongan en riesgo a terceros o al propio servidor'
+  ]
+}
+
+// Aplanar todas las faltas en un solo array
+const todasLasFaltas = Object.values(asuntosFaltasTemporales).flat()
 
 export default function IncidenciasPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -21,11 +61,12 @@ export default function IncidenciasPage() {
   const [editItem, setEditItem] = useState(null)
   const [filters, setFilters] = useState({
     asunto: 'Todos',
+    falta: '', // Filtro por falta (temporal)
     turno: 'Todos',
-    tipoInasistencia: 'Todos',
+    tipoInasistencia: '', // Filtro por tipo de inasistencia (Justificada/Injustificada)
     search: '',
-    lackId: '', // Filtro por ID de falta
-    subjectId: '', // Filtro por ID de asunto
+    lackId: '', // Filtro por ID de falta (deshabilitado temporalmente)
+    subjectId: '', // Filtro por ID de asunto (deshabilitado temporalmente)
     jurisdictionId: '' // Filtro por ID de jurisdicción
   })
   const [currentPage, setCurrentPage] = useState(1)
@@ -45,8 +86,8 @@ export default function IncidenciasPage() {
   const [searchPagination, setSearchPagination] = useState(null) // Paginación de búsqueda
   const [isSearchMode, setIsSearchMode] = useState(false) // Indica si está en modo búsqueda
 
-  const { subjects, loading: subjectsLoading } = useSubjects()
-  const { lacks, loading: lacksLoading } = useLacks()
+  // const { subjects, loading: subjectsLoading } = useSubjects() // DESHABILITADO temporalmente
+  // const { lacks, loading: lacksLoading } = useLacks() // DESHABILITADO temporalmente
   const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
 
   // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
@@ -174,7 +215,7 @@ export default function IncidenciasPage() {
   }
 
   function getInasistenciasPorDNI(dni) {
-    return incidencias.filter(inc => inc.dni === dni && inc.asunto === 'Inasistencia')
+    return incidencias.filter(inc => inc.dni === dni && inc.falta && inc.falta.startsWith('Inasistencia'))
   }
 
   // 🔹 Funciones de paginación
@@ -339,13 +380,23 @@ export default function IncidenciasPage() {
     }
   }, [filters.search, currentPage, itemsPerPage])
 
-  // 🔹 Filtros locales (solo turno, los demás se aplican en el backend)
+  // 🔹 Filtros locales (turno, asunto, falta, tipoInasistencia - temporales)
   const filteredData = searchResult !== null
     ? searchResult // Si hay resultado de búsqueda, mostrar los resultados de la API
     : incidencias.filter(item => {
-        // Solo aplicar filtro de turno localmente (los demás ya vienen filtrados del backend)
+        // Aplicar filtros localmente
         const matchTurno = filters.turno === 'Todos' || item.turno === filters.turno
-        return matchTurno
+        const matchAsunto = filters.asunto === 'Todos' || item.asunto === filters.asunto
+        const matchFalta = !filters.falta || item.falta === filters.falta
+
+        // Filtro adicional por tipo de inasistencia (solo si la falta contiene "Inasistencia")
+        let matchTipoInasistencia = true
+        if (filters.tipoInasistencia && item.falta && item.falta.startsWith('Inasistencia')) {
+          // Verificar si el tipo de inasistencia coincide
+          matchTipoInasistencia = item.falta.includes(filters.tipoInasistencia)
+        }
+
+        return matchTurno && matchAsunto && matchFalta && matchTipoInasistencia
       })
 
   return (
@@ -354,54 +405,63 @@ export default function IncidenciasPage() {
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
           <h2>CONTROL Y SUPERVISIÓN</h2>
           <div className="controls">
-            {/* Filtro por Asunto (Subject) - Envía ID al backend */}
-            {subjectsLoading ? (
-              <select disabled>
-                <option>Cargando asuntos...</option>
-              </select>
-            ) : (
-              <select
-                value={filters.subjectId}
-                onChange={e => {
-                  const selectedId = e.target.value
-                  const selectedSubject = subjects.find(s => s.id === selectedId)
-                  setFilters(f => ({
-                    ...f,
-                    subjectId: selectedId,
-                    asunto: selectedSubject ? selectedSubject.name : 'Todos',
-                    tipoInasistencia: 'Todos'
-                  }))
-                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
-                }}
-              >
-                <option value="">Filtrar por asunto</option>
-                {subjects.map(subject => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
-              </select>
-            )}
+            {/* Filtro por Asunto (Subject) - Usando datos temporales */}
+            <select
+              value={filters.asunto}
+              onChange={e => {
+                const selectedAsunto = e.target.value
+                setFilters(f => ({
+                  ...f,
+                  asunto: selectedAsunto,
+                  subjectId: '', // Limpiar ID ya que es temporal
+                  tipoInasistencia: 'Todos'
+                }))
+                setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+              }}
+            >
+              <option value="Todos">Filtrar por asunto</option>
+              {Object.keys(asuntosFaltasTemporales).map((asuntoName, index) => (
+                <option key={`asunto-${index}`} value={asuntoName}>
+                  {asuntoName}
+                </option>
+              ))}
+            </select>
 
-            {/* Filtro por Falta (Lack) - Envía ID al backend */}
-            {lacksLoading ? (
-              <select disabled>
-                <option>Cargando faltas...</option>
-              </select>
-            ) : (
+            {/* Filtro por Falta (Lack) - Usando datos temporales */}
+            <select
+              value={filters.falta || ''}
+              onChange={e => {
+                const selectedFalta = e.target.value
+                setFilters(f => ({
+                  ...f,
+                  falta: selectedFalta,
+                  lackId: '', // Limpiar ID ya que es temporal
+                  tipoInasistencia: '' // Limpiar tipo de inasistencia al cambiar falta
+                }))
+                setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+              }}
+            >
+              <option value="">Filtrar por falta</option>
+              {todasLasFaltas.map((falta, index) => (
+                <option key={`falta-${index}`} value={falta}>
+                  {falta}
+                </option>
+              ))}
+            </select>
+
+            {/* Filtro adicional por Tipo de Inasistencia - Solo aparece si se filtra por Inasistencia */}
+            {(filters.falta && filters.falta.startsWith('Inasistencia')) && (
               <select
-                value={filters.lackId}
+                value={filters.tipoInasistencia || ''}
                 onChange={e => {
-                  setFilters(f => ({ ...f, lackId: e.target.value }))
-                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                  setFilters(f => ({ ...f, tipoInasistencia: e.target.value }))
+                  setCurrentPage(1)
                 }}
+                style={{ animation: 'slideInRight 0.3s ease-out' }}
               >
-                <option value="">Filtrar por falta</option>
-                {lacks.map(lack => (
-                  <option key={lack.id} value={lack.id}>
-                    {lack.name}
-                  </option>
-                ))}
+                <option value="">Todos los tipos</option>
+                <option value="Justificada">Justificada</option>
+                <option value="Injustificada">Injustificada</option>
               </select>
             )}
 

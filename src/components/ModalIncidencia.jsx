@@ -6,7 +6,7 @@ import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useJobs from '../hooks/Job/useJobs'
 import useLeads from '../hooks/Job/useLeads'
 import useAllLeads from '../hooks/Job/useAllLeads'
-import useSubjects from '../hooks/Subject/useSubjects'
+// import useSubjects from '../hooks/Subject/useSubjects' // DESHABILITADO temporalmente
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import './Autocomplete.css'
 import {
@@ -50,7 +50,44 @@ const defaultState = {
   lackId: null      // ID de la falta para la API
 }
 
-// Nota: Los asuntos, faltas, destinatarios y la lista de CC ahora se cargan dinámicamente desde la API
+// 🔹 ESTRUCTURA TEMPORAL DE ASUNTOS Y FALTAS (hasta que el backend actualice)
+const asuntosFaltasTemporales = {
+  'Conductas relacionadas con el cumplimiento del horario y asistencia': [
+    'Inasistencia - Justificada',
+    'Inasistencia - Injustificada',
+    'Abandono temporal del puesto',
+    'Abandono injustificado',
+    'Salida antes del horario sin autorización',
+    'Tardanza reiterada'
+  ],
+  'Conductas relacionadas con el cumplimiento de funciones o desempeño': [
+    'Incumplimiento de disposiciones de servicio',
+    'Negativa a cumplir funciones asignadas',
+    'Omisión o negligencia en la labor',
+    'Dormir en horario laboral',
+    'Uso excesivo de celular',
+    'Demora injustificada en tareas asignadas'
+  ],
+  'Conductas relacionadas con el uso de recursos o bienes municipales': [
+    'Uso indebido o no autorizado de bienes, materiales o vehículos institucionales'
+  ],
+  'Conductas relacionadas con la imagen o representación institucional': [
+    'Comportamientos que afecten la imagen del servicio, el uniforme o la institución durante la jornada o en actos públicos'
+  ],
+  'Conductas relacionadas con la convivencia y comportamiento institucional': [
+    'Trato inadecuado',
+    'Incumplimiento de normas de presentación o conducta',
+    'Conflictos interpersonales',
+    'Uso de lenguaje inapropiado'
+  ],
+  'Conductas que podrían afectar la seguridad o la integridad de las personas': [
+    'Incumplimiento de medidas de seguridad',
+    'Actos temerarios',
+    'Inobservancia de protocolos que pongan en riesgo a terceros o al propio servidor'
+  ]
+}
+
+// Nota: Los asuntos y faltas temporales sobrescriben los datos de la API hasta que el backend actualice
 
 export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
@@ -102,12 +139,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     error: allLeadsError
   } = useAllLeads()
 
-  // Hook para obtener subjects (asuntos) y lacks (faltas)
-  const {
-    subjects,
-    loading: subjectsLoading,
-    error: subjectsError
-  } = useSubjects()
+  // Hook para obtener subjects (asuntos) y lacks (faltas) - DESHABILITADO temporalmente
+  // const {
+  //   subjects,
+  //   loading: subjectsLoading,
+  //   error: subjectsError
+  // } = useSubjects()
 
   // Hook para obtener jurisdicciones
   const {
@@ -127,17 +164,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     })
   }, [allLeads, form.destinatario])
 
-  // Crear mapa de asuntos y faltas desde la API
+  // 🔹 USAR DATOS TEMPORALES en lugar de la API
   const subjectMap = useMemo(() => {
     const map = {}
-    subjects.forEach(subject => {
-      map[subject.name] = {
-        id: subject.id,
-        lacks: subject.lacks || []
+    // Usar la estructura temporal local
+    Object.keys(asuntosFaltasTemporales).forEach((asuntoName, index) => {
+      map[asuntoName] = {
+        id: `temp-${index}`, // ID temporal
+        lacks: asuntosFaltasTemporales[asuntoName].map((faltaName, fIndex) => ({
+          id: `temp-lack-${index}-${fIndex}`,
+          name: faltaName
+        }))
       }
     })
     return map
-  }, [subjects])
+  }, [])
 
   // Obtener faltas disponibles según el asunto seleccionado
   const lacksDisponibles = useMemo(() => {
@@ -199,27 +240,39 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
         newForm.tipoInasistencia = ''
         newForm.fechaFalta = ''
 
-        // Guardar el ID del asunto desde la API
+        // Guardar el ID del asunto desde la estructura temporal
         if (subjectMap[v]) {
           newForm.subjectId = subjectMap[v].id
         } else {
           newForm.subjectId = null
         }
 
-        // Resetear campos de bodycam si cambia a inasistencia
-        if (v === 'Inasistencia') {
-          newForm.medio = 'reporte'
-          newForm.bodycamNumber = ''
-          newForm.bodycamAsignadaA = ''
-        } else {
-          newForm.medio = 'bodycam'
-        }
+        // Resetear campos de bodycam si la falta seleccionada es "Inasistencia"
+        // (ya no verificamos el asunto, sino la falta específica)
+        newForm.medio = 'bodycam' // Por defecto bodycam para todos
       }
 
       // Si cambia la falta, guardar el ID de la falta
       if (k === 'falta') {
         const lack = lacksDisponibles.find(l => l.name === v)
         newForm.lackId = lack ? lack.id : null
+
+        // Si la falta es "Inasistencia" (cualquier tipo), cambiar medio a reporte y limpiar bodycam
+        if (v && v.startsWith('Inasistencia')) {
+          newForm.medio = 'reporte'
+          newForm.bodycamNumber = ''
+          newForm.bodycamAsignadaA = ''
+
+          // Auto-llenar tipoInasistencia basado en la falta seleccionada
+          if (v === 'Inasistencia - Justificada') {
+            newForm.tipoInasistencia = 'Justificada'
+          } else if (v === 'Inasistencia - Injustificada') {
+            newForm.tipoInasistencia = 'Injustificada'
+          }
+        } else {
+          newForm.medio = 'bodycam'
+          newForm.tipoInasistencia = '' // Limpiar tipo si no es inasistencia
+        }
       }
 
       // Si cambia dirigidoA, resetear destinatario
@@ -374,13 +427,13 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     }
 
     // Validaciones específicas para inasistencia
-    if (form.asunto === 'Inasistencia') {
+    if (form.falta && form.falta.startsWith('Inasistencia')) {
       if (!form.tipoInasistencia || !form.fechaFalta) {
         alert('Para inasistencia, completa el tipo y la fecha de falta');
         return;
       }
     } else {
-      // Validaciones para otros asuntos (requieren bodycam)
+      // Validaciones para otras faltas (requieren bodycam)
       if (!form.bodycamNumber || !form.bodycamAsignadaA) {
         alert('Completa los campos de bodycam');
         return;
@@ -403,8 +456,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     onClose();
   }
 
-  const mostrarCamposInasistencia = form.asunto === 'Inasistencia'
-  const mostrarCamposBodycam = form.asunto !== 'Inasistencia'
+  const mostrarCamposInasistencia = form.falta && form.falta.startsWith('Inasistencia')
+  const mostrarCamposBodycam = !(form.falta && form.falta.startsWith('Inasistencia'))
 
   return (
     <div className="modal-backdrop">
@@ -463,25 +516,15 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaClipboardList style={{ marginRight: '8px' }} />
             Seleccionar asunto *
           </label>
-          {subjectsLoading ? (
-            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-              Cargando asuntos...
-            </div>
-          ) : subjectsError ? (
-            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
-              {subjectsError}
-            </div>
-          ) : (
-            <select
-              value={form.asunto}
-              onChange={e => setField('asunto', e.target.value)}
-            >
-              <option value="">Selecciona</option>
-              {subjects.map(subject => (
-                <option key={subject.id} value={subject.name}>{subject.name}</option>
-              ))}
-            </select>
-          )}
+          <select
+            value={form.asunto}
+            onChange={e => setField('asunto', e.target.value)}
+          >
+            <option value="">Selecciona</option>
+            {Object.keys(asuntosFaltasTemporales).map((asuntoName, index) => (
+              <option key={`temp-${index}`} value={asuntoName}>{asuntoName}</option>
+            ))}
+          </select>
 
           {form.asunto && (
             <>
@@ -508,14 +551,17 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 <FaExclamationTriangle style={{ marginRight: '8px' }} />
                 Tipo de inasistencia *
               </label>
-              <select
+              <input
+                type="text"
                 value={form.tipoInasistencia}
-                onChange={e => setField('tipoInasistencia', e.target.value)}
-              >
-                <option value="">Selecciona tipo</option>
-                <option value="Justificada">Justificada</option>
-                <option value="Injustificada">Injustificada</option>
-              </select>
+                readOnly
+                placeholder="Se llenará automáticamente según la falta seleccionada"
+                style={{
+                  cursor: 'not-allowed',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-secondary)'
+                }}
+              />
 
               <label>Fecha de falta *</label>
               <input
