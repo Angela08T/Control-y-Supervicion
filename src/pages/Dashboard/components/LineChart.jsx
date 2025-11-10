@@ -2,16 +2,25 @@ import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function LineChart({ title, subtitle, data, incidencias, onOpenDateModal }) {
-  const [filtrosActivos, setFiltrosActivos] = useState({
-    'Falta disciplinaria': true,
-    'Abandono de servicio': true,
-    'Inasistencia': true
-  })
+export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal }) {
+  // Nuevos 6 asuntos
+  const nuevosAsuntos = [
+    'Conductas relacionadas con el cumplimiento del horario y asistencia',
+    'Conductas relacionadas con el cumplimiento de funciones o desempeño',
+    'Conductas relacionadas con el uso de recursos o bienes municipales',
+    'Conductas relacionadas con la imagen o representación institucional',
+    'Conductas relacionadas con la convivencia y comportamiento institucional',
+    'Conductas que podrían afectar la seguridad o la integridad de las personas'
+  ]
+
+  const [filtrosActivos, setFiltrosActivos] = useState(
+    nuevosAsuntos.reduce((acc, asunto) => ({ ...acc, [asunto]: true }), {})
+  )
   const [rangoTiempo, setRangoTiempo] = useState('30D') // 7D, 15D, 30D, custom
   const [showCalendar, setShowCalendar] = useState(false)
   const [customDateRange, setCustomDateRange] = useState(null)
   const [animationKey, setAnimationKey] = useState(0)
+  const [hoveredPoint, setHoveredPoint] = useState(null)
 
   // Re-ejecutar animación cuando cambian los datos
   useEffect(() => {
@@ -62,19 +71,22 @@ export default function LineChart({ title, subtitle, data, incidencias, onOpenDa
       const fecha = new Date(fechaInicio)
       fecha.setDate(fechaInicio.getDate() + i)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      datosPorDia[dia] = {
-        'Falta disciplinaria': 0,
-        'Abandono de servicio': 0,
-        'Inasistencia': 0
-      }
+      datosPorDia[dia] = {}
+      nuevosAsuntos.forEach(asunto => {
+        datosPorDia[dia][asunto] = 0
+      })
     }
 
     // Contar incidencias por día
     incidenciasFiltradas.forEach(inc => {
       const fecha = new Date(inc.fechaIncidente)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      if (datosPorDia[dia] && datosPorDia[dia][inc.asunto] !== undefined) {
-        datosPorDia[dia][inc.asunto]++
+      if (datosPorDia[dia]) {
+        if (datosPorDia[dia][inc.asunto] !== undefined) {
+          datosPorDia[dia][inc.asunto]++
+        } else {
+          datosPorDia[dia][inc.asunto] = 1
+        }
       }
     })
 
@@ -100,12 +112,27 @@ export default function LineChart({ title, subtitle, data, incidencias, onOpenDa
 
   const maxValue = getMaxValue()
 
-  // Calcular puntos para cada asunto
-  const asuntos = ['Falta disciplinaria', 'Abandono de servicio', 'Inasistencia']
+  // Colores para los 6 nuevos asuntos
   const colores = {
-    'Falta disciplinaria': '#0ea5e9', // Azul cielo
-    'Abandono de servicio': '#8b5cf6', // Morado
-    'Inasistencia': '#10b981' // Verde
+    'Conductas relacionadas con el cumplimiento del horario y asistencia': '#0ea5e9', // Azul cielo
+    'Conductas relacionadas con el cumplimiento de funciones o desempeño': '#8b5cf6', // Morado
+    'Conductas relacionadas con el uso de recursos o bienes municipales': '#10b981', // Verde
+    'Conductas relacionadas con la imagen o representación institucional': '#f59e0b', // Naranja
+    'Conductas relacionadas con la convivencia y comportamiento institucional': '#ec4899', // Rosa
+    'Conductas que podrían afectar la seguridad o la integridad de las personas': '#ef4444' // Rojo
+  }
+
+  // Obtener las 3 principales faltas por asunto
+  const getTopFaltas = (asunto, dia) => {
+    if (!faltasPorAsunto || !faltasPorAsunto[asunto]) return []
+
+    // Convertir el objeto de faltas a array y ordenar por cantidad
+    const faltasArray = Object.entries(faltasPorAsunto[asunto])
+      .map(([falta, cantidad]) => ({ falta, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 3) // Top 3
+
+    return faltasArray
   }
 
   const toggleFiltro = (asunto) => {
@@ -218,7 +245,7 @@ export default function LineChart({ title, subtitle, data, incidencias, onOpenDa
         })}
 
         {/* Líneas para cada asunto */}
-        {asuntos.map((asunto, asuntoIndex) => {
+        {nuevosAsuntos.map((asunto, asuntoIndex) => {
           if (!filtrosActivos[asunto]) return null
 
           const values = meses.map(mes => datosActuales[mes][asunto])
@@ -227,7 +254,7 @@ export default function LineChart({ title, subtitle, data, incidencias, onOpenDa
 
           return (
             <g key={`${asunto}-${animationKey}`}>
-              {/* Línea con estilo de picos y animación */}
+              {/* Línea con estilo de picos y animación montaña rusa */}
               <path
                 id={pathId}
                 d={createPath(values)}
@@ -245,37 +272,44 @@ export default function LineChart({ title, subtitle, data, incidencias, onOpenDa
                 }}
               />
 
-              {/* Puntos en cada vértice */}
-              {values.map((value, i) => (
-                <g
-                  key={`${asunto}-${i}`}
-                  className="chart-point-group"
-                  style={{
-                    animation: `fadeInPoint 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards`,
-                    animationDelay: `${asuntoIndex * 0.2 + (i * 0.08)}s`,
-                    opacity: 0
-                  }}
-                >
-                  <circle
-                    cx={getX(i)}
-                    cy={getY(value)}
-                    r="4"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="2"
-                    className="chart-point-outer"
-                  />
-                  {value > 0 && (
+              {/* Puntos en cada vértice con tooltip */}
+              {values.map((value, i) => {
+                const topFaltas = getTopFaltas(asunto, meses[i])
+
+                return (
+                  <g
+                    key={`${asunto}-${i}`}
+                    className="chart-point-group"
+                    style={{
+                      animation: `fadeInPoint 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards`,
+                      animationDelay: `${asuntoIndex * 0.2 + (i * 0.08)}s`,
+                      opacity: 0,
+                      cursor: value > 0 ? 'pointer' : 'default'
+                    }}
+                    onMouseEnter={() => value > 0 && setHoveredPoint({ asunto, dia: meses[i], value, topFaltas, x: getX(i), y: getY(value) })}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  >
                     <circle
                       cx={getX(i)}
                       cy={getY(value)}
-                      r="2"
-                      fill={color}
-                      className="chart-point-inner"
+                      r="4"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="2"
+                      className="chart-point-outer"
                     />
-                  )}
-                </g>
-              ))}
+                    {value > 0 && (
+                      <circle
+                        cx={getX(i)}
+                        cy={getY(value)}
+                        r="2"
+                        fill={color}
+                        className="chart-point-inner"
+                      />
+                    )}
+                  </g>
+                )
+              })}
             </g>
           )
         })}
@@ -306,21 +340,73 @@ export default function LineChart({ title, subtitle, data, incidencias, onOpenDa
         })}
       </svg>
 
-      {/* Botones de filtro */}
+      {/* Tooltip flotante */}
+      {hoveredPoint && (
+        <div
+          className="chart-tooltip"
+          style={{
+            position: 'absolute',
+            left: `${(hoveredPoint.x / width) * 100}%`,
+            top: `${(hoveredPoint.y / height) * 100}%`,
+            transform: 'translate(-50%, -120%)',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '12px',
+            boxShadow: '0 4px 12px var(--shadow)',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            minWidth: '200px'
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
+            {hoveredPoint.dia} - {hoveredPoint.value} incidencia{hoveredPoint.value !== 1 ? 's' : ''}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+            {hoveredPoint.asunto}
+          </div>
+          {hoveredPoint.topFaltas && hoveredPoint.topFaltas.length > 0 && (
+            <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
+              <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
+              {hoveredPoint.topFaltas.map((falta, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{falta.falta}</span>
+                  <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botones de filtro con nombres abreviados */}
       <div className="chart-filters">
-        {asuntos.map(asunto => (
-          <button
-            key={asunto}
-            className={`filter-button ${filtrosActivos[asunto] ? 'active' : ''}`}
-            style={{
-              '--filter-color': colores[asunto]
-            }}
-            onClick={() => toggleFiltro(asunto)}
-          >
-            <span className="filter-dot" style={{ backgroundColor: colores[asunto] }}></span>
-            <span className="filter-label">{asunto}</span>
-          </button>
-        ))}
+        {nuevosAsuntos.map((asunto, index) => {
+          // Nombres cortos para los botones
+          const nombresCortos = [
+            'Horario y Asistencia',
+            'Funciones y Desempeño',
+            'Uso de Recursos',
+            'Imagen Institucional',
+            'Convivencia',
+            'Seguridad'
+          ]
+
+          return (
+            <button
+              key={asunto}
+              className={`filter-button ${filtrosActivos[asunto] ? 'active' : ''}`}
+              style={{
+                '--filter-color': colores[asunto]
+              }}
+              onClick={() => toggleFiltro(asunto)}
+              title={asunto} // Tooltip con el nombre completo
+            >
+              <span className="filter-dot" style={{ backgroundColor: colores[asunto] }}></span>
+              <span className="filter-label">{nombresCortos[index]}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Calendar Modal */}

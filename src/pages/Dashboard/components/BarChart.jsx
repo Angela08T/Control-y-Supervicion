@@ -2,10 +2,21 @@ import React, { useState } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function BarChart({ title, subtitle, data, incidencias }) {
+export default function BarChart({ title, subtitle, data, incidencias, faltasPorAsunto }) {
+  // Nuevos 6 asuntos
+  const nuevosAsuntos = [
+    'Conductas relacionadas con el cumplimiento del horario y asistencia',
+    'Conductas relacionadas con el cumplimiento de funciones o desempeño',
+    'Conductas relacionadas con el uso de recursos o bienes municipales',
+    'Conductas relacionadas con la imagen o representación institucional',
+    'Conductas relacionadas con la convivencia y comportamiento institucional',
+    'Conductas que podrían afectar la seguridad o la integridad de las personas'
+  ]
+
   const [rangoTiempo, setRangoTiempo] = useState('30D')
   const [showCalendar, setShowCalendar] = useState(false)
   const [customDateRange, setCustomDateRange] = useState(null)
+  const [hoveredBar, setHoveredBar] = useState(null)
 
   // Función para obtener datos filtrados por tiempo
   const getDatosFiltrados = () => {
@@ -49,19 +60,22 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
       const fecha = new Date(fechaInicio)
       fecha.setDate(fechaInicio.getDate() + i)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      datosPorDia[dia] = {
-        'Falta disciplinaria': 0,
-        'Abandono de servicio': 0,
-        'Inasistencia': 0
-      }
+      datosPorDia[dia] = {}
+      nuevosAsuntos.forEach(asunto => {
+        datosPorDia[dia][asunto] = 0
+      })
     }
 
     // Contar incidencias por día
     incidenciasFiltradas.forEach(inc => {
       const fecha = new Date(inc.fechaIncidente)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      if (datosPorDia[dia] && datosPorDia[dia][inc.asunto] !== undefined) {
-        datosPorDia[dia][inc.asunto]++
+      if (datosPorDia[dia]) {
+        if (datosPorDia[dia][inc.asunto] !== undefined) {
+          datosPorDia[dia][inc.asunto]++
+        } else {
+          datosPorDia[dia][inc.asunto] = 1
+        }
       }
     })
 
@@ -71,11 +85,26 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
   const datosActuales = getDatosFiltrados()
   const dias = Object.keys(datosActuales)
 
-  const asuntos = ['Falta disciplinaria', 'Abandono de servicio', 'Inasistencia']
+  // Colores para los 6 nuevos asuntos
   const colores = {
-    'Falta disciplinaria': '#0ea5e9',
-    'Abandono de servicio': '#8b5cf6',
-    'Inasistencia': '#10b981'
+    'Conductas relacionadas con el cumplimiento del horario y asistencia': '#0ea5e9', // Azul cielo
+    'Conductas relacionadas con el cumplimiento de funciones o desempeño': '#8b5cf6', // Morado
+    'Conductas relacionadas con el uso de recursos o bienes municipales': '#10b981', // Verde
+    'Conductas relacionadas con la imagen o representación institucional': '#f59e0b', // Naranja
+    'Conductas relacionadas con la convivencia y comportamiento institucional': '#ec4899', // Rosa
+    'Conductas que podrían afectar la seguridad o la integridad de las personas': '#ef4444' // Rojo
+  }
+
+  // Obtener las 3 principales faltas por asunto
+  const getTopFaltas = (asunto) => {
+    if (!faltasPorAsunto || !faltasPorAsunto[asunto]) return []
+
+    const faltasArray = Object.entries(faltasPorAsunto[asunto])
+      .map(([falta, cantidad]) => ({ falta, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 3)
+
+    return faltasArray
   }
 
   const handleCalendarApply = (start, end) => {
@@ -96,7 +125,7 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
   // Calcular máximo valor para escalar las barras
   const maxValor = Math.max(
     ...dias.map(dia =>
-      Math.max(...asuntos.map(asunto => datosActuales[dia][asunto]))
+      Math.max(...nuevosAsuntos.map(asunto => datosActuales[dia][asunto] || 0))
     ),
     1
   )
@@ -113,7 +142,7 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
 
   // Ancho de cada grupo de barras
   const barGroupWidth = chartWidth / dias.length
-  const barWidth = Math.min(barGroupWidth / asuntos.length - 4, 20)
+  const barWidth = Math.min(barGroupWidth / nuevosAsuntos.length - 2, 15)
 
   // Función para obtener posición Y
   const getY = (value) => paddingTop + chartHeight - (value / maxValor) * chartHeight
@@ -194,14 +223,20 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
 
           return (
             <g key={dia}>
-              {asuntos.map((asunto, asuntoIndex) => {
-                const valor = datosActuales[dia][asunto]
+              {nuevosAsuntos.map((asunto, asuntoIndex) => {
+                const valor = datosActuales[dia][asunto] || 0
                 const barHeight = (valor / maxValor) * chartHeight
                 const barX = groupX + asuntoIndex * (barWidth + 2)
                 const barY = getY(valor)
+                const topFaltas = getTopFaltas(asunto)
 
                 return (
-                  <g key={asunto}>
+                  <g
+                    key={asunto}
+                    onMouseEnter={() => valor > 0 && setHoveredBar({ asunto, dia, valor, topFaltas, x: barX + barWidth / 2, y: barY })}
+                    onMouseLeave={() => setHoveredBar(null)}
+                    style={{ cursor: valor > 0 ? 'pointer' : 'default' }}
+                  >
                     <rect
                       x={barX}
                       y={barY}
@@ -210,6 +245,10 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
                       fill={colores[asunto]}
                       rx="3"
                       className="bar-rect"
+                      style={{
+                        transition: 'all 0.3s ease',
+                        opacity: hoveredBar && hoveredBar.asunto === asunto && hoveredBar.dia === dia ? 0.8 : 1
+                      }}
                     />
                     {/* Mostrar valor encima de la barra si es suficientemente alta */}
                     {valor > 0 && barHeight > 20 && (
@@ -255,14 +294,64 @@ export default function BarChart({ title, subtitle, data, incidencias }) {
         })}
       </svg>
 
-      {/* Leyenda */}
-      <div className="bar-legend">
-        {asuntos.map(asunto => (
-          <div key={asunto} className="legend-item">
-            <span className="legend-dot" style={{ backgroundColor: colores[asunto] }}></span>
-            <span className="legend-label">{asunto}</span>
+      {/* Tooltip flotante */}
+      {hoveredBar && (
+        <div
+          className="chart-tooltip"
+          style={{
+            position: 'absolute',
+            left: `${(hoveredBar.x / width) * 100}%`,
+            top: `${(hoveredBar.y / height) * 100}%`,
+            transform: 'translate(-50%, -120%)',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '12px',
+            boxShadow: '0 4px 12px var(--shadow)',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            minWidth: '200px'
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
+            {hoveredBar.dia} - {hoveredBar.valor} incidencia{hoveredBar.valor !== 1 ? 's' : ''}
           </div>
-        ))}
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+            {hoveredBar.asunto}
+          </div>
+          {hoveredBar.topFaltas && hoveredBar.topFaltas.length > 0 && (
+            <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
+              <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
+              {hoveredBar.topFaltas.map((falta, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{falta.falta}</span>
+                  <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Leyenda con nombres abreviados */}
+      <div className="bar-legend">
+        {nuevosAsuntos.map((asunto, index) => {
+          const nombresCortos = [
+            'Horario y Asistencia',
+            'Funciones y Desempeño',
+            'Uso de Recursos',
+            'Imagen Institucional',
+            'Convivencia',
+            'Seguridad'
+          ]
+
+          return (
+            <div key={asunto} className="legend-item" title={asunto}>
+              <span className="legend-dot" style={{ backgroundColor: colores[asunto] }}></span>
+              <span className="legend-label">{nombresCortos[index]}</span>
+            </div>
+          )
+        })}
       </div>
 
       {/* Calendar Modal */}

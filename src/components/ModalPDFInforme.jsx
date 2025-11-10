@@ -142,7 +142,7 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         bodycam: incidencia.bodycamNumber || '',
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
         supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
-        descripcionAdicional: incidencia.asunto === 'Inasistencia' ? '' : generarDescripcionAdicional(),
+        descripcionAdicional: (incidencia.falta && incidencia.falta.startsWith('Inasistencia')) ? '' : generarDescripcionAdicional(),
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: incidencia.fechaFalta || '',
         imagenes: [],
@@ -400,6 +400,12 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
     doc.text(`FALTA   :    ${formData.falta.toUpperCase()}`, 20, currentLine)
     currentLine += 8
 
+    // Si es inasistencia, mostrar el tipo (Justificada/Injustificada)
+    if (formData.falta && formData.falta.startsWith('Inasistencia') && formData.tipoInasistencia) {
+      doc.text(`TIPO    :    ${formData.tipoInasistencia.toUpperCase()}`, 20, currentLine)
+      currentLine += 8
+    }
+
     doc.text(`FECHA   :    San Juan de Lurigancho, ${formData.fecha}`, 20, currentLine)
     currentLine += 7
     
@@ -412,12 +418,12 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
     currentLine += 10
 
     // Para incidencias que NO son inasistencias, usar la descripción adicional personalizada
-    if (incidencia.asunto !== 'Inasistencia' && formData.descripcionAdicional) {
+    if (!(incidencia.falta && incidencia.falta.startsWith('Inasistencia')) && formData.descripcionAdicional) {
       doc.setFont('helvetica', 'normal')
       const lineasDescripcion = doc.splitTextToSize(formData.descripcionAdicional, 170)
       doc.text(lineasDescripcion, 20, currentLine, { align: 'justify', maxWidth: 170 })
       currentLine += (lineasDescripcion.length * 6) + 8
-    } else if (incidencia.asunto === 'Inasistencia') {
+    } else if (incidencia.falta && incidencia.falta.startsWith('Inasistencia')) {
       // Para inasistencias, mantener el texto original
       const textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
 
@@ -438,8 +444,8 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         currentLine += (lineasAdicional.length * 6) + 8
       }
     }
-    
-    if (incidencia.asunto === 'Inasistencia' && inasistenciasHistoricas.length > 0) {
+
+    if (incidencia.falta && incidencia.falta.startsWith('Inasistencia') && inasistenciasHistoricas.length > 0) {
       if (currentLine > 200) {
         doc.addPage()
         currentLine = 20
@@ -543,7 +549,7 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
     trackPDFDownload(incidencia.id)
   }
 
-  const esInasistencia = incidencia.asunto === 'Inasistencia'
+  const esInasistencia = incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
   return (
     <div className="modal-backdrop">

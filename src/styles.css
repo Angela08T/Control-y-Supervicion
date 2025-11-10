@@ -472,6 +472,13 @@ body,
   backdrop-filter: blur(5px);
 }
 
+.controls select {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 [data-theme="dark"] .controls select,
 [data-theme="dark"] .controls input {
   color: #f8fafc !important;
@@ -2314,6 +2321,14 @@ body,
   margin-bottom: 20px;
 }
 
+/* Charts Grid Full Width */
+.charts-grid-full {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
 @media (max-width: 1200px) {
   .charts-grid {
     grid-template-columns: 1fr;
@@ -2330,6 +2345,7 @@ body,
   backdrop-filter: blur(10px);
   width: 100%;
   min-width: 0;
+  position: relative; /* Para posicionamiento de tooltips */
   box-sizing: border-box;
 }
 
@@ -2609,6 +2625,7 @@ body,
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  position: relative; /* Para posicionamiento de tooltips */
 }
 
 .bar-chart-svg {
