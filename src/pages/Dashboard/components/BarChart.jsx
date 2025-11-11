@@ -3,14 +3,14 @@ import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
 export default function BarChart({ title, subtitle, data, incidencias, faltasPorAsunto }) {
-  // Nuevos 6 asuntos
+  // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
-    'Conductas relacionadas con el cumplimiento del horario y asistencia',
-    'Conductas relacionadas con el cumplimiento de funciones o desempeño',
-    'Conductas relacionadas con el uso de recursos o bienes municipales',
-    'Conductas relacionadas con la imagen o representación institucional',
-    'Conductas relacionadas con la convivencia y comportamiento institucional',
-    'Conductas que podrían afectar la seguridad o la integridad de las personas'
+    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño',
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales',
+    'Conductas relacionadas con la Imagen o Representación Institucional',
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional',
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas'
   ]
 
   const [rangoTiempo, setRangoTiempo] = useState('30D')
@@ -24,31 +24,24 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
       return data // Fallback a datos originales
     }
 
-    let fechaInicio, fechaFin
+    // MODO OFFLINE: Cuando usamos localStorage, mostrar TODAS las incidencias sin filtrar por fecha
+    // Encontrar el rango de fechas de todas las incidencias
+    const fechasIncidencias = incidencias
+      .filter(inc => inc.fechaIncidente)
+      .map(inc => new Date(inc.fechaIncidente))
+      .sort((a, b) => a - b)
 
-    // Si hay rango personalizado, usarlo
-    if (rangoTiempo === 'custom' && customDateRange) {
-      fechaInicio = customDateRange.start
-      fechaFin = customDateRange.end
-    } else {
-      // Usar rangos predefinidos
-      const ahora = new Date()
-      let diasAtras = 30
-
-      if (rangoTiempo === '7D') diasAtras = 7
-      else if (rangoTiempo === '15D') diasAtras = 15
-      else if (rangoTiempo === '30D') diasAtras = 30
-
-      fechaInicio = new Date(ahora)
-      fechaInicio.setDate(ahora.getDate() - diasAtras)
-      fechaFin = ahora
+    if (fechasIncidencias.length === 0) {
+      return data
     }
 
-    // Filtrar incidencias por fecha
-    const incidenciasFiltradas = incidencias.filter(inc => {
-      if (!inc.fechaIncidente) return false
-      const fechaInc = new Date(inc.fechaIncidente)
-      return fechaInc >= fechaInicio && fechaInc <= fechaFin
+    const fechaInicio = fechasIncidencias[0] // Primera fecha
+    const fechaFin = fechasIncidencias[fechasIncidencias.length - 1] // Última fecha
+
+    console.log('📅 BarChart - Modo localStorage - Mostrando TODAS las incidencias:', {
+      fechaInicio: fechaInicio.toISOString(),
+      fechaFin: fechaFin.toISOString(),
+      totalIncidencias: incidencias.length
     })
 
     // Calcular días entre inicio y fin
@@ -66,8 +59,9 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
       })
     }
 
-    // Contar incidencias por día
-    incidenciasFiltradas.forEach(inc => {
+    // Contar TODAS las incidencias por día
+    incidencias.forEach(inc => {
+      if (!inc.fechaIncidente) return
       const fecha = new Date(inc.fechaIncidente)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
       if (datosPorDia[dia]) {
@@ -85,14 +79,19 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   const datosActuales = getDatosFiltrados()
   const dias = Object.keys(datosActuales)
 
+  console.log('🔍 BarChart - Datos actuales:', datosActuales)
+  console.log('🔍 BarChart - Días:', dias)
+  console.log('🔍 BarChart - Prop data:', data)
+  console.log('🔍 BarChart - Prop incidencias:', incidencias)
+
   // Colores para los 6 nuevos asuntos
   const colores = {
-    'Conductas relacionadas con el cumplimiento del horario y asistencia': '#0ea5e9', // Azul cielo
-    'Conductas relacionadas con el cumplimiento de funciones o desempeño': '#8b5cf6', // Morado
-    'Conductas relacionadas con el uso de recursos o bienes municipales': '#10b981', // Verde
-    'Conductas relacionadas con la imagen o representación institucional': '#f59e0b', // Naranja
-    'Conductas relacionadas con la convivencia y comportamiento institucional': '#ec4899', // Rosa
-    'Conductas que podrían afectar la seguridad o la integridad de las personas': '#ef4444' // Rojo
+    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9', // Azul cielo
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6', // Morado
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Verde
+    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b', // Naranja
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#ec4899', // Rosa
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444' // Rojo
   }
 
   // Obtener las 3 principales faltas por asunto
@@ -132,7 +131,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
 
   // Configuración del SVG
   const width = 800
-  const height = 400
+  const height = 250
   const paddingLeft = 40
   const paddingRight = 20
   const paddingTop = 40
@@ -142,7 +141,9 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
 
   // Ancho de cada grupo de barras
   const barGroupWidth = chartWidth / dias.length
-  const barWidth = Math.min(barGroupWidth / nuevosAsuntos.length - 2, 15)
+  // Asegurar que las barras tengan al menos 2px de ancho para ser visibles
+  const calculatedBarWidth = (barGroupWidth / nuevosAsuntos.length) - 1
+  const barWidth = Math.max(Math.min(calculatedBarWidth, 20), 2) // Mínimo 2px, máximo 20px
 
   // Función para obtener posición Y
   const getY = (value) => paddingTop + chartHeight - (value / maxValor) * chartHeight
@@ -269,9 +270,17 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
 
               {/* Etiqueta del eje X */}
               {(() => {
-                const shouldShowLabel = rangoTiempo === '7D' ||
-                                       (rangoTiempo === '15D' && diaIndex % 2 === 0) ||
-                                       (rangoTiempo === '30D' && diaIndex % 3 === 0)
+                // Calcular cuántas etiquetas mostrar según la cantidad total de días
+                const totalDias = dias.length
+                let skipFactor = 1
+
+                if (totalDias > 60) skipFactor = Math.floor(totalDias / 10) // Mostrar ~10 etiquetas
+                else if (totalDias > 30) skipFactor = Math.floor(totalDias / 8) // Mostrar ~8 etiquetas
+                else if (totalDias > 15) skipFactor = 3 // Cada 3 días
+                else if (totalDias > 7) skipFactor = 2 // Cada 2 días
+                else skipFactor = 1 // Mostrar todos
+
+                const shouldShowLabel = diaIndex % skipFactor === 0 || diaIndex === dias.length - 1 // Siempre mostrar el último
 
                 if (shouldShowLabel) {
                   return (
@@ -294,15 +303,15 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
         })}
       </svg>
 
-      {/* Tooltip flotante */}
+      {/* Tooltip flotante con prevención de overflow */}
       {hoveredBar && (
         <div
           className="chart-tooltip"
           style={{
             position: 'absolute',
-            left: `${(hoveredBar.x / width) * 100}%`,
+            left: `${Math.min(Math.max((hoveredBar.x / width) * 100, 15), 85)}%`,
             top: `${(hoveredBar.y / height) * 100}%`,
-            transform: 'translate(-50%, -120%)',
+            transform: hoveredBar.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))',
             background: 'var(--card)',
             border: '1px solid var(--border)',
             borderRadius: '8px',
@@ -310,7 +319,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
             boxShadow: '0 4px 12px var(--shadow)',
             zIndex: 1000,
             pointerEvents: 'none',
-            minWidth: '200px'
+            minWidth: '200px',
+            maxWidth: '280px'
           }}
         >
           <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
@@ -323,8 +333,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
             <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
               <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
               {hoveredBar.topFaltas.map((falta, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{falta.falta}</span>
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)', flex: 1, fontSize: '0.7rem' }}>{falta.falta}</span>
                   <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
                 </div>
               ))}

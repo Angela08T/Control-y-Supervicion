@@ -81,3 +81,57 @@ export const getAllOffenders = async () => {
     }
   }
 };
+
+/**
+ * Obtener tendencias del dashboard (evolución de incidencias por fecha y asunto)
+ * @param {string} startDate - Fecha de inicio en formato YYYY-MM-DD
+ * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD
+ * @returns {Promise} - Respuesta con datos de tendencias por día y asunto
+ */
+export const getDashboardTrends = async (startDate, endDate) => {
+  try {
+    const response = await api.get('/dashboard/trends/', {
+      params: {
+        start: startDate,
+        end: endDate
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.warn('Endpoint de tendencias del dashboard no disponible');
+    if (error.response) {
+      throw error;
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
+    } else {
+      throw new Error('Error al obtener tendencias del dashboard: ' + error.message);
+    }
+  }
+};
+
+/**
+ * Obtener estadísticas generales del dashboard (incidencias críticas y zonas)
+ * @param {string} startDate - Fecha de inicio en formato YYYY-MM-DD
+ * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD
+ * @returns {Promise} - Respuesta con estadísticas generales
+ */
+export const getDashboardGeneral = async (startDate, endDate) => {
+  try {
+    const response = await api.get('/dashboard/general/', {
+      params: {
+        start: startDate,
+        end: endDate
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.warn('Endpoint de estadísticas generales del dashboard no disponible');
+    if (error.response) {
+      throw error;
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
+    } else {
+      throw new Error('Error al obtener estadísticas generales: ' + error.message);
+    }
+  }
+};
