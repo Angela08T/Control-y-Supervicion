@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
-import { getFieldSupervisionStats, getAllOffenders } from '../../api/statistics'
+import { getFieldSupervisionStats, getAllOffenders, getDashboardTrends, getDashboardGeneral } from '../../api/statistics'
+import useSubjects from '../../hooks/Subject/useSubjects'
 import StatCard from './components/StatCard'
 import DateCard from './components/DateCard'
 import WelcomeCard from './components/WelcomeCard'
@@ -25,6 +26,11 @@ export default function DashboardPage() {
     nivelCumplimiento: 0
   })
   const [loading, setLoading] = useState(true)
+  const [trendsData, setTrendsData] = useState(null) // Datos de tendencias de la API
+  const [generalStats, setGeneralStats] = useState(null) // Datos generales (incidencias críticas y zonas)
+
+  // Obtener asuntos y faltas desde la API
+  const { subjects } = useSubjects()
 
   // Cargar datos de la API al montar el componente
   useEffect(() => {
@@ -46,7 +52,14 @@ export default function DashboardPage() {
     try {
       // Obtener cantidad de serenos activos
       const offendersResponse = await getAllOffenders()
-      const activeCount = offendersResponse?.data?.filter(o => o.status === 'active').length || 0
+      console.log('📋 Respuesta de offenders:', offendersResponse)
+
+      // La estructura puede ser response.data.data o response.data
+      const offendersList = Array.isArray(offendersResponse?.data?.data)
+        ? offendersResponse.data.data
+        : (Array.isArray(offendersResponse?.data) ? offendersResponse.data : [])
+
+      const activeCount = offendersList.filter(o => o.status === 'active').length || 0
       setSerenosActivos(activeCount)
     } catch (error) {
       console.warn('No se pudo obtener información de serenos:', error)
@@ -81,6 +94,51 @@ export default function DashboardPage() {
     setPdfStats(getPDFDownloadStats())
   }, [incidencias])
 
+  // Cargar datos de tendencias y estadísticas generales cuando cambia el rango de fechas
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      let startDate, endDate
+
+      if (dateRange.start && dateRange.end) {
+        // Usar rango personalizado
+        startDate = dateRange.start.toISOString().split('T')[0]
+        endDate = dateRange.end.toISOString().split('T')[0]
+      } else {
+        // Usar último mes por defecto
+        endDate = new Date().toISOString().split('T')[0]
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      }
+
+      console.log('📊 Obteniendo estadísticas del dashboard:', { startDate, endDate })
+
+      // Obtener tendencias (gráficos)
+      try {
+        const trendsResponse = await getDashboardTrends(startDate, endDate)
+        if (trendsResponse?.data) {
+          setTrendsData(trendsResponse.data)
+          console.log('✅ Tendencias cargadas:', trendsResponse.data)
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudieron cargar tendencias del dashboard:', error)
+        setTrendsData(null)
+      }
+
+      // Obtener estadísticas generales (incidencias críticas y zonas)
+      try {
+        const generalResponse = await getDashboardGeneral(startDate, endDate)
+        if (generalResponse?.data) {
+          setGeneralStats(generalResponse.data)
+          console.log('✅ Estadísticas generales cargadas:', generalResponse.data)
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudieron cargar estadísticas generales:', error)
+        setGeneralStats(null)
+      }
+    }
+
+    fetchDashboardStats()
+  }, [dateRange])
+
   // Calcular estadísticas
   const stats = useMemo(() => {
     let filtered = incidencias
@@ -102,29 +160,45 @@ export default function DashboardPage() {
     // Cambios/porcentajes (calculados o simulados)
     const cambioSerenos = serenosActivos > 20 ? '+5%' : '0%'
 
-    // Incidencia crítica (la más frecuente)
+    // Calcular conteo de asuntos (necesario para varios cálculos)
     const conteoAsuntos = {}
     filtered.forEach(inc => {
       conteoAsuntos[inc.asunto] = (conteoAsuntos[inc.asunto] || 0) + 1
     })
-    const asuntoMasFrecuente = Object.keys(conteoAsuntos).reduce((a, b) => 
-      conteoAsuntos[a] > conteoAsuntos[b] ? a : b, 
-      'Sin datos'
-    )
-    const totalCriticas = conteoAsuntos[asuntoMasFrecuente] || 0
 
-    // Zona con más incidencias
-    const conteoJurisdicciones = {}
-    filtered.forEach(inc => {
-      if (inc.jurisdiccion) {
-        conteoJurisdicciones[inc.jurisdiccion] = (conteoJurisdicciones[inc.jurisdiccion] || 0) + 1
-      }
-    })
-    const zonaConMas = Object.keys(conteoJurisdicciones).reduce((a, b) =>
-      conteoJurisdicciones[a] > conteoJurisdicciones[b] ? a : b,
-      'Sin datos'
-    )
-    const totalZona = conteoJurisdicciones[zonaConMas] || 0
+    // Incidencia crítica - Usar datos de la API si están disponibles
+    let asuntoMasFrecuente, totalCriticas
+    if (generalStats?.top_subject) {
+      asuntoMasFrecuente = generalStats.top_subject.name
+      totalCriticas = generalStats.top_subject.sent
+    } else {
+      // Fallback a cálculo local
+      asuntoMasFrecuente = Object.keys(conteoAsuntos).reduce((a, b) =>
+        conteoAsuntos[a] > conteoAsuntos[b] ? a : b,
+        'Sin datos'
+      )
+      totalCriticas = conteoAsuntos[asuntoMasFrecuente] || 0
+    }
+
+    // Zona con más incidencias - Usar datos de la API si están disponibles
+    let zonaConMas, totalZona
+    if (generalStats?.top_jurisdiction) {
+      zonaConMas = generalStats.top_jurisdiction.name
+      totalZona = generalStats.top_jurisdiction.sent
+    } else {
+      // Fallback a cálculo local
+      const conteoJurisdicciones = {}
+      filtered.forEach(inc => {
+        if (inc.jurisdiccion) {
+          conteoJurisdicciones[inc.jurisdiccion] = (conteoJurisdicciones[inc.jurisdiccion] || 0) + 1
+        }
+      })
+      zonaConMas = Object.keys(conteoJurisdicciones).reduce((a, b) =>
+        conteoJurisdicciones[a] > conteoJurisdicciones[b] ? a : b,
+        'Sin datos'
+      )
+      totalZona = conteoJurisdicciones[zonaConMas] || 0
+    }
 
     // Cumplimiento de reportes (PDFs descargados - simulado por ahora)
     const pdfDescargados = Math.floor(totalIncidencias * 0.95) // 95% de reportes
@@ -132,39 +206,88 @@ export default function DashboardPage() {
       ? Math.round((pdfDescargados / totalIncidencias) * 100)
       : 0
 
-    // Evolución por mes - Con los nuevos 6 asuntos
+    // Evolución por mes - Usando datos de la API de tendencias cuando estén disponibles
     const incidenciasPorMes = {}
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    const nuevosAsuntos = [
-      'Conductas relacionadas con el cumplimiento del horario y asistencia',
-      'Conductas relacionadas con el cumplimiento de funciones o desempeño',
-      'Conductas relacionadas con el uso de recursos o bienes municipales',
-      'Conductas relacionadas con la imagen o representación institucional',
-      'Conductas relacionadas con la convivencia y comportamiento institucional',
-      'Conductas que podrían afectar la seguridad o la integridad de las personas'
-    ]
 
-    meses.forEach((mes, idx) => {
-      incidenciasPorMes[mes] = {}
-      nuevosAsuntos.forEach(asunto => {
-        incidenciasPorMes[mes][asunto] = 0
+    // Obtener lista de asuntos desde la API (o fallback a lista hardcodeada)
+    const nuevosAsuntos = subjects && subjects.length > 0
+      ? subjects.map(s => s.name)
+      : [
+          'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
+          'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño',
+          'Conductas relacionadas con el Uso de Recursos o Bienes Municipales',
+          'Conductas relacionadas con la Imagen o Representación Institucional',
+          'Conductas relacionadas con la Convivencia y Comportamiento Institucional',
+          'Conductas que podrían afectar la Seguridad o la Integridad de Personas'
+        ]
+
+    // Crear mapa de ID a nombre de subject para la API
+    const subjectIdToName = {}
+    if (subjects && subjects.length > 0) {
+      subjects.forEach(subject => {
+        subjectIdToName[subject.id] = subject.name
       })
-    })
+    }
 
-    filtered.forEach(inc => {
-      if (inc.fechaIncidente) {
-        const fecha = new Date(inc.fechaIncidente)
-        const mes = meses[fecha.getMonth()]
-        if (incidenciasPorMes[mes]) {
-          // Si el asunto existe en el mes, incrementar, sino inicializar en 1
-          if (incidenciasPorMes[mes][inc.asunto] !== undefined) {
-            incidenciasPorMes[mes][inc.asunto]++
-          } else {
-            incidenciasPorMes[mes][inc.asunto] = 1
+    // Si tenemos datos de la API de tendencias, usarlos
+    if (trendsData && trendsData.days && trendsData.days.length > 0) {
+      console.log('📊 Procesando datos de tendencias:', trendsData)
+      console.log('🗂️ Mapa de IDs a nombres:', subjectIdToName)
+
+      // Inicializar estructura para fechas del rango
+      const fechasMap = {}
+      trendsData.days.forEach(day => {
+        const fecha = new Date(day.date)
+        const diaNum = fecha.getDate()
+        const mesNum = fecha.getMonth() + 1 // +1 porque getMonth() retorna 0-11
+        // Formato día/mes para que coincida con lo que esperan los charts
+        const labelFecha = `${diaNum}/${mesNum}`
+
+        fechasMap[labelFecha] = {}
+        nuevosAsuntos.forEach(asunto => {
+          fechasMap[labelFecha][asunto] = 0
+        })
+
+        // Llenar con datos de la API
+        if (day.subjects) {
+          Object.keys(day.subjects).forEach(subjectId => {
+            const subjectName = subjectIdToName[subjectId]
+            if (subjectName && day.subjects[subjectId].sent > 0) {
+              fechasMap[labelFecha][subjectName] = day.subjects[subjectId].sent
+              console.log(`  ✅ ${labelFecha} - ${subjectName}: ${day.subjects[subjectId].sent}`)
+            }
+          })
+        }
+      })
+
+      Object.assign(incidenciasPorMes, fechasMap)
+      console.log('📈 Datos procesados para LineChart:', incidenciasPorMes)
+    } else {
+      console.log('⚠️ No hay datos de tendencias, usando cálculo local')
+      // Fallback: usar cálculo local con incidencias filtradas
+      meses.forEach((mes, idx) => {
+        incidenciasPorMes[mes] = {}
+        nuevosAsuntos.forEach(asunto => {
+          incidenciasPorMes[mes][asunto] = 0
+        })
+      })
+
+      filtered.forEach(inc => {
+        if (inc.fechaIncidente) {
+          const fecha = new Date(inc.fechaIncidente)
+          const mes = meses[fecha.getMonth()]
+          if (incidenciasPorMes[mes]) {
+            // Si el asunto existe en el mes, incrementar, sino inicializar en 1
+            if (incidenciasPorMes[mes][inc.asunto] !== undefined) {
+              incidenciasPorMes[mes][inc.asunto]++
+            } else {
+              incidenciasPorMes[mes][inc.asunto] = 1
+            }
           }
         }
-      }
-    })
+      })
+    }
 
     // Incidencias por turno
     const incidenciasPorTurno = {
@@ -179,11 +302,37 @@ export default function DashboardPage() {
       }
     })
 
-    // Conteo por asunto para las barras - Con los nuevos 6 asuntos
+    // Conteo por asunto para las barras - Usando API de tendencias o conteo local
     const incidenciasPorAsunto = {}
-    nuevosAsuntos.forEach(asunto => {
-      incidenciasPorAsunto[asunto] = conteoAsuntos[asunto] || 0
-    })
+
+    if (trendsData && trendsData.days && trendsData.days.length > 0) {
+      console.log('📊 Calculando datos para BarChart desde API...')
+      // Inicializar con 0 para todos los asuntos
+      nuevosAsuntos.forEach(asunto => {
+        incidenciasPorAsunto[asunto] = 0
+      })
+
+      // Sumar todos los "sent" de cada asunto a través de los días
+      trendsData.days.forEach(day => {
+        if (day.subjects) {
+          Object.keys(day.subjects).forEach(subjectId => {
+            const subjectName = subjectIdToName[subjectId]
+            if (subjectName) {
+              incidenciasPorAsunto[subjectName] =
+                (incidenciasPorAsunto[subjectName] || 0) + day.subjects[subjectId].sent
+            }
+          })
+        }
+      })
+      console.log('📊 Datos para BarChart:', incidenciasPorAsunto)
+    } else {
+      console.log('⚠️ Calculando datos para BarChart desde conteo local...')
+      // Fallback: usar conteo local
+      nuevosAsuntos.forEach(asunto => {
+        incidenciasPorAsunto[asunto] = conteoAsuntos[asunto] || 0
+      })
+      console.log('📊 Datos locales para BarChart:', incidenciasPorAsunto)
+    }
 
     // También agregar el conteo de faltas por asunto
     const faltasPorAsunto = {}
@@ -210,7 +359,7 @@ export default function DashboardPage() {
       incidenciasPorAsunto,
       faltasPorAsunto
     }
-  }, [incidencias, dateRange, serenosActivos])
+  }, [incidencias, dateRange, serenosActivos, subjects, trendsData, generalStats])
 
   const handleDateRangeChange = (start, end) => {
     setDateRange({ start, end })
@@ -274,7 +423,7 @@ export default function DashboardPage() {
           title="Evolución de Incidencias"
           subtitle="Últimos días registrados"
           data={stats.incidenciasPorMes}
-          incidencias={incidencias}
+          incidencias={trendsData ? null : incidencias}
           faltasPorAsunto={stats.faltasPorAsunto}
           onOpenDateModal={() => setShowDateModal(true)}
         />
@@ -285,8 +434,8 @@ export default function DashboardPage() {
         <BarChart
           title="Incidencias"
           subtitle="Por tipo de asunto y día"
-          data={stats.incidenciasPorAsunto}
-          incidencias={incidencias}
+          data={stats.incidenciasPorMes}
+          incidencias={trendsData ? null : incidencias}
           faltasPorAsunto={stats.faltasPorAsunto}
         />
       </div>

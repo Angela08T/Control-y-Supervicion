@@ -3,14 +3,14 @@ import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
 export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal }) {
-  // Nuevos 6 asuntos
+  // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
-    'Conductas relacionadas con el cumplimiento del horario y asistencia',
-    'Conductas relacionadas con el cumplimiento de funciones o desempeño',
-    'Conductas relacionadas con el uso de recursos o bienes municipales',
-    'Conductas relacionadas con la imagen o representación institucional',
-    'Conductas relacionadas con la convivencia y comportamiento institucional',
-    'Conductas que podrían afectar la seguridad o la integridad de las personas'
+    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño',
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales',
+    'Conductas relacionadas con la Imagen o Representación Institucional',
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional',
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas'
   ]
 
   const [filtrosActivos, setFiltrosActivos] = useState(
@@ -33,33 +33,24 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       return data // Fallback a datos originales
     }
 
-    let fechaInicio, fechaFin
+    // MODO OFFLINE: Cuando usamos localStorage, mostrar TODAS las incidencias sin filtrar por fecha
+    // Encontrar el rango de fechas de todas las incidencias
+    const fechasIncidencias = incidencias
+      .filter(inc => inc.fechaIncidente)
+      .map(inc => new Date(inc.fechaIncidente))
+      .sort((a, b) => a - b)
 
-    // Si hay rango personalizado, usarlo
-    if (rangoTiempo === 'custom' && customDateRange) {
-      fechaInicio = customDateRange.start
-      fechaFin = customDateRange.end
-    } else {
-      // Usar rangos predefinidos
-      const ahora = new Date()
-      let diasAtras = 30
-
-      if (rangoTiempo === '7D') diasAtras = 7
-      else if (rangoTiempo === '15D') diasAtras = 15
-      else if (rangoTiempo === '30D') diasAtras = 30
-
-      fechaInicio = new Date(ahora)
-      fechaInicio.setDate(ahora.getDate() - diasAtras)
-      fechaFin = ahora
+    if (fechasIncidencias.length === 0) {
+      return data
     }
 
-    const fechaLimite = fechaInicio
+    const fechaInicio = fechasIncidencias[0] // Primera fecha
+    const fechaFin = fechasIncidencias[fechasIncidencias.length - 1] // Última fecha
 
-    // Filtrar incidencias por fecha
-    const incidenciasFiltradas = incidencias.filter(inc => {
-      if (!inc.fechaIncidente) return false
-      const fechaInc = new Date(inc.fechaIncidente)
-      return fechaInc >= fechaInicio && fechaInc <= fechaFin
+    console.log('📅 Modo localStorage - Mostrando TODAS las incidencias:', {
+      fechaInicio: fechaInicio.toISOString(),
+      fechaFin: fechaFin.toISOString(),
+      totalIncidencias: incidencias.length
     })
 
     // Calcular días entre inicio y fin
@@ -77,8 +68,9 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       })
     }
 
-    // Contar incidencias por día
-    incidenciasFiltradas.forEach(inc => {
+    // Contar TODAS las incidencias por día
+    incidencias.forEach(inc => {
+      if (!inc.fechaIncidente) return
       const fecha = new Date(inc.fechaIncidente)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
       if (datosPorDia[dia]) {
@@ -95,6 +87,14 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
   const datosActuales = getDatosFiltrados()
   const meses = Object.keys(datosActuales)
+
+  // Debug: verificar si hay datos con valores
+  const totalValues = meses.reduce((sum, mes) => {
+    const mesTotal = nuevosAsuntos.reduce((s, asunto) => s + (datosActuales[mes][asunto] || 0), 0)
+    return sum + mesTotal
+  }, 0)
+  console.log('🔍 LineChart - Total de incidencias en datos:', totalValues)
+  console.log('🔍 LineChart - Cantidad de días:', meses.length)
 
   // Calcular máximo valor basado en los filtros activos
   const getMaxValue = () => {
@@ -114,12 +114,12 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
   // Colores para los 6 nuevos asuntos
   const colores = {
-    'Conductas relacionadas con el cumplimiento del horario y asistencia': '#0ea5e9', // Azul cielo
-    'Conductas relacionadas con el cumplimiento de funciones o desempeño': '#8b5cf6', // Morado
-    'Conductas relacionadas con el uso de recursos o bienes municipales': '#10b981', // Verde
-    'Conductas relacionadas con la imagen o representación institucional': '#f59e0b', // Naranja
-    'Conductas relacionadas con la convivencia y comportamiento institucional': '#ec4899', // Rosa
-    'Conductas que podrían afectar la seguridad o la integridad de las personas': '#ef4444' // Rojo
+    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9', // Azul cielo
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6', // Morado
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Verde
+    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b', // Naranja
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#ec4899', // Rosa
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444' // Rojo
   }
 
   // Obtener las 3 principales faltas por asunto
@@ -158,7 +158,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }
   
   const width = 800
-  const height = 400
+  const height = 250
   const padding = 40
   const chartWidth = width - padding * 2
   const chartHeight = height - padding * 2
@@ -316,10 +316,17 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
         {/* Etiquetas del eje X */}
         {meses.map((mes, i) => {
-          // Mostrar solo algunas etiquetas para evitar sobrecarga
-          const shouldShow = rangoTiempo === '7D' ||
-                             (rangoTiempo === '15D' && i % 2 === 0) ||
-                             (rangoTiempo === '30D' && i % 3 === 0)
+          // Calcular cuántas etiquetas mostrar según la cantidad total de días
+          const totalDias = meses.length
+          let skipFactor = 1
+
+          if (totalDias > 60) skipFactor = Math.floor(totalDias / 10) // Mostrar ~10 etiquetas
+          else if (totalDias > 30) skipFactor = Math.floor(totalDias / 8) // Mostrar ~8 etiquetas
+          else if (totalDias > 15) skipFactor = 3 // Cada 3 días
+          else if (totalDias > 7) skipFactor = 2 // Cada 2 días
+          else skipFactor = 1 // Mostrar todos
+
+          const shouldShow = i % skipFactor === 0 || i === meses.length - 1 // Siempre mostrar el último
 
           if (!shouldShow) return null
 
@@ -340,15 +347,15 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
         })}
       </svg>
 
-      {/* Tooltip flotante */}
+      {/* Tooltip flotante con prevención de overflow */}
       {hoveredPoint && (
         <div
           className="chart-tooltip"
           style={{
             position: 'absolute',
-            left: `${(hoveredPoint.x / width) * 100}%`,
+            left: `${Math.min(Math.max((hoveredPoint.x / width) * 100, 15), 85)}%`,
             top: `${(hoveredPoint.y / height) * 100}%`,
-            transform: 'translate(-50%, -120%)',
+            transform: hoveredPoint.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))',
             background: 'var(--card)',
             border: '1px solid var(--border)',
             borderRadius: '8px',
@@ -356,7 +363,8 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
             boxShadow: '0 4px 12px var(--shadow)',
             zIndex: 1000,
             pointerEvents: 'none',
-            minWidth: '200px'
+            minWidth: '200px',
+            maxWidth: '280px'
           }}
         >
           <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
@@ -369,8 +377,8 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
             <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
               <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
               {hoveredPoint.topFaltas.map((falta, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{falta.falta}</span>
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)', flex: 1, fontSize: '0.7rem' }}>{falta.falta}</span>
                   <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
                 </div>
               ))}

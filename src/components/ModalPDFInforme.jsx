@@ -97,29 +97,55 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         return 'No especificada'
       }
 
-      // Generar descripción adicional predeterminada
-      const generarDescripcionAdicional = () => {
+      // Generar contenido del informe predeterminado
+      const generarContenidoInforme = () => {
         const hora = obtenerHoraFormateada(incidencia.horaIncidente)
         const fecha = formatearFecha(incidencia.fechaIncidente)
+        const fechaFaltaFormatted = incidencia.fechaFalta ? formatearFecha(incidencia.fechaFalta) : fecha
         const direccion = obtenerDireccion()
-        const nombreInfractor = incidencia.nombreCompleto || 'NOMBRE NO DISPONIBLE'
-        const cargoPersona = incidencia.cargo || 'GIR'
+        const nombreCompleto = incidencia.nombreCompleto || 'NOMBRE NO DISPONIBLE'
+        const cargoPersona = incidencia.cargo || 'Inspector Comercial'
+        const regLab = incidencia.regLab || 'N/A'
+        const turno = incidencia.turno || 'N/A'
         const falta = incidencia.falta || 'Falta no especificada'
-        const supervisorNombre = username ? username.toUpperCase() : 'SUPERVISOR'
         const bodycamNum = incidencia.bodycamNumber || 'N/A'
-        const bodycamAsignada = incidencia.bodycamAsignadaA || 'persona no especificada'
-        const articuloNum = articulo || 'N/A'
+        const tipoInasistencia = incidencia.tipoInasistencia || 'Injustificada'
 
-        // Texto de la cita del artículo
-        const citaArticulo = `"${falta} en las instalaciones del centro de labores, sin importar si dicha acción se realiza o no en la jornada laboral, la cual conlleva a la aplicación de la sanción de la amonestación escrita"`
+        // Si es una inasistencia, usar plantilla específica
+        if (falta.startsWith('Inasistencia')) {
+          return `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
 
-        return `Siendo las ${hora}, del día ${fecha}, en la dirección ${direccion}, la persona ${bodycamAsignada}, con cargo ${cargoPersona}, fue encontrada incurriendo en la presunta falta disciplinaria de ${falta}, durante el monitoreo de Control y Supervisión por el CENTINELA ${supervisorNombre} a través de la BODYCAM ${bodycamNum}.
+Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
 
-La BODYCAM ${bodycamNum}, asignada a ${bodycamAsignada} según el KARDEX, fue la que enfocó al ${cargoPersona} infringiendo el Artículo ${articuloNum}.
+[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
 
-Que cita: ${citaArticulo}, ya que el personal operativo debe estar en cumplimiento de sus funciones y deberes durante su jornada laboral, por lo tanto, deberían estar atentos y alertas al punto asignado por si ocurriese alguna emergencia o algún tipo de apoyo.
+...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
 
-Se adjunta al presente la información de la persona ${bodycamAsignada}, así como las tomas fotográficas de la BODYCAM ${bodycamNum}.`
+[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
+
+Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
+
+Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
+
+Se adjuntan las evidencias:`
+        }
+
+        // Para otras faltas (con bodycam)
+        return `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+
+Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
+
+[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
+
+...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la BODYCAM ${bodycamNum}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
+
+[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
+
+Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la BODYCAM ${bodycamNum}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
+
+Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la BODYCAM. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
+
+Se adjuntan las evidencias:`
       }
 
       setFormData({
@@ -142,7 +168,7 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
         bodycam: incidencia.bodycamNumber || '',
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
         supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
-        descripcionAdicional: (incidencia.falta && incidencia.falta.startsWith('Inasistencia')) ? '' : generarDescripcionAdicional(),
+        descripcionAdicional: generarContenidoInforme(),  // Generar plantilla para todos los tipos
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: incidencia.fechaFalta || '',
         imagenes: [],
@@ -248,7 +274,42 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
   }, [incidencia])
 
   function handleChange(field, value) {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value }
+
+      // Si cambia el número de bodycam, actualizar la plantilla automáticamente
+      if (field === 'bodycam' && !(incidencia.falta && incidencia.falta.startsWith('Inasistencia'))) {
+        const hora = obtenerHoraFormateada(incidencia.horaIncidente)
+        const fecha = formatearFecha(incidencia.fechaIncidente)
+        const direccion = prev.ubicacion
+        const nombreCompleto = incidencia.nombreCompleto || 'NOMBRE NO DISPONIBLE'
+        const cargoPersona = incidencia.cargo || 'Inspector Comercial'
+        const regLab = incidencia.regLab || 'N/A'
+        const turno = incidencia.turno || 'N/A'
+        const falta = incidencia.falta || 'Falta no especificada'
+        const bodycamNum = value || 'N/A'  // Usar el nuevo valor
+
+        const nuevaPlantilla = `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+
+Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
+
+[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
+
+...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la BODYCAM ${bodycamNum}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
+
+[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
+
+Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la BODYCAM ${bodycamNum}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
+
+Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la BODYCAM. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
+
+Se adjuntan las evidencias:`
+
+        newData.descripcionAdicional = nuevaPlantilla
+      }
+
+      return newData
+    })
   }
 
   function handleImageUpload(e) {
@@ -414,17 +475,17 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
 
     doc.setFontSize(11)
 
-    doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine, { align: 'justify', maxWidth: 170 })
-    currentLine += 10
-
-    // Para incidencias que NO son inasistencias, usar la descripción adicional personalizada
-    if (!(incidencia.falta && incidencia.falta.startsWith('Inasistencia')) && formData.descripcionAdicional) {
+    // Si hay contenido del informe, usarlo (para todos los tipos de incidencias)
+    if (formData.descripcionAdicional) {
       doc.setFont('helvetica', 'normal')
       const lineasDescripcion = doc.splitTextToSize(formData.descripcionAdicional, 170)
       doc.text(lineasDescripcion, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasDescripcion.length * 6) + 8
+      currentLine += (lineasDescripcion.length * 5) + 8
     } else if (incidencia.falta && incidencia.falta.startsWith('Inasistencia')) {
-      // Para inasistencias, mantener el texto original
+      // Fallback para inasistencias sin contenido personalizado
+      doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine, { align: 'justify', maxWidth: 170 })
+      currentLine += 10
+
       const textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
 
       const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
@@ -436,13 +497,7 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
 
       const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
       doc.text(lineasInfo, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasInfo.length * 6) + 5
-
-      if (formData.descripcionAdicional) {
-        const lineasAdicional = doc.splitTextToSize(formData.descripcionAdicional, 170)
-        doc.text(lineasAdicional, 20, currentLine, { align: 'justify', maxWidth: 170 })
-        currentLine += (lineasAdicional.length * 6) + 8
-      }
+      currentLine += (lineasInfo.length * 6) + 8
     }
 
     if (incidencia.falta && incidencia.falta.startsWith('Inasistencia') && inasistenciasHistoricas.length > 0) {
@@ -779,18 +834,36 @@ Se adjunta al presente la información de la persona ${bodycamAsignada}, así co
               </div>
 
               <div className="editable-section">
-                <label>Descripción adicional (opcional):</label>
+                <label>CONTENIDO DEL INFORME:</label>
                 <textarea
                   value={formData.descripcionAdicional}
                   onChange={e => handleChange('descripcionAdicional', e.target.value)}
-                  placeholder="Agregar información adicional..."
-                  rows={12}
+                  placeholder="Edite el contenido del informe según sea necesario..."
+                  rows={18}
                   style={{
-                    fontSize: '12px',
+                    fontSize: '11px',
                     lineHeight: '1.6',
-                    fontFamily: 'inherit'
+                    fontFamily: 'inherit',
+                    whiteSpace: 'pre-wrap'
                   }}
                 />
+                <div style={{
+                  fontSize: '10px',
+                  color: 'var(--text-secondary)',
+                  marginTop: '8px',
+                  padding: '8px',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(59, 130, 246, 0.3)'
+                }}>
+                  <strong>💡 Instrucciones:</strong>
+                  <ul style={{marginTop: '4px', marginLeft: '20px', lineHeight: '1.5'}}>
+                    <li>Complete las secciones marcadas con [INSTRUCCIÓN] con los detalles específicos del incidente</li>
+                    <li>Use términos objetivos como "presuntamente", "aparentemente" para describir los hechos</li>
+                    <li>Puede editar cualquier parte del texto según sea necesario</li>
+                    <li>La plantilla se adapta automáticamente según el tipo de incidente</li>
+                  </ul>
+                </div>
               </div>
 
               {esInasistencia && inasistenciasHistoricas.length > 0 && (

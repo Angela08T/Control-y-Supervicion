@@ -2347,6 +2347,7 @@ body,
   min-width: 0;
   position: relative; /* Para posicionamiento de tooltips */
   box-sizing: border-box;
+  overflow: visible; /* Permitir que tooltips se muestren fuera */
 }
 
 .chart-header {
@@ -2626,6 +2627,7 @@ body,
   display: flex;
   flex-direction: column;
   position: relative; /* Para posicionamiento de tooltips */
+  overflow: visible; /* Permitir que tooltips se muestren fuera */
 }
 
 .bar-chart-svg {

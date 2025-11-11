@@ -6,7 +6,7 @@ import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useJobs from '../hooks/Job/useJobs'
 import useLeads from '../hooks/Job/useLeads'
 import useAllLeads from '../hooks/Job/useAllLeads'
-// import useSubjects from '../hooks/Subject/useSubjects' // DESHABILITADO temporalmente
+import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import './Autocomplete.css'
 import {
@@ -139,12 +139,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     error: allLeadsError
   } = useAllLeads()
 
-  // Hook para obtener subjects (asuntos) y lacks (faltas) - DESHABILITADO temporalmente
-  // const {
-  //   subjects,
-  //   loading: subjectsLoading,
-  //   error: subjectsError
-  // } = useSubjects()
+  // Hook para obtener subjects (asuntos) y lacks (faltas) desde la API
+  const {
+    subjects,
+    loading: subjectsLoading,
+    error: subjectsError
+  } = useSubjects()
 
   // Hook para obtener jurisdicciones
   const {
@@ -164,21 +164,33 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     })
   }, [allLeads, form.destinatario])
 
-  // 🔹 USAR DATOS TEMPORALES en lugar de la API
+  // 🔹 USAR DATOS DE LA API - Crear mapa de subjects con sus lacks
   const subjectMap = useMemo(() => {
     const map = {}
-    // Usar la estructura temporal local
-    Object.keys(asuntosFaltasTemporales).forEach((asuntoName, index) => {
-      map[asuntoName] = {
-        id: `temp-${index}`, // ID temporal
-        lacks: asuntosFaltasTemporales[asuntoName].map((faltaName, fIndex) => ({
-          id: `temp-lack-${index}-${fIndex}`,
-          name: faltaName
-        }))
-      }
-    })
+
+    if (!subjects || subjects.length === 0) {
+      // Fallback: usar datos temporales si la API no responde
+      Object.keys(asuntosFaltasTemporales).forEach((asuntoName, index) => {
+        map[asuntoName] = {
+          id: `temp-${index}`,
+          lacks: asuntosFaltasTemporales[asuntoName].map((faltaName, fIndex) => ({
+            id: `temp-lack-${index}-${fIndex}`,
+            name: faltaName
+          }))
+        }
+      })
+    } else {
+      // Usar datos de la API
+      subjects.forEach(subject => {
+        map[subject.name] = {
+          id: subject.id,
+          lacks: subject.lacks || []
+        }
+      })
+    }
+
     return map
-  }, [])
+  }, [subjects])
 
   // Obtener faltas disponibles según el asunto seleccionado
   const lacksDisponibles = useMemo(() => {
@@ -519,12 +531,18 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           <select
             value={form.asunto}
             onChange={e => setField('asunto', e.target.value)}
+            disabled={subjectsLoading}
           >
-            <option value="">Selecciona</option>
-            {Object.keys(asuntosFaltasTemporales).map((asuntoName, index) => (
-              <option key={`temp-${index}`} value={asuntoName}>{asuntoName}</option>
+            <option value="">{subjectsLoading ? 'Cargando asuntos...' : 'Selecciona'}</option>
+            {Object.keys(subjectMap).map((asuntoName) => (
+              <option key={subjectMap[asuntoName].id} value={asuntoName}>{asuntoName}</option>
             ))}
           </select>
+          {subjectsError && (
+            <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+              Error al cargar asuntos. Se usan datos de respaldo.
+            </div>
+          )}
 
           {form.asunto && (
             <>
