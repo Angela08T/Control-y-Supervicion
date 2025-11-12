@@ -50,45 +50,6 @@ const defaultState = {
   lackId: null      // ID de la falta para la API
 }
 
-// 🔹 ESTRUCTURA TEMPORAL DE ASUNTOS Y FALTAS (hasta que el backend actualice)
-const asuntosFaltasTemporales = {
-  'Conductas relacionadas con el cumplimiento del horario y asistencia': [
-    'Inasistencia - Justificada',
-    'Inasistencia - Injustificada',
-    'Abandono temporal del puesto',
-    'Abandono injustificado',
-    'Salida antes del horario sin autorización',
-    'Tardanza reiterada'
-  ],
-  'Conductas relacionadas con el cumplimiento de funciones o desempeño': [
-    'Incumplimiento de disposiciones de servicio',
-    'Negativa a cumplir funciones asignadas',
-    'Omisión o negligencia en la labor',
-    'Dormir en horario laboral',
-    'Uso excesivo de celular',
-    'Demora injustificada en tareas asignadas'
-  ],
-  'Conductas relacionadas con el uso de recursos o bienes municipales': [
-    'Uso indebido o no autorizado de bienes, materiales o vehículos institucionales'
-  ],
-  'Conductas relacionadas con la imagen o representación institucional': [
-    'Comportamientos que afecten la imagen del servicio, el uniforme o la institución durante la jornada o en actos públicos'
-  ],
-  'Conductas relacionadas con la convivencia y comportamiento institucional': [
-    'Trato inadecuado',
-    'Incumplimiento de normas de presentación o conducta',
-    'Conflictos interpersonales',
-    'Uso de lenguaje inapropiado'
-  ],
-  'Conductas que podrían afectar la seguridad o la integridad de las personas': [
-    'Incumplimiento de medidas de seguridad',
-    'Actos temerarios',
-    'Inobservancia de protocolos que pongan en riesgo a terceros o al propio servidor'
-  ]
-}
-
-// Nota: Los asuntos y faltas temporales sobrescriben los datos de la API hasta que el backend actualice
-
 export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
   const [selectedJobId, setSelectedJobId] = useState(null) // ID del job seleccionado
@@ -164,23 +125,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     })
   }, [allLeads, form.destinatario])
 
-  // 🔹 USAR DATOS DE LA API - Crear mapa de subjects con sus lacks
+  // Crear mapa de subjects con sus lacks desde la API
   const subjectMap = useMemo(() => {
     const map = {}
 
-    if (!subjects || subjects.length === 0) {
-      // Fallback: usar datos temporales si la API no responde
-      Object.keys(asuntosFaltasTemporales).forEach((asuntoName, index) => {
-        map[asuntoName] = {
-          id: `temp-${index}`,
-          lacks: asuntosFaltasTemporales[asuntoName].map((faltaName, fIndex) => ({
-            id: `temp-lack-${index}-${fIndex}`,
-            name: faltaName
-          }))
-        }
-      })
-    } else {
-      // Usar datos de la API
+    if (subjects && subjects.length > 0) {
       subjects.forEach(subject => {
         map[subject.name] = {
           id: subject.id,
@@ -252,7 +201,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
         newForm.tipoInasistencia = ''
         newForm.fechaFalta = ''
 
-        // Guardar el ID del asunto desde la estructura temporal
+        // Guardar el ID del asunto seleccionado
         if (subjectMap[v]) {
           newForm.subjectId = subjectMap[v].id
         } else {
@@ -540,7 +489,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           </select>
           {subjectsError && (
             <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
-              Error al cargar asuntos. Se usan datos de respaldo.
+              Error al cargar asuntos desde el servidor.
             </div>
           )}
 

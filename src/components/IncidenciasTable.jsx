@@ -7,10 +7,7 @@ function formatDate(iso){
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
 }
 
-export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAsunto = 'Todos', startIndex = 0, canDelete = true }){
-  const mostrarTipoInasistencia = filtroAsunto === 'Inasistencia'
-  const mostrarCamposBodycam = filtroAsunto !== 'Inasistencia'
-
+export default function IncidenciasTable({ data = [], onDelete, onEdit, startIndex = 0, canDelete = true }){
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -22,20 +19,15 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
               <th>DNI</th>
               <th>Asunto</th>
               <th>Falta</th>
-              {mostrarTipoInasistencia && <th>Tipo Inasistencia</th>}
-              {mostrarCamposBodycam && <th>Medio</th>}
+              <th>Medio</th>
               <th>Fecha</th>
               <th>Hora</th>
               <th>Turno</th>
               <th>Cargo</th>
               <th>Reg. Lab</th>
               <th>Jurisdicción</th>
-              {mostrarCamposBodycam && (
-                <>
-                  <th>N° Bodycam</th>
-                  <th>Bodycam Asignada</th>
-                </>
-              )}
+              <th>N° Bodycam</th>
+              <th>Bodycam Asignada</th>
               <th>Dirigido a</th>
               <th>Destinatario</th>
             </tr>
@@ -43,11 +35,7 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={
-                  mostrarTipoInasistencia ?
-                  (mostrarCamposBodycam ? 17 : 15) :
-                  (mostrarCamposBodycam ? 16 : 14)
-                } style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
+                <td colSpan={16} style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
                   No hay incidencias registradas
                 </td>
               </tr>
@@ -70,20 +58,15 @@ export default function IncidenciasTable({ data = [], onDelete, onEdit, filtroAs
                 <td>{item.dni}</td>
                 <td>{item.asunto}</td>
                 <td>{item.falta}</td>
-                {mostrarTipoInasistencia && <td>{item.tipoInasistencia || '-'}</td>}
-                {mostrarCamposBodycam && <td>{item.medio}{item.bodycamNumber ? ` (${item.bodycamNumber})` : ''}</td>}
+                <td>{item.medio}{item.bodycamNumber ? ` (${item.bodycamNumber})` : ''}</td>
                 <td>{item.fechaIncidente}</td>
                 <td>{item.horaIncidente}</td>
                 <td>{item.turno}</td>
                 <td>{item.cargo || '-'}</td>
                 <td>{item.regLab || '-'}</td>
                 <td>{item.jurisdiccion || '-'}</td>
-                {mostrarCamposBodycam && (
-                  <>
-                    <td>{item.bodycamNumber || '-'}</td>
-                    <td>{item.bodycamAsignadaA || '-'}</td>
-                  </>
-                )}
+                <td>{item.bodycamNumber || '-'}</td>
+                <td>{item.bodycamAsignadaA || '-'}</td>
                 <td>{item.dirigidoA || '-'}</td>
                 <td>{item.destinatario || '-'}</td>
               </tr>

@@ -777,13 +777,36 @@ body,
    Basado en el sistema de CRUDTable.jsx
    ============================================ */
 
-/* Contenedor principal - Previene scroll en la página */
+/* Contenedor principal - Solo scroll vertical general */
 .table-container-wrapper {
   display: flex;
   flex: 1;
-  overflow: hidden;  /* Clave: previene scroll en la página */
+  overflow-y: auto;  /* Scroll vertical general para ver todo el contenido cuando el zoom aumenta */
+  overflow-x: hidden;  /* Sin scroll horizontal en el contenedor principal */
   flex-direction: column;
   width: 100%;
+  min-width: 0;  /* Permite que el contenedor se reduzca cuando sea necesario */
+}
+
+/* Estilos del scrollbar para el contenedor principal */
+.table-container-wrapper::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.table-container-wrapper::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 5px;
+}
+
+.table-container-wrapper::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+
+.table-container-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
 }
 
 /* Card de la tabla */
@@ -848,6 +871,7 @@ body,
 
 .inc-table {
   width: 100%;
+  min-width: 1200px;  /* Ancho mínimo para asegurar que todos los botones sean visibles */
   border-collapse: collapse;
   font-size: 13px;
   white-space: nowrap;  /* Previene que el texto se divida, fuerza scroll horizontal */
