@@ -5,11 +5,11 @@ import L from 'leaflet'
 // Importar CSS de Leaflet
 import 'leaflet/dist/leaflet.css'
 
-// Configurar íconos
+// Configurar íconos (usando recursos locales en lugar de CDN)
 const icon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl: '/leaflet/marker-icon.png',
+  iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+  shadowUrl: '/leaflet/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -21,11 +21,21 @@ function ClickHandler({ onLocationSelect }) {
     async click(e) {
       const newPos = [e.latlng.lat, e.latlng.lng]
 
-      // Obtener dirección usando geocoding inverso
+      // 1. Actualizar INMEDIATAMENTE con las coordenadas
+      onLocationSelect(newPos, 'Cargando dirección...')
+
+      // 2. Obtener dirección de forma asíncrona (en background)
       try {
+        // Timeout de 5 segundos para la petición
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPos[0]}&lon=${newPos[1]}&zoom=18&addressdetails=1`
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPos[0]}&lon=${newPos[1]}&zoom=18&addressdetails=1`,
+          { signal: controller.signal }
         )
+        clearTimeout(timeoutId)
+
         const data = await response.json()
 
         let newAddress = 'Dirección no encontrada'
@@ -33,11 +43,16 @@ function ClickHandler({ onLocationSelect }) {
           newAddress = data.display_name
         }
 
-        // Llamar al callback con AMBOS valores actualizados
+        // 3. Actualizar con la dirección real cuando llegue
         onLocationSelect(newPos, newAddress)
       } catch (error) {
-        console.error('Error obteniendo dirección:', error)
-        onLocationSelect(newPos, 'Error al obtener dirección')
+        if (error.name === 'AbortError') {
+          console.warn('Timeout obteniendo dirección')
+          onLocationSelect(newPos, 'Timeout - Dirección no disponible')
+        } else {
+          console.error('Error obteniendo dirección:', error)
+          onLocationSelect(newPos, 'Error al obtener dirección')
+        }
       }
     }
   })
@@ -96,8 +111,11 @@ export default function MapSelector({ value, onChange }) {
           <div className="map-coords" style={{ marginBottom: '8px' }}>
             📍 Coordenadas: Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
           </div>
-          <div className="map-coords" style={{ background: 'rgba(74, 155, 142, 0.1)' }}>
-            🏠 Dirección: {address || 'Cargando...'}
+          <div className="map-coords" style={{
+            background: address === 'Cargando dirección...' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(74, 155, 142, 0.1)',
+            fontStyle: address === 'Cargando dirección...' ? 'italic' : 'normal'
+          }}>
+            🏠 {address || 'Sin dirección'}
           </div>
         </div>
       )}
