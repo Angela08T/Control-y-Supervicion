@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { searchOffenderByDNI } from '../../api/offender';
+import { getOffenderByDni } from '../../api/offender';
 
 const useOffenderSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +30,7 @@ const useOffenderSearch = () => {
       setError(null);
 
       try {
-        const response = await searchOffenderByDNI(searchTerm);
+        const response = await getOffenderByDni(searchTerm);
 
         // Estructura del API: { message: "...", data: { dni, job, shift, regime, ... } }
         // La respuesta es UN SOLO OBJETO, no un array

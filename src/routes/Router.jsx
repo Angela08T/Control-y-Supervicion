@@ -19,6 +19,7 @@ import JobsPage from "../pages/Jobs/JobsPage";
 import LeadsPage from "../pages/Leads/LeadsPage";
 import SubjectPage from "../pages/Subject/SubjectPage";
 import LackPage from "../pages/Lack/LackPage";
+import OffenderPage from "../pages/Offender/OffenderPage";
 
 import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
@@ -49,6 +50,7 @@ export default function Router() {
           <Route path="personal" element={<LeadsPage />} />
           <Route path="asuntos" element={<SubjectPage />} />
           <Route path="faltas" element={<LackPage />} />
+          <Route path="infractores" element={<OffenderPage />} />
           {/* Placeholder para futuras rutas */}
           <Route path="supervisores" element={<div className="main-area"><h1>Supervisores</h1><p>Próximamente...</p></div>} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
@@ -75,6 +77,8 @@ export default function Router() {
           <Route path="cargos" element={<JobsPage />} />
           <Route path="personal" element={<LeadsPage />} />
           <Route path="asuntos" element={<SubjectPage />} />
+          <Route path="faltas" element={<LackPage />} />
+          <Route path="infractores" element={<OffenderPage />} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
           <Route path="estadisticas" element={<div className="main-area"><h1>Estadísticas</h1><p>Próximamente...</p></div>} />
           <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />

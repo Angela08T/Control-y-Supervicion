@@ -5,6 +5,10 @@ import { PersistGate } from 'redux-persist/integration/react'
 import { store, persistor } from './store'
 import App from './App'
 import './styles.css'
+import { Buffer } from 'buffer'
+
+// Polyfill para @react-pdf/renderer
+window.Buffer = Buffer
 
 createRoot(document.getElementById('root')).render(
   <Provider store={store}>

@@ -93,7 +93,7 @@ export const PERMISSIONS = {
 
   // FALTAS
   faltas: {
-    view: [ROLES.ADMIN],
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
     create: [ROLES.ADMIN],
     edit: [ROLES.ADMIN],
     delete: [ROLES.ADMIN]
@@ -102,6 +102,14 @@ export const PERMISSIONS = {
   // AUDITORÍA
   auditoria: {
     view: [ROLES.ADMIN],
+    create: [ROLES.ADMIN],
+    edit: [ROLES.ADMIN],
+    delete: [ROLES.ADMIN]
+  },
+
+  // INFRACTORES (OFFENDERS)
+  offenders: {
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
     create: [ROLES.ADMIN],
     edit: [ROLES.ADMIN],
     delete: [ROLES.ADMIN]
