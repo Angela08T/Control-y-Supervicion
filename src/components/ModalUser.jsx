@@ -16,6 +16,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
 
   // userRole: el rol del usuario actual (admin o supervisor)
   const canCreateSupervisor = userRole === 'admin'
+  const canCreateValidator = userRole === 'admin' // Solo admin puede crear VALIDATOR
 
   useEffect(() => {
     if (initial) {
@@ -71,9 +72,19 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
       newErrors.rol = 'El rol es requerido'
     }
 
+    // Si no es admin y está intentando crear admin
+    if (userRole !== 'admin' && form.rol === 'ADMIN') {
+      newErrors.rol = 'No tienes permisos para crear administradores'
+    }
+
     // Si no es admin y está intentando crear supervisor
     if (!canCreateSupervisor && form.rol === 'SUPERVISOR') {
       newErrors.rol = 'No tienes permisos para crear supervisores'
+    }
+
+    // Si no es admin y está intentando crear validator
+    if (!canCreateValidator && form.rol === 'VALIDATOR') {
+      newErrors.rol = 'No tienes permisos para crear validadores'
     }
 
     setErrors(newErrors)
@@ -206,6 +217,8 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
             >
               <option value="SENTINEL">Sentinel</option>
               {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}
+              {canCreateValidator && <option value="VALIDATOR">Validador</option>}
+              {canCreateValidator && <option value="ADMIN">Admin</option>}
             </select>
             {errors.rol && <span className="error-message">{errors.rol}</span>}
             {!canCreateSupervisor && (

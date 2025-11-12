@@ -114,14 +114,15 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     error: jurisdictionsError
   } = useJurisdictions()
 
-  // Filtrar lista de CC para excluir a la persona seleccionada
+  // Filtrar lista de CC para excluir a la persona seleccionada y los deshabilitados
   const listaCC = useMemo(() => {
     if (!allLeads || allLeads.length === 0) return []
 
-    // Filtrar para excluir al destinatario seleccionado
+    // Filtrar para excluir al destinatario seleccionado y los deshabilitados (deleted_at !== null)
     return allLeads.filter(lead => {
       const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
-      return nombreCompleto !== form.destinatario
+      const isEnabled = !lead.deleted_at // Solo habilitados
+      return nombreCompleto !== form.destinatario && isEnabled
     })
   }, [allLeads, form.destinatario])
 
@@ -146,6 +147,36 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     if (!form.asunto || !subjectMap[form.asunto]) return []
     return subjectMap[form.asunto].lacks
   }, [form.asunto, subjectMap])
+
+  // Filtrar solo jobs (cargos) habilitados (deleted_at === null)
+  const jobsHabilitados = useMemo(() => {
+    if (!jobs || jobs.length === 0) return []
+    return jobs.filter(job => !job.deleted_at)
+  }, [jobs])
+
+  // Filtrar solo leads (personal) habilitados (deleted_at === null)
+  const leadsHabilitados = useMemo(() => {
+    if (!leads || leads.length === 0) return []
+    return leads.filter(lead => !lead.deleted_at)
+  }, [leads])
+
+  // Filtrar solo bodycams habilitadas (deleted_at === null)
+  const bodycamsHabilitadas = useMemo(() => {
+    if (!bodycamResults || bodycamResults.length === 0) return []
+    return bodycamResults.filter(bodycam => !bodycam.deleted_at)
+  }, [bodycamResults])
+
+  // Filtrar solo jurisdicciones habilitadas (deleted_at === null)
+  const jurisdiccionesHabilitadas = useMemo(() => {
+    if (!jurisdictions || jurisdictions.length === 0) return []
+    return jurisdictions.filter(jurisdiction => !jurisdiction.deleted_at)
+  }, [jurisdictions])
+
+  // Filtrar solo offenders habilitados (deleted_at === null)
+  const offendersHabilitados = useMemo(() => {
+    if (!offenderResults || offenderResults.length === 0) return []
+    return offenderResults.filter(offender => !offender.deleted_at)
+  }, [offenderResults])
 
   const bodycamAutocompleteRef = useRef(null)
   const dniAutocompleteRef = useRef(null)
@@ -448,9 +479,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             {offenderError && (
               <div className="autocomplete-error">{offenderError}</div>
             )}
-            {showOffenderSuggestions && offenderResults.length > 0 && (
+            {showOffenderSuggestions && offendersHabilitados.length > 0 && (
               <div className="autocomplete-suggestions">
-                {offenderResults.map((offender, index) => (
+                {offendersHabilitados.map((offender, index) => (
                   <div
                     key={offender.gestionate_id || offender.id || index}
                     className="autocomplete-item"
@@ -597,9 +628,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 {bodycamError && (
                   <div className="autocomplete-error">{bodycamError}</div>
                 )}
-                {showBodycamSuggestions && bodycamResults.length > 0 && (
+                {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
                   <div className="autocomplete-suggestions">
-                    {bodycamResults.map((bodycam, index) => (
+                    {bodycamsHabilitadas.map((bodycam, index) => (
                       <div
                         key={bodycam.id || index}
                         className="autocomplete-item"
@@ -685,7 +716,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               }}
             >
               <option value="">Selecciona una jurisdicción</option>
-              {jurisdictions.map(jurisdiction => (
+              {jurisdiccionesHabilitadas.map(jurisdiction => (
                 <option key={jurisdiction.id} value={jurisdiction.name}>
                   {jurisdiction.name}
                 </option>
@@ -724,7 +755,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               }}
             >
               <option value="">Selecciona</option>
-              {jobs.map(job => (
+              {jobsHabilitados.map(job => (
                 <option key={job.id} value={job.name}>{job.name}</option>
               ))}
             </select>
@@ -747,7 +778,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                   onChange={e => handleLeadChange(e.target.value)}
                 >
                   <option value="">Selecciona</option>
-                  {leads.map(lead => (
+                  {leadsHabilitados.map(lead => (
                     <option key={lead.id} value={lead.id}>
                       {lead.name} {lead.lastname}
                     </option>

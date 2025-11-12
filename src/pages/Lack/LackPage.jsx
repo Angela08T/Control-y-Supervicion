@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import JobTable from '../../components/JobTable'
-import ModalJob from '../../components/ModalJob'
-import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from '../../api/job'
+import LackTable from '../../components/LackTable'
+import ModalLack from '../../components/ModalLack'
+import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
-export default function JobsPage() {
+export default function LackPage() {
   const { role: userRole } = useSelector((state) => state.auth)
-  const permissions = getModulePermissions(userRole, 'cargos')
+  const permissions = getModulePermissions(userRole, 'faltas')
 
-  const [jobs, setJobs] = useState([])
+  const [lacks, setLacks] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [filters, setFilters] = useState({
@@ -28,134 +28,82 @@ export default function JobsPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [searchResult, setSearchResult] = useState(null)
-  const [isSearching, setIsSearching] = useState(false)
 
-  // Cargar cargos desde la API con paginación
+  // Cargar faltas desde la API con paginación y búsqueda
   useEffect(() => {
-    async function fetchJobs() {
+    async function fetchLacks() {
       setLoading(true)
       try {
-        console.log(`📡 Obteniendo cargos desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
-        const result = await getJobs(currentPage, itemsPerPage)
-        console.log('✅ Cargos obtenidos:', result)
+        const searchTerm = filters.search.trim()
 
-        const jobsData = result.data?.data || result.data || []
-        setJobs(jobsData)
+        console.log('🔍 Filtrando faltas:', {
+          search: searchTerm || 'sin búsqueda',
+          página: currentPage,
+          límite: itemsPerPage
+        })
 
-        // Manejar paginación si existe, sino usar valores por defecto
-        if (result.pagination) {
-          setPagination(result.pagination)
+        const result = await getLacks(
+          currentPage,
+          itemsPerPage,
+          searchTerm || null
+        )
+
+        console.log('✅ Faltas obtenidas:', result)
+
+        const lacksData = result.data?.data || result.data || []
+        setLacks(lacksData)
+
+        // Manejar paginación si existe
+        if (result.data?.totalPages) {
+          setPagination({
+            currentPage: result.data.currentPage || currentPage,
+            totalPages: result.data.totalPages || 1,
+            perPage: itemsPerPage,
+            total: result.data.totalCount || lacksData.length,
+            from: lacksData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
+            to: Math.min(currentPage * itemsPerPage, result.data.totalCount || lacksData.length)
+          })
         } else {
           // Si no hay paginación, calcular valores básicos
           setPagination({
             currentPage: currentPage,
-            totalPages: Math.ceil(jobsData.length / itemsPerPage),
+            totalPages: Math.ceil(lacksData.length / itemsPerPage),
             perPage: itemsPerPage,
-            total: jobsData.length,
-            from: jobsData.length > 0 ? 1 : 0,
-            to: jobsData.length
+            total: lacksData.length,
+            from: lacksData.length > 0 ? 1 : 0,
+            to: lacksData.length
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar cargos:', error)
-        alert('No se pudieron cargar los cargos')
+        console.error('⚠️ Error al cargar faltas:', error)
+        alert('No se pudo cargar las faltas')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchJobs()
-  }, [currentPage, itemsPerPage, refreshTrigger])
+    fetchLacks()
+  }, [filters.search, currentPage, itemsPerPage, refreshTrigger])
 
-  // Verificar si el término de búsqueda es un UUID
-  const isUUID = (str) => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    return uuidRegex.test(str)
-  }
 
-  // Buscar cargo por ID o nombre cuando el usuario escribe
-  useEffect(() => {
-    const searchTerm = filters.search.trim()
-
-    // Si no hay término de búsqueda, limpiar resultados
-    if (!searchTerm) {
-      setSearchResult(null)
-      return
-    }
-
-    // Si es UUID, buscar por ID
-    if (isUUID(searchTerm)) {
-      const searchById = async () => {
-        setIsSearching(true)
-        try {
-          console.log('🔍 Buscando cargo por ID:', searchTerm)
-          const result = await getJobById(searchTerm)
-
-          if (result.found && result.data.length > 0) {
-            console.log('✅ Cargo encontrado:', result.data[0])
-            setSearchResult(result.data)
-          } else {
-            console.log('⚠️ No se encontró cargo con ese ID')
-            setSearchResult([])
-          }
-        } catch (error) {
-          console.error('❌ Error al buscar por ID:', error)
-          setSearchResult(null)
-        } finally {
-          setIsSearching(false)
-        }
-      }
-
-      searchById()
-    } else {
-      // Si NO es UUID, buscar por nombre en toda la base de datos
-      const searchByName = async () => {
-        setIsSearching(true)
-        try {
-          console.log('🔍 Buscando cargo por nombre:', searchTerm)
-          const response = await searchJob(searchTerm)
-
-          // La API devuelve los datos en response.data?.data
-          const results = response?.data?.data || []
-
-          if (results.length > 0) {
-            console.log('✅ Cargos encontrados:', results)
-            setSearchResult(results)
-          } else {
-            console.log('⚠️ No se encontraron cargos con ese término')
-            setSearchResult([])
-          }
-        } catch (error) {
-          console.error('❌ Error al buscar por nombre:', error)
-          setSearchResult(null)
-        } finally {
-          setIsSearching(false)
-        }
-      }
-
-      searchByName()
-    }
-  }, [filters.search])
-
-  // Crear o editar cargo
+  // Crear o editar falta
   async function handleSave(data) {
     if (editItem) {
-      // Actualizar cargo existente
+      // Actualizar falta existente
       try {
-        console.log('📤 Actualizando cargo:', editItem.id, data)
-        const response = await updateJob(editItem.id, data)
-        console.log('✅ Cargo actualizado:', response)
+        console.log('📤 Actualizando falta:', editItem.id, data)
+        const response = await updateLack(editItem.id, data)
+        console.log('✅ Falta actualizada:', response)
 
-        alert(response.data?.message || response.message || 'Cargo actualizado exitosamente')
+        alert(response.data?.message || response.message || 'Falta actualizada exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar cargo:', error)
+        console.error('❌ Error al actualizar falta:', error)
 
-        let errorMessage = 'Error al actualizar el cargo'
+        let errorMessage = 'Error al actualizar la falta'
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
@@ -168,21 +116,21 @@ export default function JobsPage() {
         alert(errorMessage)
       }
     } else {
-      // Crear nuevo cargo
+      // Crear nueva falta
       try {
-        console.log('📤 Creando cargo:', data)
-        const response = await createJob(data)
-        console.log('✅ Cargo creado:', response)
+        console.log('📤 Creando falta:', data)
+        const response = await createLack(data)
+        console.log('✅ Falta creada:', response)
 
-        alert(response.data?.message || response.message || 'Cargo creado exitosamente')
+        alert(response.data?.message || response.message || 'Falta creada exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear cargo:', error)
+        console.error('❌ Error al crear falta:', error)
 
-        let errorMessage = 'Error al crear el cargo'
+        let errorMessage = 'Error al crear la falta'
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
@@ -201,26 +149,26 @@ export default function JobsPage() {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
-      ? '¿Estás seguro de deshabilitar este cargo? Ya no estará disponible para asignación.'
-      : '¿Estás seguro de habilitar este cargo? Volverá a estar disponible para asignación.'
+      ? '¿Estás seguro de deshabilitar esta falta? Ya no estará disponible para asignación.'
+      : '¿Estás seguro de habilitar esta falta? Volverá a estar disponible para asignación.'
 
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de cargo con ID:`, item.id)
+      console.log(`🔄 Cambiando estado de falta con ID:`, item.id)
 
       // El endpoint DELETE hace toggle automáticamente
-      const response = await deleteJob(item.id)
+      const response = await deleteLack(item.id)
 
       console.log('✅ Respuesta:', response)
 
-      alert(response.data?.message || response.message || `Cargo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      alert(response.data?.message || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} cargo:`, error)
+      console.error(`❌ Error al ${action} falta:`, error)
 
-      let errorMessage = `Error al ${action} el cargo`
+      let errorMessage = `Error al ${action} la falta`
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
@@ -260,14 +208,14 @@ export default function JobsPage() {
     setCurrentPage(1)
   }
 
-  // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : jobs
+  // Los datos ya vienen filtrados desde la API
+  const filteredData = lacks
 
   return (
     <div className="incidencias-page">
       <header className="page-header">
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE CARGOS</h2>
+          <h2>GESTIÓN DE FALTAS</h2>
           <div className="controls">
             <div style={{ position: 'relative' }}>
               <FaSearch
@@ -280,31 +228,19 @@ export default function JobsPage() {
                 }}
               />
               <input
-                placeholder="Buscar por nombre o ID"
+                placeholder="Buscar por nombre de la falta"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
+                style={{ paddingLeft: '35px' }}
               />
-              {isSearching && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--primary)',
-                    animation: 'spin 1s linear infinite'
-                  }}
-                >
-                  ⏳
-                </div>
-              )}
             </div>
 
-            <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-              <FaPlus style={{ marginRight: '8px' }} />
-              Agregar Cargo
-            </button>
+            {permissions.canCreate && (
+              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus style={{ marginRight: '8px' }} />
+                Agregar Falta
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -316,57 +252,21 @@ export default function JobsPage() {
           color: 'var(--text-muted)',
           fontSize: '1.1rem'
         }}>
-          Cargando cargos...
+          Cargando faltas...
         </div>
       ) : (
         <div className="table-container-wrapper">
-          {/* Mensaje cuando se busca pero no se encuentra */}
-          {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div style={{
-              textAlign: 'center',
-              padding: '30px',
-              backgroundColor: 'var(--card)',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              border: '2px dashed var(--border)'
-            }}>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
-                🔍 No se encontró ningún cargo con: <strong>{filters.search}</strong>
-              </p>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                Verifica que el nombre o ID sea correcto.
-              </p>
-            </div>
-          )}
-
-          {/* Mensaje cuando se encuentra cargo */}
-          {searchResult !== null && searchResult.length > 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(74, 222, 128, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(74, 222, 128, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
-                ✅ {searchResult.length} cargo(s) encontrado(s)
-              </p>
-            </div>
-          )}
-
-          <JobTable
+          <LackTable
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={pagination.from - 1}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
 
-          {/* Controles de paginación (ocultar cuando se busca) */}
-          {searchResult === null && (
-            <div style={{
+          {/* Controles de paginación */}
+          <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -506,12 +406,11 @@ export default function JobsPage() {
                 </button>
               </div>
             </div>
-          )}
         </div>
       )}
 
       {showModal && (
-        <ModalJob
+        <ModalLack
           initial={editItem}
           onClose={() => { setShowModal(false); setEditItem(null) }}
           onSave={handleSave}

@@ -18,7 +18,7 @@ export default function UsuariosPage() {
   const [editItem, setEditItem] = useState(null)
   const [filters, setFilters] = useState({
     search: '',
-    roleFilter: 'all' // all, SUPERVISOR, SENTINEL
+    roleFilter: 'all' // all, ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -26,57 +26,48 @@ export default function UsuariosPage() {
 
   // Permisos según rol
   const canCreateSupervisor = userRole === 'admin'
+  const canCreateValidator = userRole === 'admin' // Solo admin puede crear VALIDATOR
   const canCreateSentinel = userRole === 'admin' || userRole === 'supervisor'
   const canCreate = canCreateSentinel || canCreateSupervisor
   const canEdit = userRole === 'admin' || userRole === 'supervisor'
   const canDelete = userRole === 'admin' || userRole === 'supervisor'
 
-  // Cargar usuarios desde la API
+  // Cargar usuarios con filtros aplicados desde la API
   useEffect(() => {
     async function fetchUsers() {
       setLoading(true)
+      setIsSearching(true)
       try {
-        const response = await getUsers(1, 1000)
+        const searchTerm = filters.search.trim()
+        const selectedRole = filters.roleFilter !== 'all' ? filters.roleFilter : null
+
+        console.log('🔍 Filtrando usuarios:', {
+          search: searchTerm || 'sin búsqueda',
+          rol: selectedRole || 'todos los roles'
+        })
+
+        const response = await getUsers(
+          1, // página
+          1000, // límite
+          selectedRole, // filtro de rol
+          searchTerm || null // búsqueda
+        )
+
         const allUsers = response?.data?.data || []
         setUsers(allUsers)
+
+        console.log(`✅ ${allUsers.length} usuarios encontrados`)
       } catch (error) {
-        console.error('Error al cargar usuarios:', error)
+        console.error('❌ Error al cargar usuarios:', error)
         alert('Error al cargar usuarios')
       } finally {
         setLoading(false)
-      }
-    }
-
-    fetchUsers()
-  }, [refreshTrigger])
-
-  // Buscar usuarios
-  useEffect(() => {
-    const searchTerm = filters.search.trim()
-
-    if (!searchTerm) {
-      return
-    }
-
-    const searchUsers = async () => {
-      setIsSearching(true)
-      try {
-        const response = await searchUser(searchTerm)
-        const searchResults = response?.data || []
-
-        // Si hay búsqueda activa, reemplazar los usuarios actuales
-        if (searchTerm) {
-          setUsers(searchResults)
-        }
-      } catch (error) {
-        console.error('Error al buscar usuarios:', error)
-      } finally {
         setIsSearching(false)
       }
     }
 
-    searchUsers()
-  }, [filters.search])
+    fetchUsers()
+  }, [filters.search, filters.roleFilter, refreshTrigger])
 
   // Crear o editar usuario
   async function handleSave(data) {
@@ -109,8 +100,18 @@ export default function UsuariosPage() {
       // Crear nuevo usuario
       try {
         // Verificar permisos antes de crear
+        if (data.rol === 'ADMIN' && userRole !== 'admin') {
+          alert('No tienes permisos para crear administradores')
+          return
+        }
+
         if (data.rol === 'SUPERVISOR' && !canCreateSupervisor) {
           alert('No tienes permisos para crear supervisores')
+          return
+        }
+
+        if (data.rol === 'VALIDATOR' && !canCreateValidator) {
+          alert('No tienes permisos para crear validadores')
           return
         }
 
@@ -143,19 +144,30 @@ export default function UsuariosPage() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar este usuario?')) return
+  async function handleToggleStatus(item) {
+    const isEnabled = !item.deleted_at
+    const action = isEnabled ? 'deshabilitar' : 'habilitar'
+    const confirmMessage = isEnabled
+      ? '¿Estás seguro de deshabilitar este usuario? Ya no podrá acceder al sistema.'
+      : '¿Estás seguro de habilitar este usuario? Podrá volver a acceder al sistema.'
+
+    if (!confirm(confirmMessage)) return
 
     try {
-      const response = await deleteUser(id)
+      console.log(`🔄 Cambiando estado de usuario con ID:`, item.id)
 
-      alert(response.data?.message || response.message || 'Usuario eliminado exitosamente')
+      // El endpoint DELETE hace toggle automáticamente
+      const response = await deleteUser(item.id)
+
+      console.log('✅ Respuesta:', response)
+
+      alert(response.data?.message || response.message || `Usuario ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('Error al eliminar usuario:', error)
+      console.error(`❌ Error al ${action} usuario:`, error)
 
-      let errorMessage = 'Error al eliminar el usuario'
+      let errorMessage = `Error al ${action} el usuario`
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
@@ -174,11 +186,8 @@ export default function UsuariosPage() {
     setShowModal(true)
   }
 
-  // Filtrar por rol
-  const filteredData = users.filter(user => {
-    if (filters.roleFilter === 'all') return true
-    return user.rol === filters.roleFilter || user.role === filters.roleFilter
-  })
+  // Los usuarios ya vienen filtrados desde la API, no necesitamos filtrar en el frontend
+  const filteredData = users
 
   return (
     <div className="incidencias-page">
@@ -190,10 +199,22 @@ export default function UsuariosPage() {
             <select
               value={filters.roleFilter}
               onChange={e => setFilters(f => ({ ...f, roleFilter: e.target.value }))}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                minWidth: '180px'
+              }}
             >
-              <option value="all">Todos los roles</option>
-              {userRole === 'admin' && <option value="SUPERVISOR">Supervisores</option>}
-              <option value="SENTINEL">Sentinels</option>
+              <option value="all">📋 Todos los roles</option>
+              {userRole === 'admin' && <option value="ADMINISTRATOR">👑 Administradores</option>}
+              {userRole === 'admin' && <option value="SUPERVISOR">👨‍💼 Supervisores</option>}
+              {userRole === 'admin' && <option value="VALIDATOR">✅ Validadores</option>}
+              <option value="SENTINEL">🛡️ Sentinels</option>
             </select>
 
             {/* Búsqueda */}
@@ -269,7 +290,7 @@ export default function UsuariosPage() {
 
           <UserTable
             data={filteredData}
-            onDelete={handleDelete}
+            onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
             startIndex={0}
             canEdit={canEdit}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { jsPDF } from 'jspdf'
+import { pdf } from '@react-pdf/renderer'
 import { useSelector } from 'react-redux'
 import logoSJL from '../assets/logo-sjl.png'
 import { trackPDFDownload } from '../utils/storage'
-import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl } from '../api/report'
+import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } from '../api/report'
+import InformePDFDocument from './PDFDocument'
 
 function formatearFecha(fecha) {
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
@@ -63,6 +64,30 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   const [loadingEvidences, setLoadingEvidences] = useState(false)
   const [savingReport, setSavingReport] = useState(false)
   const [validationErrors, setValidationErrors] = useState([])
+  const [logoBase64, setLogoBase64] = useState('')
+
+  // Convertir logo a base64
+  useEffect(() => {
+    const convertLogoToBase64 = async () => {
+      try {
+        console.log('🖼️ Cargando logo desde:', logoSJL)
+        const response = await fetch(logoSJL)
+        console.log('📥 Respuesta del logo:', response.status)
+        const blob = await response.blob()
+        console.log('📦 Blob del logo:', blob.size, 'bytes')
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          console.log('✅ Logo convertido a base64, longitud:', reader.result.length)
+          setLogoBase64(reader.result)
+        }
+        reader.readAsDataURL(blob)
+      } catch (error) {
+        console.error('❌ Error al convertir logo a base64:', error)
+      }
+    }
+
+    convertLogoToBase64()
+  }, [])
 
   useEffect(() => {
     if (incidencia) {
@@ -351,7 +376,27 @@ Se adjuntan las evidencias:`
     }
   }
 
-  function removeImage(index) {
+  async function removeImage(index) {
+    const img = formData.imagenes[index]
+
+    // Si es una imagen existente del backend, eliminarla mediante la API
+    if (img.isExisting && img.id) {
+      if (!confirm('¿Estás seguro de eliminar esta imagen?')) {
+        return
+      }
+
+      try {
+        console.log('🗑️ Eliminando imagen del servidor:', img.id)
+        await deleteEvidence(img.id)
+        console.log('✅ Imagen eliminada del servidor exitosamente')
+      } catch (error) {
+        console.error('❌ Error al eliminar imagen:', error)
+        alert('Error al eliminar la imagen del servidor. Por favor, intente nuevamente.')
+        return
+      }
+    }
+
+    // Remover de la interfaz local
     setFormData(prev => ({
       ...prev,
       imagenes: prev.imagenes.filter((_, i) => i !== index)
@@ -410,198 +455,42 @@ Se adjuntan las evidencias:`
       }
     }
 
-    // Generar el PDF
-    const doc = new jsPDF()
-
-    // Agregar logo de la municipalidad centrado
+    // Generar el PDF usando @react-pdf/renderer
     try {
-      // Crear una nueva imagen y esperar a que se cargue
-      const img = new Image()
-      img.crossOrigin = 'Anonymous'
-      img.src = logoSJL
+      console.log('📄 Generando PDF con @react-pdf/renderer...')
+      console.log('🖼️ Logo base64 disponible:', logoBase64 ? `Sí (${logoBase64.length} caracteres)` : 'NO')
 
-      // Logo más ancho y centrado (105 es el centro - 25 para centrar logo de 50x30)
-      doc.addImage(logoSJL, 'PNG', 80, 10, 50, 30)
+      const doc = (
+        <InformePDFDocument
+          formData={formData}
+          incidencia={incidencia}
+          inasistenciasHistoricas={inasistenciasHistoricas}
+          logoBase64={logoBase64}
+          formatearFecha={formatearFecha}
+        />
+      )
+
+      // Generar el blob del PDF
+      const blob = await pdf(doc).toBlob()
+
+      // Crear URL para descarga
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Informe_${incidencia.dni}_${Date.now()}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      console.log('✅ PDF generado exitosamente')
+
+      // Registrar la descarga del PDF
+      trackPDFDownload(incidencia.id)
     } catch (error) {
-      console.error('Error al cargar logo:', error)
+      console.error('❌ Error al generar PDF:', error)
+      alert('Error al generar el PDF. Por favor, intente nuevamente.')
     }
-
-    // Encabezado
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.text('"Año de la recuperación y consolidación de la economía peruana"', 105, 45, { align: 'center' })
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(11)
-
-    const startY = 55
-    let currentLine = startY
-
-    doc.text(`INFORME N° ${formData.numeroInforme}`, 20, currentLine)
-    currentLine += 9
-
-    doc.text(`A       :    Sr. ${formData.destinatarioNombre.toUpperCase()}`, 20, currentLine)
-    currentLine += 6
-
-    doc.text(`             ${formData.destinatarioCargo}`, 20, currentLine)
-    currentLine += 8
-
-    if (incidencia.cc && incidencia.cc.length > 0) {
-      doc.text(`CC      :    ${incidencia.cc.join(', ')}`, 20, currentLine)
-      currentLine += 8
-    }
-
-    doc.text(`DE      :    CONTROL Y SUPERVISIÓN`, 20, currentLine)
-    currentLine += 8
-
-    doc.text(`ASUNTO  :    ${incidencia.asunto.toUpperCase()}`, 20, currentLine)
-    currentLine += 8
-
-    // Agregar tipo de falta debajo del asunto
-    doc.text(`FALTA   :    ${formData.falta.toUpperCase()}`, 20, currentLine)
-    currentLine += 8
-
-    // Si es inasistencia, mostrar el tipo (Justificada/Injustificada)
-    if (formData.falta && formData.falta.startsWith('Inasistencia') && formData.tipoInasistencia) {
-      doc.text(`TIPO    :    ${formData.tipoInasistencia.toUpperCase()}`, 20, currentLine)
-      currentLine += 8
-    }
-
-    doc.text(`FECHA   :    San Juan de Lurigancho, ${formData.fecha}`, 20, currentLine)
-    currentLine += 7
-    
-    doc.line(20, currentLine, 190, currentLine)
-    currentLine += 10
-
-    doc.setFontSize(11)
-
-    // Si hay contenido del informe, usarlo (para todos los tipos de incidencias)
-    if (formData.descripcionAdicional) {
-      doc.setFont('helvetica', 'normal')
-      const lineasDescripcion = doc.splitTextToSize(formData.descripcionAdicional, 170)
-      doc.text(lineasDescripcion, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasDescripcion.length * 5) + 8
-    } else if (incidencia.falta && incidencia.falta.startsWith('Inasistencia')) {
-      // Fallback para inasistencias sin contenido personalizado
-      doc.text('Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:', 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += 10
-
-      const textoIncidente = `Mediante el presente se informa que el día ${formData.fechaFalta}, el sereno ${formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno} (DNI: ${formData.dni}), con cargo de ${formData.cargo}, Reg. Lab ${formData.regLab} y turno ${formData.turno}, incurrió en la falta de ${formData.falta.toUpperCase()}, la cual ha sido clasificada como ${formData.tipoInasistencia.toLowerCase()}. Dicha incidencia fue registrada el ${formData.fechaIncidente} a las ${formData.horaIncidente} en la jurisdicción de ${formData.jurisdiccion}.`
-
-      const lineasIncidente = doc.splitTextToSize(textoIncidente, 170)
-      doc.text(lineasIncidente, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasIncidente.length * 6) + 5
-
-      const nombreParaPDF = formData.nombreCompleto ? formData.nombreCompleto.toUpperCase() : formData.sereno
-      const infoAdicional = `Se adjunta al presente, la información del señor ${nombreParaPDF} y el historial de inasistencias correspondiente.`
-
-      const lineasInfo = doc.splitTextToSize(infoAdicional, 170)
-      doc.text(lineasInfo, 20, currentLine, { align: 'justify', maxWidth: 170 })
-      currentLine += (lineasInfo.length * 6) + 8
-    }
-
-    if (incidencia.falta && incidencia.falta.startsWith('Inasistencia') && inasistenciasHistoricas.length > 0) {
-      if (currentLine > 200) {
-        doc.addPage()
-        currentLine = 20
-      }
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.text('HISTORIAL DE INASISTENCIAS DEL PERSONAL:', 20, currentLine)
-      currentLine += 10
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10)
-
-      doc.text('Fecha', 20, currentLine)
-      doc.text('Falta', 60, currentLine)
-      doc.text('Tipo', 120, currentLine)
-      doc.text('Fecha Falta', 150, currentLine)
-      currentLine += 5
-      doc.line(20, currentLine, 190, currentLine)
-      currentLine += 8
-
-      inasistenciasHistoricas.forEach((inasistencia) => {
-        if (currentLine > 270) {
-          doc.addPage()
-          currentLine = 20
-        }
-
-        doc.text(formatearFecha(inasistencia.fechaIncidente), 20, currentLine)
-        doc.text(inasistencia.falta, 60, currentLine)
-        doc.text(inasistencia.tipoInasistencia || 'No especificado', 120, currentLine)
-        doc.text(inasistencia.fechaFalta || inasistencia.fechaIncidente, 150, currentLine)
-        currentLine += 7
-      })
-
-      currentLine += 12
-    }
-    
-    if (formData.imagenes.length > 0) {
-      formData.imagenes.forEach((img, imgIndex) => {
-        // Verificar si hay espacio suficiente para imagen + anexo
-        const espacioNecesario = img.anexo ? 100 : 85
-        if (currentLine > (280 - espacioNecesario)) {
-          doc.addPage()
-          currentLine = 20
-        }
-
-        try {
-          // Configuración de imagen - más grande para que llene mejor la página
-          const pageWidth = doc.internal.pageSize.getWidth()
-          const imageWidth = 120  // Ancho de la imagen en mm (aumentado)
-          const imageHeight = 90  // Alto de la imagen en mm (aumentado)
-          const imageX = (pageWidth - imageWidth) / 2  // Centrar horizontalmente
-
-          // Agregar imagen centrada
-          doc.addImage(img.base64, 'JPEG', imageX, currentLine, imageWidth, imageHeight)
-          currentLine += imageHeight + 8
-
-          // Agregar anexo si existe
-          if (img.anexo) {
-            doc.setFont('helvetica', 'italic')
-            doc.setFontSize(10)
-            const lineasAnexo = doc.splitTextToSize(`Anexo ${imgIndex + 1}: ${img.anexo}`, 170)
-            // Centrar el texto usando pageWidth / 2
-            doc.text(lineasAnexo, pageWidth / 2, currentLine, { align: 'center', maxWidth: 170 })
-            currentLine += (lineasAnexo.length * 5) + 12
-            doc.setFont('helvetica', 'normal')
-            doc.setFontSize(11)
-          } else {
-            currentLine += 8
-          }
-        } catch (error) {
-          console.error('Error al agregar imagen:', error)
-        }
-      })
-    }
-    
-    if (formData.links) {
-      if (currentLine > 240) {
-        doc.addPage()
-        currentLine = 20
-      }
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.text('Links de referencia:', 20, currentLine)
-      currentLine += 7
-      doc.setFont('helvetica', 'normal')
-      const lineasLinks = doc.splitTextToSize(formData.links, 170)
-      doc.text(lineasLinks, 20, currentLine)
-      currentLine += (lineasLinks.length * 6) + 10
-    }
-
-    const pageCount = doc.internal.getNumberOfPages()
-    doc.setPage(pageCount)
-    doc.setFontSize(9)
-    doc.text('Sede CECOM de la Sub Gerencia de Serenazgo:', 20, 280)
-    doc.text('Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427', 20, 285)
-
-    doc.save(`Informe_${incidencia.dni}_${Date.now()}.pdf`)
-
-    // Registrar la descarga del PDF
-    trackPDFDownload(incidencia.id)
   }
 
   const esInasistencia = incidencia.falta && incidencia.falta.startsWith('Inasistencia')

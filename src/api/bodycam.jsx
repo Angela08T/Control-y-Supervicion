@@ -171,23 +171,23 @@ export const updateBodycam = async (bodycamId, bodycamData) => {
 };
 
 /**
- * Eliminar una bodycam por ID
+ * Cambiar estado de una bodycam (toggle: habilitar/deshabilitar)
  * @param {string} bodycamId - ID de la bodycam (UUID)
  * @returns {Promise<Object>} - Objeto con el mensaje de confirmación
  */
 export const deleteBodycam = async (bodycamId) => {
   try {
     const response = await api.delete(`/bodycam/${bodycamId}`);
-    console.log('🗑️ Bodycam eliminada:', response.data);
+    console.log('🔄 Estado de bodycam cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar bodycam:', error);
+    console.error('❌ Error al cambiar estado de bodycam:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al eliminar bodycam: ' + error.message);
+      throw new Error('Error al cambiar estado de bodycam: ' + error.message);
     }
   }
 };

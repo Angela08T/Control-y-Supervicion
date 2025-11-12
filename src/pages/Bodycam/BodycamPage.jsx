@@ -188,21 +188,30 @@ export default function BodycamPage() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar esta bodycam?')) return
+  async function handleToggleStatus(item) {
+    const isEnabled = !item.deleted_at
+    const action = isEnabled ? 'deshabilitar' : 'habilitar'
+    const confirmMessage = isEnabled
+      ? '¿Estás seguro de deshabilitar esta bodycam? Ya no estará disponible para asignación.'
+      : '¿Estás seguro de habilitar esta bodycam? Volverá a estar disponible para asignación.'
+
+    if (!confirm(confirmMessage)) return
 
     try {
-      console.log('🗑️ Eliminando bodycam con ID:', id)
-      const response = await deleteBodycam(id)
-      console.log('✅ Respuesta de eliminación:', response)
+      console.log(`🔄 Cambiando estado de bodycam con ID:`, item.id)
 
-      alert(response.data?.message || response.message || 'Bodycam eliminada exitosamente')
+      // El endpoint DELETE hace toggle automáticamente
+      const response = await deleteBodycam(item.id)
+
+      console.log('✅ Respuesta:', response)
+
+      alert(response.data?.message || response.message || `Bodycam ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al eliminar bodycam:', error)
+      console.error(`❌ Error al ${action} bodycam:`, error)
 
-      let errorMessage = 'Error al eliminar la bodycam'
+      let errorMessage = `Error al ${action} la bodycam`
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
@@ -357,7 +366,7 @@ export default function BodycamPage() {
 
           <BodycamTable
             data={filteredData}
-            onDelete={handleDelete}
+            onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
             startIndex={searchResult !== null ? 0 : pagination.from - 1}
             canEdit={permissions.canEdit}

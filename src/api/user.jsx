@@ -36,16 +36,28 @@ export const createUser = async (userData) => {
 };
 
 /**
- * Obtener todos los usuarios con paginación
+ * Obtener todos los usuarios con paginación y filtros
  * @param {number} page - Número de página
  * @param {number} limit - Límite de registros por página
+ * @param {string} rol - Filtro por rol (opcional): ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR
+ * @param {string} search - Término de búsqueda (opcional)
  * @returns {Promise} - Respuesta con usuarios
  */
-export const getUsers = async (page = 1, limit = 10) => {
+export const getUsers = async (page = 1, limit = 10, rol = null, search = null) => {
   try {
-    const response = await api.get('/user', {
-      params: { page, limit }
-    });
+    const params = { page, limit };
+
+    // Agregar filtro de rol si existe
+    if (rol) {
+      params.rol = rol;
+    }
+
+    // Agregar búsqueda si existe
+    if (search) {
+      params.search = search;
+    }
+
+    const response = await api.get('/user', { params });
     console.log('✅ Usuarios obtenidos:', response.data);
     return response.data;
   } catch (error) {
@@ -57,13 +69,19 @@ export const getUsers = async (page = 1, limit = 10) => {
 /**
  * Buscar usuarios
  * @param {string} searchTerm - Término de búsqueda
+ * @param {string} rol - Filtro por rol (opcional)
  * @returns {Promise} - Respuesta con usuarios encontrados
  */
-export const searchUser = async (searchTerm) => {
+export const searchUser = async (searchTerm, rol = null) => {
   try {
-    const response = await api.get('/user', {
-      params: { search: searchTerm }
-    });
+    const params = { search: searchTerm };
+
+    // Agregar filtro de rol si existe
+    if (rol) {
+      params.rol = rol;
+    }
+
+    const response = await api.get('/user', { params });
     console.log('✅ Búsqueda de usuarios:', response.data);
     return response.data;
   } catch (error) {
@@ -75,6 +93,26 @@ export const searchUser = async (searchTerm) => {
     } else {
       throw new Error('Error al buscar usuarios: ' + error.message);
     }
+  }
+};
+
+/**
+ * Filtrar usuarios por rol
+ * @param {string} rol - Rol a filtrar: ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR
+ * @param {number} page - Número de página
+ * @param {number} limit - Límite de registros por página
+ * @returns {Promise} - Respuesta con usuarios filtrados
+ */
+export const getUsersByRole = async (rol, page = 1, limit = 10) => {
+  try {
+    const response = await api.get('/user', {
+      params: { rol, page, limit }
+    });
+    console.log(`✅ Usuarios con rol ${rol} obtenidos:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error al obtener usuarios con rol ${rol}:`, error);
+    throw error;
   }
 };
 
