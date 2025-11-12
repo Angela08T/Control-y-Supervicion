@@ -68,9 +68,26 @@ export function mapFormDataToAPI(form, allLeads) {
     console.warn('⚠️ No hay elementos en CC. La API requiere al menos 1.');
   }
 
-  // Convertir fecha + hora en formato ISO (ejemplo: "2025-10-11T10:14:12.00Z")
-  const dateString = `${form.fechaIncidente}T${form.horaIncidente}:00`;
-  const date = new Date(dateString).toISOString();
+  // Convertir fecha + hora a formato ISO sin conversión de zona horaria
+  // Crear la fecha directamente en UTC con los valores exactos que ingresó el usuario
+  const [year, month, day] = form.fechaIncidente.split('-');
+  const [hour, minute] = form.horaIncidente.split(':');
+
+  // Date.UTC crea timestamp UTC con los valores exactos (month es 0-indexed)
+  const date = new Date(Date.UTC(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    parseInt(hour),
+    parseInt(minute),
+    0
+  )).toISOString();
+
+  console.log('🕐 Conversión de fecha/hora:');
+  console.log('   📅 Fecha ingresada:', form.fechaIncidente);
+  console.log('   ⏰ Hora ingresada:', form.horaIncidente);
+  console.log('   📤 Fecha ISO a enviar:', date);
+  console.log('   ✅ Hora en el ISO:', date.substring(11, 16), '(debe ser exactamente', form.horaIncidente + ')');
 
   console.log('📍 Coordenadas recibidas:', coords);
   console.log('📍 Latitude (coords[0]):', coords[0]);
@@ -104,7 +121,7 @@ export function mapFormDataToAPI(form, allLeads) {
  * Obtener reportes con paginación y filtros
  * @param {number} page - Número de página (default: 1)
  * @param {number} limit - Cantidad de items por página (default: 10)
- * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId }
+ * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId, shift }
  * @returns {Promise<Object>} - Objeto con data (reportes) y pagination (metadata)
  */
 export const getReports = async (page = 1, limit = 10, filters = {}) => {
@@ -116,6 +133,7 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
     if (filters.lackId) params.lack = filters.lackId
     if (filters.subjectId) params.subject = filters.subjectId
     if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId
+    if (filters.shift) params.shift = filters.shift
 
     console.log('📡 Parámetros de consulta:', params)
 
@@ -162,8 +180,9 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
         medio: r.bodycam ? 'Bodycam' : 'Otro',
-        fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
-        horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+        // Parsear la fecha ISO sin conversión de zona horaria
+        fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
+        horaIncidente: r.date ? r.date.substring(11, 16) : '',
         turno: r.offender?.shift || '',
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
@@ -181,6 +200,8 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
           coordinates: [r.latitude || null, r.longitude || null]
         },
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
+        status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
+        evidences: r.evidences || [],
         createdAt: r.lack?.created_at || r.date,
         updatedAt: r.lack?.updated_at || r.date
       }
@@ -264,8 +285,9 @@ export const getReportById = async (reportId) => {
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
         medio: r.bodycam ? 'Bodycam' : 'Otro',
-        fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
-        horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+        // Parsear la fecha ISO sin conversión de zona horaria
+        fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
+        horaIncidente: r.date ? r.date.substring(11, 16) : '',
         turno: r.offender?.shift || '',
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
@@ -283,6 +305,8 @@ export const getReportById = async (reportId) => {
           coordinates: [r.latitude || null, r.longitude || null]
         },
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
+        status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
+        evidences: r.evidences || [],
         createdAt: r.lack?.created_at || r.date,
         updatedAt: r.lack?.updated_at || r.date
       }
@@ -437,5 +461,75 @@ export const getReportWithEvidences = async (reportId) => {
       return null
     }
     throw new Error('Error al obtener reporte: ' + error.message)
+  }
+};
+
+/**
+ * Eliminar una evidencia (imagen) por su ID
+ * @param {string} evidenceId - ID de la evidencia (UUID)
+ * @returns {Promise<Object>} - Objeto con el mensaje de confirmación
+ */
+export const deleteEvidence = async (evidenceId) => {
+  try {
+    console.log('🗑️ Eliminando evidencia con ID:', evidenceId)
+    const response = await api.delete(`/evidence/${evidenceId}`)
+    console.log('✅ Evidencia eliminada:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('❌ Error al eliminar evidencia:', error)
+    if (error.response) {
+      throw error
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
+    } else {
+      throw new Error('Error al eliminar evidencia: ' + error.message)
+    }
+  }
+}
+
+/**
+ * Enviar incidencia al validador
+ * @param {string} reportId - ID de la incidencia
+ * @returns {Promise<Object>} - Respuesta del servidor
+ */
+export const sendToValidator = async (reportId) => {
+  try {
+    console.log('📤 Enviando incidencia al validador:', reportId)
+    const response = await api.patch(`/report/${reportId}/send`)
+    console.log('✅ Incidencia enviada al validador:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('❌ Error al enviar incidencia:', error)
+    if (error.response) {
+      throw error
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
+    } else {
+      throw new Error('Error al enviar incidencia: ' + error.message)
+    }
+  }
+}
+
+/**
+ * Validar incidencia (aprobar o rechazar)
+ * @param {string} reportId - ID de la incidencia
+ * @param {boolean} approved - true para aprobar, false para rechazar
+ * @returns {Promise<Object>} - Respuesta del servidor
+ */
+export const validateReport = async (reportId, approved) => {
+  try {
+    console.log(`${approved ? '✅ Aprobando' : '❌ Rechazando'} incidencia:`, reportId)
+    const response = await api.patch(`/report/${reportId}/validate`, { approved })
+    console.log('✅ Incidencia validada:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('❌ Error al validar incidencia:', error)
+    if (error.response) {
+      throw error
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
+    } else {
+      throw new Error('Error al validar incidencia: ' + error.message)
+    }
   }
 };

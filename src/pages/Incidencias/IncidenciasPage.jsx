@@ -4,7 +4,7 @@ import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
-import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport } from '../../api/report'
+import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport } from '../../api/report'
 import useSubjects from '../../hooks/Subject/useSubjects'
 import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
@@ -20,7 +20,7 @@ export default function IncidenciasPage() {
   const [showPDFModal, setShowPDFModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [filters, setFilters] = useState({
-    turno: 'Todos',
+    turno: '', // Ahora usa letras: M=Mañana, T=Tarde, N=Noche, ''=Todos
     search: '',
     lackId: '', // Filtro por ID de falta
     subjectId: '', // Filtro por ID de asunto
@@ -57,6 +57,7 @@ export default function IncidenciasPage() {
         if (filters.lackId) apiFilters.lackId = filters.lackId
         if (filters.subjectId) apiFilters.subjectId = filters.subjectId
         if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
+        if (filters.turno) apiFilters.shift = filters.turno // Agregar filtro de turno
 
         console.log(`📡 Obteniendo incidencias desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
         console.log('🔍 Filtros aplicados:', apiFilters)
@@ -83,7 +84,7 @@ export default function IncidenciasPage() {
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId])
+  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -163,6 +164,45 @@ export default function IncidenciasPage() {
       }
 
       alert(errorMessage)
+    }
+  }
+
+  async function handleSendToValidator(reportId) {
+    if (!confirm('¿Enviar esta incidencia al validador? Debe tener al menos una imagen.')) return
+
+    try {
+      const response = await sendToValidator(reportId)
+      alert(response.data?.message || response.message || 'Incidencia enviada al validador exitosamente')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      console.error('❌ Error al enviar incidencia:', error)
+      alert(error.response?.data?.message || error.message || 'Error al enviar incidencia')
+    }
+  }
+
+  async function handleApprove(reportId) {
+    if (!confirm('¿Aprobar esta incidencia?')) return
+
+    try {
+      const response = await validateReport(reportId, true)
+      alert(response.data?.message || response.message || 'Incidencia aprobada exitosamente')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      console.error('❌ Error al aprobar incidencia:', error)
+      alert(error.response?.data?.message || error.message || 'Error al aprobar incidencia')
+    }
+  }
+
+  async function handleReject(reportId) {
+    if (!confirm('¿Rechazar esta incidencia?')) return
+
+    try {
+      const response = await validateReport(reportId, false)
+      alert(response.data?.message || response.message || 'Incidencia rechazada exitosamente')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      console.error('❌ Error al rechazar incidencia:', error)
+      alert(error.response?.data?.message || error.message || 'Error al rechazar incidencia')
     }
   }
 
@@ -296,6 +336,8 @@ export default function IncidenciasPage() {
               dirigidoA: r.header?.to?.job || '',
               destinatario: r.header?.to?.name || '',
               nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
+              status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
+              evidences: r.evidences || [],
               createdAt: r.lack?.created_at || r.date,
               updatedAt: r.lack?.updated_at || r.date
             }))
@@ -337,13 +379,10 @@ export default function IncidenciasPage() {
     }
   }, [filters.search, currentPage, itemsPerPage])
 
-  // Filtros locales solo para turno (los demás filtros se manejan en el backend)
+  // Todos los filtros se manejan en el backend, incluyendo turno
   const filteredData = searchResult !== null
     ? searchResult // Si hay resultado de búsqueda, mostrar los resultados de la API
-    : incidencias.filter(item => {
-        const matchTurno = filters.turno === 'Todos' || item.turno === filters.turno
-        return matchTurno
-      })
+    : incidencias // Mostrar incidencias directamente (ya filtradas por el backend)
 
   return (
     <div className="incidencias-page">
@@ -432,10 +471,10 @@ export default function IncidenciasPage() {
               value={filters.turno}
               onChange={e => setFilters(f => ({ ...f, turno: e.target.value }))}
             >
-              <option value="Todos">Todos los turnos</option>
-              <option value="Mañana">Mañana</option>
-              <option value="Tarde">Tarde</option>
-              <option value="Noche">Noche</option>
+              <option value="">Todos los turnos</option>
+              <option value="M">Mañana</option>
+              <option value="T">Tarde</option>
+              <option value="N">Noche</option>
             </select>
 
             <div style={{ position: 'relative' }}>
@@ -546,8 +585,13 @@ export default function IncidenciasPage() {
             data={filteredData}
             onDelete={handleDelete}
             onEdit={handleEdit}
+            onSend={handleSendToValidator}
+            onApprove={handleApprove}
+            onReject={handleReject}
             startIndex={searchResult !== null ? ((isSearchMode && searchPagination) ? searchPagination.from - 1 : 0) : pagination.from - 1}
             canDelete={permissions.canDelete}
+            canSend={permissions.canSend}
+            canValidate={permissions.canValidate}
           />
 
           {/* Controles de paginación (mostrar para búsqueda con paginación o listado normal) */}

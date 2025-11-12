@@ -7,22 +7,48 @@
 export const ROLES = {
   ADMIN: 'admin',
   SUPERVISOR: 'supervisor',
-  CENTINELA: 'centinela'
+  CENTINELA: 'centinela',
+  VALIDATOR: 'validator'
+}
+
+/**
+ * Normaliza el rol del backend al formato del frontend
+ * Backend: ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR
+ * Frontend: admin, supervisor, centinela, validator
+ * @param {string} backendRole - Rol del backend
+ * @returns {string} Rol normalizado para el frontend
+ */
+export function normalizeRole(backendRole) {
+  if (!backendRole) return ROLES.CENTINELA
+
+  const roleMap = {
+    'ADMINISTRATOR': ROLES.ADMIN,
+    'ADMIN': ROLES.ADMIN,
+    'SUPERVISOR': ROLES.SUPERVISOR,
+    'SENTINEL': ROLES.CENTINELA,
+    'CENTINELA': ROLES.CENTINELA,
+    'VALIDATOR': ROLES.VALIDATOR
+  }
+
+  const normalized = roleMap[backendRole.toUpperCase()]
+  return normalized || ROLES.CENTINELA
 }
 
 // Permisos por módulo y rol
 export const PERMISSIONS = {
   // DASHBOARD
   dashboard: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA]
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR]
   },
 
   // INCIDENCIAS
   incidencias: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA],
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR],
     create: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA],
     edit: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    delete: [ROLES.ADMIN, ROLES.SUPERVISOR]
+    delete: [ROLES.ADMIN, ROLES.SUPERVISOR],
+    send: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA], // Enviar al validador
+    validate: [ROLES.ADMIN, ROLES.VALIDATOR] // Aprobar/Rechazar
   },
 
   // BODYCAM
@@ -51,6 +77,22 @@ export const PERMISSIONS = {
 
   // PERSONAL
   personal: {
+    view: [ROLES.ADMIN],
+    create: [ROLES.ADMIN],
+    edit: [ROLES.ADMIN],
+    delete: [ROLES.ADMIN]
+  },
+
+  // ASUNTOS
+  asuntos: {
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
+    create: [ROLES.ADMIN],
+    edit: [ROLES.ADMIN],
+    delete: [ROLES.ADMIN]
+  },
+
+  // FALTAS
+  faltas: {
     view: [ROLES.ADMIN],
     create: [ROLES.ADMIN],
     edit: [ROLES.ADMIN],
@@ -106,7 +148,9 @@ export function getModulePermissions(role, module) {
     canView: hasPermission(role, module, 'view'),
     canCreate: hasPermission(role, module, 'create'),
     canEdit: hasPermission(role, module, 'edit'),
-    canDelete: hasPermission(role, module, 'delete')
+    canDelete: hasPermission(role, module, 'delete'),
+    canSend: hasPermission(role, module, 'send'),
+    canValidate: hasPermission(role, module, 'validate')
   }
 }
 

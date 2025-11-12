@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { login as setAuth } from '../../store/slices/authSlice.js';
 import { login } from '../../api/auth.jsx';
 import { setToken } from '../../api/config.jsx';
+import { normalizeRole } from '../../utils/permissions.js';
 
 const useLogin = () => {
  const dispatch = useDispatch();
@@ -21,14 +22,8 @@ const useLogin = () => {
       const { token, user, rol } = data;
 
       if (token && user && rol) {
-        // Mapeo de roles del backend a los roles del frontend
-        const roleMapping = {
-          'administrator': 'admin',
-          'supervisor': 'supervisor',
-          'sentinel': 'centinela'
-        };
-
-        const normalizedRole = roleMapping[rol.toLowerCase()] || rol.toLowerCase();
+        // Normalizar el rol usando la función centralizada
+        const normalizedRole = normalizeRole(rol);
 
         // Debug logging - remover después del deploy
         console.log('Login Debug - Role from backend:', rol);

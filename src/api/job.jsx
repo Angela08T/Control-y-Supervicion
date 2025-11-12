@@ -68,14 +68,14 @@ export const updateJob = async (jobId, jobData) => {
   }
 };
 
-// Eliminar un cargo
+// Cambiar estado de un cargo (toggle: habilitar/deshabilitar)
 export const deleteJob = async (jobId) => {
   try {
     const response = await api.delete(`/job/${jobId}`);
-    console.log('✅ Cargo eliminado:', response.data);
+    console.log('🔄 Estado de cargo cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar cargo:', error);
+    console.error('❌ Error al cambiar estado de cargo:', error);
     throw error;
   }
 };

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayoutAdmin from "../layouts/DashboardLayoutAdmin";
 import DashboardLayoutSupervisor from "../layouts/DashboardLayoutSupervisor";
 import DashboardLayoutCentinela from "../layouts/DashboardLayoutCentinela";
+import DashboardLayoutValidator from "../layouts/DashboardLayoutValidator";
 
 // PAGES
 import LoginPage from "../pages/LoginPage";
@@ -16,6 +17,8 @@ import BodycamPage from "../pages/Bodycam/BodycamPage";
 import UsuariosPage from "../pages/Usuarios/UsuariosPage";
 import JobsPage from "../pages/Jobs/JobsPage";
 import LeadsPage from "../pages/Leads/LeadsPage";
+import SubjectPage from "../pages/Subject/SubjectPage";
+import LackPage from "../pages/Lack/LackPage";
 
 import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
@@ -44,6 +47,8 @@ export default function Router() {
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="cargos" element={<JobsPage />} />
           <Route path="personal" element={<LeadsPage />} />
+          <Route path="asuntos" element={<SubjectPage />} />
+          <Route path="faltas" element={<LackPage />} />
           {/* Placeholder para futuras rutas */}
           <Route path="supervisores" element={<div className="main-area"><h1>Supervisores</h1><p>Próximamente...</p></div>} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
@@ -69,6 +74,7 @@ export default function Router() {
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="cargos" element={<JobsPage />} />
           <Route path="personal" element={<LeadsPage />} />
+          <Route path="asuntos" element={<SubjectPage />} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
           <Route path="estadisticas" element={<div className="main-area"><h1>Estadísticas</h1><p>Próximamente...</p></div>} />
           <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
@@ -86,6 +92,19 @@ export default function Router() {
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
           <Route path="bodycam" element={<BodycamPage />} />
+        </Route>
+
+        {/* Rutas protegidas - VALIDATOR */}
+        <Route
+          path="/dashboard/validator"
+          element={
+            <PrivateRoute requiredRole="validator">
+              <DashboardLayoutValidator />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
         </Route>
 
         {/* Página 404 */}

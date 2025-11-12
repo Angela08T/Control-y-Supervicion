@@ -68,14 +68,14 @@ export const updateLead = async (leadId, leadData) => {
   }
 };
 
-// Eliminar una persona
+// Cambiar estado de una persona (toggle: habilitar/deshabilitar)
 export const deleteLead = async (leadId) => {
   try {
     const response = await api.delete(`/lead/${leadId}`);
-    console.log('✅ Persona eliminada:', response.data);
+    console.log('🔄 Estado de persona cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar persona:', error);
+    console.error('❌ Error al cambiar estado de persona:', error);
     throw error;
   }
 };

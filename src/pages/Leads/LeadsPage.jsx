@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import LeadTable from '../../components/LeadTable'
 import ModalLead from '../../components/ModalLead'
 import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
+import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function LeadsPage() {
+  const { role: userRole } = useSelector((state) => state.auth)
+  const permissions = getModulePermissions(userRole, 'personal')
+
   const [leads, setLeads] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
@@ -199,21 +204,30 @@ export default function LeadsPage() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar este personal?')) return
+  async function handleToggleStatus(item) {
+    const isEnabled = !item.deleted_at
+    const action = isEnabled ? 'deshabilitar' : 'habilitar'
+    const confirmMessage = isEnabled
+      ? '¿Estás seguro de deshabilitar este personal? Ya no estará disponible para asignación.'
+      : '¿Estás seguro de habilitar este personal? Volverá a estar disponible para asignación.'
+
+    if (!confirm(confirmMessage)) return
 
     try {
-      console.log('🗑️ Eliminando personal con ID:', id)
-      const response = await deleteLead(id)
-      console.log('✅ Respuesta de eliminación:', response)
+      console.log(`🔄 Cambiando estado de personal con ID:`, item.id)
 
-      alert(response.data?.message || response.message || 'Personal eliminado exitosamente')
+      // El endpoint DELETE hace toggle automáticamente
+      const response = await deleteLead(item.id)
+
+      console.log('✅ Respuesta:', response)
+
+      alert(response.data?.message || response.message || `Personal ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al eliminar personal:', error)
+      console.error(`❌ Error al ${action} personal:`, error)
 
-      let errorMessage = 'Error al eliminar el personal'
+      let errorMessage = `Error al ${action} el personal`
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
@@ -350,9 +364,11 @@ export default function LeadsPage() {
 
           <LeadTable
             data={filteredData}
-            onDelete={handleDelete}
+            onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
             startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            canEdit={permissions.canEdit}
+            canDelete={permissions.canDelete}
           />
 
           {/* Controles de paginación (ocultar cuando se busca) */}
