@@ -173,11 +173,16 @@ export default function DashboardPage() {
       totalCriticas = generalStats.top_subject.sent
     } else {
       // Fallback a cálculo local
-      asuntoMasFrecuente = Object.keys(conteoAsuntos).reduce((a, b) =>
-        conteoAsuntos[a] > conteoAsuntos[b] ? a : b,
-        'Sin datos'
-      )
-      totalCriticas = conteoAsuntos[asuntoMasFrecuente] || 0
+      const asuntosKeys = Object.keys(conteoAsuntos)
+      if (asuntosKeys.length > 0) {
+        asuntoMasFrecuente = asuntosKeys.reduce((a, b) =>
+          conteoAsuntos[a] > conteoAsuntos[b] ? a : b
+        )
+        totalCriticas = conteoAsuntos[asuntoMasFrecuente] || 0
+      } else {
+        asuntoMasFrecuente = 'Sin datos'
+        totalCriticas = 0
+      }
     }
 
     // Zona con más incidencias - Usar datos de la API si están disponibles
@@ -193,11 +198,16 @@ export default function DashboardPage() {
           conteoJurisdicciones[inc.jurisdiccion] = (conteoJurisdicciones[inc.jurisdiccion] || 0) + 1
         }
       })
-      zonaConMas = Object.keys(conteoJurisdicciones).reduce((a, b) =>
-        conteoJurisdicciones[a] > conteoJurisdicciones[b] ? a : b,
-        'Sin datos'
-      )
-      totalZona = conteoJurisdicciones[zonaConMas] || 0
+      const jurisdiccionesKeys = Object.keys(conteoJurisdicciones)
+      if (jurisdiccionesKeys.length > 0) {
+        zonaConMas = jurisdiccionesKeys.reduce((a, b) =>
+          conteoJurisdicciones[a] > conteoJurisdicciones[b] ? a : b
+        )
+        totalZona = conteoJurisdicciones[zonaConMas] || 0
+      } else {
+        zonaConMas = 'Sin datos'
+        totalZona = 0
+      }
     }
 
     // Cumplimiento de reportes (PDFs descargados - simulado por ahora)
