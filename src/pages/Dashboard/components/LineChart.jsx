@@ -33,25 +33,61 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       return data // Fallback a datos originales
     }
 
-    // MODO OFFLINE: Cuando usamos localStorage, mostrar TODAS las incidencias sin filtrar por fecha
-    // Encontrar el rango de fechas de todas las incidencias
-    const fechasIncidencias = incidencias
-      .filter(inc => inc.fechaIncidente)
-      .map(inc => new Date(inc.fechaIncidente))
-      .sort((a, b) => a - b)
+    // Determinar el rango de fechas según el filtro activo
+    let fechaInicio, fechaFin
 
-    if (fechasIncidencias.length === 0) {
-      return data
+    if (rangoTiempo === 'custom' && customDateRange) {
+      // Usar rango personalizado del calendario
+      fechaInicio = new Date(customDateRange.start)
+      fechaFin = new Date(customDateRange.end)
+    } else {
+      // Usar filtro de días (7D, 15D, 30D)
+      fechaFin = new Date()
+      fechaInicio = new Date()
+
+      if (rangoTiempo === '7D') {
+        fechaInicio.setDate(fechaFin.getDate() - 7)
+      } else if (rangoTiempo === '15D') {
+        fechaInicio.setDate(fechaFin.getDate() - 15)
+      } else if (rangoTiempo === '30D') {
+        fechaInicio.setDate(fechaFin.getDate() - 30)
+      }
     }
 
-    const fechaInicio = fechasIncidencias[0] // Primera fecha
-    const fechaFin = fechasIncidencias[fechasIncidencias.length - 1] // Última fecha
+    // Normalizar fechas (sin horas)
+    fechaInicio.setHours(0, 0, 0, 0)
+    fechaFin.setHours(23, 59, 59, 999)
 
-    console.log('📅 Modo localStorage - Mostrando TODAS las incidencias:', {
+    console.log('📅 LineChart - Filtrando por rango:', {
+      rangoTiempo,
       fechaInicio: fechaInicio.toISOString(),
-      fechaFin: fechaFin.toISOString(),
-      totalIncidencias: incidencias.length
+      fechaFin: fechaFin.toISOString()
     })
+
+    // Filtrar incidencias en el rango
+    const incidenciasFiltradas = incidencias.filter(inc => {
+      if (!inc.fechaIncidente) return false
+      const fechaInc = new Date(inc.fechaIncidente)
+      return fechaInc >= fechaInicio && fechaInc <= fechaFin
+    })
+
+    console.log('📊 LineChart - Incidencias filtradas:', incidenciasFiltradas.length)
+
+    if (incidenciasFiltradas.length === 0) {
+      // Si no hay incidencias en el rango, crear estructura vacía
+      const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
+      const datosPorDia = {}
+      for (let i = 0; i <= diasDiferencia; i++) {
+        const fecha = new Date(fechaInicio)
+        fecha.setDate(fechaInicio.getDate() + i)
+        const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
+        datosPorDia[dia] = {}
+        nuevosAsuntos.forEach(asunto => {
+          datosPorDia[dia][asunto] = 0
+        })
+      }
+      return datosPorDia
+    }
 
     // Calcular días entre inicio y fin
     const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
@@ -68,8 +104,8 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       })
     }
 
-    // Contar TODAS las incidencias por día
-    incidencias.forEach(inc => {
+    // Contar incidencias filtradas por día
+    incidenciasFiltradas.forEach(inc => {
       if (!inc.fechaIncidente) return
       const fecha = new Date(inc.fechaIncidente)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
@@ -156,37 +192,71 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
     }
     return '6 oct - 4 nov'
   }
-  
-  const width = 800
-  const height = 250
-  const padding = 40
-  const chartWidth = width - padding * 2
-  const chartHeight = height - padding * 2
-  
-  const getX = (index) => padding + (index / (meses.length - 1)) * chartWidth
-  const getY = (value) => padding + chartHeight - (value / maxValue) * chartHeight
 
-  // Crear path con curvas suaves
+  const width = 600  // Ancho base para viewBox (se escalará automáticamente)
+  const height = 360  // Aumentado para dar más espacio vertical
+  const paddingTop = 50  // Padding superior aumentado para evitar que los picos choquen arriba
+  const paddingBottom = 50  // Reducido para acercar las fechas al borde inferior
+  const paddingLeft = 20  // Espacio base izquierdo
+  const paddingRight = 30  // Aumentado para dar espacio derecho
+  const yAxisLabelWidth = 35
+  const chartWidth = width - paddingLeft - paddingRight - yAxisLabelWidth
+  const chartHeight = height - paddingTop - paddingBottom
+  const marginInside = 10  // Margen interno para evitar que las líneas toquen los bordes
+
+  const getX = (index) => {
+    // Los puntos empiezan después de paddingLeft + yAxisLabelWidth + margen interno
+    const effectiveWidth = chartWidth - (marginInside * 2)
+    return paddingLeft + yAxisLabelWidth + marginInside + (index / (meses.length - 1)) * effectiveWidth
+  }
+  const getY = (value) => {
+    // Calcular posición Y desde la base hacia arriba con margen interno
+    const effectiveHeight = chartHeight - (marginInside * 2)
+    return paddingTop + marginInside + effectiveHeight - (value / maxValue) * effectiveHeight
+  }
+
+  // Calcular valores del eje Y (5 niveles)
+  const yAxisValues = [0, 1, 2, 3, 4].map(i => Math.round((maxValue / 4) * i))
+
+  // Crear path con curvas suaves tipo Bezier cúbica para mejor apariencia
   const createPath = (values) => {
     if (values.length === 0) return ''
     if (values.length === 1) return `M ${getX(0)} ${getY(values[0])}`
 
     let path = `M ${getX(0)} ${getY(values[0])}`
 
+    // Asegurar que todas las líneas estén completas conectando todos los puntos
     for (let i = 0; i < values.length - 1; i++) {
       const x1 = getX(i)
       const y1 = getY(values[i])
       const x2 = getX(i + 1)
       const y2 = getY(values[i + 1])
 
-      // Calcular punto de control para curva suave
-      const controlPointX = (x1 + x2) / 2
-      const tension = 0.4 // Factor de tensión de la curva
+      // Usar curvas Bezier cúbicas para transiciones más suaves
+      const controlPointDistance = (x2 - x1) * 0.5
+      const cp1x = x1 + controlPointDistance
+      const cp1y = y1
+      const cp2x = x2 - controlPointDistance
+      const cp2y = y2
 
-      path += ` Q ${controlPointX} ${y1}, ${x2} ${y2}`
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`
     }
 
     return path
+  }
+
+  // Calcular la longitud aproximada del path para animar correctamente
+  const getPathLength = (values) => {
+    if (values.length < 2) return 0
+    let length = 0
+    for (let i = 0; i < values.length - 1; i++) {
+      const x1 = getX(i)
+      const y1 = getY(values[i])
+      const x2 = getX(i + 1)
+      const y2 = getY(values[i + 1])
+      length += Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    }
+    return length
   }
   
   return (
@@ -226,31 +296,70 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
         </div>
       </div>
       
-      <svg className="line-chart-svg" viewBox={`0 0 ${width} ${height}`}>
-        {/* Grid lines */}
-        {[0, 1, 2, 3, 4].map(i => {
-          const y = padding + (i / 4) * chartHeight
-          return (
-            <line
-              key={i}
-              x1={padding}
-              y1={y}
-              x2={width - padding}
-              y2={y}
-              stroke="var(--grid-line-color)"
-              strokeWidth="1"
-              strokeDasharray="4 4"
+      <svg className="line-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+        {/* Definir área de clipping para que nada se dibuje fuera del gráfico */}
+        <defs>
+          <clipPath id="chart-clip">
+            <rect
+              x={paddingLeft + yAxisLabelWidth}
+              y={paddingTop}
+              width={chartWidth}
+              height={chartHeight}
             />
+          </clipPath>
+        </defs>
+
+        {/* Rectángulo de borde del gráfico */}
+        <rect
+          x={paddingLeft + yAxisLabelWidth}
+          y={paddingTop}
+          width={chartWidth}
+          height={chartHeight}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth="2"
+        />
+
+        {/* Grid lines horizontales */}
+        {[0, 1, 2, 3, 4].map(i => {
+          const y = paddingTop + (i / 4) * chartHeight
+          return (
+            <g key={`h-${i}`}>
+              <line
+                x1={paddingLeft + yAxisLabelWidth}
+                y1={y}
+                x2={paddingLeft + yAxisLabelWidth + chartWidth}
+                y2={y}
+                stroke="var(--border)"
+                strokeWidth="1"
+                strokeDasharray="3,3"
+              />
+              {/* Etiquetas del eje Y */}
+              <text
+                x={paddingLeft + yAxisLabelWidth - 10}
+                y={y + 4}
+                textAnchor="end"
+                fill="var(--text-muted)"
+                fontSize="10"
+                fontWeight="600"
+              >
+                {yAxisValues[4 - i]}
+              </text>
+            </g>
           )
         })}
 
         {/* Líneas para cada asunto */}
+        <g clipPath="url(#chart-clip)">
         {nuevosAsuntos.map((asunto, asuntoIndex) => {
           if (!filtrosActivos[asunto]) return null
 
           const values = meses.map(mes => datosActuales[mes][asunto])
           const color = colores[asunto]
           const pathId = `path-${asunto.replace(/\s+/g, '-')}`
+          const pathLength = getPathLength(values)
+          const animationDuration = 2.5 // segundos para que la línea se dibuje completamente
+          const lineDelay = asuntoIndex * 0.2 // delay entre cada línea
 
           return (
             <g key={`${asunto}-${animationKey}`}>
@@ -260,29 +369,34 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                 d={createPath(values)}
                 fill="none"
                 stroke={color}
-                strokeWidth="3"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className="chart-line chart-line-animated"
                 style={{
-                  strokeDasharray: '1000',
-                  strokeDashoffset: '1000',
-                  animation: `drawLine 2.5s cubic-bezier(0.45, 0, 0.55, 1) forwards`,
-                  animationDelay: `${asuntoIndex * 0.2}s`
+                  strokeDasharray: pathLength,
+                  strokeDashoffset: pathLength,
+                  animation: `drawLine ${animationDuration}s cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                  animationDelay: `${lineDelay}s`
                 }}
               />
 
               {/* Puntos en cada vértice con tooltip */}
               {values.map((value, i) => {
                 const topFaltas = getTopFaltas(asunto, meses[i])
+                // Calcular el delay para que el punto aparezca cuando la línea llega a él
+                // El punto aparece cuando la línea ha recorrido (i / (values.length - 1)) de su camino
+                const pointDelay = lineDelay + (i / (values.length - 1)) * animationDuration
 
                 return (
                   <g
                     key={`${asunto}-${i}`}
                     className="chart-point-group"
                     style={{
-                      animation: `fadeInPoint 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards`,
-                      animationDelay: `${asuntoIndex * 0.2 + (i * 0.08)}s`,
+                      animation: value > 0
+                        ? `fadeInPoint 0.3s ease-out forwards`
+                        : `fadeInPointSmooth 0.5s ease-out forwards`,
+                      animationDelay: `${pointDelay}s`,
                       opacity: 0,
                       cursor: value > 0 ? 'pointer' : 'default'
                     }}
@@ -292,17 +406,17 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                     <circle
                       cx={getX(i)}
                       cy={getY(value)}
-                      r="4"
+                      r="5"
                       fill="white"
                       stroke={color}
-                      strokeWidth="2"
-                      className="chart-point-outer"
+                      strokeWidth="2.5"
+                      className={value > 0 ? "chart-point-outer" : "chart-point-outer-empty"}
                     />
                     {value > 0 && (
                       <circle
                         cx={getX(i)}
                         cy={getY(value)}
-                        r="2"
+                        r="2.5"
                         fill={color}
                         className="chart-point-inner"
                       />
@@ -313,17 +427,17 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
             </g>
           )
         })}
+        </g>
 
-        {/* Etiquetas del eje X */}
+        {/* Etiquetas del eje X - Mostrar fechas espaciadas */}
         {meses.map((mes, i) => {
           // Calcular cuántas etiquetas mostrar según la cantidad total de días
           const totalDias = meses.length
           let skipFactor = 1
 
-          if (totalDias > 60) skipFactor = Math.floor(totalDias / 10) // Mostrar ~10 etiquetas
-          else if (totalDias > 30) skipFactor = Math.floor(totalDias / 8) // Mostrar ~8 etiquetas
-          else if (totalDias > 15) skipFactor = 3 // Cada 3 días
-          else if (totalDias > 7) skipFactor = 2 // Cada 2 días
+          if (totalDias > 30) skipFactor = Math.ceil(totalDias / 10) // Mostrar ~10 etiquetas
+          else if (totalDias > 20) skipFactor = Math.ceil(totalDias / 8) // Mostrar ~8 etiquetas
+          else if (totalDias > 10) skipFactor = 2 // Cada 2 días
           else skipFactor = 1 // Mostrar todos
 
           const shouldShow = i % skipFactor === 0 || i === meses.length - 1 // Siempre mostrar el último
@@ -334,7 +448,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
             <text
               key={mes}
               x={getX(i)}
-              y={height - 8}
+              y={height - 15}
               textAnchor="middle"
               fill="var(--text-muted)"
               fontSize="10"

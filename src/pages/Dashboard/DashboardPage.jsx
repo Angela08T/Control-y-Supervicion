@@ -427,8 +427,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Tercera fila: Evolución de Incidencias (full width) */}
-      <div className="charts-grid-full">
+      {/* Tercera fila: Evolución de Incidencias e Incidencias (50/50) */}
+      <div className="charts-grid-half">
         <LineChart
           title="Evolución de Incidencias"
           subtitle="Últimos días registrados"
@@ -437,10 +437,7 @@ export default function DashboardPage() {
           faltasPorAsunto={stats.faltasPorAsunto}
           onOpenDateModal={() => setShowDateModal(true)}
         />
-      </div>
 
-      {/* Cuarta fila: Incidencias (full width) */}
-      <div className="charts-grid-full">
         <BarChart
           title="Incidencias"
           subtitle="Por tipo de asunto y día"

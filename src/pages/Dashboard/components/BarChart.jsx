@@ -24,25 +24,61 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
       return data // Fallback a datos originales
     }
 
-    // MODO OFFLINE: Cuando usamos localStorage, mostrar TODAS las incidencias sin filtrar por fecha
-    // Encontrar el rango de fechas de todas las incidencias
-    const fechasIncidencias = incidencias
-      .filter(inc => inc.fechaIncidente)
-      .map(inc => new Date(inc.fechaIncidente))
-      .sort((a, b) => a - b)
+    // Determinar el rango de fechas según el filtro activo
+    let fechaInicio, fechaFin
 
-    if (fechasIncidencias.length === 0) {
-      return data
+    if (rangoTiempo === 'custom' && customDateRange) {
+      // Usar rango personalizado del calendario
+      fechaInicio = new Date(customDateRange.start)
+      fechaFin = new Date(customDateRange.end)
+    } else {
+      // Usar filtro de días (7D, 15D, 30D)
+      fechaFin = new Date()
+      fechaInicio = new Date()
+
+      if (rangoTiempo === '7D') {
+        fechaInicio.setDate(fechaFin.getDate() - 7)
+      } else if (rangoTiempo === '15D') {
+        fechaInicio.setDate(fechaFin.getDate() - 15)
+      } else if (rangoTiempo === '30D') {
+        fechaInicio.setDate(fechaFin.getDate() - 30)
+      }
     }
 
-    const fechaInicio = fechasIncidencias[0] // Primera fecha
-    const fechaFin = fechasIncidencias[fechasIncidencias.length - 1] // Última fecha
+    // Normalizar fechas (sin horas)
+    fechaInicio.setHours(0, 0, 0, 0)
+    fechaFin.setHours(23, 59, 59, 999)
 
-    console.log('📅 BarChart - Modo localStorage - Mostrando TODAS las incidencias:', {
+    console.log('📅 BarChart - Filtrando por rango:', {
+      rangoTiempo,
       fechaInicio: fechaInicio.toISOString(),
-      fechaFin: fechaFin.toISOString(),
-      totalIncidencias: incidencias.length
+      fechaFin: fechaFin.toISOString()
     })
+
+    // Filtrar incidencias en el rango
+    const incidenciasFiltradas = incidencias.filter(inc => {
+      if (!inc.fechaIncidente) return false
+      const fechaInc = new Date(inc.fechaIncidente)
+      return fechaInc >= fechaInicio && fechaInc <= fechaFin
+    })
+
+    console.log('📊 BarChart - Incidencias filtradas:', incidenciasFiltradas.length)
+
+    if (incidenciasFiltradas.length === 0) {
+      // Si no hay incidencias en el rango, crear estructura vacía
+      const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
+      const datosPorDia = {}
+      for (let i = 0; i <= diasDiferencia; i++) {
+        const fecha = new Date(fechaInicio)
+        fecha.setDate(fechaInicio.getDate() + i)
+        const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
+        datosPorDia[dia] = {}
+        nuevosAsuntos.forEach(asunto => {
+          datosPorDia[dia][asunto] = 0
+        })
+      }
+      return datosPorDia
+    }
 
     // Calcular días entre inicio y fin
     const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
@@ -59,8 +95,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
       })
     }
 
-    // Contar TODAS las incidencias por día
-    incidencias.forEach(inc => {
+    // Contar incidencias filtradas por día
+    incidenciasFiltradas.forEach(inc => {
       if (!inc.fechaIncidente) return
       const fecha = new Date(inc.fechaIncidente)
       const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
@@ -121,32 +157,37 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
     return '6 oct - 4 nov'
   }
 
-  // Calcular máximo valor para escalar las barras
+  // Calcular máximo valor para escalar las barras con margen superior
   const maxValor = Math.max(
     ...dias.map(dia =>
       Math.max(...nuevosAsuntos.map(asunto => datosActuales[dia][asunto] || 0))
     ),
     1
-  )
+  ) * 1.1 // Agregar 10% de margen superior para que las barras no toquen el tope
 
   // Configuración del SVG
-  const width = 800
-  const height = 250
-  const paddingLeft = 40
-  const paddingRight = 20
-  const paddingTop = 40
-  const paddingBottom = 40
-  const chartWidth = width - paddingLeft - paddingRight
+  const width = 600  // Ancho base para viewBox (se escalará automáticamente)
+  const height = 360  // Misma altura que LineChart para alineación
+  const paddingLeft = 20  // Espacio base izquierdo
+  const paddingRight = 20  // Reducido para más espacio a la derecha del contenido
+  const paddingTop = 50  // Mismo paddingTop que LineChart para alineación
+  const paddingBottom = 50  // Reducido para acercar las fechas al borde inferior
+  const yAxisLabelWidth = 35  // Reducido de 55 a 35 para menos espacio vacío izquierdo
+  const chartWidth = width - paddingLeft - paddingRight - yAxisLabelWidth
   const chartHeight = height - paddingTop - paddingBottom
 
   // Ancho de cada grupo de barras
   const barGroupWidth = chartWidth / dias.length
-  // Asegurar que las barras tengan al menos 2px de ancho para ser visibles
+  // Asegurar que las barras tengan al menos 3px de ancho y sean más gruesas
   const calculatedBarWidth = (barGroupWidth / nuevosAsuntos.length) - 1
-  const barWidth = Math.max(Math.min(calculatedBarWidth, 20), 2) // Mínimo 2px, máximo 20px
+  const barWidth = Math.max(Math.min(calculatedBarWidth, 20), 3) // Mínimo 3px, máximo 20px (más gruesas)
 
   // Función para obtener posición Y
-  const getY = (value) => paddingTop + chartHeight - (value / maxValor) * chartHeight
+  const getY = (value) => {
+    // Las barras deben comenzar desde la misma línea base (paddingTop + chartHeight)
+    // y crecer hacia arriba proporcionalmente
+    return paddingTop + chartHeight - (value / maxValor) * chartHeight
+  }
 
   // Calcular valores del eje Y (5 niveles)
   const yAxisValues = [0, 1, 2, 3, 4].map(i => Math.round((maxValor / 4) * i))
@@ -188,14 +229,37 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
         </div>
       </div>
 
-      <svg className="bar-chart-svg" viewBox={`0 0 ${width} ${height}`}>
+      <svg className="bar-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+        {/* Definir área de clipping para que nada se dibuje fuera del gráfico */}
+        <defs>
+          <clipPath id="bar-chart-clip">
+            <rect
+              x={paddingLeft + yAxisLabelWidth}
+              y={paddingTop}
+              width={chartWidth}
+              height={chartHeight}
+            />
+          </clipPath>
+        </defs>
+
+        {/* Rectángulo de borde del gráfico */}
+        <rect
+          x={paddingLeft + yAxisLabelWidth}
+          y={paddingTop}
+          width={chartWidth}
+          height={chartHeight}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth="2"
+        />
+
         {/* Grid lines horizontales */}
         {[0, 1, 2, 3, 4].map(i => {
           const y = paddingTop + (i / 4) * chartHeight
           return (
             <g key={i}>
               <line
-                x1={paddingLeft}
+                x1={paddingLeft + yAxisLabelWidth}
                 y1={y}
                 x2={width - paddingRight}
                 y2={y}
@@ -205,7 +269,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
               />
               {/* Etiquetas del eje Y */}
               <text
-                x={paddingLeft - 10}
+                x={paddingLeft + yAxisLabelWidth - 10}
                 y={y + 4}
                 textAnchor="end"
                 fill="var(--text-muted)"
@@ -218,9 +282,42 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
           )
         })}
 
-        {/* Barras */}
+        {/* Líneas verticales del eje X - solo donde hay etiquetas */}
         {dias.map((dia, diaIndex) => {
-          const groupX = paddingLeft + diaIndex * barGroupWidth
+          const groupX = paddingLeft + yAxisLabelWidth + diaIndex * barGroupWidth
+
+          // Calcular si debe mostrar línea vertical (misma lógica que las etiquetas)
+          const totalDias = dias.length
+          let skipFactor = 1
+
+          if (totalDias > 30) skipFactor = Math.ceil(totalDias / 10)
+          else if (totalDias > 20) skipFactor = Math.ceil(totalDias / 8)
+          else if (totalDias > 10) skipFactor = 2
+          else skipFactor = 1
+
+          const shouldShow = diaIndex % skipFactor === 0 || diaIndex === dias.length - 1
+
+          if (!shouldShow) return null
+
+          return (
+            <line
+              key={`gridline-${dia}`}
+              x1={groupX + barGroupWidth / 2}
+              y1={paddingTop}
+              x2={groupX + barGroupWidth / 2}
+              y2={paddingTop + chartHeight}
+              stroke="var(--border)"
+              strokeWidth="1"
+              strokeDasharray="3,3"
+              opacity="0.5"
+            />
+          )
+        })}
+
+        {/* Barras */}
+        <g clipPath="url(#bar-chart-clip)">
+        {dias.map((dia, diaIndex) => {
+          const groupX = paddingLeft + yAxisLabelWidth + diaIndex * barGroupWidth
 
           return (
             <g key={dia}>
@@ -268,37 +365,40 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
                 )
               })}
 
-              {/* Etiqueta del eje X */}
-              {(() => {
-                // Calcular cuántas etiquetas mostrar según la cantidad total de días
-                const totalDias = dias.length
-                let skipFactor = 1
-
-                if (totalDias > 60) skipFactor = Math.floor(totalDias / 10) // Mostrar ~10 etiquetas
-                else if (totalDias > 30) skipFactor = Math.floor(totalDias / 8) // Mostrar ~8 etiquetas
-                else if (totalDias > 15) skipFactor = 3 // Cada 3 días
-                else if (totalDias > 7) skipFactor = 2 // Cada 2 días
-                else skipFactor = 1 // Mostrar todos
-
-                const shouldShowLabel = diaIndex % skipFactor === 0 || diaIndex === dias.length - 1 // Siempre mostrar el último
-
-                if (shouldShowLabel) {
-                  return (
-                    <text
-                      x={groupX + barGroupWidth / 2}
-                      y={height - paddingBottom + 20}
-                      textAnchor="middle"
-                      fill="var(--text-muted)"
-                      fontSize="10"
-                      fontWeight="600"
-                    >
-                      {dia}
-                    </text>
-                  )
-                }
-                return null
-              })()}
             </g>
+          )
+        })}
+        </g>
+
+        {/* Etiquetas del eje X - Mostrar fechas debajo del borde inferior */}
+        {dias.map((dia, diaIndex) => {
+          const groupX = paddingLeft + yAxisLabelWidth + diaIndex * barGroupWidth
+
+          // Calcular cuántas etiquetas mostrar según la cantidad total de días
+          const totalDias = dias.length
+          let skipFactor = 1
+
+          if (totalDias > 30) skipFactor = Math.ceil(totalDias / 10) // Mostrar ~10 etiquetas
+          else if (totalDias > 20) skipFactor = Math.ceil(totalDias / 8) // Mostrar ~8 etiquetas
+          else if (totalDias > 10) skipFactor = 2 // Cada 2 días
+          else skipFactor = 1 // Mostrar todos
+
+          const shouldShow = diaIndex % skipFactor === 0 || diaIndex === dias.length - 1
+
+          if (!shouldShow) return null
+
+          return (
+            <text
+              key={`label-${dia}`}
+              x={groupX + barGroupWidth / 2}
+              y={paddingTop + chartHeight + 20}
+              textAnchor="middle"
+              fill="var(--text-muted)"
+              fontSize="10"
+              fontWeight="600"
+            >
+              {dia}
+            </text>
           )
         })}
       </svg>
