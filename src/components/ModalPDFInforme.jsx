@@ -7,9 +7,51 @@ import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl,
 import InformePDFDocument from './PDFDocument'
 
 function formatearFecha(fecha) {
-  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+  if (!fecha) return 'Fecha no disponible'
+
+  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-  const d = new Date(fecha)
+
+  let d
+
+  // Intentar diferentes formatos de fecha
+  // 1. Si es un string, verificar si es formato DD/MM/YYYY o DD-MM-YYYY
+  if (typeof fecha === 'string') {
+    // Formato DD/MM/YYYY o DD-MM-YYYY
+    if (fecha.includes('/') || fecha.includes('-')) {
+      const separator = fecha.includes('/') ? '/' : '-'
+      const parts = fecha.split(separator)
+
+      // Si tiene 3 partes, asumir DD/MM/YYYY o DD-MM-YYYY
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10)
+        const month = parseInt(parts[1], 10) - 1 // Los meses en JS son 0-indexados
+        const year = parseInt(parts[2], 10)
+
+        // Si el año es de 2 dígitos, asumirlo como 20XX
+        const fullYear = year < 100 ? 2000 + year : year
+
+        d = new Date(fullYear, month, day)
+      } else {
+        // Intentar crear Date normalmente
+        d = new Date(fecha)
+      }
+    } else {
+      // Intentar crear Date normalmente (ISO format, etc)
+      d = new Date(fecha)
+    }
+  } else {
+    // Si es Date object o timestamp
+    d = new Date(fecha)
+  }
+
+  // Verificar si la fecha es válida
+  if (isNaN(d.getTime())) {
+    console.error('❌ Fecha inválida:', fecha)
+    return `Fecha inválida (${fecha})`
+  }
+
+  console.log('✅ Fecha formateada:', `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`, 'desde:', fecha)
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
 
@@ -91,6 +133,13 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   useEffect(() => {
     if (incidencia) {
+      console.log('📅 DEBUG - Datos de incidencia recibidos:', {
+        fechaIncidente: incidencia.fechaIncidente,
+        fechaFalta: incidencia.fechaFalta,
+        tipoFechaIncidente: typeof incidencia.fechaIncidente,
+        tipoFechaFalta: typeof incidencia.fechaFalta
+      })
+
       const numeroInforme = `${String(Math.floor(Math.random() * 999)).padStart(3, '0')}-2025-CS-SS-GOP/MDSJL`
 
       // Usar el cargo del destinatario de la API si está disponible, sino usar el mapeo antiguo
@@ -173,6 +222,11 @@ Finalmente, se deja constancia de que la situación descrita constituye un incum
 Se adjuntan las evidencias:`
       }
 
+      // Formatear fechaFalta antes de guardarla
+      const fechaFaltaFormateada = incidencia.fechaFalta
+        ? formatearFecha(incidencia.fechaFalta)
+        : formatearFecha(incidencia.fechaIncidente)
+
       setFormData({
         numeroInforme,
         destinatarioCargo: cargo,
@@ -195,7 +249,7 @@ Se adjuntan las evidencias:`
         supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
         descripcionAdicional: generarContenidoInforme(),  // Generar plantilla para todos los tipos
         tipoInasistencia: incidencia.tipoInasistencia || '',
-        fechaFalta: incidencia.fechaFalta || '',
+        fechaFalta: fechaFaltaFormateada,  // Usar fecha ya formateada
         imagenes: [],
         links: ''
       })

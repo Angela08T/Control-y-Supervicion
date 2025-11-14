@@ -54,6 +54,8 @@ export default function UsuariosPage() {
         )
 
         const allUsers = response?.data?.data || []
+        console.log('📋 Usuarios obtenidos del backend:', allUsers)
+        console.log('📧 Primer usuario (verificar email):', allUsers[0])
         setUsers(allUsers)
 
         console.log(`✅ ${allUsers.length} usuarios encontrados`)
