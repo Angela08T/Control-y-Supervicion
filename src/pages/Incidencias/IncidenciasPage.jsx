@@ -10,6 +10,7 @@ import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
 
 export default function IncidenciasPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -46,6 +47,25 @@ export default function IncidenciasPage() {
   const { subjects, loading: subjectsLoading } = useSubjects()
   const { lacks, loading: lacksLoading } = useLacks()
   const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
+
+  // 🔹 WebSocket: Escuchar cambios de estado de reportes en tiempo real
+  useEffect(() => {
+    // Inicializar conexión WebSocket
+    initSocket()
+
+    // Suscribirse al evento de cambio de estado
+    const unsubscribe = onReportStatusChanged((data) => {
+      console.log('🔔 Cambio de estado recibido:', data)
+      // Recargar datos automáticamente cuando cambie el estado de un reporte
+      setRefreshTrigger(prev => prev + 1)
+    })
+
+    // Cleanup: desuscribirse al desmontar
+    return () => {
+      unsubscribe()
+      disconnectSocket()
+    }
+  }, [])
 
   // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
   useEffect(() => {

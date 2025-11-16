@@ -27,7 +27,11 @@ export default function ModalLead({ initial, onClose, onSave }) {
         const jobsData = response.data?.data || response.data || []
         console.log('✅ Cargos extraídos:', jobsData)
 
-        setJobs(jobsData)
+        // Filtrar solo los cargos habilitados (sin deleted_at)
+        const activeJobs = jobsData.filter(job => !job.deleted_at)
+        console.log('✅ Cargos activos:', activeJobs)
+
+        setJobs(activeJobs)
       } catch (error) {
         console.error('❌ Error al cargar cargos:', error)
         alert('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
@@ -86,7 +90,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
     const dataToSave = {
       name: form.name.trim(),
       lastname: form.lastname.trim(),
-      job_id: parseInt(form.job_id, 10) // Convertir a número
+      job_id: form.job_id // Mantener como UUID string
     }
 
     console.log('📋 Datos preparados para enviar:', dataToSave)
