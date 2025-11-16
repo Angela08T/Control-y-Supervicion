@@ -61,6 +61,7 @@ export default function IncidenciasTable({
               <th>DNI</th>
               <th>Asunto</th>
               <th>Falta</th>
+              <th>Tipo Inasistencia</th>
               <th>Medio</th>
               <th>Fecha</th>
               <th>Hora</th>
@@ -77,7 +78,7 @@ export default function IncidenciasTable({
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={17} style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
+                <td colSpan={18} style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
                   No hay incidencias registradas
                 </td>
               </tr>
@@ -134,6 +135,7 @@ export default function IncidenciasTable({
                   <td>{item.dni}</td>
                   <td>{item.asunto}</td>
                   <td>{item.falta}</td>
+                  <td>{item.tipoInasistencia || '-'}</td>
                   <td>{item.medio}{item.bodycamNumber ? ` (${item.bodycamNumber})` : ''}</td>
                   <td>{item.fechaIncidente}</td>
                   <td>{item.horaIncidente}</td>

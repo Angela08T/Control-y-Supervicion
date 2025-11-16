@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function BarChart({ title, subtitle, data, incidencias, faltasPorAsunto }) {
+export default function BarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange }) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -13,106 +13,26 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
     'Conductas que podrían afectar la Seguridad o la Integridad de Personas'
   ]
 
-  const [rangoTiempo, setRangoTiempo] = useState('30D')
+  const [rangoTiempo, setRangoTiempo] = useState(defaultPeriod)
   const [showCalendar, setShowCalendar] = useState(false)
   const [customDateRange, setCustomDateRange] = useState(null)
   const [hoveredBar, setHoveredBar] = useState(null)
 
-  // Función para obtener datos filtrados por tiempo
-  const getDatosFiltrados = () => {
-    if (!incidencias || incidencias.length === 0) {
-      return data // Fallback a datos originales
+  // Sincronizar con el período padre
+  useEffect(() => {
+    setRangoTiempo(defaultPeriod)
+  }, [defaultPeriod])
+
+  // Notificar al padre cuando cambia el período
+  const handlePeriodChange = (newPeriod) => {
+    setRangoTiempo(newPeriod)
+    if (onPeriodChange && newPeriod !== 'custom') {
+      onPeriodChange(newPeriod)
     }
-
-    // Determinar el rango de fechas según el filtro activo
-    let fechaInicio, fechaFin
-
-    if (rangoTiempo === 'custom' && customDateRange) {
-      // Usar rango personalizado del calendario
-      fechaInicio = new Date(customDateRange.start)
-      fechaFin = new Date(customDateRange.end)
-    } else {
-      // Usar filtro de días (7D, 15D, 30D)
-      fechaFin = new Date()
-      fechaInicio = new Date()
-
-      if (rangoTiempo === '7D') {
-        fechaInicio.setDate(fechaFin.getDate() - 7)
-      } else if (rangoTiempo === '15D') {
-        fechaInicio.setDate(fechaFin.getDate() - 15)
-      } else if (rangoTiempo === '30D') {
-        fechaInicio.setDate(fechaFin.getDate() - 30)
-      }
-    }
-
-    // Normalizar fechas (sin horas)
-    fechaInicio.setHours(0, 0, 0, 0)
-    fechaFin.setHours(23, 59, 59, 999)
-
-    console.log('📅 BarChart - Filtrando por rango:', {
-      rangoTiempo,
-      fechaInicio: fechaInicio.toISOString(),
-      fechaFin: fechaFin.toISOString()
-    })
-
-    // Filtrar incidencias en el rango
-    const incidenciasFiltradas = incidencias.filter(inc => {
-      if (!inc.fechaIncidente) return false
-      const fechaInc = new Date(inc.fechaIncidente)
-      return fechaInc >= fechaInicio && fechaInc <= fechaFin
-    })
-
-    console.log('📊 BarChart - Incidencias filtradas:', incidenciasFiltradas.length)
-
-    if (incidenciasFiltradas.length === 0) {
-      // Si no hay incidencias en el rango, crear estructura vacía
-      const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
-      const datosPorDia = {}
-      for (let i = 0; i <= diasDiferencia; i++) {
-        const fecha = new Date(fechaInicio)
-        fecha.setDate(fechaInicio.getDate() + i)
-        const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-        datosPorDia[dia] = {}
-        nuevosAsuntos.forEach(asunto => {
-          datosPorDia[dia][asunto] = 0
-        })
-      }
-      return datosPorDia
-    }
-
-    // Calcular días entre inicio y fin
-    const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
-
-    // Crear estructura de datos por día
-    const datosPorDia = {}
-    for (let i = 0; i <= diasDiferencia; i++) {
-      const fecha = new Date(fechaInicio)
-      fecha.setDate(fechaInicio.getDate() + i)
-      const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      datosPorDia[dia] = {}
-      nuevosAsuntos.forEach(asunto => {
-        datosPorDia[dia][asunto] = 0
-      })
-    }
-
-    // Contar incidencias filtradas por día
-    incidenciasFiltradas.forEach(inc => {
-      if (!inc.fechaIncidente) return
-      const fecha = new Date(inc.fechaIncidente)
-      const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      if (datosPorDia[dia]) {
-        if (datosPorDia[dia][inc.asunto] !== undefined) {
-          datosPorDia[dia][inc.asunto]++
-        } else {
-          datosPorDia[dia][inc.asunto] = 1
-        }
-      }
-    })
-
-    return datosPorDia
   }
 
-  const datosActuales = getDatosFiltrados()
+  // Usar los datos que vienen del API (data) directamente, ya que DashboardPage los filtra según el período
+  const datosActuales = data
   const dias = Object.keys(datosActuales)
 
   console.log('🔍 BarChart - Datos actuales:', datosActuales)
@@ -204,19 +124,19 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
           <div className="time-range-buttons">
             <button
               className={`time-btn ${rangoTiempo === '7D' ? 'active' : ''}`}
-              onClick={() => setRangoTiempo('7D')}
+              onClick={() => handlePeriodChange('7D')}
             >
               7D
             </button>
             <button
               className={`time-btn ${rangoTiempo === '15D' ? 'active' : ''}`}
-              onClick={() => setRangoTiempo('15D')}
+              onClick={() => handlePeriodChange('15D')}
             >
               15D
             </button>
             <button
               className={`time-btn ${rangoTiempo === '30D' ? 'active' : ''}`}
-              onClick={() => setRangoTiempo('30D')}
+              onClick={() => handlePeriodChange('30D')}
             >
               30D
             </button>

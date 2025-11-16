@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal }) {
+export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal, defaultPeriod = '30D', onPeriodChange }) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -16,112 +16,34 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   const [filtrosActivos, setFiltrosActivos] = useState(
     nuevosAsuntos.reduce((acc, asunto) => ({ ...acc, [asunto]: true }), {})
   )
-  const [rangoTiempo, setRangoTiempo] = useState('30D') // 7D, 15D, 30D, custom
+  const [rangoTiempo, setRangoTiempo] = useState(defaultPeriod) // 7D, 15D, 30D, custom
   const [showCalendar, setShowCalendar] = useState(false)
   const [customDateRange, setCustomDateRange] = useState(null)
   const [animationKey, setAnimationKey] = useState(0)
   const [hoveredPoint, setHoveredPoint] = useState(null)
 
+  // Sincronizar con el período padre
+  useEffect(() => {
+    setRangoTiempo(defaultPeriod)
+  }, [defaultPeriod])
+
   // Re-ejecutar animación cuando cambian los datos
   useEffect(() => {
     setAnimationKey(prev => prev + 1)
-  }, [rangoTiempo, customDateRange])
+    console.log('🔄 LineChart - Rango de tiempo cambió a:', rangoTiempo)
+  }, [rangoTiempo, customDateRange, data])
 
-  // Función para obtener datos filtrados por tiempo
-  const getDatosFiltrados = () => {
-    if (!incidencias || incidencias.length === 0) {
-      return data // Fallback a datos originales
+  // Notificar al padre cuando cambia el período (solo para botones, no para custom)
+  const handlePeriodChange = (newPeriod) => {
+    setRangoTiempo(newPeriod)
+    if (onPeriodChange && newPeriod !== 'custom') {
+      onPeriodChange(newPeriod)
     }
-
-    // Determinar el rango de fechas según el filtro activo
-    let fechaInicio, fechaFin
-
-    if (rangoTiempo === 'custom' && customDateRange) {
-      // Usar rango personalizado del calendario
-      fechaInicio = new Date(customDateRange.start)
-      fechaFin = new Date(customDateRange.end)
-    } else {
-      // Usar filtro de días (7D, 15D, 30D)
-      fechaFin = new Date()
-      fechaInicio = new Date()
-
-      if (rangoTiempo === '7D') {
-        fechaInicio.setDate(fechaFin.getDate() - 7)
-      } else if (rangoTiempo === '15D') {
-        fechaInicio.setDate(fechaFin.getDate() - 15)
-      } else if (rangoTiempo === '30D') {
-        fechaInicio.setDate(fechaFin.getDate() - 30)
-      }
-    }
-
-    // Normalizar fechas (sin horas)
-    fechaInicio.setHours(0, 0, 0, 0)
-    fechaFin.setHours(23, 59, 59, 999)
-
-    console.log('📅 LineChart - Filtrando por rango:', {
-      rangoTiempo,
-      fechaInicio: fechaInicio.toISOString(),
-      fechaFin: fechaFin.toISOString()
-    })
-
-    // Filtrar incidencias en el rango
-    const incidenciasFiltradas = incidencias.filter(inc => {
-      if (!inc.fechaIncidente) return false
-      const fechaInc = new Date(inc.fechaIncidente)
-      return fechaInc >= fechaInicio && fechaInc <= fechaFin
-    })
-
-    console.log('📊 LineChart - Incidencias filtradas:', incidenciasFiltradas.length)
-
-    if (incidenciasFiltradas.length === 0) {
-      // Si no hay incidencias en el rango, crear estructura vacía
-      const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
-      const datosPorDia = {}
-      for (let i = 0; i <= diasDiferencia; i++) {
-        const fecha = new Date(fechaInicio)
-        fecha.setDate(fechaInicio.getDate() + i)
-        const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-        datosPorDia[dia] = {}
-        nuevosAsuntos.forEach(asunto => {
-          datosPorDia[dia][asunto] = 0
-        })
-      }
-      return datosPorDia
-    }
-
-    // Calcular días entre inicio y fin
-    const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24))
-
-    // Crear estructura de datos por día
-    const datosPorDia = {}
-    for (let i = 0; i <= diasDiferencia; i++) {
-      const fecha = new Date(fechaInicio)
-      fecha.setDate(fechaInicio.getDate() + i)
-      const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      datosPorDia[dia] = {}
-      nuevosAsuntos.forEach(asunto => {
-        datosPorDia[dia][asunto] = 0
-      })
-    }
-
-    // Contar incidencias filtradas por día
-    incidenciasFiltradas.forEach(inc => {
-      if (!inc.fechaIncidente) return
-      const fecha = new Date(inc.fechaIncidente)
-      const dia = `${fecha.getDate()}/${fecha.getMonth() + 1}`
-      if (datosPorDia[dia]) {
-        if (datosPorDia[dia][inc.asunto] !== undefined) {
-          datosPorDia[dia][inc.asunto]++
-        } else {
-          datosPorDia[dia][inc.asunto] = 1
-        }
-      }
-    })
-
-    return datosPorDia
   }
 
-  const datosActuales = getDatosFiltrados()
+  // Usar los datos que vienen del API (data) directamente, ya que DashboardPage los filtra según el período
+  const datosActuales = data
+
   const meses = Object.keys(datosActuales)
 
   // Debug: verificar si hay datos con valores
@@ -221,9 +143,18 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   // Crear path con curvas suaves tipo Bezier cúbica para mejor apariencia
   const createPath = (values) => {
     if (values.length === 0) return ''
-    if (values.length === 1) return `M ${getX(0)} ${getY(values[0])}`
 
-    let path = `M ${getX(0)} ${getY(values[0])}`
+    // Comenzar desde el borde izquierdo del área del gráfico (antes del primer punto)
+    const startX = paddingLeft + yAxisLabelWidth
+    const firstY = getY(values[0])
+
+    if (values.length === 1) return `M ${startX} ${firstY} L ${getX(0)} ${getY(values[0])}`
+
+    // Iniciar el path desde el borde izquierdo
+    let path = `M ${startX} ${firstY}`
+
+    // Línea hasta el primer punto
+    path += ` L ${getX(0)} ${getY(values[0])}`
 
     // Asegurar que todas las líneas estén completas conectando todos los puntos
     for (let i = 0; i < values.length - 1; i++) {
@@ -271,19 +202,19 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
           <div className="time-range-buttons">
             <button
               className={`time-btn ${rangoTiempo === '7D' ? 'active' : ''}`}
-              onClick={() => setRangoTiempo('7D')}
+              onClick={() => handlePeriodChange('7D')}
             >
               7D
             </button>
             <button
               className={`time-btn ${rangoTiempo === '15D' ? 'active' : ''}`}
-              onClick={() => setRangoTiempo('15D')}
+              onClick={() => handlePeriodChange('15D')}
             >
               15D
             </button>
             <button
               className={`time-btn ${rangoTiempo === '30D' ? 'active' : ''}`}
-              onClick={() => setRangoTiempo('30D')}
+              onClick={() => handlePeriodChange('30D')}
             >
               30D
             </button>
@@ -363,7 +294,43 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
           return (
             <g key={`${asunto}-${animationKey}`}>
-              {/* Línea con estilo de picos y animación montaña rusa */}
+              {/* Puntos solo donde hay datos (value > 0) - aparecen primero, sin animación */}
+              {values.map((value, i) => {
+                // Solo mostrar puntos donde hay datos
+                if (value === 0) return null
+
+                const topFaltas = getTopFaltas(asunto, meses[i])
+
+                return (
+                  <g
+                    key={`${asunto}-${i}`}
+                    className="chart-point-group"
+                  >
+                    <circle
+                      cx={getX(i)}
+                      cy={getY(value)}
+                      r="5"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="2.5"
+                      className="chart-point-outer"
+                      style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                      onMouseEnter={() => setHoveredPoint({ asunto, dia: meses[i], value, topFaltas, x: getX(i), y: getY(value) })}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    />
+                    <circle
+                      cx={getX(i)}
+                      cy={getY(value)}
+                      r="2.5"
+                      fill={color}
+                      className="chart-point-inner"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </g>
+                )
+              })}
+
+              {/* Línea dibujándose de izquierda a derecha - después de los puntos */}
               <path
                 id={pathId}
                 d={createPath(values)}
@@ -376,54 +343,10 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                 style={{
                   strokeDasharray: pathLength,
                   strokeDashoffset: pathLength,
-                  animation: `drawLine ${animationDuration}s cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                  animation: `drawLine ${animationDuration}s ease-in-out forwards`,
                   animationDelay: `${lineDelay}s`
                 }}
               />
-
-              {/* Puntos en cada vértice con tooltip */}
-              {values.map((value, i) => {
-                const topFaltas = getTopFaltas(asunto, meses[i])
-                // Calcular el delay para que el punto aparezca cuando la línea llega a él
-                // El punto aparece cuando la línea ha recorrido (i / (values.length - 1)) de su camino
-                const pointDelay = lineDelay + (i / (values.length - 1)) * animationDuration
-
-                return (
-                  <g
-                    key={`${asunto}-${i}`}
-                    className="chart-point-group"
-                    style={{
-                      animation: value > 0
-                        ? `fadeInPoint 0.3s ease-out forwards`
-                        : `fadeInPointSmooth 0.5s ease-out forwards`,
-                      animationDelay: `${pointDelay}s`,
-                      opacity: 0,
-                      cursor: value > 0 ? 'pointer' : 'default'
-                    }}
-                    onMouseEnter={() => value > 0 && setHoveredPoint({ asunto, dia: meses[i], value, topFaltas, x: getX(i), y: getY(value) })}
-                    onMouseLeave={() => setHoveredPoint(null)}
-                  >
-                    <circle
-                      cx={getX(i)}
-                      cy={getY(value)}
-                      r="5"
-                      fill="white"
-                      stroke={color}
-                      strokeWidth="2.5"
-                      className={value > 0 ? "chart-point-outer" : "chart-point-outer-empty"}
-                    />
-                    {value > 0 && (
-                      <circle
-                        cx={getX(i)}
-                        cy={getY(value)}
-                        r="2.5"
-                        fill={color}
-                        className="chart-point-inner"
-                      />
-                    )}
-                  </g>
-                )
-              })}
             </g>
           )
         })}

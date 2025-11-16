@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const [incidencias, setIncidencias] = useState(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
   const [dateRange, setDateRange] = useState({ start: null, end: null })
+  const [chartPeriod, setChartPeriod] = useState('30D') // Período para los gráficos (7D, 15D, 30D)
   const [serenosActivos, setSerenosActivos] = useState(0)
   const [pdfStats, setPdfStats] = useState(getPDFDownloadStats())
   const [supervisionData, setSupervisionData] = useState({
@@ -94,7 +95,7 @@ export default function DashboardPage() {
     setPdfStats(getPDFDownloadStats())
   }, [incidencias])
 
-  // Cargar datos de tendencias y estadísticas generales cuando cambia el rango de fechas
+  // Cargar datos de tendencias y estadísticas generales cuando cambia el rango de fechas o el período de gráficos
   useEffect(() => {
     const fetchDashboardStats = async () => {
       let startDate, endDate
@@ -104,12 +105,13 @@ export default function DashboardPage() {
         startDate = dateRange.start.toISOString().split('T')[0]
         endDate = dateRange.end.toISOString().split('T')[0]
       } else {
-        // Usar último mes por defecto
+        // Usar período seleccionado para gráficos (7D, 15D, 30D)
         endDate = new Date().toISOString().split('T')[0]
-        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        const daysToSubtract = chartPeriod === '7D' ? 7 : chartPeriod === '15D' ? 15 : 30
+        startDate = new Date(Date.now() - daysToSubtract * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       }
 
-      console.log('📊 Obteniendo estadísticas del dashboard:', { startDate, endDate })
+      console.log('📊 Obteniendo estadísticas del dashboard:', { startDate, endDate, chartPeriod })
 
       // Obtener tendencias (gráficos)
       try {
@@ -137,7 +139,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardStats()
-  }, [dateRange])
+  }, [dateRange, chartPeriod])
 
   // Calcular estadísticas
   const stats = useMemo(() => {
@@ -299,18 +301,32 @@ export default function DashboardPage() {
       })
     }
 
-    // Incidencias por turno
+    // Incidencias por turno - Usar datos de la API si están disponibles
     const incidenciasPorTurno = {
       'Mañana': 0,
       'Tarde': 0,
       'Noche': 0
     }
 
-    filtered.forEach(inc => {
-      if (inc.turno && incidenciasPorTurno[inc.turno] !== undefined) {
-        incidenciasPorTurno[inc.turno]++
-      }
-    })
+    if (generalStats && (generalStats.morning !== undefined || generalStats.afternoon !== undefined || generalStats.evening !== undefined)) {
+      // Usar datos de la API (mapear nombres en inglés a español)
+      console.log('📊 Usando datos de turnos desde API:', {
+        morning: generalStats.morning,
+        afternoon: generalStats.afternoon,
+        evening: generalStats.evening
+      })
+      incidenciasPorTurno['Mañana'] = generalStats.morning || 0
+      incidenciasPorTurno['Tarde'] = generalStats.afternoon || 0
+      incidenciasPorTurno['Noche'] = generalStats.evening || 0
+    } else {
+      // Fallback a cálculo local
+      console.log('⚠️ Calculando turnos desde datos locales')
+      filtered.forEach(inc => {
+        if (inc.turno && incidenciasPorTurno[inc.turno] !== undefined) {
+          incidenciasPorTurno[inc.turno]++
+        }
+      })
+    }
 
     // Conteo por asunto para las barras - Usando API de tendencias o conteo local
     const incidenciasPorAsunto = {}
@@ -433,17 +449,21 @@ export default function DashboardPage() {
           title="Evolución de Incidencias"
           subtitle="Últimos días registrados"
           data={stats.incidenciasPorMes}
-          incidencias={trendsData ? null : incidencias}
+          incidencias={incidencias}
           faltasPorAsunto={stats.faltasPorAsunto}
           onOpenDateModal={() => setShowDateModal(true)}
+          defaultPeriod={chartPeriod}
+          onPeriodChange={setChartPeriod}
         />
 
         <BarChart
           title="Incidencias"
           subtitle="Por tipo de asunto y día"
           data={stats.incidenciasPorMes}
-          incidencias={trendsData ? null : incidencias}
+          incidencias={incidencias}
           faltasPorAsunto={stats.faltasPorAsunto}
+          defaultPeriod={chartPeriod}
+          onPeriodChange={setChartPeriod}
         />
       </div>
 

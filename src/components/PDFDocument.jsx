@@ -250,7 +250,8 @@ const PDFInfoSection = ({ formData, incidencia }) => (
 
 // Componente para el cuerpo del informe
 const PDFBody = ({ formData, incidencia }) => {
-  const esInasistencia = incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+  const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
+                         incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
   return (
     <View>
@@ -258,22 +259,14 @@ const PDFBody = ({ formData, incidencia }) => {
         <Text style={styles.bodyText}>{formData.descripcionAdicional}</Text>
       ) : esInasistencia ? (
         <>
-          <Text style={styles.introText}>
-            Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+          <Text style={styles.bodyText}>
+            Tengo el agrado de dirigirme a usted para poner en su conocimiento el detalle del registro correspondiente al personal {formData.nombreCompleto?.toUpperCase() || formData.sereno} bajo su jurisdicción, en relación a las asistencias e inasistencias con los días indicados.
           </Text>
           <Text style={styles.bodyText}>
-            Mediante el presente se informa que el día {formData.fechaFalta}, el sereno{' '}
-            {formData.nombreCompleto?.toUpperCase() || formData.sereno} (DNI: {formData.dni}),
-            con cargo de {formData.cargo}, Reg. Lab {formData.regLab} y turno {formData.turno},
-            incurrió en la falta de {formData.falta.toUpperCase()}, la cual ha sido clasificada como{' '}
-            {formData.tipoInasistencia?.toLowerCase()}. Dicha incidencia fue registrada el{' '}
-            {formData.fechaIncidente} a las {formData.horaIncidente} en la jurisdicción de{' '}
-            {formData.jurisdiccion}.
+            Se adjunta el presente reporte con la información consolidada, a fin de su conocimiento y las acciones administrativas que correspondan.
           </Text>
           <Text style={styles.bodyText}>
-            Se adjunta al presente, la información del señor{' '}
-            {formData.nombreCompleto?.toUpperCase() || formData.sereno} y el historial de
-            inasistencias correspondiente.
+            Sin otro particular, hago propicia la ocasión para expresarle mis saludos más distinguidos.
           </Text>
         </>
       ) : null}
@@ -281,45 +274,74 @@ const PDFBody = ({ formData, incidencia }) => {
   )
 }
 
-// Componente para tabla de historial
+// Componente para tabla de historial de inasistencias
 const PDFHistorialTable = ({ inasistenciasHistoricas, formatearFecha }) => {
   if (!inasistenciasHistoricas || inasistenciasHistoricas.length === 0) return null
 
   return (
-    <View>
-      <Text style={styles.sectionTitle}>HISTORIAL DE INASISTENCIAS DEL PERSONAL:</Text>
+    <View style={{ marginTop: 20 }}>
       <View style={styles.table}>
         {/* Header */}
         <View style={[styles.tableRow, styles.tableHeader]}>
-          <View style={styles.tableCol}>
-            <Text style={styles.tableCell}>Fecha</Text>
+          <View style={{ width: '5%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>N°</Text>
           </View>
-          <View style={styles.tableCol}>
-            <Text style={styles.tableCell}>Falta</Text>
+          <View style={{ width: '18%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>APELLIDOS Y{'\n'}NOMBRES</Text>
           </View>
-          <View style={styles.tableCol}>
-            <Text style={styles.tableCell}>Tipo</Text>
+          <View style={{ width: '13%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>CARGO</Text>
           </View>
-          <View style={styles.tableCol}>
-            <Text style={styles.tableCell}>Fecha Falta</Text>
+          <View style={{ width: '10%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>REG.{'\n'}LAB.</Text>
+          </View>
+          <View style={{ width: '10%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>TURNO</Text>
+          </View>
+          <View style={{ width: '14%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>FECHA</Text>
+          </View>
+          <View style={{ width: '15%', padding: 5, borderRightWidth: 1, borderRightColor: '#333' }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>TIPO DE{'\n'}INASISTENCIA</Text>
+          </View>
+          <View style={{ width: '15%', padding: 5 }}>
+            <Text style={[styles.tableCell, { fontWeight: 'bold', textAlign: 'center' }]}>JURISDICCIÓN</Text>
           </View>
         </View>
 
         {/* Rows */}
         {inasistenciasHistoricas.map((inasistencia, index) => (
           <View key={index} style={styles.tableRow}>
-            <View style={styles.tableCol}>
-              <Text style={styles.tableCell}>{formatearFecha(inasistencia.fechaIncidente)}</Text>
+            <View style={{ width: '5%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center' }]}>{index + 1}</Text>
             </View>
-            <View style={styles.tableCol}>
-              <Text style={styles.tableCell}>{inasistencia.falta}</Text>
+            <View style={{ width: '18%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { fontSize: 9 }]}>
+                {inasistencia.nombreCompleto?.toUpperCase() || inasistencia.sereno?.toUpperCase() || ''}
+              </Text>
             </View>
-            <View style={styles.tableCol}>
-              <Text style={styles.tableCell}>{inasistencia.tipoInasistencia || 'No especificado'}</Text>
+            <View style={{ width: '13%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { fontSize: 9 }]}>{inasistencia.cargo || ''}</Text>
             </View>
-            <View style={styles.tableCol}>
-              <Text style={styles.tableCell}>
-                {inasistencia.fechaFalta || inasistencia.fechaIncidente}
+            <View style={{ width: '10%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center' }]}>{inasistencia.regLab || ''}</Text>
+            </View>
+            <View style={{ width: '10%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center' }]}>{inasistencia.turno || ''}</Text>
+            </View>
+            <View style={{ width: '14%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { fontSize: 9, textAlign: 'center' }]}>
+                {inasistencia.fechaFalta || inasistencia.fechaIncidente || ''}
+              </Text>
+            </View>
+            <View style={{ width: '15%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center' }]}>
+                {inasistencia.tipoInasistencia || ''}
+              </Text>
+            </View>
+            <View style={{ width: '15%', padding: 5 }}>
+              <Text style={[styles.tableCell, { fontSize: 9, textAlign: 'center' }]}>
+                {inasistencia.jurisdiccion || ''}
               </Text>
             </View>
           </View>
@@ -388,7 +410,8 @@ const InformePDFDocument = ({
   logoBase64,
   formatearFecha
 }) => {
-  const esInasistencia = incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+  const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
+                         incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
   return (
     <Document>
@@ -404,8 +427,12 @@ const InformePDFDocument = ({
           />
         )}
 
-        <PDFImages imagenes={formData.imagenes} />
-        <PDFLinks links={formData.links} />
+        {!esInasistencia && (
+          <>
+            <PDFImages imagenes={formData.imagenes} />
+            <PDFLinks links={formData.links} />
+          </>
+        )}
 
         <PDFFooter />
       </Page>
