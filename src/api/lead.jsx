@@ -59,7 +59,7 @@ export const createLead = async (leadData) => {
 // Actualizar una persona existente
 export const updateLead = async (leadId, leadData) => {
   try {
-    const response = await api.put(`/lead/${leadId}`, leadData);
+    const response = await api.patch(`/lead/${leadId}`, leadData);
     console.log('✅ Persona actualizada:', response.data);
     return response.data;
   } catch (error) {

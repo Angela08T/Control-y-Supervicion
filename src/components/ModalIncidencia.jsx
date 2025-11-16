@@ -42,7 +42,6 @@ const defaultState = {
   cargoDestinatario: '', // Cargo de la persona destinataria (para el PDF)
   cargo: '',
   regLab: '',
-  tipoInasistencia: '',
   fechaFalta: '',
   conCopia: true,  // Cambiado a true porque la API requiere al menos 1 CC
   cc: [],
@@ -229,7 +228,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       if (k === 'asunto') {
         newForm.falta = ''
         newForm.lackId = null
-        newForm.tipoInasistencia = ''
         newForm.fechaFalta = ''
 
         // Guardar el ID del asunto seleccionado
@@ -254,11 +252,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           newForm.medio = 'reporte'
           newForm.bodycamNumber = ''
           newForm.bodycamAsignadaA = ''
-          // Resetear tipoInasistencia para que el usuario lo seleccione
-          newForm.tipoInasistencia = ''
         } else {
           newForm.medio = 'bodycam'
-          newForm.tipoInasistencia = '' // Limpiar tipo si no es inasistencia
         }
       }
 
@@ -415,11 +410,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     // Validaciones específicas para inasistencia
     if (form.falta && form.falta.startsWith('Inasistencia')) {
-      // Para inasistencia se requiere el tipo de inasistencia
-      if (!form.tipoInasistencia) {
-        alert('Para inasistencia, debes seleccionar el tipo (Justificada o Injustificada)');
-        return;
-      }
+      // Para inasistencia no se requiere bodycam
     } else {
       // Validaciones para otras faltas (requieren bodycam)
       if (!form.bodycamNumber || !form.bodycamAsignadaA) {
@@ -534,24 +525,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 {lacksDisponibles.map(lack => (
                   <option key={lack.id} value={lack.name}>{lack.name}</option>
                 ))}
-              </select>
-            </>
-          )}
-
-          {/* Campo de tipo de inasistencia cuando se selecciona Inasistencia */}
-          {mostrarCamposInasistencia && (
-            <>
-              <label>
-                <FaExclamationTriangle style={{ marginRight: '8px' }} />
-                Tipo de inasistencia *
-              </label>
-              <select
-                value={form.tipoInasistencia}
-                onChange={e => setField('tipoInasistencia', e.target.value)}
-              >
-                <option value="">Selecciona</option>
-                <option value="Justificada">Justificada</option>
-                <option value="Injustificada">Injustificada</option>
               </select>
             </>
           )}
