@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaFolder, FaFileAlt, FaEye } from 'react-icons/fa'
-import ModalViewContent from './ModalViewContent'
+import ModalViewContent from '@/Components/Modal/ModalViewContent'
 
 export default function LackTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
   const showActions = canEdit || canDelete

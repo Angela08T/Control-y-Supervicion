@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias, getPDFDownloadStats } from '@/helpers/localStorageUtils'
-import { getReports } from '@/helpers/api/report'
-import { getFieldSupervisionStats, getAllOffenders, getDashboardTrends, getDashboardGeneral } from '@/helpers/api/statistics'
-import useSubjects from '@/components/hooks/Subject/useSubjects'
+import useFetchData from '@/Components/hooks/useFetchData'
+import useDashboardStats from '@/Components/hooks/useDashboardStats'
 import StatCard from './components/StatCard'
 import DateCard from './components/DateCard'
 import WelcomeCard from './components/WelcomeCard'
@@ -28,20 +27,36 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [trendsData, setTrendsData] = useState(null) // Datos de tendencias de la API
   const [generalStats, setGeneralStats] = useState(null) // Datos generales (incidencias críticas y zonas)
+  const [subjects, setSubjects] = useState([])
 
-  // Obtener asuntos y faltas desde la API
-  const { subjects } = useSubjects()
+  // Hooks para datos
+  const { fetchAsuntos, fetchIncidencias, fetchInfractores } = useFetchData()
+  const {
+    fetchDashboardTrends,
+    fetchDashboardGeneral,
+    fetchFieldSupervision,
+    fetchAllOffenders
+  } = useDashboardStats()
+
+  // Cargar asuntos/subjects
+  const loadSubjects = useCallback(async () => {
+    const response = await fetchAsuntos(true)
+    if (response.status) {
+      setSubjects(response.data || [])
+    }
+  }, [fetchAsuntos])
 
   // Cargar datos de la API al montar el componente
   useEffect(() => {
+    loadSubjects()
     fetchDashboardData()
-  }, [])
+  }, [loadSubjects])
 
   const fetchDashboardData = async () => {
     try {
       // Intentar obtener reportes de la API
-      const reportsResponse = await getReports(1, 1000)
-      if (reportsResponse?.data) {
+      const reportsResponse = await fetchIncidencias('page=1&limit=1000', false)
+      if (reportsResponse?.status && reportsResponse.data) {
         // Actualizar incidencias con datos de la API
         setIncidencias(reportsResponse.data)
       }
@@ -51,15 +66,12 @@ export default function DashboardPage() {
 
     try {
       // Obtener cantidad de serenos activos
-      const offendersResponse = await getAllOffenders()
-      console.log('📋 Respuesta de offenders:', offendersResponse)
+      const offendersList = await fetchAllOffenders()
+      console.log('📋 Respuesta de offenders:', offendersList)
 
-      // La estructura puede ser response.data.data o response.data
-      const offendersList = Array.isArray(offendersResponse?.data?.data)
-        ? offendersResponse.data.data
-        : (Array.isArray(offendersResponse?.data) ? offendersResponse.data : [])
-
-      const activeCount = offendersList.filter(o => o.status === 'active').length || 0
+      const activeCount = Array.isArray(offendersList)
+        ? offendersList.filter(o => o.status === 'active').length
+        : 0
       setSerenosActivos(activeCount)
     } catch (error) {
       console.warn('No se pudo obtener información de serenos:', error)
@@ -68,12 +80,12 @@ export default function DashboardPage() {
 
     try {
       // Obtener datos de supervisión de campo
-      const supervisionResponse = await getFieldSupervisionStats()
-      if (supervisionResponse?.data) {
+      const supervisionResponse = await fetchFieldSupervision()
+      if (supervisionResponse) {
         setSupervisionData({
-          serenosEnCampo: supervisionResponse.data.serenosEnCampo || 18,
-          serenosSinConexion: supervisionResponse.data.serenosSinConexion || 2,
-          nivelCumplimiento: supervisionResponse.data.nivelCumplimiento || 92
+          serenosEnCampo: supervisionResponse.serenosEnCampo || 18,
+          serenosSinConexion: supervisionResponse.serenosSinConexion || 2,
+          nivelCumplimiento: supervisionResponse.nivelCumplimiento || 92
         })
       }
     } catch (error) {
@@ -96,7 +108,7 @@ export default function DashboardPage() {
 
   // Cargar datos de tendencias y estadísticas generales cuando cambia el rango de fechas
   useEffect(() => {
-    const fetchDashboardStats = async () => {
+    const loadDashboardStats = async () => {
       let startDate, endDate
 
       if (dateRange.start && dateRange.end) {
@@ -113,10 +125,10 @@ export default function DashboardPage() {
 
       // Obtener tendencias (gráficos)
       try {
-        const trendsResponse = await getDashboardTrends(startDate, endDate)
-        if (trendsResponse?.data) {
-          setTrendsData(trendsResponse.data)
-          console.log('✅ Tendencias cargadas:', trendsResponse.data)
+        const trendsResponse = await fetchDashboardTrends(startDate, endDate)
+        if (trendsResponse) {
+          setTrendsData(trendsResponse)
+          console.log('✅ Tendencias cargadas:', trendsResponse)
         }
       } catch (error) {
         console.warn('⚠️ No se pudieron cargar tendencias del dashboard:', error)
@@ -125,10 +137,10 @@ export default function DashboardPage() {
 
       // Obtener estadísticas generales (incidencias críticas y zonas)
       try {
-        const generalResponse = await getDashboardGeneral(startDate, endDate)
-        if (generalResponse?.data) {
-          setGeneralStats(generalResponse.data)
-          console.log('✅ Estadísticas generales cargadas:', generalResponse.data)
+        const generalResponse = await fetchDashboardGeneral(startDate, endDate)
+        if (generalResponse) {
+          setGeneralStats(generalResponse)
+          console.log('✅ Estadísticas generales cargadas:', generalResponse)
         }
       } catch (error) {
         console.warn('⚠️ No se pudieron cargar estadísticas generales:', error)
@@ -136,8 +148,8 @@ export default function DashboardPage() {
       }
     }
 
-    fetchDashboardStats()
-  }, [dateRange])
+    loadDashboardStats()
+  }, [dateRange, fetchDashboardTrends, fetchDashboardGeneral])
 
   // Calcular estadísticas
   const stats = useMemo(() => {

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { FaCircle } from 'react-icons/fa'
-import { getAllOffenders } from '../../../api/statistics'
+import useDashboardStats from '@/Components/hooks/useDashboardStats'
 
 export default function PersonalTable() {
   const [personal, setPersonal] = useState([])
   const [loading, setLoading] = useState(true)
+  const { fetchAllOffenders } = useDashboardStats()
 
   useEffect(() => {
     fetchPersonal()
@@ -12,10 +13,10 @@ export default function PersonalTable() {
 
   const fetchPersonal = async () => {
     try {
-      const response = await getAllOffenders()
+      const offendersList = await fetchAllOffenders()
 
       // Transformar datos de la API al formato de la tabla
-      const personalData = (response.data || []).map(offender => {
+      const personalData = (offendersList || []).map(offender => {
         const initials = offender.name
           ? offender.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
           : '??'

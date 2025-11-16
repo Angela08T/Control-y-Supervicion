@@ -3,7 +3,7 @@ import { pdf } from '@react-pdf/renderer'
 import { useSelector } from 'react-redux'
 import logoSJL from '@/assets/logos/logo-sjl.png'
 import { trackPDFDownload } from '@/helpers/localStorageUtils'
-import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } from '@/helpers/api/report'
+import useReports from '@/Components/hooks/useReports'
 import InformePDFDocument from '@/Components/PDF/PDFDocument'
 
 function formatearFecha(fecha) {
@@ -75,6 +75,9 @@ const articulosPorFalta = {
 export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose }) {
   // Obtener usuario logueado de Redux
   const { username } = useSelector((state) => state.auth)
+
+  // Hook para gestión de reportes
+  const { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } = useReports()
 
   const [formData, setFormData] = useState({
     numeroInforme: '',

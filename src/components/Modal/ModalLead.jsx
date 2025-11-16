@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { FaUser, FaBriefcase } from 'react-icons/fa'
-import { getJobs } from '@/helpers/api/job'
+import useFetchData from '@/Components/hooks/useFetchData'
 
 const defaultState = {
   name: '',
@@ -9,6 +9,7 @@ const defaultState = {
 }
 
 export default function ModalLead({ initial, onClose, onSave }) {
+  const { fetchCargos } = useFetchData()
   const [form, setForm] = useState(defaultState)
   const [errors, setErrors] = useState({})
   const [jobs, setJobs] = useState([])
@@ -16,18 +17,20 @@ export default function ModalLead({ initial, onClose, onSave }) {
 
   // Cargar cargos disponibles
   useEffect(() => {
-    async function fetchJobs() {
+    async function loadJobs() {
       setLoadingJobs(true)
       try {
         console.log('🔄 Cargando cargos disponibles...')
-        const response = await getJobs(1, 1000) // Obtener todos los cargos
+        const response = await fetchCargos(true) // useCache = true
         console.log('📦 Respuesta completa de cargos:', response)
 
-        // Extraer los datos correctamente según la estructura de la API
-        const jobsData = response.data?.data || response.data || []
-        console.log('✅ Cargos extraídos:', jobsData)
-
-        setJobs(jobsData)
+        if (response.status) {
+          console.log('✅ Cargos extraídos:', response.data)
+          setJobs(response.data || [])
+        } else {
+          console.error('❌ Error al cargar cargos:', response.message)
+          alert('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
+        }
       } catch (error) {
         console.error('❌ Error al cargar cargos:', error)
         alert('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
@@ -36,8 +39,8 @@ export default function ModalLead({ initial, onClose, onSave }) {
       }
     }
 
-    fetchJobs()
-  }, [])
+    loadJobs()
+  }, [fetchCargos])
 
   useEffect(() => {
     if (initial) {

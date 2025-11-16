@@ -1,6 +1,6 @@
 import React from 'react';
 import AuditoriaTable from '@/Components/Table/AuditoriaTable';
-import useAudit from '@/components/hooks/Audit/useAudit';
+import useAuditoria from '@/Components/hooks/useAuditoria';
 import { FaSearch, FaRedo } from 'react-icons/fa';
 
 export default function AuditoriaPage() {
@@ -15,7 +15,7 @@ export default function AuditoriaPage() {
     changeItemsPerPage,
     updateFilters,
     resetFilters
-  } = useAudit();
+  } = useAuditoria();
 
   const handleFilterChange = (key, value) => {
     updateFilters({ [key]: value });

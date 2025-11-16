@@ -1,14 +1,7 @@
-ModalIncidencia.jsx
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import MapSelector from '@/Components/Map/MapSelector'
-import useBodycamSearch from '@/components/hooks/Bodycam/useBodycamSearch'
-import useOffenderSearch from '@/components/hooks/Offender/useOffenderSearch'
-import useJobs from '@/components/hooks/Job/useJobs'
-import useLeads from '@/components/hooks/Job/useLeads'
-import useAllLeads from '@/components/hooks/Job/useAllLeads'
-import useSubjects from '@/components/hooks/Subject/useSubjects'
-import useJurisdictions from '@/components/hooks/Jurisdiction/useJurisdictions'
-import './Autocomplete.css'
+import { useBodycamSearch, useOffenderSearch } from '@/Components/hooks/useSearch'
+import useFetchData from '@/Components/hooks/useFetchData'
 import {
   FaIdCard,
   FaClipboardList,
@@ -55,6 +48,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [selectedJobId, setSelectedJobId] = useState(null) // ID del job seleccionado
   const [selectedLeadId, setSelectedLeadId] = useState('') // ID del lead seleccionado
 
+  // Estados para datos cargados desde useFetchData
+  const [jobs, setJobs] = useState([])
+  const [leads, setLeads] = useState([])
+  const [allLeads, setAllLeads] = useState([])
+  const [subjects, setSubjects] = useState([])
+  const [jurisdictions, setJurisdictions] = useState([])
+  const [jobsLoading, setJobsLoading] = useState(true)
+  const [leadsLoading, setLeadsLoading] = useState(false)
+  const [allLeadsLoading, setAllLeadsLoading] = useState(true)
+  const [subjectsLoading, setSubjectsLoading] = useState(true)
+  const [jurisdictionsLoading, setJurisdictionsLoading] = useState(true)
+
+  // Hook para fetch de datos
+  const { fetchCargos, fetchPersonal, fetchAsuntos, fetchJurisdicciones } = useFetchData()
+
   // Hook para búsqueda de bodycam
   const {
     searchTerm: bodycamSearchTerm,
@@ -79,40 +87,55 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     selectOffender
   } = useOffenderSearch()
 
-  // Hook para obtener lista de jobs (cargos)
-  const {
-    jobs,
-    loading: jobsLoading,
-    error: jobsError
-  } = useJobs()
+  // Cargar datos iniciales
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Cargar jobs, subjects, jurisdictions y all leads
+        const [jobsRes, subjectsRes, jurisdictionsRes, allLeadsRes] = await Promise.all([
+          fetchCargos(true),
+          fetchAsuntos(true),
+          fetchJurisdicciones(true),
+          fetchPersonal('', true)
+        ])
 
-  // Hook para obtener lista de leads (personas) según el job seleccionado
-  const {
-    leads,
-    loading: leadsLoading,
-    error: leadsError
-  } = useLeads(selectedJobId)
+        if (jobsRes.status) setJobs(jobsRes.data || [])
+        if (subjectsRes.status) setSubjects(subjectsRes.data || [])
+        if (jurisdictionsRes.status) setJurisdictions(jurisdictionsRes.data || [])
+        if (allLeadsRes.status) setAllLeads(allLeadsRes.data || [])
+      } catch (error) {
+        console.error('Error al cargar datos iniciales:', error)
+      } finally {
+        setJobsLoading(false)
+        setSubjectsLoading(false)
+        setJurisdictionsLoading(false)
+        setAllLeadsLoading(false)
+      }
+    }
+    loadInitialData()
+  }, [fetchCargos, fetchAsuntos, fetchJurisdicciones, fetchPersonal])
 
-  // Hook para obtener TODOS los leads (para la sección CC)
-  const {
-    allLeads,
-    loading: allLeadsLoading,
-    error: allLeadsError
-  } = useAllLeads()
-
-  // Hook para obtener subjects (asuntos) y lacks (faltas) desde la API
-  const {
-    subjects,
-    loading: subjectsLoading,
-    error: subjectsError
-  } = useSubjects()
-
-  // Hook para obtener jurisdicciones
-  const {
-    jurisdictions,
-    loading: jurisdictionsLoading,
-    error: jurisdictionsError
-  } = useJurisdictions()
+  // Cargar leads cuando cambia el job seleccionado
+  useEffect(() => {
+    const loadLeadsByJob = async () => {
+      if (!selectedJobId) {
+        setLeads([])
+        return
+      }
+      setLeadsLoading(true)
+      try {
+        // Filtrar leads por job_id del allLeads ya cargado
+        const filteredLeads = allLeads.filter(lead => lead.job?.id === selectedJobId || lead.job_id === selectedJobId)
+        setLeads(filteredLeads)
+      } catch (error) {
+        console.error('Error al filtrar leads:', error)
+        setLeads([])
+      } finally {
+        setLeadsLoading(false)
+      }
+    }
+    loadLeadsByJob()
+  }, [selectedJobId, allLeads])
 
   // Filtrar lista de CC para excluir a la persona seleccionada y los deshabilitados
   const listaCC = useMemo(() => {

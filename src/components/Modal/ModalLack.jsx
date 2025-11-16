@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { FaClipboardList, FaFolder, FaFileAlt, FaBook, FaInfoCircle } from 'react-icons/fa'
-import { getSubjects } from '@/helpers/api/subject'
+import useFetchData from '@/Components/hooks/useFetchData'
 
 const defaultState = {
   name: '',
@@ -11,6 +11,7 @@ const defaultState = {
 }
 
 export default function ModalLack({ initial, onClose, onSave }) {
+  const { fetchAsuntos } = useFetchData()
   const [form, setForm] = useState(defaultState)
   const [errors, setErrors] = useState({})
   const [subjects, setSubjects] = useState([])
@@ -18,14 +19,18 @@ export default function ModalLack({ initial, onClose, onSave }) {
 
   // Cargar asuntos al montar el componente
   useEffect(() => {
-    async function fetchSubjects() {
+    async function loadSubjects() {
       try {
         setLoadingSubjects(true)
         console.log('📡 Cargando asuntos para el dropdown...')
-        const response = await getSubjects(1, 1000) // Obtener todos los asuntos
-        const subjectsData = response.data?.data || response.data || []
-        console.log('✅ Asuntos cargados:', subjectsData)
-        setSubjects(subjectsData)
+        const response = await fetchAsuntos(true) // useCache = true
+        if (response.status) {
+          console.log('✅ Asuntos cargados:', response.data)
+          setSubjects(response.data || [])
+        } else {
+          console.error('❌ Error al cargar asuntos:', response.message)
+          alert('Error al cargar la lista de asuntos')
+        }
       } catch (error) {
         console.error('❌ Error al cargar asuntos:', error)
         alert('Error al cargar la lista de asuntos')
@@ -34,8 +39,8 @@ export default function ModalLack({ initial, onClose, onSave }) {
       }
     }
 
-    fetchSubjects()
-  }, [])
+    loadSubjects()
+  }, [fetchAsuntos])
 
   // Cargar datos iniciales si está editando
   useEffect(() => {

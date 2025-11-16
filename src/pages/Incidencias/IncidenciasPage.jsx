@@ -4,16 +4,34 @@ import IncidenciasTable from '@/Components/Table/IncidenciasTable'
 import ModalIncidencia from '@/Components/Modal/ModalIncidencia'
 import ModalPDFInforme from '@/Components/Modal/ModalPDFInforme'
 import { loadIncidencias, saveIncidencias } from '@/helpers/localStorageUtils'
-import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport } from '@/helpers/api/report'
-import useSubjects from '@/components/hooks/Subject/useSubjects'
-import useLacks from '@/components/hooks/Lack/useLacks'
-import useJurisdictions from '@/components/hooks/Jurisdiction/useJurisdictions'
+// Nuevos hooks para gestión de datos
+import useReports from '@/Components/hooks/useReports'
+import useFetchData from '@/Components/hooks/useFetchData'
 import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function IncidenciasPage() {
   const { role: userRole } = useSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'incidencias')
+
+  // Hooks del nuevo patrón
+  const {
+    getReportById: fetchReportById,
+    searchReports,
+    crearReport,
+    eliminarReport,
+    sendToValidator: hookSendToValidator,
+    validateReport: hookValidateReport,
+    mapFormDataToAPI: hookMapFormDataToAPI,
+    getEvidenceImageUrl
+  } = useReports()
+
+  const {
+    fetchAsuntos,
+    fetchFaltas,
+    fetchJurisdicciones,
+    fetchIncidencias: fetchIncidenciasData
+  } = useFetchData()
 
   const [incidencias, setIncidencias] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -43,37 +61,81 @@ export default function IncidenciasPage() {
   const [searchPagination, setSearchPagination] = useState(null) // Paginación de búsqueda
   const [isSearchMode, setIsSearchMode] = useState(false) // Indica si está en modo búsqueda
 
-  const { subjects, loading: subjectsLoading } = useSubjects()
-  const { lacks, loading: lacksLoading } = useLacks()
-  const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
+  // Estados para datos comunes (cargados desde useFetchData)
+  const [subjects, setSubjects] = useState([])
+  const [lacks, setLacks] = useState([])
+  const [jurisdictions, setJurisdictions] = useState([])
+  const [subjectsLoading, setSubjectsLoading] = useState(true)
+  const [lacksLoading, setLacksLoading] = useState(true)
+  const [jurisdictionsLoading, setJurisdictionsLoading] = useState(true)
+
+  // Cargar datos comunes al montar el componente
+  useEffect(() => {
+    const loadCommonData = async () => {
+      try {
+        const [subjectsRes, lacksRes, jurisdictionsRes] = await Promise.all([
+          fetchAsuntos(true),
+          fetchFaltas(true),
+          fetchJurisdicciones(true)
+        ])
+
+        if (subjectsRes.status) setSubjects(subjectsRes.data || [])
+        if (lacksRes.status) setLacks(lacksRes.data || [])
+        if (jurisdictionsRes.status) setJurisdictions(jurisdictionsRes.data || [])
+      } catch (error) {
+        console.error('Error al cargar datos comunes:', error)
+      } finally {
+        setSubjectsLoading(false)
+        setLacksLoading(false)
+        setJurisdictionsLoading(false)
+      }
+    }
+    loadCommonData()
+  }, [fetchAsuntos, fetchFaltas, fetchJurisdicciones])
 
   // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
     async function fetchIncidencias() {
       setLoading(true)
       try {
-        // Construir objeto de filtros solo con valores no vacíos
-        const apiFilters = {}
-        if (filters.lackId) apiFilters.lackId = filters.lackId
-        if (filters.subjectId) apiFilters.subjectId = filters.subjectId
-        if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
-        if (filters.turno) apiFilters.shift = filters.turno // Agregar filtro de turno
+        // Construir parámetros URL
+        const params = new URLSearchParams()
+        params.append('page', currentPage)
+        params.append('limit', itemsPerPage)
+        if (filters.lackId) params.append('lack', filters.lackId)
+        if (filters.subjectId) params.append('subject', filters.subjectId)
+        if (filters.jurisdictionId) params.append('jurisdiction', filters.jurisdictionId)
+        if (filters.turno) params.append('shift', filters.turno)
 
         console.log(`📡 Obteniendo incidencias desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
-        console.log('🔍 Filtros aplicados:', apiFilters)
+        console.log('🔍 Filtros aplicados:', params.toString())
 
-        const result = await getReports(currentPage, itemsPerPage, apiFilters)
-        console.log('✅ Incidencias obtenidas:', result)
-        console.log('📊 Paginación:', {
-          currentPage: result.pagination.currentPage,
-          totalPages: result.pagination.totalPages,
-          total: result.pagination.total,
-          from: result.pagination.from,
-          to: result.pagination.to
-        })
-        setIncidencias(result.data)
-        setPagination(result.pagination)
-        saveIncidencias(result.data) // opcional: respaldo local
+        const result = await fetchIncidenciasData(params.toString(), false)
+
+        if (result.status && result.data) {
+          // Transformar datos al formato esperado
+          const transformedData = Array.isArray(result.data) ? result.data : []
+          console.log('✅ Incidencias obtenidas:', transformedData.length)
+
+          // Calcular paginación
+          const totalNum = result.data.length // Si la API devuelve total diferente, ajustar
+          const totalPagesNum = Math.ceil(totalNum / itemsPerPage)
+          const from = totalNum === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1
+          const to = Math.min(currentPage * itemsPerPage, totalNum)
+
+          setIncidencias(transformedData)
+          setPagination({
+            currentPage,
+            totalPages: totalPagesNum,
+            perPage: itemsPerPage,
+            total: totalNum,
+            from,
+            to
+          })
+          saveIncidencias(transformedData) // opcional: respaldo local
+        } else {
+          throw new Error('Respuesta inválida de la API')
+        }
       } catch (error) {
         console.error('⚠️ No se pudo cargar desde API, usando localStorage:', error)
         const localData = loadIncidencias()
@@ -84,7 +146,7 @@ export default function IncidenciasPage() {
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno])
+  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, fetchIncidenciasData])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -103,106 +165,68 @@ export default function IncidenciasPage() {
       setShowModal(false)
     } else {
       try {
-        const apiData = mapFormDataToAPI(data, allLeads)
-        console.log('📤 Enviando datos a API:', apiData)
-        const response = await createReport(apiData)
-        console.log('✅ Incidencia creada en API:', response)
+        console.log('📤 Creando incidencia con useReports hook...')
+        const result = await crearReport(data, allLeads)
 
-        alert('Incidencia creada exitosamente')
-
-        // Recargar la primera página para ver la nueva incidencia
-        setCurrentPage(1)
-        setShowModal(false)
-
-        // Forzar recarga de datos
-        setRefreshTrigger(prev => prev + 1)
-      } catch (error) {
-        console.error('❌ Error al guardar en API:', error)
-
-        // Mostrar error más detallado
-        let errorMessage = 'Error al crear la incidencia';
-
-        if (error.response?.data?.message) {
-          // Si el mensaje es un array, convertirlo a string
-          if (Array.isArray(error.response.data.message)) {
-            errorMessage = 'Errores de validación:\n' + error.response.data.message.join('\n');
-          } else {
-            errorMessage = error.response.data.message;
-          }
-        } else if (error.message) {
-          errorMessage = error.message;
+        if (result) {
+          console.log('✅ Incidencia creada:', result)
+          // Recargar la primera página para ver la nueva incidencia
+          setCurrentPage(1)
+          setShowModal(false)
+          // Forzar recarga de datos
+          setRefreshTrigger(prev => prev + 1)
         }
-
-        alert(errorMessage)
+      } catch (error) {
+        console.error('❌ Error al crear incidencia:', error)
       }
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar esta incidencia?')) return
-
+  async function handleDelete(report) {
     try {
-      console.log('🗑️ Eliminando incidencia con ID:', id)
-      const response = await deleteReport(id)
-      console.log('✅ Respuesta de eliminación:', response)
+      console.log('🗑️ Eliminando incidencia:', report.id)
+      const result = await eliminarReport(report)
 
-      alert(response.data?.message || response.message || 'Incidencia eliminada exitosamente')
-
-      // Recargar datos desde la API
-      setRefreshTrigger(prev => prev + 1)
+      if (result) {
+        console.log('✅ Incidencia eliminada exitosamente')
+        // Recargar datos desde la API
+        setRefreshTrigger(prev => prev + 1)
+      }
     } catch (error) {
       console.error('❌ Error al eliminar incidencia:', error)
-
-      let errorMessage = 'Error al eliminar la incidencia'
-
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
-      }
-
-      alert(errorMessage)
     }
   }
 
   async function handleSendToValidator(reportId) {
-    if (!confirm('¿Enviar esta incidencia al validador? Debe tener al menos una imagen.')) return
-
     try {
-      const response = await sendToValidator(reportId)
-      alert(response.data?.message || response.message || 'Incidencia enviada al validador exitosamente')
-      setRefreshTrigger(prev => prev + 1)
+      const result = await hookSendToValidator(reportId)
+      if (result) {
+        setRefreshTrigger(prev => prev + 1)
+      }
     } catch (error) {
       console.error('❌ Error al enviar incidencia:', error)
-      alert(error.response?.data?.message || error.message || 'Error al enviar incidencia')
     }
   }
 
   async function handleApprove(reportId) {
-    if (!confirm('¿Aprobar esta incidencia?')) return
-
     try {
-      const response = await validateReport(reportId, true)
-      alert(response.data?.message || response.message || 'Incidencia aprobada exitosamente')
-      setRefreshTrigger(prev => prev + 1)
+      const result = await hookValidateReport(reportId, true)
+      if (result) {
+        setRefreshTrigger(prev => prev + 1)
+      }
     } catch (error) {
       console.error('❌ Error al aprobar incidencia:', error)
-      alert(error.response?.data?.message || error.message || 'Error al aprobar incidencia')
     }
   }
 
   async function handleReject(reportId) {
-    if (!confirm('¿Rechazar esta incidencia?')) return
-
     try {
-      const response = await validateReport(reportId, false)
-      alert(response.data?.message || response.message || 'Incidencia rechazada exitosamente')
-      setRefreshTrigger(prev => prev + 1)
+      const result = await hookValidateReport(reportId, false)
+      if (result) {
+        setRefreshTrigger(prev => prev + 1)
+      }
     } catch (error) {
       console.error('❌ Error al rechazar incidencia:', error)
-      alert(error.response?.data?.message || error.message || 'Error al rechazar incidencia')
     }
   }
 
@@ -273,7 +297,7 @@ export default function IncidenciasPage() {
         setIsSearching(true)
         try {
           console.log('🔍 Buscando incidencia por ID:', searchTerm)
-          const result = await getReportById(searchTerm)
+          const result = await fetchReportById(searchTerm)
 
           if (result.found && result.data.length > 0) {
             console.log('✅ Incidencia encontrada:', result.data[0])
@@ -302,7 +326,7 @@ export default function IncidenciasPage() {
           console.log('🔍 Buscando incidencia por campos:', searchTerm, 'página:', currentPage)
 
           // Construir la URL con paginación
-          const response = await searchReport(searchTerm, currentPage, itemsPerPage)
+          const response = await searchReports(searchTerm, currentPage, itemsPerPage)
 
           // DEBUG: Ver la respuesta completa de la API
           console.log('📡 Respuesta COMPLETA de searchReport:', response)

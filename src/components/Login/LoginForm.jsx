@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
-import useLogin from '@/components/hooks/Login/useLogin'
+import useAuth from '@/Components/hooks/useAuth'
 
 export default function LoginForm() {
   const navigate = useNavigate()
-  const { handleLogin, loading, error: loginError } = useLogin()
+  const { handleLogin, loading, error: loginError } = useAuth()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
