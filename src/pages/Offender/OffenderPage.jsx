@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import OffenderTable from '../../components/OffenderTable'
-import ModalOffender from '../../components/ModalOffender'
-import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '../../api/offender'
-import { getModulePermissions } from '../../utils/permissions'
+import OffenderTable from '@/Components/Table/OffenderTable'
+import ModalOffender from '@/Components/Modal/ModalOffender'
+import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '@/helpers/api/offender'
+import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function OffenderPage() {

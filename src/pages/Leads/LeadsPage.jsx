@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import LeadTable from '../../components/LeadTable'
-import ModalLead from '../../components/ModalLead'
-import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
-import { getModulePermissions } from '../../utils/permissions'
+import LeadTable from '@/Components/Table/LeadTable'
+import ModalLead from '@/Components/Modal/ModalLead'
+import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '@/helpers/api/lead'
+import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function LeadsPage() {

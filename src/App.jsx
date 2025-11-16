@@ -1,6 +1,6 @@
 import React from 'react'
-import Router from './routes/Router'
+import AppRouter from '@/Router/AppRouter'
 
 export default function App(){
-  return <Router />
+  return <AppRouter />
 }

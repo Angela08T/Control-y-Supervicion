@@ -1,5 +1,5 @@
 import React from 'react'
-import LoginForm from '../components/Login/LoginForm'
+import LoginForm from '@/Components/Login/LoginForm'
 
 export default function LoginPage() {
   return <LoginForm />

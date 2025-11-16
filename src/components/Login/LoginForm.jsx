@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
-import useLogin from '../../hooks/Login/useLogin'
+import useLogin from '@/components/hooks/Login/useLogin'
 
 export default function LoginForm() {
   const navigate = useNavigate()

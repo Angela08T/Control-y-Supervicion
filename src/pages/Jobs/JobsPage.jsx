@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import JobTable from '../../components/JobTable'
-import ModalJob from '../../components/ModalJob'
-import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from '../../api/job'
-import { getModulePermissions } from '../../utils/permissions'
+import JobTable from '@/Components/Table/JobTable'
+import ModalJob from '@/Components/Modal/ModalJob'
+import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from '@/helpers/api/job'
+import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function JobsPage() {

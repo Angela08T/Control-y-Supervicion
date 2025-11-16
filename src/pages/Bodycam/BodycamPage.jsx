@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import BodycamTable from '../../components/BodycamTable'
-import ModalBodycam from '../../components/ModalBodycam'
-import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '../../api/bodycam'
-import { getModulePermissions } from '../../utils/permissions'
+import BodycamTable from '@/Components/Table/BodycamTable'
+import ModalBodycam from '@/Components/Modal/ModalBodycam'
+import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '@/helpers/api/bodycam'
+import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function BodycamPage() {

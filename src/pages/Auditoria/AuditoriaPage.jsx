@@ -1,6 +1,6 @@
 import React from 'react';
-import AuditoriaTable from '../../components/AuditoriaTable';
-import useAudit from '../../hooks/Audit/useAudit';
+import AuditoriaTable from '@/Components/Table/AuditoriaTable';
+import useAudit from '@/components/hooks/Audit/useAudit';
 import { FaSearch, FaRedo } from 'react-icons/fa';
 
 export default function AuditoriaPage() {

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import SubjectTable from '../../components/SubjectTable'
-import ModalSubject from '../../components/ModalSubject'
-import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject, searchSubject } from '../../api/subject'
-import { getModulePermissions } from '../../utils/permissions'
+import SubjectTable from '@/Components/Table/SubjectTable'
+import ModalSubject from '@/Components/Modal/ModalSubject'
+import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject, searchSubject } from '@/helpers/api/subject'
+import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function SubjectPage() {

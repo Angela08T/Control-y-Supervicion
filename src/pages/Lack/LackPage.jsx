@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import LackTable from '../../components/LackTable'
-import ModalLack from '../../components/ModalLack'
-import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
-import { getModulePermissions } from '../../utils/permissions'
+import LackTable from '@/Components/Table/LackTable'
+import ModalLack from '@/Components/Modal/ModalLack'
+import { getLacks, createLack, updateLack, deleteLack } from '@/helpers/api/lack'
+import { getModulePermissions } from '@/helpers/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function LackPage() {

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import UserTable from '../../components/UserTable'
-import ModalUser from '../../components/ModalUser'
+import UserTable from '@/Components/Table/UserTable'
+import ModalUser from '@/Components/Modal/ModalUser'
 import {
   getUsers,
   searchUser,
   createUser,
   updateUser,
   deleteUser
-} from '../../api/user'
+} from '@/helpers/api/user'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
 export default function UsuariosPage() {
