@@ -254,13 +254,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
           newForm.medio = 'reporte'
           newForm.bodycamNumber = ''
           newForm.bodycamAsignadaA = ''
-
-          // Auto-llenar tipoInasistencia basado en la falta seleccionada
-          if (v === 'Inasistencia - Justificada') {
-            newForm.tipoInasistencia = 'Justificada'
-          } else if (v === 'Inasistencia - Injustificada') {
-            newForm.tipoInasistencia = 'Injustificada'
-          }
+          // Resetear tipoInasistencia para que el usuario lo seleccione
+          newForm.tipoInasistencia = ''
         } else {
           newForm.medio = 'bodycam'
           newForm.tipoInasistencia = '' // Limpiar tipo si no es inasistencia
@@ -420,8 +415,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     // Validaciones específicas para inasistencia
     if (form.falta && form.falta.startsWith('Inasistencia')) {
-      if (!form.tipoInasistencia || !form.fechaFalta) {
-        alert('Para inasistencia, completa el tipo y la fecha de falta');
+      // Para inasistencia se requiere el tipo de inasistencia
+      if (!form.tipoInasistencia) {
+        alert('Para inasistencia, debes seleccionar el tipo (Justificada o Injustificada)');
         return;
       }
     } else {
@@ -542,31 +538,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             </>
           )}
 
-          {/* Campos específicos para inasistencia */}
+          {/* Campo de tipo de inasistencia cuando se selecciona Inasistencia */}
           {mostrarCamposInasistencia && (
             <>
               <label>
                 <FaExclamationTriangle style={{ marginRight: '8px' }} />
                 Tipo de inasistencia *
               </label>
-              <input
-                type="text"
+              <select
                 value={form.tipoInasistencia}
-                readOnly
-                placeholder="Se llenará automáticamente según la falta seleccionada"
-                style={{
-                  cursor: 'not-allowed',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-secondary)'
-                }}
-              />
-
-              <label>Fecha de falta *</label>
-              <input
-                type="date"
-                value={form.fechaFalta}
-                onChange={e => setField('fechaFalta', e.target.value)}
-              />
+                onChange={e => setField('tipoInasistencia', e.target.value)}
+              >
+                <option value="">Selecciona</option>
+                <option value="Justificada">Justificada</option>
+                <option value="Injustificada">Injustificada</option>
+              </select>
             </>
           )}
 
@@ -666,7 +652,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
           <div className="row">
             <div style={{ flex: 1 }}>
-              <label>Fecha del Incidente *</label>
+              <label>Fecha de la falta *</label>
               <input
                 type="date"
                 value={form.fechaIncidente}
