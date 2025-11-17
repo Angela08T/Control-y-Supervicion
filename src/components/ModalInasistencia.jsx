@@ -1,7 +1,4 @@
-ModalIncidencia.jsx
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import MapSelector from './MapSelector'
-import useBodycamSearch from '../hooks/Bodycam/useBodycamSearch'
 import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useJobs from '../hooks/Job/useJobs'
 import useLeads from '../hooks/Job/useLeads'
@@ -14,60 +11,40 @@ import {
   FaClipboardList,
   FaExclamationTriangle,
   FaClock,
-  FaMapMarkerAlt,
   FaUserTag,
   FaUsers,
   FaUserTie,
   FaIdBadge,
   FaBalanceScale
 } from 'react-icons/fa'
-import { BsCameraVideo } from 'react-icons/bs'
 
 const defaultState = {
   dni: '',
-  nombreCompleto: '',  // Nuevo campo para nombre completo del offender
-  asunto: '',
+  nombreCompleto: '',
+  asunto: 'Conductas relacionadas con el cumplimiento del horario y asistencia',
   falta: '',
   turno: '',
-  medio: 'bodycam',
-  fechaIncidente: '',
-  horaIncidente: '',
-  bodycamNumber: '',
-  bodycamAsignadaA: '',
-  ubicacion: null,
-  jurisdiccion: '',
-  jurisdictionId: null,  // ID de la jurisdicción para la API
-  dirigidoA: '',
-  destinatario: '',
-  cargoDestinatario: '', // Cargo de la persona destinataria (para el PDF)
   cargo: '',
   regLab: '',
-  fechaFalta: '',
-  conCopia: true,  // Cambiado a true porque la API requiere al menos 1 CC
+  jurisdiccion: '',
+  jurisdictionId: null,
+  dirigidoA: '',
+  destinatario: '',
+  cargoDestinatario: '',
+  conCopia: true,
   cc: [],
-  subjectId: null,  // ID del asunto para la API
-  lackId: null      // ID de la falta para la API
+  subjectId: null,
+  lackId: null
 }
 
-export default function ModalIncidencia({ initial, onClose, onSave }) {
+export default function ModalInasistencia({ onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
-  const [selectedJobId, setSelectedJobId] = useState(null) // ID del job seleccionado
-  const [selectedLeadId, setSelectedLeadId] = useState('') // ID del lead seleccionado
-
-  // Hook para búsqueda de bodycam
-  const {
-    searchTerm: bodycamSearchTerm,
-    setSearchTerm: setBodycamSearchTerm,
-    results: bodycamResults,
-    loading: bodycamLoading,
-    error: bodycamError,
-    showSuggestions: showBodycamSuggestions,
-    setShowSuggestions: setShowBodycamSuggestions,
-    selectBodycam
-  } = useBodycamSearch()
+  const [selectedJobId, setSelectedJobId] = useState(null)
+  const [selectedLeadId, setSelectedLeadId] = useState('')
 
   // Hook para búsqueda de offender (DNI)
   const {
+    
     searchTerm: dniSearchTerm,
     setSearchTerm: setDniSearchTerm,
     results: offenderResults,
@@ -117,10 +94,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
   const listaCC = useMemo(() => {
     if (!allLeads || allLeads.length === 0) return []
 
-    // Filtrar para excluir al destinatario seleccionado y los deshabilitados (deleted_at !== null)
     return allLeads.filter(lead => {
       const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
-      const isEnabled = !lead.deleted_at // Solo habilitados
+      const isEnabled = !lead.deleted_at
       return nombreCompleto !== form.destinatario && isEnabled
     })
   }, [allLeads, form.destinatario])
@@ -141,74 +117,85 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     return map
   }, [subjects])
 
-  // Obtener faltas disponibles según el asunto seleccionado
-  // Excluir las faltas de tipo "Inasistencia"
-  const lacksDisponibles = useMemo(() => {
-    if (!form.asunto || !subjectMap[form.asunto]) return []
-    // Filtrar para excluir faltas que contengan "Inasistencia"
-    return subjectMap[form.asunto].lacks.filter(lack =>
-      !lack.name.toLowerCase().includes('inasistencia')
-    )
-  }, [form.asunto, subjectMap])
+  // Obtener faltas de inasistencia disponibles
+  const lacksInasistencia = useMemo(() => {
+    // Buscar en todos los subjects las faltas que contengan "Inasistencia"
+    let inasistencias = []
 
-  // Filtrar solo jobs (cargos) habilitados (deleted_at === null)
+    Object.keys(subjectMap).forEach(subjectName => {
+      const subject = subjectMap[subjectName]
+      const lacksInasistenciaDeSubject = subject.lacks.filter(lack =>
+        lack.name.toLowerCase().includes('inasistencia')
+      )
+      inasistencias = [...inasistencias, ...lacksInasistenciaDeSubject]
+    })
+
+    console.log('Faltas de inasistencia encontradas:', inasistencias)
+    return inasistencias
+  }, [subjectMap])
+
+  // Establecer el subjectId automáticamente cuando se carguen los subjects
+  useEffect(() => {
+    // Buscar el subject que contiene las faltas de inasistencia
+    const asuntoKey = Object.keys(subjectMap).find(key =>
+      key.toLowerCase().includes('horario') ||
+      key.toLowerCase().includes('asistencia') ||
+      key.toLowerCase().includes('cumplimiento')
+    )
+
+    if (asuntoKey && subjectMap[asuntoKey]) {
+      console.log('Subject de inasistencia encontrado:', asuntoKey)
+      setForm(f => ({
+        ...f,
+        asunto: asuntoKey,
+        subjectId: subjectMap[asuntoKey].id
+      }))
+    } else if (Object.keys(subjectMap).length > 0) {
+      // Si no encuentra por nombre, buscar el que tenga faltas de inasistencia
+      const subjectConInasistencias = Object.keys(subjectMap).find(key =>
+        subjectMap[key].lacks.some(lack => lack.name.toLowerCase().includes('inasistencia'))
+      )
+
+      if (subjectConInasistencias) {
+        console.log('Subject con inasistencias:', subjectConInasistencias)
+        setForm(f => ({
+          ...f,
+          asunto: subjectConInasistencias,
+          subjectId: subjectMap[subjectConInasistencias].id
+        }))
+      }
+    }
+  }, [subjectMap])
+
+  // Filtrar solo jobs (cargos) habilitados
   const jobsHabilitados = useMemo(() => {
     if (!jobs || jobs.length === 0) return []
     return jobs.filter(job => !job.deleted_at)
   }, [jobs])
 
-  // Filtrar solo leads (personal) habilitados (deleted_at === null)
+  // Filtrar solo leads (personal) habilitados
   const leadsHabilitados = useMemo(() => {
     if (!leads || leads.length === 0) return []
     return leads.filter(lead => !lead.deleted_at)
   }, [leads])
 
-  // Filtrar solo bodycams habilitadas (deleted_at === null)
-  const bodycamsHabilitadas = useMemo(() => {
-    if (!bodycamResults || bodycamResults.length === 0) return []
-    return bodycamResults.filter(bodycam => !bodycam.deleted_at)
-  }, [bodycamResults])
-
-  // Filtrar solo jurisdicciones habilitadas (deleted_at === null)
+  // Filtrar solo jurisdicciones habilitadas
   const jurisdiccionesHabilitadas = useMemo(() => {
     if (!jurisdictions || jurisdictions.length === 0) return []
     return jurisdictions.filter(jurisdiction => !jurisdiction.deleted_at)
   }, [jurisdictions])
 
-  // Filtrar solo offenders habilitados (deleted_at === null)
+  // Filtrar solo offenders habilitados
   const offendersHabilitados = useMemo(() => {
     if (!offenderResults || offenderResults.length === 0) return []
     return offenderResults.filter(offender => !offender.deleted_at)
   }, [offenderResults])
 
-  const bodycamAutocompleteRef = useRef(null)
   const dniAutocompleteRef = useRef(null)
-
-  useEffect(() => {
-    if (initial) {
-      setForm({ ...defaultState, ...initial })
-      // Si estamos editando, establecer los searchTerms existentes
-      if (initial.bodycamNumber) {
-        setBodycamSearchTerm(initial.bodycamNumber)
-      }
-      if (initial.dni) {
-        setDniSearchTerm(initial.dni)
-      }
-    } else {
-      // Establecer fecha y hora automáticamente al crear
-      const now = new Date()
-      const fecha = now.toISOString().split('T')[0]
-      const hora = now.toTimeString().slice(0, 5)
-      setForm(f => ({ ...f, fechaIncidente: fecha, horaIncidente: hora }))
-    }
-  }, [initial])
 
   // Cerrar sugerencias al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event) {
-      if (bodycamAutocompleteRef.current && !bodycamAutocompleteRef.current.contains(event.target)) {
-        setShowBodycamSuggestions(false)
-      }
       if (dniAutocompleteRef.current && !dniAutocompleteRef.current.contains(event.target)) {
         setShowOffenderSuggestions(false)
       }
@@ -221,43 +208,22 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     setForm(f => {
       const newForm = { ...f, [k]: v }
 
-      // Log cuando se actualiza la ubicación
-      if (k === 'ubicacion') {
-        console.log('🗺️ ModalIncidencia - Ubicación guardada en form:')
-        console.log('   Coordenadas:', v?.coordinates)
-        console.log('   Dirección:', v?.address)
-      }
-
-      // Si cambia el asunto, resetear falta y campos relacionados
-      if (k === 'asunto') {
-        newForm.falta = ''
-        newForm.lackId = null
-        newForm.fechaFalta = ''
-
-        // Guardar el ID del asunto seleccionado
-        if (subjectMap[v]) {
-          newForm.subjectId = subjectMap[v].id
-        } else {
-          newForm.subjectId = null
-        }
-
-        // Resetear campos de bodycam si la falta seleccionada es "Inasistencia"
-        // (ya no verificamos el asunto, sino la falta específica)
-        newForm.medio = 'bodycam' // Por defecto bodycam para todos
-      }
-
-      // Si cambia la falta, guardar el ID de la falta
+      // Si cambia la falta, guardar el ID de la falta y el subjectId correspondiente
       if (k === 'falta') {
-        const lack = lacksDisponibles.find(l => l.name === v)
+        const lack = lacksInasistencia.find(l => l.name === v)
         newForm.lackId = lack ? lack.id : null
 
-        // Si la falta es "Inasistencia" (cualquier tipo), cambiar medio a reporte y limpiar bodycam
-        if (v && v.startsWith('Inasistencia')) {
-          newForm.medio = 'reporte'
-          newForm.bodycamNumber = ''
-          newForm.bodycamAsignadaA = ''
-        } else {
-          newForm.medio = 'bodycam'
+        // Encontrar el subject al que pertenece esta falta
+        if (lack) {
+          Object.keys(subjectMap).forEach(subjectName => {
+            const subject = subjectMap[subjectName]
+            const foundLack = subject.lacks.find(l => l.id === lack.id)
+            if (foundLack) {
+              newForm.asunto = subjectName
+              newForm.subjectId = subject.id
+              console.log('Subject asignado:', subjectName, 'ID:', subject.id)
+            }
+          })
         }
       }
 
@@ -272,21 +238,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
   // Función para manejar cambio de job/destinatario
   function handleJobChange(jobId, jobName) {
-    setSelectedJobId(jobId) // Actualizar el ID para cargar los leads
-    setSelectedLeadId('') // Resetear la persona seleccionada
-    setField('dirigidoA', jobName) // Guardar el nombre en el formulario
+    setSelectedJobId(jobId)
+    setSelectedLeadId('')
+    setField('dirigidoA', jobName)
   }
 
   // Función para manejar selección de persona (lead)
   function handleLeadChange(leadId) {
-    setSelectedLeadId(leadId) // Guardar ID para el select
+    setSelectedLeadId(leadId)
     const selectedLead = leads.find(lead => lead.id === leadId)
     if (selectedLead) {
       const nombreCompleto = `${selectedLead.name} ${selectedLead.lastname}`.trim()
       setForm(f => ({
         ...f,
         destinatario: nombreCompleto,
-        cargoDestinatario: selectedLead.job?.name || form.dirigidoA // Guardar el cargo del lead
+        cargoDestinatario: selectedLead.job?.name || form.dirigidoA
       }))
     } else {
       setForm(f => ({
@@ -304,40 +270,30 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
   }
 
   function handleOffenderSelect(offender) {
-    // Seleccionar offender usando el hook
     selectOffender(offender)
 
-    // Rellenar el formulario con los datos del offender
-    // Estructura del API: { dni, job, regime, shift, name, lastname }
     const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim()
-
-    console.log('👤 Offender seleccionado:', offender)
-    console.log('📝 Nombre completo:', nombreCompleto)
 
     setForm(f => ({
       ...f,
       dni: offender.dni || '',
-      nombreCompleto: nombreCompleto,   // Guardar nombre completo
-      turno: offender.shift || '',      // shift → turno
-      cargo: offender.job || '',         // job → cargo
-      regLab: offender.regime || '',     // regime → regLab
-      bodycamAsignadaA: nombreCompleto   // Auto-llenar bodycam asignada a
+      nombreCompleto: nombreCompleto,
+      turno: offender.shift || '',
+      cargo: offender.job || '',
+      regLab: offender.regime || ''
     }))
 
-    // Actualizar también el searchTerm
     setDniSearchTerm(offender.dni || '')
   }
 
   function toggleCC(leadId) {
     setForm(f => {
       const cc = f.cc || []
-      // Buscar el lead completo
       const lead = allLeads.find(l => l.id === leadId)
       if (!lead) return f
 
       const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
 
-      // Verificar si ya está en la lista
       if (cc.includes(nombreCompleto)) {
         return { ...f, cc: cc.filter(p => p !== nombreCompleto) }
       } else {
@@ -346,107 +302,54 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     })
   }
 
-  function handleBodycamSelect(bodycam) {
-    // Seleccionar bodycam usando el hook
-    selectBodycam(bodycam)
-
-    // Rellenar el formulario con los datos de la bodycam
-    // Campos del API: id, name
-    setForm(f => ({
-      ...f,
-      bodycamId: bodycam.id || '',  // Guardar ID para la API
-      bodycamNumber: bodycam.name || bodycam.id || ''
-      // NO sobrescribir bodycamAsignadaA ni encargadoBodycam
-      // Estos campos ya se llenaron con handleOffenderSelect
-    }))
-
-    // Actualizar también el searchTerm
-    setBodycamSearchTerm(bodycam.name || bodycam.id || '')
-  }
-
-  function handleBodycamInputChange(e) {
-    const value = e.target.value
-    setBodycamSearchTerm(value)
-    setField('bodycamNumber', value)
-  }
-
   async function handleSubmit(ev) {
-    ev.preventDefault();
+    ev.preventDefault()
 
     // Validar campos obligatorios
     if (!form.dni || form.dni.length !== 8) {
-      alert('El DNI debe tener exactamente 8 dígitos');
-      return;
+      alert('El DNI debe tener exactamente 8 dígitos')
+      return
     }
 
-    if (!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
-      alert('Completa todos los campos obligatorios');
-      return;
+    if (!form.falta || !form.turno || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
+      alert('Completa todos los campos obligatorios')
+      return
     }
 
-    // Validar que se hayan cargado los IDs necesarios de la API
     if (!form.subjectId) {
-      alert('Error: No se pudo obtener el ID del asunto. Por favor, reselecciona el asunto.');
-      return;
+      alert('Error: No se pudo obtener el ID del asunto.')
+      return
     }
 
     if (!form.lackId) {
-      alert('Error: No se pudo obtener el ID de la falta. Por favor, reselecciona la falta.');
-      return;
+      alert('Error: No se pudo obtener el ID de la falta. Por favor, selecciona la falta.')
+      return
     }
 
     if (!form.jurisdictionId) {
-      alert('Error: No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.');
-      return;
+      alert('Error: No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.')
+      return
     }
 
-    // Validar que haya al menos 1 persona en CC (la API lo requiere)
     if (!form.cc || form.cc.length === 0) {
-      alert('Debes seleccionar al menos 1 persona para copia (CC)');
-      return;
+      alert('Debes seleccionar al menos 1 persona para copia (CC)')
+      return
     }
 
-    // Validar ubicación (la API requiere coordenadas y dirección)
-    if (!form.ubicacion || !form.ubicacion.coordinates || !form.ubicacion.address) {
-      alert('Debes seleccionar una ubicación en el mapa');
-      return;
-    }
+    console.log('📋 Datos de inasistencia a enviar:', form)
 
-    // Validaciones específicas para inasistencia
-    if (form.falta && form.falta.startsWith('Inasistencia')) {
-      // Para inasistencia no se requiere bodycam
-    } else {
-      // Validaciones para otras faltas (requieren bodycam)
-      if (!form.bodycamNumber || !form.bodycamAsignadaA) {
-        alert('Completa los campos de bodycam');
-        return;
-      }
-
-      if (!form.bodycamId) {
-        alert('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
-        return;
-      }
-    }
-
-    console.log('📋 Datos del formulario antes de enviar:', form);
-
-    // Notificar al padre con los datos del formulario y allLeads
     if (onSave) {
-      onSave(form, allLeads);
+      onSave(form, allLeads)
     }
 
-    // Cerrar modal
-    onClose();
+    onClose()
   }
-
-  const mostrarCamposInasistencia = form.falta && form.falta.startsWith('Inasistencia')
-  const mostrarCamposBodycam = !(form.falta && form.falta.startsWith('Inasistencia'))
 
   return (
     <div className="modal-backdrop">
       <div className="modal-card">
         <div className="modal-header">
-          <h3>{initial ? 'Editar Incidencia' : 'Nueva Incidencia'}</h3>
+          <h3>Nueva Inasistencia</h3>
           <button className="close" onClick={onClose}>×</button>
         </div>
         <form className="modal-body" onSubmit={handleSubmit}>
@@ -497,41 +400,27 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
           <label>
             <FaClipboardList style={{ marginRight: '8px' }} />
-            Seleccionar asunto *
+            Asunto
+          </label>
+          <input
+            value={form.asunto}
+            readOnly
+            style={{ cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)' }}
+          />
+
+          <label>
+            <FaExclamationTriangle style={{ marginRight: '8px' }} />
+            Seleccionar falta *
           </label>
           <select
-            value={form.asunto}
-            onChange={e => setField('asunto', e.target.value)}
-            disabled={subjectsLoading}
+            value={form.falta}
+            onChange={e => setField('falta', e.target.value)}
           >
-            <option value="">{subjectsLoading ? 'Cargando asuntos...' : 'Selecciona'}</option>
-            {Object.keys(subjectMap).map((asuntoName) => (
-              <option key={subjectMap[asuntoName].id} value={asuntoName}>{asuntoName}</option>
+            <option value="">Selecciona</option>
+            {lacksInasistencia.map(lack => (
+              <option key={lack.id} value={lack.name}>{lack.name}</option>
             ))}
           </select>
-          {subjectsError && (
-            <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
-              Error al cargar asuntos desde el servidor.
-            </div>
-          )}
-
-          {form.asunto && (
-            <>
-              <label>
-                <FaExclamationTriangle style={{ marginRight: '8px' }} />
-                Seleccionar falta *
-              </label>
-              <select
-                value={form.falta}
-                onChange={e => setField('falta', e.target.value)}
-              >
-                <option value="">Selecciona</option>
-                {lacksDisponibles.map(lack => (
-                  <option key={lack.id} value={lack.name}>{lack.name}</option>
-                ))}
-              </select>
-            </>
-          )}
 
           <label>
             <FaClock style={{ marginRight: '8px' }} />
@@ -565,86 +454,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             placeholder="Se llenará automáticamente con el DNI"
             style={{ cursor: 'not-allowed' }}
           />
-
-          {/* Campos de bodycam (solo para NO inasistencia) */}
-          {mostrarCamposBodycam && (
-            <>
-              <select
-                value={form.medio}
-                onChange={e => setField('medio', e.target.value)}
-              >
-                <option value="bodycam">Bodycam</option>
-              </select>
-
-              <label>N° de Bodycam *</label>
-              <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
-                <input
-                  value={bodycamSearchTerm}
-                  onChange={handleBodycamInputChange}
-                  onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                  placeholder="Escribe para buscar bodycam (ej: SG004 o FISCA004)"
-                  autoComplete="off"
-                />
-                {bodycamLoading && (
-                  <div className="autocomplete-loading">Buscando...</div>
-                )}
-                {bodycamError && (
-                  <div className="autocomplete-error">{bodycamError}</div>
-                )}
-                {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                  <div className="autocomplete-suggestions">
-                    {bodycamsHabilitadas.map((bodycam, index) => (
-                      <div
-                        key={bodycam.id || index}
-                        className="autocomplete-item"
-                        onClick={() => handleBodycamSelect(bodycam)}
-                      >
-                        <div className="autocomplete-item-code">
-                          {bodycam.name || bodycam.id}
-                        </div>
-                        {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
-                          <div className="autocomplete-item-details">
-                            {bodycam.asignadoA || bodycam.asignado || bodycam.usuario}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading && (
-                  <div className="autocomplete-no-results">
-                    No se encontraron bodycams
-                  </div>
-                )}
-              </div>
-
-              <label>Bodycam asignada a: *</label>
-              <input
-                value={form.bodycamAsignadaA}
-                onChange={e => setField('bodycamAsignadaA', e.target.value)}
-                placeholder="Se llenará automáticamente al seleccionar DNI"
-              />
-            </>
-          )}
-
-          <div className="row">
-            <div style={{ flex: 1 }}>
-              <label>Fecha de la falta *</label>
-              <input
-                type="date"
-                value={form.fechaIncidente}
-                onChange={e => setField('fechaIncidente', e.target.value)}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label>Hora del Incidente *</label>
-              <input
-                type="time"
-                value={form.horaIncidente}
-                onChange={e => setField('horaIncidente', e.target.value)}
-              />
-            </div>
-          </div>
 
           <label>
             <FaBalanceScale style={{ marginRight: '8px' }} />
@@ -686,12 +495,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               ))}
             </select>
           )}
-
-          <label>
-            <FaMapMarkerAlt style={{ marginRight: '8px' }} />
-            Ubicación del Infractor *
-          </label>
-          <MapSelector value={form.ubicacion} onChange={p => setField('ubicacion', p)} />
 
           <label>
             <FaUserTag style={{ marginRight: '8px' }} />
@@ -801,9 +604,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="btn-secondary">CANCELAR</button>
-            <button type="submit" className="btn-primary">
-              {initial ? 'ACTUALIZAR INCIDENCIA' : 'CREAR INCIDENCIA'}
-            </button>
+            <button type="submit" className="btn-primary">CREAR INCIDENCIA</button>
           </div>
         </form>
       </div>

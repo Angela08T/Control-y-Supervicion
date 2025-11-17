@@ -13,6 +13,8 @@
     "@reduxjs/toolkit": "^2.9.1",
     "axios": "^1.12.2",
     "buffer": "^6.0.3",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
