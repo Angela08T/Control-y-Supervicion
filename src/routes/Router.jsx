@@ -12,6 +12,7 @@ import UnauthorizedPage from "../pages/UnauthorizedPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import DashboardPage from "../pages/Dashboard/DashboardPage";
 import IncidenciasPage from "../pages/Incidencias/IncidenciasPage";
+import InasistenciasPage from "../pages/Inasistencias/InasistenciasPage";
 import AuditoriaPage from "../pages/Auditoria/AuditoriaPage";
 import BodycamPage from "../pages/Bodycam/BodycamPage";
 import UsuariosPage from "../pages/Usuarios/UsuariosPage";
@@ -44,6 +45,7 @@ export default function Router() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
           <Route path="bodycam" element={<BodycamPage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="cargos" element={<JobsPage />} />
@@ -72,6 +74,7 @@ export default function Router() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
           <Route path="bodycam" element={<BodycamPage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="cargos" element={<JobsPage />} />
@@ -95,6 +98,7 @@ export default function Router() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
           <Route path="bodycam" element={<BodycamPage />} />
         </Route>
 
