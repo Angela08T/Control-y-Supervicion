@@ -2,7 +2,9 @@ import React, { useEffect } from 'react'
 import { FaSun, FaMoon, FaBell, FaSignOutAlt } from 'react-icons/fa'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { logout } from '../../store/slices/authSlice'
+import { logout as logoutAction } from '../../store/slices/authSlice'
+import { clearToken } from '../../api/config'
+import { logout as logoutApi } from '../../api/auth'
 
 export default function Topbar() {
   const dispatch = useDispatch()
@@ -15,9 +17,19 @@ export default function Topbar() {
     localStorage.setItem('centinela-theme', 'light')
   }, [])
 
-  const handleLogout = () => {
-    dispatch(logout())
-    navigate('/login')
+  const handleLogout = async () => {
+    try {
+      // Llamar al endpoint de logout del backend para cerrar la sesión en el servidor
+      await logoutApi()
+    } catch (error) {
+      console.error('Error al cerrar sesión en el servidor:', error)
+      // Continuar con el logout local aunque falle el backend
+    } finally {
+      // Limpiar el estado local independientemente del resultado
+      clearToken() // Limpiar el token global de axios
+      dispatch(logoutAction()) // Limpiar el estado de Redux
+      navigate('/login')
+    }
   }
 
   // Función deshabilitada - para reactivar más adelante
