@@ -25,6 +25,11 @@ export const setToken = (token) => {
   globalToken = token;
 }
 
+// Función para limpiar el token al hacer logout
+export const clearToken = () => {
+  globalToken = null;
+}
+
 // Configuración base para la API principal
 const config = axios.create({
   baseURL: import.meta.env.VITE_API_URL,

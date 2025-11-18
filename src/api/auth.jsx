@@ -18,3 +18,19 @@ export const login = async (credentials) => {
         }
     }
 };
+
+export const logout = async () => {
+    try {
+        const response = await api.post('/auth/logout');
+        return response.data;
+    } catch (error) {
+        // Propagar el error con más detalle
+        if (error.response) {
+            throw error;
+        } else if (error.request) {
+            throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
+        } else {
+            throw new Error('Error al cerrar sesión: ' + error.message);
+        }
+    }
+};
