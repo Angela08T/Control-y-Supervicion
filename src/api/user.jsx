@@ -20,11 +20,13 @@ import api from './config';
  */
 export const createUser = async (userData) => {
   try {
+    console.log('📤 Datos enviados al backend:', JSON.stringify(userData, null, 2));
     const response = await api.post('/user', userData);
     console.log('✅ Usuario creado:', response.data);
     return response.data;
   } catch (error) {
     console.error('❌ Error al crear usuario:', error);
+    console.error('📥 Respuesta del servidor:', error.response?.data);
     if (error.response) {
       throw error;
     } else if (error.request) {
