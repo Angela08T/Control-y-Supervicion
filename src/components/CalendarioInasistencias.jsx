@@ -10,10 +10,10 @@ export default function CalendarioInasistencias({
   onMonthChange
 }) {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [flMode, setFlMode] = useState(false) // Modo de marcado FL activo
+  const [markMode, setMarkMode] = useState(null) // Modo de marcado: 'I' (injustificado), 'J' (justificado) o null
   const [editMode, setEditMode] = useState(false) // Modo de edición para quitar marcas
   const [selectedCells, setSelectedCells] = useState({}) // Celdas seleccionadas: { "dni-dia": true }
-  const [tempMarks, setTempMarks] = useState({}) // Marcas temporales: { "dni-dia": { tipo: "FL", id: null } }
+  const [tempMarks, setTempMarks] = useState({}) // Marcas temporales: { "dni-dia": { tipo: "I"/"J", id: null } }
   const [marksToDelete, setMarksToDelete] = useState([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
   const itemsPerPage = 12 // Límite de personas por página
@@ -142,7 +142,7 @@ export default function CalendarioInasistencias({
     setSelectedCells({})
     setTempMarks({})
     setMarksToDelete([])
-    setFlMode(false)
+    setMarkMode(null)
     setEditMode(false)
     setCurrentPage(1) // Resetear a página 1
 
@@ -160,7 +160,7 @@ export default function CalendarioInasistencias({
     setSelectedCells({})
     setTempMarks({})
     setMarksToDelete([])
-    setFlMode(false)
+    setMarkMode(null)
     setEditMode(false)
     setCurrentPage(1) // Resetear a página 1
 
@@ -174,16 +174,21 @@ export default function CalendarioInasistencias({
     console.log('Exportar PDF - Funcionalidad pendiente')
   }
 
-  function handleToggleFL() {
-    setFlMode(!flMode)
-    if (flMode) {
-      // Si se desactiva el modo FL, limpiar selecciones
+  function handleToggleMark(tipo) {
+    // Si ya está activo este modo, desactivarlo
+    if (markMode === tipo) {
+      setMarkMode(null)
       setSelectedCells({})
-    }
-    // Desactivar modo edición si está activo
-    if (editMode) {
-      setEditMode(false)
+    } else {
+      // Activar el nuevo modo
+      setMarkMode(tipo)
+      // Limpiar selecciones previas
       setSelectedCells({})
+      setTempMarks({})
+      // Desactivar modo edición si está activo
+      if (editMode) {
+        setEditMode(false)
+      }
     }
   }
 
@@ -193,9 +198,9 @@ export default function CalendarioInasistencias({
       // Si se desactiva el modo edición, limpiar selecciones
       setSelectedCells({})
     }
-    // Desactivar modo FL si está activo
-    if (flMode) {
-      setFlMode(false)
+    // Desactivar modo de marcado si está activo
+    if (markMode) {
+      setMarkMode(null)
       setSelectedCells({})
     }
   }
@@ -203,8 +208,8 @@ export default function CalendarioInasistencias({
   function handleCellClick(dni, dia) {
     const key = `${dni}-${dia}`
 
-    // Modo FL: agregar marcas temporales (solo si NO hay marca guardada)
-    if (flMode) {
+    // Modo de marcado (I o J): agregar marcas temporales (solo si NO hay marca guardada)
+    if (markMode) {
       // No permitir marcar si ya existe una marca guardada
       if (savedMarks[key]) {
         alert('Esta celda ya tiene una marca guardada. Usa el modo EDITAR para eliminarla.')
@@ -223,10 +228,10 @@ export default function CalendarioInasistencias({
           })
         } else {
           newSelected[key] = true
-          // Agregar marca temporal (tipo por defecto: injustificada)
+          // Agregar marca temporal con el tipo seleccionado (I o J)
           setTempMarks(marks => ({
             ...marks,
-            [key]: { tipo: 'injustificada', id: null }
+            [key]: { tipo: markMode === 'I' ? 'injustificada' : 'justificada', id: null }
           }))
         }
         return newSelected
@@ -278,13 +283,13 @@ export default function CalendarioInasistencias({
     // Limpiar todas las selecciones y marcas temporales
     setSelectedCells({})
     setTempMarks({})
-    setFlMode(false)
+    setMarkMode(null)
     setEditMode(false)
   }
 
   function handleSave() {
-    // Modo FL: guardar marcas nuevas
-    if (flMode || Object.keys(tempMarks).length > 0) {
+    // Modo de marcado: guardar marcas nuevas
+    if (markMode || Object.keys(tempMarks).length > 0) {
       const marksToSave = Object.keys(tempMarks).map(key => {
         const [dni, dia] = key.split('-')
         const markData = tempMarks[key]
@@ -311,7 +316,7 @@ export default function CalendarioInasistencias({
       // Limpiar después de guardar
       setSelectedCells({})
       setTempMarks({})
-      setFlMode(false)
+      setMarkMode(null)
       // No mostrar alert aquí, el componente padre lo hará
     }
 
@@ -394,11 +399,18 @@ export default function CalendarioInasistencias({
       {/* Botones de acción */}
       <div className="calendario-actions">
         <button
-          className={`btn-fl ${flMode ? 'active' : ''}`}
-          onClick={handleToggleFL}
-          title={flMode ? 'Desactivar modo FL' : 'Activar modo FL'}
+          className={`btn-fl btn-injustificado ${markMode === 'I' ? 'active' : ''}`}
+          onClick={() => handleToggleMark('I')}
+          title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
         >
-          FL
+          I
+        </button>
+        <button
+          className={`btn-fl btn-justificado ${markMode === 'J' ? 'active' : ''}`}
+          onClick={() => handleToggleMark('J')}
+          title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
+        >
+          J
         </button>
         <button
           className={`btn-edit ${editMode ? 'active' : ''}`}
@@ -410,14 +422,19 @@ export default function CalendarioInasistencias({
         <button className="btn-icon btn-delete" onClick={handleDeleteSelected} title="Eliminar">
           <FaTrash />
         </button>
-        {flMode && (
-          <span style={{ marginLeft: '10px', color: 'var(--primary)', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo FL activo - Haz clic en las celdas de fecha para marcar
+        {markMode === 'I' && (
+          <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+            Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
+          </span>
+        )}
+        {markMode === 'J' && (
+          <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+            Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
           </span>
         )}
         {editMode && (
           <span style={{ marginLeft: '10px', color: '#f59e0b', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo edición activo - Haz clic en las celdas con FL para eliminarlas
+            Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
           </span>
         )}
       </div>
@@ -481,7 +498,8 @@ export default function CalendarioInasistencias({
 
                         if (tempMark) {
                           // Marca temporal (nueva, aún no guardada)
-                          content = <span className="marca-falta temp">FL</span>
+                          const displayText = tempMark.tipo === 'justificada' ? 'J' : 'I'
+                          content = <span className={`marca-falta temp ${tempMark.tipo === 'justificada' ? 'justificada' : 'injustificada'}`}>{displayText}</span>
                           cellClass += ' temp-mark'
                         } else if (savedMark) {
                           // Marca guardada desde la API
@@ -494,7 +512,7 @@ export default function CalendarioInasistencias({
                         }
 
                         // Agregar clases para interacción
-                        if (flMode || editMode) {
+                        if (markMode || editMode) {
                           cellClass += ' clickable'
                         }
                         if (isSelected) {
@@ -530,7 +548,7 @@ export default function CalendarioInasistencias({
                   <td className="col-cargo"></td>
                   <td className="col-regimen"></td>
                   {diasDelMes.map(dia => (
-                    <td key={dia.numero} className={`col-dia ${flMode ? 'clickable' : ''}`}>
+                    <td key={dia.numero} className={`col-dia ${markMode ? 'clickable' : ''}`}>
                       <span className="sin-falta">-</span>
                     </td>
                   ))}

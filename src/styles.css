@@ -3799,6 +3799,53 @@ body,
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 
+/* Botón Injustificado */
+.btn-fl.btn-injustificado {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.btn-fl.btn-injustificado:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn-fl.btn-injustificado.active {
+  background: #dc2626;
+  border-color: #dc2626;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+/* Botón Justificado - mismo color rojo */
+.btn-fl.btn-justificado {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.btn-fl.btn-justificado:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn-fl.btn-justificado.active {
+  background: #dc2626;
+  border-color: #dc2626;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+/* Estilos para marcas temporales en celdas */
+.marca-falta.temp.injustificada {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.marca-falta.temp.justificada {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
 .btn-edit {
   padding: 8px 16px;
   border-radius: 6px;
