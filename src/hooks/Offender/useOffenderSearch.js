@@ -67,7 +67,7 @@ const useOffenderSearch = () => {
         setLoading(false);
       }
     }, 400);
-
+    
     // Cleanup
     return () => {
       if (debounceTimeout.current) {
