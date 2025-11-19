@@ -1,13 +1,20 @@
 import React, { useState, useMemo } from 'react'
 import { FaFilePdf, FaTrash } from 'react-icons/fa'
 
-export default function CalendarioInasistencias({ inasistencias = [], onDelete, onSave }) {
+export default function CalendarioInasistencias({
+  inasistencias = [],
+  savedAttendances = [],
+  onDelete,
+  onSave,
+  onDeleteMarks,
+  onMonthChange
+}) {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [flMode, setFlMode] = useState(false) // Modo de marcado FL activo
   const [editMode, setEditMode] = useState(false) // Modo de edición para quitar marcas
   const [selectedCells, setSelectedCells] = useState({}) // Celdas seleccionadas: { "dni-dia": true }
-  const [tempMarks, setTempMarks] = useState({}) // Marcas temporales: { "dni-dia": "FL" }
-  const [savedMarks, setSavedMarks] = useState({}) // Marcas guardadas permanentemente: { "dni-dia": "FL" }
+  const [tempMarks, setTempMarks] = useState({}) // Marcas temporales: { "dni-dia": { tipo: "FL", id: null } }
+  const [marksToDelete, setMarksToDelete] = useState([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
   const itemsPerPage = 12 // Límite de personas por página
 
@@ -18,6 +25,34 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
   ]
 
   const diasSemanaCorto = ['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SÁ']
+
+  // Procesar savedAttendances para obtener las marcas guardadas: { "dni-dia": { tipo: "J"/"I", id: "uuid" } }
+  const savedMarks = useMemo(() => {
+    const marks = {}
+
+    savedAttendances.forEach(person => {
+      const dni = person.dni
+
+      if (person.dates && Array.isArray(person.dates)) {
+        person.dates.forEach(dateObj => {
+          // Solo procesar si no está eliminado (delete_at es null)
+          if (!dateObj.delete_at) {
+            const date = new Date(dateObj.date)
+            const day = date.getDate()
+            const key = `${dni}-${day}`
+
+            marks[key] = {
+              tipo: dateObj.mode === 'JUSTIFIED' ? 'J' : 'I',
+              id: dateObj.id
+            }
+          }
+        })
+      }
+    })
+
+    console.log('📊 Marcas guardadas procesadas:', marks)
+    return marks
+  }, [savedAttendances])
 
   // Calcular días del mes seleccionado
   const diasDelMes = useMemo(() => {
@@ -39,7 +74,7 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
     return dias
   }, [selectedDate])
 
-  // Filtrar inasistencias del mes seleccionado
+  // Filtrar inasistencias del mes seleccionado (solo para mostrar faltas existentes)
   const inasistenciasDelMes = useMemo(() => {
     const year = selectedDate.getFullYear()
     const month = selectedDate.getMonth()
@@ -58,11 +93,12 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
     })
   }, [inasistencias, selectedDate])
 
-  // Agrupar inasistencias por DNI
+  // Agrupar TODAS las personas (offenders), no solo las que tienen inasistencias este mes
   const personasConInasistencias = useMemo(() => {
     const personas = {}
 
-    inasistenciasDelMes.forEach(item => {
+    // 🔹 CAMBIO: Primero agregar TODOS los offenders (de inasistencias, sin filtrar por mes)
+    inasistencias.forEach(item => {
       const key = item.dni
       if (!personas[key]) {
         personas[key] = {
@@ -71,24 +107,32 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
           turno: item.turno || '-',
           cargo: item.cargo || '-',
           regimen: item.regLab || item.regimen || '-',
+          subgerencia: item.subgerencia || '-',
           faltas: {}
         }
       }
+    })
+
+    // Luego marcar las faltas del mes seleccionado
+    inasistenciasDelMes.forEach(item => {
+      const key = item.dni
 
       // Marcar el día de la falta
       let diaFalta
-      if (item.fechaIncidente.includes('/')) {
+      if (item.fechaIncidente && item.fechaIncidente.includes('/')) {
         const [dia] = item.fechaIncidente.split('/')
         diaFalta = parseInt(dia)
-      } else {
+      } else if (item.fechaIncidente) {
         diaFalta = new Date(item.fechaIncidente).getDate()
       }
 
-      personas[key].faltas[diaFalta] = item.falta?.includes('Justificada') ? 'J' : 'I'
+      if (diaFalta && personas[key]) {
+        personas[key].faltas[diaFalta] = item.falta?.includes('Justificada') ? 'J' : 'I'
+      }
     })
 
     return Object.values(personas)
-  }, [inasistenciasDelMes])
+  }, [inasistencias, inasistenciasDelMes])
 
   function handleMonthChange(e) {
     const newDate = new Date(selectedDate)
@@ -97,9 +141,15 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
     // Limpiar selecciones al cambiar mes
     setSelectedCells({})
     setTempMarks({})
-    setSavedMarks({}) // Limpiar marcas guardadas al cambiar mes
+    setMarksToDelete([])
     setFlMode(false)
+    setEditMode(false)
     setCurrentPage(1) // Resetear a página 1
+
+    // Notificar al padre del cambio de mes
+    if (onMonthChange) {
+      onMonthChange(newDate)
+    }
   }
 
   function handleYearChange(e) {
@@ -109,9 +159,15 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
     // Limpiar selecciones al cambiar año
     setSelectedCells({})
     setTempMarks({})
-    setSavedMarks({}) // Limpiar marcas guardadas al cambiar año
+    setMarksToDelete([])
     setFlMode(false)
+    setEditMode(false)
     setCurrentPage(1) // Resetear a página 1
+
+    // Notificar al padre del cambio de mes
+    if (onMonthChange) {
+      onMonthChange(newDate)
+    }
   }
 
   function handleDownloadPDF() {
@@ -147,8 +203,14 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
   function handleCellClick(dni, dia) {
     const key = `${dni}-${dia}`
 
-    // Modo FL: agregar marcas temporales
+    // Modo FL: agregar marcas temporales (solo si NO hay marca guardada)
     if (flMode) {
+      // No permitir marcar si ya existe una marca guardada
+      if (savedMarks[key]) {
+        alert('Esta celda ya tiene una marca guardada. Usa el modo EDITAR para eliminarla.')
+        return
+      }
+
       setSelectedCells(prev => {
         const newSelected = { ...prev }
         if (newSelected[key]) {
@@ -161,25 +223,46 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
           })
         } else {
           newSelected[key] = true
-          // Agregar marca temporal
+          // Agregar marca temporal (tipo por defecto: injustificada)
           setTempMarks(marks => ({
             ...marks,
-            [key]: 'FL'
+            [key]: { tipo: 'injustificada', id: null }
           }))
         }
         return newSelected
       })
     }
 
-    // Modo edición: quitar marcas guardadas inmediatamente
+    // Modo edición: seleccionar marcas guardadas para eliminar
     if (editMode) {
-      // Solo permitir eliminar celdas que tienen marcas guardadas
+      // Solo permitir seleccionar celdas que tienen marcas guardadas
       if (savedMarks[key]) {
-        // Eliminar la marca inmediatamente
-        setSavedMarks(prev => {
-          const newMarks = { ...prev }
-          delete newMarks[key]
+        const markId = savedMarks[key].id
+
+        setMarksToDelete(prev => {
+          const newMarks = [...prev]
+          const index = newMarks.indexOf(markId)
+
+          if (index > -1) {
+            // Ya está seleccionado, quitarlo
+            newMarks.splice(index, 1)
+          } else {
+            // No está seleccionado, agregarlo
+            newMarks.push(markId)
+          }
+
           return newMarks
+        })
+
+        // Toggle selección visual
+        setSelectedCells(prev => {
+          const newSelected = { ...prev }
+          if (newSelected[key]) {
+            delete newSelected[key]
+          } else {
+            newSelected[key] = true
+          }
+          return newSelected
         })
       }
     }
@@ -204,12 +287,13 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
     if (flMode || Object.keys(tempMarks).length > 0) {
       const marksToSave = Object.keys(tempMarks).map(key => {
         const [dni, dia] = key.split('-')
+        const markData = tempMarks[key]
         return {
           dni,
           dia: parseInt(dia),
           mes: selectedDate.getMonth() + 1,
           anio: selectedDate.getFullYear(),
-          tipo: tempMarks[key]
+          tipo: markData.tipo || 'injustificada'
         }
       })
 
@@ -224,23 +308,32 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
         onSave(marksToSave)
       }
 
-      // Mover marcas temporales a marcas guardadas
-      setSavedMarks(prev => ({
-        ...prev,
-        ...tempMarks
-      }))
-
       // Limpiar después de guardar
       setSelectedCells({})
       setTempMarks({})
       setFlMode(false)
-      alert(`Se guardaron ${marksToSave.length} falta(s)`)
+      // No mostrar alert aquí, el componente padre lo hará
     }
 
-    // Modo edición: solo desactivar modo
+    // Modo edición: eliminar marcas seleccionadas
     if (editMode) {
+      if (marksToDelete.length === 0) {
+        alert('No hay marcas seleccionadas para eliminar')
+        setEditMode(false)
+        return
+      }
+
+      console.log('Eliminando marcas:', marksToDelete)
+
+      if (onDeleteMarks) {
+        onDeleteMarks(marksToDelete)
+      }
+
+      // Limpiar después de eliminar
+      setSelectedCells({})
+      setMarksToDelete([])
       setEditMode(false)
-      alert('Modo edición desactivado')
+      // No mostrar alert aquí, el componente padre lo hará
     }
   }
 
@@ -382,20 +475,39 @@ export default function CalendarioInasistencias({ inasistencias = [], onDelete, 
                         const tempMark = tempMarks[cellKey]
                         const savedMark = savedMarks[cellKey]
 
-                        // Mostrar marca temporal (FL) o marca guardada, o guion si no hay nada
+                        // Mostrar marca temporal o marca guardada, o guion si no hay nada
                         let content
+                        let cellClass = 'col-dia'
+
                         if (tempMark) {
-                          content = <span className="marca-falta temp">{tempMark}</span>
+                          // Marca temporal (nueva, aún no guardada)
+                          content = <span className="marca-falta temp">FL</span>
+                          cellClass += ' temp-mark'
                         } else if (savedMark) {
-                          content = <span className="marca-falta saved">{savedMark}</span>
+                          // Marca guardada desde la API
+                          const displayText = savedMark.tipo // "J" o "I"
+                          content = <span className="marca-falta saved">{displayText}</span>
+                          cellClass += ' saved-mark'
                         } else {
+                          // Sin marca
                           content = <span className="sin-falta">-</span>
+                        }
+
+                        // Agregar clases para interacción
+                        if (flMode || editMode) {
+                          cellClass += ' clickable'
+                        }
+                        if (isSelected) {
+                          cellClass += ' selected'
+                        }
+                        if (editMode && savedMark) {
+                          cellClass += ' editable'
                         }
 
                         return (
                           <td
                             key={dia.numero}
-                            className={`col-dia ${(flMode || editMode) ? 'clickable' : ''} ${isSelected ? 'selected' : ''} ${editMode && savedMark ? 'editable' : ''}`}
+                            className={cellClass}
                             onClick={() => handleCellClick(persona.dni, dia.numero)}
                           >
                             {content}

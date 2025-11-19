@@ -9,7 +9,7 @@ import DateCard from './components/DateCard'
 import WelcomeCard from './components/WelcomeCard'
 import CircularProgress from './components/CircularProgress'
 import LineChart from './components/LineChart'
-import BarChart from './components/BarChart'
+import RadarChart from './components/RadarChart'
 import PersonalTable from './components/PersonalTable'
 import TurnoList from './components/TurnoList'
 import DateRangeModal from './components/DateRangeModal'
@@ -456,9 +456,9 @@ export default function DashboardPage() {
           onPeriodChange={setChartPeriod}
         />
 
-        <BarChart
-          title="Incidencias"
-          subtitle="Por tipo de asunto y día"
+        <RadarChart
+          title="Análisis de Incidencias Asignadas"
+          subtitle="Distribución de incidencias por tipo de asunto"
           data={stats.incidenciasPorMes}
           incidencias={incidencias}
           faltasPorAsunto={stats.faltasPorAsunto}

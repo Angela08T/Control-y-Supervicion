@@ -104,6 +104,7 @@ body,
 .supervision-card,
 .line-chart-card,
 .bar-chart-card,
+.radar-chart-card,
 .personal-table-card,
 .turno-list-card {
   background: transparent !important;
@@ -2869,6 +2870,103 @@ body,
   font-size: 18px;
   font-weight: 600;
   margin: 0;
+}
+
+/* Radar Chart Styles */
+.radar-chart-card {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px var(--shadow);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  position: relative;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.radar-chart-svg {
+  width: 100%;
+  height: auto;
+  margin-bottom: 16px;
+  max-width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.radar-point {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.radar-point:hover {
+  r: 7;
+  filter: brightness(1.2);
+}
+
+.radar-label {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text-primary);
+}
+
+.radar-table {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.radar-table-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.radar-table-row:hover {
+  opacity: 0.7;
+}
+
+.radar-table-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.radar-table-col-count {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.radar-table-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.radar-table-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.radar-table-value {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 4px;
 }
 
 /* Bottom Grid */
