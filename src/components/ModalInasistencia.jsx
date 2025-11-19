@@ -9,7 +9,6 @@ import './Autocomplete.css'
 import {
   FaIdCard,
   FaClipboardList,
-  FaExclamationTriangle,
   FaClock,
   FaUserTag,
   FaUsers,
@@ -311,18 +310,13 @@ export default function ModalInasistencia({ onClose, onSave }) {
       return
     }
 
-    if (!form.falta || !form.turno || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
+    if (!form.turno || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
       alert('Completa todos los campos obligatorios')
       return
     }
 
     if (!form.subjectId) {
       alert('Error: No se pudo obtener el ID del asunto.')
-      return
-    }
-
-    if (!form.lackId) {
-      alert('Error: No se pudo obtener el ID de la falta. Por favor, selecciona la falta.')
       return
     }
 
@@ -407,20 +401,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
             readOnly
             style={{ cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)' }}
           />
-
-          <label>
-            <FaExclamationTriangle style={{ marginRight: '8px' }} />
-            Seleccionar falta *
-          </label>
-          <select
-            value={form.falta}
-            onChange={e => setField('falta', e.target.value)}
-          >
-            <option value="">Selecciona</option>
-            {lacksInasistencia.map(lack => (
-              <option key={lack.id} value={lack.name}>{lack.name}</option>
-            ))}
-          </select>
 
           <label>
             <FaClock style={{ marginRight: '8px' }} />
