@@ -102,7 +102,7 @@ export default function UsuariosPage() {
       // Crear nuevo usuario
       try {
         // Verificar permisos antes de crear
-        if (data.rol === 'ADMIN' && userRole !== 'admin') {
+        if (data.rol === 'ADMINISTRATOR' && userRole !== 'admin') {
           alert('No tienes permisos para crear administradores')
           return
         }

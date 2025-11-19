@@ -691,7 +691,41 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             <FaMapMarkerAlt style={{ marginRight: '8px' }} />
             Ubicación del Infractor *
           </label>
-          <MapSelector value={form.ubicacion} onChange={p => setField('ubicacion', p)} />
+          <MapSelector
+            value={form.ubicacion}
+            onChange={p => {
+              setField('ubicacion', p)
+              // Si el mapa detectó una jurisdicción, actualizarla automáticamente
+              if (p.jurisdiccion) {
+                // Función para normalizar texto (quitar tildes y convertir a minúsculas)
+                const normalizar = (texto) => {
+                  return texto
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '') // Quitar tildes
+                    .replace(/\s+/g, ' ') // Normalizar espacios
+                    .trim()
+                }
+
+                const jurisdiccionNormalizada = normalizar(p.jurisdiccion)
+
+                // Buscar la jurisdicción del backend que coincida
+                const jurisdiccionBackend = jurisdiccionesHabilitadas.find(j =>
+                  normalizar(j.name) === jurisdiccionNormalizada ||
+                  normalizar(j.name).includes(jurisdiccionNormalizada) ||
+                  jurisdiccionNormalizada.includes(normalizar(j.name))
+                )
+
+                if (jurisdiccionBackend) {
+                  setField('jurisdiccion', jurisdiccionBackend.name)
+                  setField('jurisdictionId', jurisdiccionBackend.id)
+                  console.log('🏛️ Jurisdicción actualizada automáticamente:', jurisdiccionBackend.name)
+                } else {
+                  console.log('⚠️ No se encontró coincidencia para:', p.jurisdiccion)
+                }
+              }
+            }}
+          />
 
           <label>
             <FaUserTag style={{ marginRight: '8px' }} />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
+import useJurisdiccionDetection from '../hooks/Jurisdiction/useJurisdiccionDetection'
 
 // Importar CSS de Leaflet
 import 'leaflet/dist/leaflet.css'
@@ -62,6 +63,10 @@ function ClickHandler({ onLocationSelect }) {
 export default function MapSelector({ value, onChange }) {
   const [position, setPosition] = useState(value?.coordinates || null)
   const [address, setAddress] = useState(value?.address || '')
+  const [jurisdiccionDetectada, setJurisdiccionDetectada] = useState(null)
+
+  // Hook para detección de jurisdicción
+  const { detectarJurisdiccion, jurisdicciones } = useJurisdiccionDetection()
 
   useEffect(() => {
     if (value) {
@@ -78,10 +83,24 @@ export default function MapSelector({ value, onChange }) {
     console.log('   Coordenadas:', newPos)
     console.log('   Dirección:', newAddress)
 
+    // Detectar jurisdicción automáticamente
+    let jurisdiccion = null
+    if (jurisdicciones && jurisdicciones.length > 0) {
+      jurisdiccion = detectarJurisdiccion(newPos[0], newPos[1])
+      if (jurisdiccion) {
+        console.log('🏛️ Jurisdicción detectada:', jurisdiccion.name)
+        setJurisdiccionDetectada(jurisdiccion)
+      } else {
+        console.log('⚠️ No se detectó jurisdicción para esta ubicación')
+        setJurisdiccionDetectada(null)
+      }
+    }
+
     if (onChange) {
       onChange({
         coordinates: newPos,
-        address: newAddress
+        address: newAddress,
+        jurisdiccion: jurisdiccion ? jurisdiccion.name : null
       })
     }
   }
@@ -90,7 +109,7 @@ export default function MapSelector({ value, onChange }) {
     <div style={{ marginTop: '8px' }}>
       <div style={{ height: '250px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: '1px solid #21343d' }}>
         <MapContainer
-          center={[-12.0464, -77.0428]}
+          center={[-11.9833, -77.0075]}
           zoom={13}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
@@ -113,10 +132,31 @@ export default function MapSelector({ value, onChange }) {
           </div>
           <div className="map-coords" style={{
             background: address === 'Cargando dirección...' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(74, 155, 142, 0.1)',
-            fontStyle: address === 'Cargando dirección...' ? 'italic' : 'normal'
+            fontStyle: address === 'Cargando dirección...' ? 'italic' : 'normal',
+            marginBottom: '8px'
           }}>
             🏠 {address || 'Sin dirección'}
           </div>
+          {jurisdiccionDetectada && (
+            <div className="map-coords" style={{
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              color: '#3b82f6',
+              fontWeight: '500'
+            }}>
+              🏛️ Jurisdicción: {jurisdiccionDetectada.name}
+            </div>
+          )}
+          {!jurisdiccionDetectada && jurisdicciones.length > 0 && (
+            <div className="map-coords" style={{
+              background: 'rgba(251, 191, 36, 0.1)',
+              border: '1px solid rgba(251, 191, 36, 0.3)',
+              color: '#f59e0b',
+              fontStyle: 'italic'
+            }}>
+              ⚠️ No se detectó jurisdicción para esta ubicación
+            </div>
+          )}
         </div>
       )}
     </div>

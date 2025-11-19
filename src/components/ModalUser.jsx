@@ -75,7 +75,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
     }
 
     // Si no es admin y está intentando crear admin
-    if (userRole !== 'admin' && form.rol === 'ADMIN') {
+    if (userRole !== 'admin' && form.rol === 'ADMINISTRATOR') {
       newErrors.rol = 'No tienes permisos para crear administradores'
     }
 
@@ -220,7 +220,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
               <option value="SENTINEL">Sentinel</option>
               {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}
               {canCreateValidator && <option value="VALIDATOR">Validador</option>}
-              {canCreateValidator && <option value="ADMIN">Admin</option>}
+              {canCreateValidator && <option value="ADMINISTRATOR">Admin</option>}
             </select>
             {errors.rol && <span className="error-message">{errors.rol}</span>}
             {!canCreateSupervisor && (
