@@ -86,8 +86,8 @@ export default function CalendarModal({ onClose, onApply }) {
   }
 
   return (
-    <div className="calendar-modal-overlay" onClick={onClose}>
-      <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="calendar-modal-overlay">
+      <div className="calendar-modal">
         <div className="calendar-header">
           <button className="calendar-nav-btn" onClick={previousMonth}>
             ‹

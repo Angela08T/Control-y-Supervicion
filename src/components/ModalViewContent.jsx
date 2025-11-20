@@ -3,10 +3,9 @@ import { FaFileAlt, FaTimes } from 'react-icons/fa'
 
 export default function ModalViewContent({ content, title, onClose }) {
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       <div
         className="modal-card"
-        onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '900px', maxHeight: '90vh' }}
       >
         <div className="modal-header">

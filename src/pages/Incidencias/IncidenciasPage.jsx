@@ -10,7 +10,7 @@ import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
-import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
+import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
 
 export default function IncidenciasPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -54,15 +54,23 @@ export default function IncidenciasPage() {
     initSocket()
 
     // Suscribirse al evento de cambio de estado
-    const unsubscribe = onReportStatusChanged((data) => {
+    const unsubscribeStatusChanged = onReportStatusChanged((data) => {
       console.log('🔔 Cambio de estado recibido:', data)
       // Recargar datos automáticamente cuando cambie el estado de un reporte
       setRefreshTrigger(prev => prev + 1)
     })
 
+    // Suscribirse al evento de validación (APPROVED/REJECTED)
+    const unsubscribeStatusValidate = onReportStatusValidate((data) => {
+      console.log('🔔 Validación de estado recibida:', data)
+      // Recargar datos automáticamente cuando se apruebe/rechace un reporte
+      setRefreshTrigger(prev => prev + 1)
+    })
+
     // Cleanup: desuscribirse al desmontar
     return () => {
-      unsubscribe()
+      unsubscribeStatusChanged()
+      unsubscribeStatusValidate()
       disconnectSocket()
     }
   }, [])

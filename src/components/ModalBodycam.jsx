@@ -58,8 +58,8 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop">
+      <div className="modal-card">
         <div className="modal-header">
           <h3>{initial ? 'Editar Bodycam' : 'Nueva Bodycam'}</h3>
           <button className="close" onClick={onClose}>×</button>

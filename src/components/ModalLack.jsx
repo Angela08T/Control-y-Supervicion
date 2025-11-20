@@ -111,8 +111,8 @@ export default function ModalLack({ initial, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+    <div className="modal-backdrop">
+      <div className="modal-card" style={{ maxWidth: '800px' }}>
         <div className="modal-header">
           <h3>{initial ? 'Editar Falta' : 'Nueva Falta'}</h3>
           <button className="close" onClick={onClose}>×</button>
