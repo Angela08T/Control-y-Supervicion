@@ -93,6 +93,29 @@ export const onReportStatusChanged = (callback) => {
 }
 
 /**
+ * Suscribirse al evento de validación de estado de reporte (APPROVED/REJECTED)
+ * @param {Function} callback - Función a ejecutar cuando se valide el estado
+ * @returns {Function} - Función para cancelar la suscripción
+ */
+export const onReportStatusValidate = (callback) => {
+  const socketInstance = getSocket()
+
+  const handler = (data) => {
+    console.log('📨 Evento report_status_validate recibido:', data)
+    callback(data)
+  }
+
+  socketInstance.on('report_status_validate', handler)
+  console.log('👂 Escuchando evento: report_status_validate')
+
+  // Retornar función para cancelar suscripción
+  return () => {
+    socketInstance.off('report_status_validate', handler)
+    console.log('🔇 Dejando de escuchar: report_status_validate')
+  }
+}
+
+/**
  * Emitir un evento al servidor
  * @param {string} event - Nombre del evento
  * @param {any} data - Datos a enviar
@@ -112,5 +135,6 @@ export default {
   getSocket,
   disconnectSocket,
   onReportStatusChanged,
+  onReportStatusValidate,
   emitEvent
 }

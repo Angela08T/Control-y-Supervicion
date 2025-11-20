@@ -55,8 +55,8 @@ export default function ModalSubject({ initial, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop">
+      <div className="modal-card">
         <div className="modal-header">
           <h3>{initial ? 'Editar Asunto' : 'Nuevo Asunto'}</h3>
           <button className="close" onClick={onClose}>×</button>
