@@ -45,3 +45,57 @@ export function loadIncidencias(){
 export function saveIncidencias(list){
   localStorage.setItem(KEY, JSON.stringify(list))
 }
+
+// Gestión de descargas de PDF
+const PDF_DOWNLOADS_KEY = 'centinela_pdf_downloads'
+
+export function trackPDFDownload(incidenciaId) {
+  try {
+    const downloads = getPDFDownloads()
+    downloads.push({
+      incidenciaId,
+      timestamp: new Date().toISOString()
+    })
+    localStorage.setItem(PDF_DOWNLOADS_KEY, JSON.stringify(downloads))
+  } catch (e) {
+    console.error('Error registrando descarga de PDF', e)
+  }
+}
+
+export function getPDFDownloads() {
+  try {
+    const raw = localStorage.getItem(PDF_DOWNLOADS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch (e) {
+    console.error('Error cargando descargas de PDF', e)
+    return []
+  }
+}
+
+export function getPDFDownloadStats() {
+  try {
+    const incidencias = loadIncidencias()
+    const downloads = getPDFDownloads()
+
+    const totalIncidencias = incidencias.length
+    const totalDownloads = downloads.length
+
+    // Calcular porcentaje
+    const percentage = totalIncidencias > 0
+      ? Math.round((totalDownloads / totalIncidencias) * 100)
+      : 0
+
+    return {
+      totalIncidencias,
+      totalDownloads,
+      percentage: Math.min(percentage, 100) // Limitar a 100%
+    }
+  } catch (e) {
+    console.error('Error calculando estadísticas de PDF', e)
+    return {
+      totalIncidencias: 0,
+      totalDownloads: 0,
+      percentage: 0
+    }
+  }
+}
