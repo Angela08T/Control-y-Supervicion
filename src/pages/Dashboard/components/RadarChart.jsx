@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function RadarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange }) {
+export default function RadarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -70,6 +70,10 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   const handleCalendarApply = (start, end) => {
     setCustomDateRange({ start, end })
     setRangoTiempo('custom')
+    // Notificar al padre del nuevo rango de fechas personalizado
+    if (onDateRangeChange) {
+      onDateRangeChange(start, end)
+    }
   }
 
   const formatDateRange = () => {

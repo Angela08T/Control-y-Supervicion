@@ -454,6 +454,7 @@ export default function DashboardPage() {
           onOpenDateModal={() => setShowDateModal(true)}
           defaultPeriod={chartPeriod}
           onPeriodChange={setChartPeriod}
+          onDateRangeChange={handleDateRangeChange}
         />
 
         <RadarChart
@@ -464,6 +465,7 @@ export default function DashboardPage() {
           faltasPorAsunto={stats.faltasPorAsunto}
           defaultPeriod={chartPeriod}
           onPeriodChange={setChartPeriod}
+          onDateRangeChange={handleDateRangeChange}
         />
       </div>
 
