@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import CalendarioInasistencias from '../../components/CalendarioInasistencias'
 import ModalInasistencia from '../../components/ModalInasistencia'
+import CalendarModal from '../Dashboard/components/CalendarModal'
 import { createReport, getReports, mapFormDataToAPI } from '../../api/report'
 import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
-import { FaPlus } from 'react-icons/fa'
+import { FaPlus, FaCalendarAlt } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
 
 export default function InasistenciasPage() {
@@ -14,10 +15,21 @@ export default function InasistenciasPage() {
 
   const [inasistencias, setInasistencias] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [savedAttendances, setSavedAttendances] = useState([]) // Inasistencias guardadas desde la API
   const [currentMonth, setCurrentMonth] = useState(new Date()) // Mes actual del calendario
+
+  // Estado para el rango de fechas (por defecto: mes actual)
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const start = new Date(year, month, 1)
+    const end = new Date(year, month + 1, 0)
+    return { start, end }
+  })
 
   // WebSocket: Escuchar cambios de estado de reportes en tiempo real
   useEffect(() => {
@@ -34,59 +46,49 @@ export default function InasistenciasPage() {
     }
   }, [])
 
-  // Cargar inasistencias desde la API de offenders
+  // Cargar inasistencias desde la API de attendance con rango de fechas
   useEffect(() => {
     console.log('🔄 useEffect ejecutándose - refreshTrigger:', refreshTrigger)
     async function fetchInasistencias() {
       setLoading(true)
       try {
-        // 🔹 NUEVO: Obtener offenders (inasistencias) desde el endpoint de offender
-        const result = await getOffenders(1, 1000)
+        // Formatear fechas para la API
+        const startStr = `${dateRange.start.getFullYear()}-${String(dateRange.start.getMonth() + 1).padStart(2, '0')}-${String(dateRange.start.getDate()).padStart(2, '0')}`
+        const endStr = `${dateRange.end.getFullYear()}-${String(dateRange.end.getMonth() + 1).padStart(2, '0')}-${String(dateRange.end.getDate()).padStart(2, '0')}`
+
+        console.log(`📅 Cargando inasistencias del rango: ${startStr} a ${endStr}`)
+        const result = await getAttendances(startStr, endStr)
         console.log('📡 Respuesta completa de API:', result)
-        console.log('📡 result:', JSON.stringify(result, null, 2))
 
-        // La API devuelve: { message: "...", data: { data: [...], pagination... } }
-        // Intentar extraer el array de datos
-        let offendersData = []
+        // Extraer los datos del response
+        const attendancesData = result.data || []
 
-        if (Array.isArray(result)) {
-          // Si result es directamente un array
-          offendersData = result
-        } else if (result.data?.data && Array.isArray(result.data.data)) {
-          // Si está anidado en result.data.data (PRIORIDAD)
-          offendersData = result.data.data
-        } else if (Array.isArray(result.data)) {
-          // Si result.data es un array
-          offendersData = result.data
-        } else if (result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
-          // Si result.data es un objeto individual (solo 1 registro)
-          offendersData = [result.data]
-        } else if (result.rows && Array.isArray(result.rows)) {
-          // Algunas APIs usan "rows"
-          offendersData = result.rows
-        }
+        console.log('📊 Attendances extraídos:', attendancesData)
+        console.log('📊 Cantidad de personas:', attendancesData.length)
 
-        console.log('📊 Offenders extraídos (array):', offendersData)
-        console.log('📊 Cantidad de offenders:', offendersData.length)
-
-        // Mapear los datos de offenders al formato esperado por la tabla
-        const inasistenciasData = offendersData.map(offender => ({
-          id: offender.id || offender.gestionate_id,
-          dni: offender.dni,
-          nombreCompleto: `${offender.name || ''} ${offender.lastname || ''}`.trim(),
-          turno: offender.shift, // Puede venir "Mañana", "M", etc.
-          cargo: offender.job,
-          regLab: offender.regime,
-          subgerencia: offender.subgerencia,
-          asunto: 'Inasistencia', // Asumimos que todos los offenders son inasistencias
-          falta: 'Inasistencia', // Tipo genérico
-          fechaIncidente: offender.created_at ? new Date(offender.created_at).toLocaleDateString('es-PE') : '',
-          createdAt: offender.created_at,
-          updatedAt: offender.updated_at
+        // Mapear los datos de attendances al formato esperado por la tabla
+        const inasistenciasData = attendancesData.map(person => ({
+          id: person.id || person.offender_id,
+          dni: person.dni,
+          nombreCompleto: person.name && person.lastname
+            ? `${person.name} ${person.lastname}`.trim()
+            : person.fullname || null,
+          turno: person.shift || null,
+          cargo: person.job || null,
+          regLab: person.regime || null,
+          subgerencia: person.subgerencia || person.jurisdiction || null,
+          asunto: 'Inasistencia',
+          falta: 'Inasistencia',
+          fechaIncidente: null,
+          createdAt: person.created_at,
+          updatedAt: person.updated_at
         }))
 
         console.log('✅ Inasistencias mapeadas:', inasistenciasData)
         setInasistencias(inasistenciasData)
+
+        // También actualizar savedAttendances con los mismos datos
+        setSavedAttendances(attendancesData)
       } catch (error) {
         console.error('❌ Error al cargar inasistencias:', error)
         console.error('❌ Error completo:', error.response || error)
@@ -95,7 +97,8 @@ export default function InasistenciasPage() {
         let errorMessage = 'No se pudieron cargar las inasistencias'
         if (error.response?.status === 404) {
           errorMessage = 'No hay inasistencias registradas aún'
-          setInasistencias([]) // Lista vacía
+          setInasistencias([])
+          setSavedAttendances([])
         } else if (error.message) {
           errorMessage += ': ' + error.message
         }
@@ -111,41 +114,22 @@ export default function InasistenciasPage() {
     }
 
     fetchInasistencias()
-  }, [refreshTrigger])
+  }, [refreshTrigger, dateRange])
 
-  // Cargar inasistencias guardadas (attendances) del mes actual
-  useEffect(() => {
-    async function fetchSavedAttendances() {
-      try {
-        const year = currentMonth.getFullYear()
-        const month = currentMonth.getMonth()
+  // Función para manejar la selección de rango de fechas desde el modal
+  function handleDateRangeSelect(start, end) {
+    console.log('📅 Nuevo rango seleccionado:', start, end)
+    setDateRange({ start, end })
+    setShowCalendarModal(false)
+  }
 
-        // Calcular primer y último día del mes
-        const start = `${year}-${String(month + 1).padStart(2, '0')}-01`
-        const lastDay = new Date(year, month + 1, 0).getDate()
-        const end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-        console.log(`📅 Cargando attendances del mes: ${start} a ${end}`)
-        const result = await getAttendances(start, end)
-
-        console.log('📊 Attendances del mes obtenidas:', result)
-
-        // Extraer los datos del response
-        const attendancesData = result.data || []
-
-        setSavedAttendances(attendancesData)
-      } catch (error) {
-        console.error('❌ Error al cargar attendances guardadas:', error)
-        // Si es 404, simplemente no hay attendances guardadas aún
-        if (error.response?.status !== 404) {
-          console.warn('⚠️ No se pudieron cargar las inasistencias guardadas')
-        }
-        setSavedAttendances([])
-      }
-    }
-
-    fetchSavedAttendances()
-  }, [currentMonth, refreshTrigger])
+  // Formatear rango de fechas para mostrar
+  function formatDateRange() {
+    const options = { day: '2-digit', month: 'short', year: 'numeric' }
+    const startStr = dateRange.start.toLocaleDateString('es-PE', options)
+    const endStr = dateRange.end.toLocaleDateString('es-PE', options)
+    return `${startStr} - ${endStr}`
+  }
 
   // Crear inasistencia
   async function handleCreate(data, allLeads = []) {
@@ -316,7 +300,22 @@ export default function InasistenciasPage() {
       <header className="page-header">
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
           <h2>CONTROL Y SUPERVISIÓN</h2>
-          <div className="controls">
+          <div className="controls" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* Botón de calendario para seleccionar rango de fechas */}
+            <button
+              className="btn-secondary"
+              onClick={() => setShowCalendarModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px'
+              }}
+            >
+              <FaCalendarAlt />
+              <span style={{ fontSize: '0.85rem' }}>{formatDateRange()}</span>
+            </button>
+
             {permissions.canCreate && (
               <button className="btn-primary" onClick={() => setShowModal(true)}>
                 <FaPlus style={{ marginRight: '8px' }} />
@@ -344,6 +343,7 @@ export default function InasistenciasPage() {
           onDelete={handleDelete}
           onDeleteMarks={handleDeleteMarks}
           onMonthChange={handleMonthChange}
+          dateRange={dateRange}
         />
       )}
 
@@ -351,6 +351,13 @@ export default function InasistenciasPage() {
         <ModalInasistencia
           onClose={() => setShowModal(false)}
           onSave={handleCreate}
+        />
+      )}
+
+      {showCalendarModal && (
+        <CalendarModal
+          onClose={() => setShowCalendarModal(false)}
+          onApply={handleDateRangeSelect}
         />
       )}
     </div>
