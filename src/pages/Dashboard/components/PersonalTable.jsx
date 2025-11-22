@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FaCircle } from 'react-icons/fa'
-import { getAllOffenders } from '../../../api/statistics'
+import api from '../../../api/config'
 
 export default function PersonalTable() {
   const [personal, setPersonal] = useState([])
@@ -12,35 +12,64 @@ export default function PersonalTable() {
 
   const fetchPersonal = async () => {
     try {
-      const response = await getAllOffenders()
+      // Obtener usuarios con rol SENTINEL
+      console.log('📡 PersonalTable: Obteniendo centinelas...')
+      const response = await api.get('/user', {
+        params: { rol: 'SENTINEL' }
+      })
+
+      console.log('✅ Centinelas obtenidos:', response.data)
+
+      // Extraer datos de la respuesta
+      const usersData = response.data?.data?.data || response.data?.data || []
+
+      console.log('📊 Datos de usuarios extraídos:', usersData)
+
+      // Si no hay datos, mostrar lista vacía
+      if (!usersData || usersData.length === 0) {
+        console.log('⚠️ No hay centinelas registrados en la API')
+        setPersonal([])
+        setLoading(false)
+        return
+      }
 
       // Transformar datos de la API al formato de la tabla
-      const personalData = (response.data || []).map(offender => {
-        const initials = offender.name
-          ? offender.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-          : '??'
+      const personalData = usersData.map(user => {
+        // Construir nombre completo
+        const nombreCompleto = `${user.name || ''} ${user.lastname || ''}`.trim() || 'Sin nombre'
+
+        // Generar iniciales
+        const initials = nombreCompleto
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .substring(0, 2)
+          .toUpperCase() || '??'
+
+        // Mapear turno de inicial a nombre completo
+        let turnoCompleto = 'No asignado'
+        if (user.shift === 'M') turnoCompleto = 'Mañana'
+        else if (user.shift === 'T') turnoCompleto = 'Tarde'
+        else if (user.shift === 'N') turnoCompleto = 'Noche'
 
         return {
-          nombre: offender.name || 'Sin nombre',
-          rol: offender.role || 'Sereno',
-          turno: offender.shift || 'No asignado',
-          activo: offender.status === 'active',
+          nombre: nombreCompleto,
+          rol: user.rol || 'Centinela',
+          turno: turnoCompleto,
+          activo: user.status === 'active' || user.status === true,
           avatar: initials,
-          dni: offender.dni
+          dni: user.dni
         }
       })
 
       setPersonal(personalData)
     } catch (error) {
-      console.warn('No se pudo cargar el personal desde la API, usando datos de ejemplo:', error)
-      // Fallback a datos de ejemplo si la API falla
-      setPersonal([
-        { nombre: 'Carmen Rodríguez', rol: 'Sereno', turno: 'Noche', activo: true, avatar: 'CR' },
-        { nombre: 'José Martinez', rol: 'Supervisor', turno: 'Mañana', activo: false, avatar: 'JM' },
-        { nombre: 'Ana Torres', rol: 'Sereno', turno: 'Tarde', activo: true, avatar: 'AT' },
-        { nombre: 'Carlos Vega', rol: 'Sereno', turno: 'Noche', activo: true, avatar: 'CV' },
-        { nombre: 'María Sánchez', rol: 'Coordinador', turno: 'Mañana', activo: false, avatar: 'MS' }
-      ])
+      console.error('❌ Error al cargar centinelas:', error)
+      console.error('❌ Error response:', error.response?.data)
+      console.error('❌ Error status:', error.response?.status)
+
+      // No usar fallback, mostrar lista vacía para indicar que hubo un problema
+      setPersonal([])
     } finally {
       setLoading(false)
     }

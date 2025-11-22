@@ -145,22 +145,21 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   const yAxisValues = [0, 1, 2, 3, 4].map(i => Math.round((maxValue / 4) * i))
 
   // Crear path con curvas suaves tipo Bezier cúbica para mejor apariencia
+  // Siempre empieza desde el borde izquierdo del gráfico en la parte inferior (valor 0)
   const createPath = (values) => {
     if (values.length === 0) return ''
 
-    // Comenzar desde el borde izquierdo del área del gráfico (antes del primer punto)
+    // Comenzar desde el borde izquierdo en la parte inferior (valor 0)
     const startX = paddingLeft + yAxisLabelWidth
-    const firstY = getY(values[0])
+    const zeroY = getY(0)
 
-    if (values.length === 1) return `M ${startX} ${firstY} L ${getX(0)} ${getY(values[0])}`
-
-    // Iniciar el path desde el borde izquierdo
-    let path = `M ${startX} ${firstY}`
+    // Iniciar el path desde el borde izquierdo en la base
+    let path = `M ${startX} ${zeroY}`
 
     // Línea hasta el primer punto
     path += ` L ${getX(0)} ${getY(values[0])}`
 
-    // Asegurar que todas las líneas estén completas conectando todos los puntos
+    // Conectar todos los puntos con curvas Bezier
     for (let i = 0; i < values.length - 1; i++) {
       const x1 = getX(i)
       const y1 = getY(values[i])
@@ -181,16 +180,32 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }
 
   // Calcular la longitud aproximada del path para animar correctamente
+  // Incluye la línea inicial desde el borde izquierdo (base) hasta el primer punto
   const getPathLength = (values) => {
-    if (values.length < 2) return 0
+    if (values.length === 0) return 0
+
     let length = 0
+
+    // Incluir la línea diagonal desde el borde izquierdo (base) hasta el primer punto
+    const startX = paddingLeft + yAxisLabelWidth
+    const zeroY = getY(0)
+    const firstX = getX(0)
+    const firstY = getY(values[0])
+    length += Math.sqrt((firstX - startX) ** 2 + (firstY - zeroY) ** 2)
+
+    // Calcular longitud de todas las curvas
     for (let i = 0; i < values.length - 1; i++) {
       const x1 = getX(i)
       const y1 = getY(values[i])
       const x2 = getX(i + 1)
       const y2 = getY(values[i + 1])
-      length += Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+      // Para curvas Bezier, la longitud real es mayor que la línea recta
+      // Usar factor de 1.5 para asegurar que la animación complete todo el recorrido
+      const straightLength = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+      length += straightLength * 1.5
     }
+
     return length
   }
   
@@ -279,13 +294,12 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                 fontWeight="600"
               >
                 {yAxisValues[4 - i]}
-              </text>
+              </text> 
             </g>
           )
         })}
 
-        {/* Líneas para cada asunto */}
-        <g clipPath="url(#chart-clip)">
+        {/* Líneas para cada asunto - sin clipPath para que empiecen desde el borde */}
         {nuevosAsuntos.map((asunto, asuntoIndex) => {
           if (!filtrosActivos[asunto]) return null
 
@@ -298,7 +312,25 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
           return (
             <g key={`${asunto}-${animationKey}`}>
-              {/* Puntos solo donde hay datos (value > 0) - aparecen primero, sin animación */}
+              {/* Línea dibujándose de izquierda a derecha */}
+              <path
+                id={pathId}
+                d={createPath(values)}
+                fill="none"
+                stroke={color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="chart-line chart-line-animated"
+                style={{
+                  strokeDasharray: pathLength,
+                  strokeDashoffset: pathLength,
+                  animation: `drawLine ${animationDuration}s ease-in-out forwards`,
+                  animationDelay: `${lineDelay}s`
+                }}
+              />
+
+              {/* Puntos solo donde hay datos (value > 0) */}
               {values.map((value, i) => {
                 // Solo mostrar puntos donde hay datos
                 if (value === 0) return null
@@ -333,28 +365,9 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                   </g>
                 )
               })}
-
-              {/* Línea dibujándose de izquierda a derecha - después de los puntos */}
-              <path
-                id={pathId}
-                d={createPath(values)}
-                fill="none"
-                stroke={color}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="chart-line chart-line-animated"
-                style={{
-                  strokeDasharray: pathLength,
-                  strokeDashoffset: pathLength,
-                  animation: `drawLine ${animationDuration}s ease-in-out forwards`,
-                  animationDelay: `${lineDelay}s`
-                }}
-              />
             </g>
           )
         })}
-        </g>
 
         {/* Etiquetas del eje X - Mostrar fechas espaciadas */}
         {meses.map((mes, i) => {

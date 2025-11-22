@@ -6,8 +6,9 @@ import CalendarModal from '../Dashboard/components/CalendarModal'
 import { createReport, getReports, mapFormDataToAPI } from '../../api/report'
 import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
-import { FaPlus, FaCalendarAlt } from 'react-icons/fa'
+import { FaPlus, FaCalendarAlt, FaFilePdf } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
+import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 
 export default function InasistenciasPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -16,6 +17,7 @@ export default function InasistenciasPage() {
   const [inasistencias, setInasistencias] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
+  const [showPDFModal, setShowPDFModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [savedAttendances, setSavedAttendances] = useState([]) // Inasistencias guardadas desde la API
@@ -316,6 +318,22 @@ export default function InasistenciasPage() {
               <span style={{ fontSize: '0.85rem' }}>{formatDateRange()}</span>
             </button>
 
+            {/* Botón +PDF para validadores */}
+            {userRole === 'validator' && (
+              <button
+                className="btn-primary"
+                onClick={() => setShowPDFModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FaFilePdf />
+                PDF
+              </button>
+            )}
+
             {permissions.canCreate && (
               <button className="btn-primary" onClick={() => setShowModal(true)}>
                 <FaPlus style={{ marginRight: '8px' }} />
@@ -344,6 +362,7 @@ export default function InasistenciasPage() {
           onDeleteMarks={handleDeleteMarks}
           onMonthChange={handleMonthChange}
           dateRange={dateRange}
+          isReadOnly={userRole === 'validator'}
         />
       )}
 
@@ -358,6 +377,15 @@ export default function InasistenciasPage() {
         <CalendarModal
           onClose={() => setShowCalendarModal(false)}
           onApply={handleDateRangeSelect}
+        />
+      )}
+
+      {showPDFModal && (
+        <ModalPDFInasistencias
+          onClose={() => setShowPDFModal(false)}
+          inasistencias={inasistencias}
+          savedAttendances={savedAttendances}
+          dateRange={dateRange}
         />
       )}
     </div>

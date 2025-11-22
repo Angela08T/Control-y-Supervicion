@@ -90,15 +90,19 @@ export const getAllOffenders = async () => {
  */
 export const getDashboardTrends = async (startDate, endDate) => {
   try {
+    console.log('📡 getDashboardTrends: Solicitando tendencias...', { startDate, endDate });
     const response = await api.get('/dashboard/trends/', {
       params: {
         start: startDate,
         end: endDate
       }
     });
+    console.log('✅ getDashboardTrends: Respuesta recibida', response.data);
     return response.data;
   } catch (error) {
-    console.warn('Endpoint de tendencias del dashboard no disponible');
+    console.error('❌ getDashboardTrends: Error', error);
+    console.error('❌ Status:', error.response?.status);
+    console.error('❌ Data:', error.response?.data);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -117,15 +121,19 @@ export const getDashboardTrends = async (startDate, endDate) => {
  */
 export const getDashboardGeneral = async (startDate, endDate) => {
   try {
+    console.log('📡 getDashboardGeneral: Solicitando estadísticas generales...', { startDate, endDate });
     const response = await api.get('/dashboard/general/', {
       params: {
         start: startDate,
         end: endDate
       }
     });
+    console.log('✅ getDashboardGeneral: Respuesta recibida', response.data);
     return response.data;
   } catch (error) {
-    console.warn('Endpoint de estadísticas generales del dashboard no disponible');
+    console.error('❌ getDashboardGeneral: Error', error);
+    console.error('❌ Status:', error.response?.status);
+    console.error('❌ Data:', error.response?.data);
     if (error.response) {
       throw error;
     } else if (error.request) {

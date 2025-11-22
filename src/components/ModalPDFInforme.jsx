@@ -506,6 +506,65 @@ Se adjuntan las evidencias:`
     }))
   }
 
+  // Función para guardar cambios sin descargar el PDF
+  async function guardarCambios() {
+    // Validar que todas las imágenes tengan descripción
+    const errores = []
+    formData.imagenes.forEach((img, index) => {
+      if (!img.anexo || !img.anexo.trim()) {
+        errores.push(index)
+      }
+    })
+
+    if (errores.length > 0) {
+      setValidationErrors(errores)
+      alert(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
+      return
+    }
+
+    setSavingReport(true)
+    try {
+      console.log('💾 Guardando cambios del informe...')
+
+      // Obtener imágenes nuevas para subir
+      const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
+      const files = nuevasImagenes.map(img => img.file).filter(Boolean)
+      const descriptions = nuevasImagenes.map(img => img.anexo)
+
+      await updateReportWithEvidences(
+        incidencia.id,
+        files,
+        descriptions,
+        formData.descripcionAdicional
+      )
+
+      console.log('✅ Cambios guardados exitosamente')
+      alert('✅ Cambios guardados exitosamente')
+
+      // Marcar las imágenes nuevas como existentes después de guardar
+      setFormData(prev => ({
+        ...prev,
+        imagenes: prev.imagenes.map(img => ({
+          ...img,
+          isExisting: true
+        }))
+      }))
+    } catch (error) {
+      console.error('❌ Error al guardar cambios:', error)
+
+      let errorMessage = 'Error al guardar los cambios'
+      if (error.response?.data?.message) {
+        errorMessage = Array.isArray(error.response.data.message)
+          ? 'Errores:\n' + error.response.data.message.join('\n')
+          : error.response.data.message
+      }
+
+      alert(errorMessage)
+    } finally {
+      setSavingReport(false)
+    }
+  }
+
   async function generarPDF() {
     // Validar que todas las imágenes tengan descripción
     const errores = []
@@ -1032,27 +1091,21 @@ Se adjuntan las evidencias:`
             Cancelar
           </button>
           <button
+            className="btn-secondary"
+            onClick={guardarCambios}
+            disabled={savingReport || loadingEvidences}
+            style={{ marginLeft: '10px' }}
+          >
+            {savingReport ? '💾 Guardando...' : 'Guardar'}
+          </button>
+          <button
             className="btn-primary"
             onClick={generarPDF}
             disabled={savingReport || loadingEvidences}
           >
-            {savingReport ? '💾 Guardando evidencias...' : 'Descargar PDF'}
+            Descargar PDF
           </button>
         </div>
-
-        {formData.imagenes.length > 0 && (
-          <div style={{
-            padding: '12px',
-            background: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '6px',
-            marginTop: '10px',
-            fontSize: '0.9rem',
-            color: 'var(--text-secondary)'
-          }}>
-            <strong>ℹ️ Información:</strong> Al hacer clic en "Descargar PDF", las imágenes nuevas y la descripción adicional se guardarán automáticamente en el servidor.
-          </div>
-        )}
       </div>
     </div>
   )
