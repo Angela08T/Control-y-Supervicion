@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
@@ -15,6 +16,10 @@ import TurnoList from './components/TurnoList'
 import DateRangeModal from './components/DateRangeModal'
 
 export default function DashboardPage() {
+  // Obtener el rol del usuario desde Redux
+  const userRole = useSelector(state => state.auth.role)
+  const isAdmin = userRole === 'ADMIN'
+
   const [incidencias, setIncidencias] = useState(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
   const [dateRange, setDateRange] = useState({ start: null, end: null })
@@ -469,10 +474,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Última fila: Tabla de Centinelas */}
-      <div className="bottom-grid-full">
-        <PersonalTable />
-      </div>
+      {/* Última fila: Tabla de Centinelas (solo para ADMIN) */}
+      {isAdmin && (
+        <div className="bottom-grid-full">
+          <PersonalTable />
+        </div>
+      )}
 
       {/* Modal de rango de fechas */}
       {showDateModal && (

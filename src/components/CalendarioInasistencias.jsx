@@ -8,7 +8,8 @@ export default function CalendarioInasistencias({
   onSave,
   onDeleteMarks,
   onMonthChange,
-  dateRange
+  dateRange,
+  isReadOnly = false
 }) {
   // Usar la fecha de inicio del rango si está disponible
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -424,71 +425,50 @@ export default function CalendarioInasistencias({
 
   return (
     <div className="calendario-inasistencias">
-      {/* Controles superiores */}
-      <div className="calendario-controls">
-        <div className="fecha-selector">
-          <span className="label">Mes y año</span>
-          <div className="selector-group">
-            <select value={selectedDate.getMonth()} onChange={handleMonthChange}>
-              {meses.map((mes, index) => (
-                <option key={mes} value={index}>{mes}</option>
-              ))}
-            </select>
-            <select value={selectedDate.getFullYear()} onChange={handleYearChange}>
-              {years.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
+      {/* Botones de acción - Solo mostrar si no es modo solo lectura */}
+      {!isReadOnly && (
+        <div className="calendario-actions">
+          <button
+            className={`btn-fl btn-injustificado ${markMode === 'I' ? 'active' : ''}`}
+            onClick={() => handleToggleMark('I')}
+            title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
+          >
+            I
+          </button>
+          <button
+            className={`btn-fl btn-justificado ${markMode === 'J' ? 'active' : ''}`}
+            onClick={() => handleToggleMark('J')}
+            title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
+          >
+            J
+          </button>
+          <button
+            className={`btn-edit ${editMode ? 'active' : ''}`}
+            onClick={handleToggleEdit}
+            title={editMode ? 'Desactivar modo edición' : 'Activar modo edición'}
+          >
+            EDITAR
+          </button>
+          <button className="btn-icon btn-delete" onClick={handleDeleteSelected} title="Eliminar">
+            <FaTrash />
+          </button>
+          {markMode === 'I' && (
+            <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+              Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
+            </span>
+          )}
+          {markMode === 'J' && (
+            <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+              Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
+            </span>
+          )}
+          {editMode && (
+            <span style={{ marginLeft: '10px', color: '#f59e0b', fontWeight: '500', fontSize: '0.9rem' }}>
+              Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
+            </span>
+          )}
         </div>
-
-        <button className="btn-icon btn-pdf" onClick={handleDownloadPDF} title="Descargar PDF">
-          <FaFilePdf />
-        </button>
-      </div>
-
-      {/* Botones de acción */}
-      <div className="calendario-actions">
-        <button
-          className={`btn-fl btn-injustificado ${markMode === 'I' ? 'active' : ''}`}
-          onClick={() => handleToggleMark('I')}
-          title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
-        >
-          I
-        </button>
-        <button
-          className={`btn-fl btn-justificado ${markMode === 'J' ? 'active' : ''}`}
-          onClick={() => handleToggleMark('J')}
-          title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
-        >
-          J
-        </button>
-        <button
-          className={`btn-edit ${editMode ? 'active' : ''}`}
-          onClick={handleToggleEdit}
-          title={editMode ? 'Desactivar modo edición' : 'Activar modo edición'}
-        >
-          EDITAR
-        </button>
-        <button className="btn-icon btn-delete" onClick={handleDeleteSelected} title="Eliminar">
-          <FaTrash />
-        </button>
-        {markMode === 'I' && (
-          <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
-          </span>
-        )}
-        {markMode === 'J' && (
-          <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
-          </span>
-        )}
-        {editMode && (
-          <span style={{ marginLeft: '10px', color: '#f59e0b', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
-          </span>
-        )}
-      </div>
+      )}
 
       {/* Tabla calendario */}
       <div className="calendario-table-container">
@@ -683,15 +663,17 @@ export default function CalendarioInasistencias({
         </div>
       )}
 
-      {/* Botones de Cancelar y Guardar */}
-      <div className="calendario-footer">
-        <button className="btn-secondary" onClick={handleCancel}>
-          CANCELAR
-        </button>
-        <button className="btn-primary" onClick={handleSave}>
-          GUARDAR
-        </button>
-      </div>
+      {/* Botones de Cancelar y Guardar - Solo mostrar si no es modo solo lectura */}
+      {!isReadOnly && (
+        <div className="calendario-footer">
+          <button className="btn-secondary" onClick={handleCancel}>
+            CANCELAR
+          </button>
+          <button className="btn-primary" onClick={handleSave}>
+            GUARDAR
+          </button>
+        </div>
+      )}
     </div>
   )
 }
