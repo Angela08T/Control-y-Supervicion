@@ -106,10 +106,15 @@ export function mapFormDataToAPI(form, allLeads) {
     jurisdiction_id: form.jurisdictionId || null
   };
 
-  // Solo agregar campos de bodycam si NO es Inasistencia (es decir, si hay bodycamId)
-  if (form.bodycamId) {
+  // Solo agregar campos de bodycam si es tipo bodycam y hay bodycamId
+  if (form.tipoMedio === 'bodycam' && form.bodycamId) {
     payload.bodycam_id = form.bodycamId;
     payload.bodycam_dni = form.dni || '';
+  }
+
+  // Si es tipo cámara, guardar el número de cámara en el campo camera_number
+  if (form.tipoMedio === 'camara' && form.numeroCamara) {
+    payload.camera_number = form.numeroCamara;
   }
 
   console.log('📤 Payload final a enviar:', JSON.stringify(payload, null, 2));
@@ -173,13 +178,19 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
 
       console.log('✅ encargadoBodycam final:', encargadoBodycam)
 
+      // Determinar tipo de medio: si tiene bodycam es 'bodycam', si tiene camera_number es 'camara'
+      const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
+      const numeroCamara = r.camera_number || ''
+
       return {
         id: r.id,
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: r.bodycam ? 'Bodycam' : 'Otro',
+        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
+        tipoMedio: tipoMedio,
+        numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
@@ -278,13 +289,20 @@ export const getReportById = async (reportId) => {
     if (response.data?.data) {
       // Transformar al formato de la tabla
       const r = response.data.data
+
+      // Determinar tipo de medio: si tiene bodycam es 'bodycam', si tiene camera_number es 'camara'
+      const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
+      const numeroCamara = r.camera_number || ''
+
       const transformed = {
         id: r.id,
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: r.bodycam ? 'Bodycam' : 'Otro',
+        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
+        tipoMedio: tipoMedio,
+        numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',

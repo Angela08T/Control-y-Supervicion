@@ -30,10 +30,12 @@ const defaultState = {
   falta: '',
   turno: '',
   medio: 'bodycam',
+  tipoMedio: 'bodycam', // Tipo de medio: 'bodycam' o 'camara'
   fechaIncidente: '',
   horaIncidente: '',
   bodycamNumber: '',
   bodycamAsignadaA: '',
+  numeroCamara: '', // Número de cámara cuando se selecciona cámara
   ubicacion: null,
   jurisdiccion: '',
   jurisdictionId: null,  // ID de la jurisdicción para la API
@@ -414,17 +416,24 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     // Validaciones específicas para inasistencia
     if (form.falta && form.falta.startsWith('Inasistencia')) {
-      // Para inasistencia no se requiere bodycam
+      // Para inasistencia no se requiere bodycam ni cámara
     } else {
-      // Validaciones para otras faltas (requieren bodycam)
-      if (!form.bodycamNumber || !form.bodycamAsignadaA) {
-        alert('Completa los campos de bodycam');
-        return;
-      }
+      // Validaciones para otras faltas (requieren bodycam o cámara)
+      if (form.tipoMedio === 'bodycam') {
+        if (!form.bodycamNumber || !form.bodycamAsignadaA) {
+          alert('Completa los campos de bodycam');
+          return;
+        }
 
-      if (!form.bodycamId) {
-        alert('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
-        return;
+        if (!form.bodycamId) {
+          alert('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
+          return;
+        }
+      } else if (form.tipoMedio === 'camara') {
+        if (!form.numeroCamara) {
+          alert('Ingresa el número de cámara');
+          return;
+        }
       }
     }
 
@@ -566,64 +575,98 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
             style={{ cursor: 'not-allowed' }}
           />
 
-          {/* Campos de bodycam (solo para NO inasistencia) */}
+          {/* Campos de bodycam/cámara (solo para NO inasistencia) */}
           {mostrarCamposBodycam && (
             <>
+              <label>
+                <BsCameraVideo style={{ marginRight: '8px' }} />
+                Tipo de medio *
+              </label>
               <select
-                value={form.medio}
-                onChange={e => setField('medio', e.target.value)}
+                value={form.tipoMedio}
+                onChange={e => {
+                  const nuevoTipo = e.target.value
+                  setField('tipoMedio', nuevoTipo)
+                  setField('medio', nuevoTipo)
+                  // Limpiar campos del otro tipo cuando se cambia
+                  if (nuevoTipo === 'camara') {
+                    setField('bodycamNumber', '')
+                    setField('bodycamAsignadaA', '')
+                    setBodycamSearchTerm('')
+                  } else {
+                    setField('numeroCamara', '')
+                  }
+                }}
               >
                 <option value="bodycam">Bodycam</option>
+                <option value="camara">Cámara</option>
               </select>
 
-              <label>N° de Bodycam *</label>
-              <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
-                <input
-                  value={bodycamSearchTerm}
-                  onChange={handleBodycamInputChange}
-                  onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                  placeholder="Escribe para buscar bodycam (ej: SG004 o FISCA004)"
-                  autoComplete="off"
-                />
-                {bodycamLoading && (
-                  <div className="autocomplete-loading">Buscando...</div>
-                )}
-                {bodycamError && (
-                  <div className="autocomplete-error">{bodycamError}</div>
-                )}
-                {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                  <div className="autocomplete-suggestions">
-                    {bodycamsHabilitadas.map((bodycam, index) => (
-                      <div
-                        key={bodycam.id || index}
-                        className="autocomplete-item"
-                        onClick={() => handleBodycamSelect(bodycam)}
-                      >
-                        <div className="autocomplete-item-code">
-                          {bodycam.name || bodycam.id}
-                        </div>
-                        {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
-                          <div className="autocomplete-item-details">
-                            {bodycam.asignadoA || bodycam.asignado || bodycam.usuario}
+              {/* Campos de Bodycam */}
+              {form.tipoMedio === 'bodycam' && (
+                <>
+                  <label>N° de Bodycam *</label>
+                  <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                    <input
+                      value={bodycamSearchTerm}
+                      onChange={handleBodycamInputChange}
+                      onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
+                      placeholder="Escribe para buscar bodycam (ej: SG004 o FISCA004)"
+                      autoComplete="off"
+                    />
+                    {bodycamLoading && (
+                      <div className="autocomplete-loading">Buscando...</div>
+                    )}
+                    {bodycamError && (
+                      <div className="autocomplete-error">{bodycamError}</div>
+                    )}
+                    {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
+                      <div className="autocomplete-suggestions">
+                        {bodycamsHabilitadas.map((bodycam, index) => (
+                          <div
+                            key={bodycam.id || index}
+                            className="autocomplete-item"
+                            onClick={() => handleBodycamSelect(bodycam)}
+                          >
+                            <div className="autocomplete-item-code">
+                              {bodycam.name || bodycam.id}
+                            </div>
+                            {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
+                              <div className="autocomplete-item-details">
+                                {bodycam.asignadoA || bodycam.asignado || bodycam.usuario}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading && (
+                      <div className="autocomplete-no-results">
+                        No se encontraron bodycams
+                      </div>
+                    )}
                   </div>
-                )}
-                {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading && (
-                  <div className="autocomplete-no-results">
-                    No se encontraron bodycams
-                  </div>
-                )}
-              </div>
 
-              <label>Bodycam asignada a: *</label>
-              <input
-                value={form.bodycamAsignadaA}
-                onChange={e => setField('bodycamAsignadaA', e.target.value)}
-                placeholder="Se llenará automáticamente al seleccionar DNI"
-              />
+                  <label>Bodycam asignada a: *</label>
+                  <input
+                    value={form.bodycamAsignadaA}
+                    onChange={e => setField('bodycamAsignadaA', e.target.value)}
+                    placeholder="Se llenará automáticamente al seleccionar DNI"
+                  />
+                </>
+              )}
+
+              {/* Campos de Cámara */}
+              {form.tipoMedio === 'camara' && (
+                <>
+                  <label>N° de Cámara *</label>
+                  <input
+                    value={form.numeroCamara}
+                    onChange={e => setField('numeroCamara', e.target.value)}
+                    placeholder="Ingresa el número de cámara"
+                  />
+                </>
+              )}
             </>
           )}
 
