@@ -47,11 +47,9 @@ function formatearFecha(fecha) {
 
   // Verificar si la fecha es válida
   if (isNaN(d.getTime())) {
-    console.error('❌ Fecha inválida:', fecha)
     return `Fecha inválida (${fecha})`
   }
 
-  console.log('✅ Fecha formateada:', `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`, 'desde:', fecha)
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
 
@@ -114,19 +112,14 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   useEffect(() => {
     const convertLogoToBase64 = async () => {
       try {
-        console.log('🖼️ Cargando logo desde:', logoSJL)
         const response = await fetch(logoSJL)
-        console.log('📥 Respuesta del logo:', response.status)
         const blob = await response.blob()
-        console.log('📦 Blob del logo:', blob.size, 'bytes')
         const reader = new FileReader()
         reader.onloadend = () => {
-          console.log('✅ Logo convertido a base64, longitud:', reader.result.length)
           setLogoBase64(reader.result)
         }
         reader.readAsDataURL(blob)
       } catch (error) {
-        console.error('❌ Error al convertir logo a base64:', error)
       }
     }
 
@@ -135,13 +128,6 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   useEffect(() => {
     if (incidencia) {
-      console.log('📅 DEBUG - Datos de incidencia recibidos:', {
-        fechaIncidente: incidencia.fechaIncidente,
-        fechaFalta: incidencia.fechaFalta,
-        tipoFechaIncidente: typeof incidencia.fechaIncidente,
-        tipoFechaFalta: typeof incidencia.fechaFalta
-      })
-
       const numeroInforme = `${String(Math.floor(Math.random() * 999)).padStart(3, '0')}-2025-CS-SS-GOP/MDSJL`
 
       // Usar el cargo del destinatario de la API si está disponible, sino usar el mapeo antiguo
@@ -157,19 +143,13 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
       // OBTENER SOLO LA DIRECCIÓN, NO LAS COORDENADAS
       const obtenerDireccion = () => {
-        console.log('📍 Ubicación completa:', incidencia.ubicacion)
-
         if (incidencia.ubicacion?.address) {
-          console.log('✅ Dirección encontrada:', incidencia.ubicacion.address)
           return incidencia.ubicacion.address
         } else if (incidencia.ubicacion?.coordinates) {
-          console.log('⚠️ Solo coordenadas disponibles')
           return 'Dirección no especificada (solo coordenadas)'
         } else if (Array.isArray(incidencia.ubicacion)) {
-          console.log('⚠️ Formato antiguo de ubicación')
           return 'Dirección no especificada (solo coordenadas)'
         }
-        console.log('❌ Sin ubicación')
         return 'No especificada'
       }
 
@@ -288,17 +268,14 @@ Se adjuntan las evidencias:`
 
       setLoadingEvidences(true)
       try {
-        console.log('📥 Cargando evidencias del reporte:', incidencia.id)
         const reportData = await getReportWithEvidences(incidencia.id)
 
         if (reportData && reportData.evidences && reportData.evidences.length > 0) {
-          console.log('✅ Evidencias cargadas:', reportData.evidences)
 
           // Cargar las imágenes existentes y convertirlas a base64 para el PDF
           const imagenesExistentes = await Promise.all(
             reportData.evidences.map(async (ev) => {
               try {
-                console.log('🖼️ Intentando cargar imagen:', ev.imageUrl)
 
                 // Obtener el token de localStorage
                 const getToken = () => {
@@ -312,7 +289,6 @@ Se adjuntan las evidencias:`
                       }
                     }
                   } catch (error) {
-                    console.error('Error al obtener token:', error)
                   }
                   return null
                 }
@@ -332,7 +308,6 @@ Se adjuntan las evidencias:`
                 }
 
                 const blob = await response.blob()
-                console.log('✅ Imagen cargada, tamaño:', blob.size, 'bytes')
 
                 // Convertir blob a base64
                 const base64 = await new Promise((resolve) => {
@@ -350,7 +325,6 @@ Se adjuntan las evidencias:`
                   isExisting: true // Marcar como imagen existente
                 }
               } catch (error) {
-                console.error('❌ Error al cargar imagen:', ev.imageUrl, error)
                 return null
               }
             })
@@ -359,8 +333,6 @@ Se adjuntan las evidencias:`
           // Filtrar imágenes que se cargaron exitosamente
           const imagenesValidas = imagenesExistentes.filter(img => img !== null)
 
-          console.log(`✅ ${imagenesValidas.length} de ${reportData.evidences.length} imágenes cargadas exitosamente`)
-
           setFormData(prev => ({
             ...prev,
             imagenes: imagenesValidas,
@@ -368,7 +340,6 @@ Se adjuntan las evidencias:`
           }))
         }
       } catch (error) {
-        console.error('❌ Error al cargar evidencias:', error)
       } finally {
         setLoadingEvidences(false)
       }
@@ -489,11 +460,8 @@ Se adjuntan las evidencias:`
       }
 
       try {
-        console.log('🗑️ Eliminando imagen del servidor:', img.id)
         await deleteEvidence(img.id)
-        console.log('✅ Imagen eliminada del servidor exitosamente')
       } catch (error) {
-        console.error('❌ Error al eliminar imagen:', error)
         alert('Error al eliminar la imagen del servidor. Por favor, intente nuevamente.')
         return
       }
@@ -524,8 +492,6 @@ Se adjuntan las evidencias:`
 
     setSavingReport(true)
     try {
-      console.log('💾 Guardando cambios del informe...')
-
       // Obtener imágenes nuevas para subir
       const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
       const files = nuevasImagenes.map(img => img.file).filter(Boolean)
@@ -538,8 +504,7 @@ Se adjuntan las evidencias:`
         formData.descripcionAdicional
       )
 
-      console.log('✅ Cambios guardados exitosamente')
-      alert('✅ Cambios guardados exitosamente')
+      alert('Cambios guardados exitosamente')
 
       // Marcar las imágenes nuevas como existentes después de guardar
       setFormData(prev => ({
@@ -550,8 +515,6 @@ Se adjuntan las evidencias:`
         }))
       }))
     } catch (error) {
-      console.error('❌ Error al guardar cambios:', error)
-
       let errorMessage = 'Error al guardar los cambios'
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
@@ -586,8 +549,6 @@ Se adjuntan las evidencias:`
     if (nuevasImagenes.length > 0 || formData.descripcionAdicional) {
       setSavingReport(true)
       try {
-        console.log('💾 Guardando evidencias en el backend...')
-
         const files = nuevasImagenes.map(img => img.file).filter(Boolean)
         const descriptions = nuevasImagenes.map(img => img.anexo)
 
@@ -598,9 +559,7 @@ Se adjuntan las evidencias:`
           formData.descripcionAdicional
         )
 
-        console.log('✅ Evidencias guardadas exitosamente')
       } catch (error) {
-        console.error('❌ Error al guardar evidencias:', error)
 
         let errorMessage = 'Error al guardar las evidencias en el servidor'
         if (error.response?.data?.message) {
@@ -619,9 +578,6 @@ Se adjuntan las evidencias:`
 
     // Generar el PDF usando @react-pdf/renderer
     try {
-      console.log('📄 Generando PDF con @react-pdf/renderer...')
-      console.log('🖼️ Logo base64 disponible:', logoBase64 ? `Sí (${logoBase64.length} caracteres)` : 'NO')
-
       const doc = (
         <InformePDFDocument
           formData={formData}
@@ -645,12 +601,9 @@ Se adjuntan las evidencias:`
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
-      console.log('✅ PDF generado exitosamente')
-
       // Registrar la descarga del PDF
       trackPDFDownload(incidencia.id)
     } catch (error) {
-      console.error('❌ Error al generar PDF:', error)
       alert('Error al generar el PDF. Por favor, intente nuevamente.')
     }
   }

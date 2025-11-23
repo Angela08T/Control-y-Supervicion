@@ -36,7 +36,6 @@ const useLeads = (jobId) => {
 
         setLeads(leadList);
       } catch (err) {
-        console.error('Error obteniendo leads:', err);
         setError(err.response?.data?.message || 'Error al cargar personas');
         setLeads([]);
       } finally {

@@ -48,10 +48,8 @@ function ClickHandler({ onLocationSelect }) {
         onLocationSelect(newPos, newAddress)
       } catch (error) {
         if (error.name === 'AbortError') {
-          console.warn('Timeout obteniendo dirección')
           onLocationSelect(newPos, 'Timeout - Dirección no disponible')
         } else {
-          console.error('Error obteniendo dirección:', error)
           onLocationSelect(newPos, 'Error al obtener dirección')
         }
       }
@@ -79,19 +77,13 @@ export default function MapSelector({ value, onChange }) {
     setPosition(newPos)
     setAddress(newAddress)
 
-    console.log('📍 MapSelector - Ubicación seleccionada:')
-    console.log('   Coordenadas:', newPos)
-    console.log('   Dirección:', newAddress)
-
     // Detectar jurisdicción automáticamente
     let jurisdiccion = null
     if (jurisdicciones && jurisdicciones.length > 0) {
       jurisdiccion = detectarJurisdiccion(newPos[0], newPos[1])
       if (jurisdiccion) {
-        console.log('🏛️ Jurisdicción detectada:', jurisdiccion.name)
         setJurisdiccionDetectada(jurisdiccion)
       } else {
-        console.log('⚠️ No se detectó jurisdicción para esta ubicación')
         setJurisdiccionDetectada(null)
       }
     }

@@ -10,10 +10,8 @@ export const getOffenders = async (page = 1, limit = 10) => {
     const response = await api.get('/offender', {
       params: { page, limit }
     });
-    console.log('✅ Infractores obtenidos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener infractores:', error);
     throw error;
   }
 };
@@ -22,10 +20,8 @@ export const getOffenders = async (page = 1, limit = 10) => {
 export const getOffenderByDni = async (dni) => {
   try {
     const response = await api.get(`/offender/dni/${dni}`);
-    console.log('✅ Infractor obtenido por DNI:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener infractor por DNI:', error);
     throw error;
   }
 };
@@ -34,10 +30,8 @@ export const getOffenderByDni = async (dni) => {
 export const createOffender = async (offenderData) => {
   try {
     const response = await api.post('/offender', offenderData);
-    console.log('✅ Infractor creado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear infractor:', error);
     throw error;
   }
 };
@@ -46,10 +40,8 @@ export const createOffender = async (offenderData) => {
 export const updateOffender = async (offenderId, offenderData) => {
   try {
     const response = await api.patch(`/offender/${offenderId}`, offenderData);
-    console.log('✅ Infractor actualizado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar infractor:', error);
     throw error;
   }
 };
@@ -58,10 +50,8 @@ export const updateOffender = async (offenderId, offenderData) => {
 export const deleteOffender = async (offenderId) => {
   try {
     const response = await api.delete(`/offender/${offenderId}`);
-    console.log('🔄 Estado de infractor cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al cambiar estado del infractor:', error);
     throw error;
   }
 };
@@ -72,9 +62,6 @@ export const deleteOffender = async (offenderId) => {
  * @returns {Object} - Datos formateados para la API de offender
  */
 export function mapFormDataToOffenderAPI(form) {
-  console.log('🔍 mapFormDataToOffenderAPI - Iniciando mapeo...');
-  console.log('📋 form recibido:', form);
-
   // Convertir el turno completo a la inicial si viene completo
   let shiftInitial = form.turno;
   if (form.turno === 'Mañana') {
@@ -101,8 +88,6 @@ export function mapFormDataToOffenderAPI(form) {
     attendance: false // Siempre false para inasistencias
   };
 
-  console.log('📤 Payload final para offender API:', JSON.stringify(payload, null, 2));
-
   return payload;
 }
 
@@ -125,12 +110,9 @@ export function mapFormDataToOffenderAPI(form) {
  */
 export const createAttendances = async (attendanceData) => {
   try {
-    console.log('📤 Enviando attendances a API:', attendanceData);
     const response = await offenderApi.post('/attendance', attendanceData);
-    console.log('✅ Attendances creadas:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear attendances:', error);
     throw error;
   }
 };
@@ -148,12 +130,9 @@ export const getAttendances = async (start, end, mode = null) => {
     if (mode) {
       params.mode = mode;
     }
-    console.log(`📥 Obteniendo attendances: ${start} a ${end}${mode ? ` (${mode})` : ''}`);
     const response = await offenderApi.get('/attendance', { params });
-    console.log('✅ Attendances obtenidas:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener attendances:', error);
     throw error;
   }
 };
@@ -165,12 +144,9 @@ export const getAttendances = async (start, end, mode = null) => {
  */
 export const deleteAttendance = async (attendanceId) => {
   try {
-    console.log(`🗑️ Eliminando attendance: ${attendanceId}`);
     const response = await offenderApi.delete(`/attendance/${attendanceId}`);
-    console.log('✅ Attendance eliminada:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar attendance:', error);
     throw error;
   }
 };
@@ -190,12 +166,9 @@ export const deleteAttendance = async (attendanceId) => {
  */
 export const createAbsenceReport = async (reportData) => {
   try {
-    console.log('📤 Creando reporte de inasistencias:', reportData);
     const response = await offenderApi.post('/absence', reportData);
-    console.log('✅ Reporte de inasistencias creado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear reporte de inasistencias:', error);
     throw error;
   }
 };

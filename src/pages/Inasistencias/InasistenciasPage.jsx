@@ -38,7 +38,6 @@ export default function InasistenciasPage() {
     initSocket()
 
     const unsubscribe = onReportStatusChanged((data) => {
-      console.log('Cambio de estado recibido:', data)
       setRefreshTrigger(prev => prev + 1)
     })
 
@@ -50,7 +49,6 @@ export default function InasistenciasPage() {
 
   // Cargar inasistencias desde la API de attendance con rango de fechas
   useEffect(() => {
-    console.log('🔄 useEffect ejecutándose - refreshTrigger:', refreshTrigger)
     async function fetchInasistencias() {
       setLoading(true)
       try {
@@ -58,15 +56,10 @@ export default function InasistenciasPage() {
         const startStr = `${dateRange.start.getFullYear()}-${String(dateRange.start.getMonth() + 1).padStart(2, '0')}-${String(dateRange.start.getDate()).padStart(2, '0')}`
         const endStr = `${dateRange.end.getFullYear()}-${String(dateRange.end.getMonth() + 1).padStart(2, '0')}-${String(dateRange.end.getDate()).padStart(2, '0')}`
 
-        console.log(`📅 Cargando inasistencias del rango: ${startStr} a ${endStr}`)
         const result = await getAttendances(startStr, endStr)
-        console.log('📡 Respuesta completa de API:', result)
 
         // Extraer los datos del response
         const attendancesData = result.data || []
-
-        console.log('📊 Attendances extraídos:', attendancesData)
-        console.log('📊 Cantidad de personas:', attendancesData.length)
 
         // Mapear los datos de attendances al formato esperado por la tabla
         const inasistenciasData = attendancesData.map(person => ({
@@ -86,15 +79,11 @@ export default function InasistenciasPage() {
           updatedAt: person.updated_at
         }))
 
-        console.log('✅ Inasistencias mapeadas:', inasistenciasData)
         setInasistencias(inasistenciasData)
 
         // También actualizar savedAttendances con los mismos datos
         setSavedAttendances(attendancesData)
       } catch (error) {
-        console.error('❌ Error al cargar inasistencias:', error)
-        console.error('❌ Error completo:', error.response || error)
-
         // Mostrar mensaje de error más específico
         let errorMessage = 'No se pudieron cargar las inasistencias'
         if (error.response?.status === 404) {
@@ -105,7 +94,6 @@ export default function InasistenciasPage() {
           errorMessage += ': ' + error.message
         }
 
-        console.warn('⚠️ ', errorMessage)
         // No mostrar alert si es 404 (no hay datos)
         if (error.response?.status !== 404) {
           alert(errorMessage)
@@ -120,7 +108,6 @@ export default function InasistenciasPage() {
 
   // Función para manejar la selección de rango de fechas desde el modal
   function handleDateRangeSelect(start, end) {
-    console.log('📅 Nuevo rango seleccionado:', start, end)
     setDateRange({ start, end })
     setShowCalendarModal(false)
   }
@@ -138,9 +125,7 @@ export default function InasistenciasPage() {
     try {
       // 🔹 NUEVO: Usar endpoint de offender para inasistencias
       const offenderData = mapFormDataToOffenderAPI(data)
-      console.log('📤 Enviando inasistencia a API de offender:', offenderData)
       const response = await createOffender(offenderData)
-      console.log('✅ Inasistencia creada en API de offender:', response)
 
       alert('Inasistencia creada exitosamente')
 
@@ -148,14 +133,11 @@ export default function InasistenciasPage() {
 
       // Esperar un momento antes de recargar para asegurar que la API procesó el cambio
       setTimeout(() => {
-        console.log('🔄 Activando recarga de la tabla...')
         setRefreshTrigger(prev => {
-          console.log('🔄 refreshTrigger anterior:', prev, '→ nuevo:', prev + 1)
           return prev + 1
         })
       }, 500)
     } catch (error) {
-      console.error('❌ Error al crear inasistencia:', error)
 
       let errorMessage = 'Error al crear la inasistencia'
 
@@ -175,7 +157,6 @@ export default function InasistenciasPage() {
 
   async function handleSaveMarks(marks) {
     // Guardar las marcas de falta seleccionadas en la API usando /api/attendance
-    console.log('📋 Marcas a guardar:', marks)
 
     if (!marks || marks.length === 0) {
       alert('No hay marcas para guardar')
@@ -191,7 +172,6 @@ export default function InasistenciasPage() {
         const offenderInfo = inasistencias.find(i => i.dni === mark.dni)
 
         if (!offenderInfo) {
-          console.warn(`⚠️ No se encontró información para DNI: ${mark.dni}`)
           continue
         }
 
@@ -199,7 +179,6 @@ export default function InasistenciasPage() {
         const offenderId = offenderInfo.id
 
         if (!offenderId) {
-          console.warn(`⚠️ No se encontró ID para offender con DNI: ${mark.dni}`)
           continue
         }
 
@@ -225,12 +204,8 @@ export default function InasistenciasPage() {
 
       const payload = { items }
 
-      console.log('📤 Payload para /api/attendance:', JSON.stringify(payload, null, 2))
-
       // Enviar a la API
       const response = await createAttendances(payload)
-
-      console.log('✅ Respuesta de API:', response)
 
       // Verificar la respuesta
       const count = response.data?.count || 0
@@ -242,9 +217,6 @@ export default function InasistenciasPage() {
         alert('No se pudieron guardar las inasistencias. Verifica los datos.')
       }
     } catch (error) {
-      console.error('❌ Error al guardar inasistencias:', error)
-      console.error('❌ Detalles del error:', error.response?.data)
-
       let errorMessage = 'Error al guardar las inasistencias'
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message
@@ -262,14 +234,11 @@ export default function InasistenciasPage() {
 
   // Manejar cambio de mes en el calendario
   function handleMonthChange(newMonth) {
-    console.log('📅 Cambiando a mes:', newMonth)
     setCurrentMonth(newMonth)
   }
 
   // Eliminar marcas (attendances) en modo edición
   async function handleDeleteMarks(marksToDelete) {
-    console.log('🗑️ Marcas a eliminar:', marksToDelete)
-
     if (!marksToDelete || marksToDelete.length === 0) {
       alert('No hay marcas para eliminar')
       return
@@ -284,7 +253,6 @@ export default function InasistenciasPage() {
       alert(`Se eliminaron ${marksToDelete.length} marca(s) exitosamente`)
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al eliminar marcas:', error)
 
       let errorMessage = 'Error al eliminar las marcas'
       if (error.response?.data?.message) {

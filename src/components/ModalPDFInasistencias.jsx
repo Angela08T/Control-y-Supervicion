@@ -270,10 +270,6 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         const subjectsData = subjectsRes.data?.data || subjectsRes.data || []
         const lacksData = lacksRes.data?.data || lacksRes.data || []
 
-        console.log('Leads cargados:', leadsData)
-        console.log('Subjects cargados:', subjectsData)
-        console.log('Lacks cargados:', lacksData)
-
         setLeads(Array.isArray(leadsData) ? leadsData : [])
         setSubjects(Array.isArray(subjectsData) ? subjectsData : [])
         setLacks(Array.isArray(lacksData) ? lacksData : [])
@@ -298,7 +294,6 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
           setSelectedLack(defaultLack.id)
         }
       } catch (error) {
-        console.error('Error al cargar datos del formulario:', error)
         setLoadError('Error al cargar los datos del formulario. Por favor, intente nuevamente.')
       } finally {
         setLoadingData(false)
@@ -320,7 +315,6 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         }
         reader.readAsDataURL(blob)
       } catch (error) {
-        console.error('Error al convertir logo a base64:', error)
       }
     }
 
@@ -338,15 +332,12 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         const startStr = `${dateRange.start.getFullYear()}-${String(dateRange.start.getMonth() + 1).padStart(2, '0')}-${String(dateRange.start.getDate()).padStart(2, '0')}`
         const endStr = `${dateRange.end.getFullYear()}-${String(dateRange.end.getMonth() + 1).padStart(2, '0')}-${String(dateRange.end.getDate()).padStart(2, '0')}`
 
-        console.log(`📅 Cargando inasistencias filtradas: ${startStr} a ${endStr} (${selectedMode})`)
         const result = await getAttendances(startStr, endStr, selectedMode)
 
         const attendancesData = result.data || []
-        console.log('📊 Inasistencias filtradas:', attendancesData)
 
         setFilteredAttendances(attendancesData)
       } catch (error) {
-        console.error('❌ Error al cargar inasistencias filtradas:', error)
         setFilteredAttendances([])
       } finally {
         setLoadingAttendances(false)
@@ -494,11 +485,8 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         end: endStr
       }
 
-      console.log('Enviando reporte de inasistencias:', reportData)
-
       // Llamar a la API
       const response = await createAbsenceReport(reportData)
-      console.log('Respuesta del reporte:', response)
 
       // Obtener el report_id de la respuesta
       const reportId = response.data?.report_id || response.data?.id || '---'
@@ -654,8 +642,6 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         ccLeads: ccLeads
       })
     } catch (error) {
-      console.error('Error al crear reporte:', error)
-
       let errorMessage = 'Error al crear el reporte'
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message

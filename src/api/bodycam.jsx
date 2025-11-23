@@ -3,12 +3,13 @@ import api from './config';
 /**
  * Buscar bodycams por código
  * @param {string} searchTerm - Término de búsqueda (ej: "SG004")
+ * @param {number} limit - Límite de resultados (default: 1000)
  * @returns {Promise} - Respuesta con datos de bodycam
  */
-export const searchBodycam = async (searchTerm) => {
+export const searchBodycam = async (searchTerm, limit = 1000) => {
   try {
     const response = await api.get(`/bodycam`, {
-      params: { search: searchTerm }
+      params: { search: searchTerm, limit }
     });
     return response.data;
   } catch (error) {
@@ -31,17 +32,9 @@ export const searchBodycam = async (searchTerm) => {
 export const getBodycams = async (page = 1, limit = 10) => {
   try {
     const response = await api.get(`/bodycam?page=${page}&limit=${limit}`);
-    console.log('📡 Respuesta completa de API Bodycam:', response.data);
 
     const bodycams = response.data?.data?.data || [];
     const paginationData = response.data?.data || {};
-
-    console.log('📊 Estructura de paginación recibida:', {
-      currentPage: paginationData.currentPage,
-      pageCount: paginationData.pageCount,
-      totalCount: paginationData.totalCount,
-      totalPages: paginationData.totalPages
-    });
 
     // Los datos ya vienen en el formato correcto
     const transformedBodycams = bodycams.map(b => ({
@@ -60,15 +53,6 @@ export const getBodycams = async (page = 1, limit = 10) => {
     const from = totalNum === 0 ? 0 : ((currentPageNum - 1) * perPageNum) + 1;
     const to = Math.min(currentPageNum * perPageNum, totalNum);
 
-    console.log('📊 Paginación calculada:', {
-      currentPage: currentPageNum,
-      totalPages: totalPagesNum,
-      perPage: perPageNum,
-      total: totalNum,
-      from: from,
-      to: to
-    });
-
     return {
       data: transformedBodycams,
       pagination: {
@@ -81,7 +65,6 @@ export const getBodycams = async (page = 1, limit = 10) => {
       }
     };
   } catch (error) {
-    console.error('❌ Error al obtener bodycams:', error);
     throw new Error('No se pudieron obtener las bodycams');
   }
 };
@@ -94,7 +77,6 @@ export const getBodycams = async (page = 1, limit = 10) => {
 export const getBodycamById = async (bodycamId) => {
   try {
     const response = await api.get(`/bodycam/${bodycamId}`);
-    console.log('📡 Respuesta de búsqueda por ID:', response.data);
 
     if (response.data?.data) {
       const b = response.data.data;
@@ -113,7 +95,6 @@ export const getBodycamById = async (bodycamId) => {
 
     return { data: [], found: false };
   } catch (error) {
-    console.error('❌ Error al buscar bodycam por ID:', error);
     if (error.response?.status === 404) {
       return { data: [], found: false };
     }
@@ -131,10 +112,8 @@ export const getBodycamById = async (bodycamId) => {
 export const createBodycam = async (bodycamData) => {
   try {
     const response = await api.post('/bodycam', bodycamData);
-    console.log('✅ Bodycam creada:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear bodycam:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -156,10 +135,8 @@ export const createBodycam = async (bodycamData) => {
 export const updateBodycam = async (bodycamId, bodycamData) => {
   try {
     const response = await api.patch(`/bodycam/${bodycamId}`, bodycamData);
-    console.log('✅ Bodycam actualizada:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar bodycam:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -178,10 +155,8 @@ export const updateBodycam = async (bodycamId, bodycamData) => {
 export const deleteBodycam = async (bodycamId) => {
   try {
     const response = await api.delete(`/bodycam/${bodycamId}`);
-    console.log('🔄 Estado de bodycam cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al cambiar estado de bodycam:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {

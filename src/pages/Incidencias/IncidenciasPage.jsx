@@ -55,14 +55,12 @@ export default function IncidenciasPage() {
 
     // Suscribirse al evento de cambio de estado
     const unsubscribeStatusChanged = onReportStatusChanged((data) => {
-      console.log('🔔 Cambio de estado recibido:', data)
       // Recargar datos automáticamente cuando cambie el estado de un reporte
       setRefreshTrigger(prev => prev + 1)
     })
 
     // Suscribirse al evento de validación (APPROVED/REJECTED)
     const unsubscribeStatusValidate = onReportStatusValidate((data) => {
-      console.log('🔔 Validación de estado recibida:', data)
       // Recargar datos automáticamente cuando se apruebe/rechace un reporte
       setRefreshTrigger(prev => prev + 1)
     })
@@ -87,23 +85,11 @@ export default function IncidenciasPage() {
         if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
         if (filters.turno) apiFilters.shift = filters.turno // Agregar filtro de turno
 
-        console.log(`📡 Obteniendo incidencias desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
-        console.log('🔍 Filtros aplicados:', apiFilters)
-
         const result = await getReports(currentPage, itemsPerPage, apiFilters)
-        console.log('✅ Incidencias obtenidas:', result)
-        console.log('📊 Paginación:', {
-          currentPage: result.pagination.currentPage,
-          totalPages: result.pagination.totalPages,
-          total: result.pagination.total,
-          from: result.pagination.from,
-          to: result.pagination.to
-        })
         setIncidencias(result.data)
         setPagination(result.pagination)
         saveIncidencias(result.data) // opcional: respaldo local
       } catch (error) {
-        console.error('⚠️ No se pudo cargar desde API, usando localStorage:', error)
         const localData = loadIncidencias()
         setIncidencias(localData)
       } finally {
@@ -132,9 +118,7 @@ export default function IncidenciasPage() {
     } else {
       try {
         const apiData = mapFormDataToAPI(data, allLeads)
-        console.log('📤 Enviando datos a API:', apiData)
         const response = await createReport(apiData)
-        console.log('✅ Incidencia creada en API:', response)
 
         alert('Incidencia creada exitosamente')
 
@@ -145,7 +129,6 @@ export default function IncidenciasPage() {
         // Forzar recarga de datos
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al guardar en API:', error)
 
         // Mostrar error más detallado
         let errorMessage = 'Error al crear la incidencia';
@@ -170,16 +153,13 @@ export default function IncidenciasPage() {
     if (!confirm('¿Estás seguro de eliminar esta incidencia?')) return
 
     try {
-      console.log('🗑️ Eliminando incidencia con ID:', id)
       const response = await deleteReport(id)
-      console.log('✅ Respuesta de eliminación:', response)
 
       alert(response.data?.message || response.message || 'Incidencia eliminada exitosamente')
 
       // Recargar datos desde la API
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al eliminar incidencia:', error)
 
       let errorMessage = 'Error al eliminar la incidencia'
 
@@ -203,7 +183,6 @@ export default function IncidenciasPage() {
       alert(response.data?.message || response.message || 'Incidencia enviada al validador exitosamente')
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al enviar incidencia:', error)
       alert(error.response?.data?.message || error.message || 'Error al enviar incidencia')
     }
   }
@@ -216,7 +195,6 @@ export default function IncidenciasPage() {
       alert(response.data?.message || response.message || 'Incidencia aprobada exitosamente')
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al aprobar incidencia:', error)
       alert(error.response?.data?.message || error.message || 'Error al aprobar incidencia')
     }
   }
@@ -229,7 +207,6 @@ export default function IncidenciasPage() {
       alert(response.data?.message || response.message || 'Incidencia rechazada exitosamente')
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error('❌ Error al rechazar incidencia:', error)
       alert(error.response?.data?.message || error.message || 'Error al rechazar incidencia')
     }
   }
@@ -300,20 +277,16 @@ export default function IncidenciasPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando incidencia por ID:', searchTerm)
           const result = await getReportById(searchTerm)
 
           if (result.found && result.data.length > 0) {
-            console.log('✅ Incidencia encontrada:', result.data[0])
             setSearchResult(result.data)
             setSearchPagination(null) // Búsqueda por ID no tiene paginación
           } else {
-            console.log('⚠️ No se encontró incidencia con ese ID')
             setSearchResult([])
             setSearchPagination(null)
           }
         } catch (error) {
-          console.error('❌ Error al buscar por ID:', error)
           setSearchResult(null)
           setSearchPagination(null)
         } finally {
@@ -327,23 +300,14 @@ export default function IncidenciasPage() {
       const searchByFields = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando incidencia por campos:', searchTerm, 'página:', currentPage)
-
           // Construir la URL con paginación
           const response = await searchReport(searchTerm, currentPage, itemsPerPage)
-
-          // DEBUG: Ver la respuesta completa de la API
-          console.log('📡 Respuesta COMPLETA de searchReport:', response)
 
           // La API devuelve los datos en response.data?.data?.data
           const results = response?.data?.data || []
           const paginationData = response?.data || {}
 
-          console.log('📊 Resultados extraídos:', results)
-          console.log('📊 Paginación:', paginationData)
-
           if (results.length > 0) {
-            console.log('✅ Incidencias encontradas:', results.length)
             // Transformar los resultados al formato esperado
             const transformed = results.map(r => ({
               id: r.id,
@@ -389,13 +353,10 @@ export default function IncidenciasPage() {
               to: to
             })
           } else {
-            console.log('⚠️ No se encontraron incidencias con ese término')
             setSearchResult([])
             setSearchPagination(null)
           }
         } catch (error) {
-          console.error('❌ Error al buscar por campos:', error)
-          console.error('❌ Error completo:', error.response || error)
           setSearchResult(null)
           setSearchPagination(null)
         } finally {

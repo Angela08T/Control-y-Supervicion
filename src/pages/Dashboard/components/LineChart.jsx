@@ -30,7 +30,6 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   // Re-ejecutar animación cuando cambian los datos
   useEffect(() => {
     setAnimationKey(prev => prev + 1)
-    console.log('🔄 LineChart - Rango de tiempo cambió a:', rangoTiempo)
   }, [rangoTiempo, customDateRange, data])
 
   // Notificar al padre cuando cambia el período (solo para botones, no para custom)
@@ -45,14 +44,6 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   const datosActuales = data
 
   const meses = Object.keys(datosActuales)
-
-  // Debug: verificar si hay datos con valores
-  const totalValues = meses.reduce((sum, mes) => {
-    const mesTotal = nuevosAsuntos.reduce((s, asunto) => s + (datosActuales[mes][asunto] || 0), 0)
-    return sum + mesTotal
-  }, 0)
-  console.log('🔍 LineChart - Total de incidencias en datos:', totalValues)
-  console.log('🔍 LineChart - Cantidad de días:', meses.length)
 
   // Calcular máximo valor basado en los filtros activos
   const getMaxValue = () => {

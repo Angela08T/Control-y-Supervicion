@@ -21,13 +21,10 @@ export default function ModalLack({ initial, onClose, onSave }) {
     async function fetchSubjects() {
       try {
         setLoadingSubjects(true)
-        console.log('📡 Cargando asuntos para el dropdown...')
         const response = await getSubjects(1, 1000) // Obtener todos los asuntos
         const subjectsData = response.data?.data || response.data || []
-        console.log('✅ Asuntos cargados:', subjectsData)
         setSubjects(subjectsData)
       } catch (error) {
-        console.error('❌ Error al cargar asuntos:', error)
         alert('Error al cargar la lista de asuntos')
       } finally {
         setLoadingSubjects(false)

@@ -45,8 +45,6 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
     })
   })
 
-  console.log('📊 RadarChart - Totales por asunto:', totalesPorAsunto)
-
   // Colores para los 6 nuevos asuntos
   const colores = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9',

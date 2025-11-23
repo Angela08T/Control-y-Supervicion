@@ -28,7 +28,6 @@ const useSubjects = () => {
 
         setSubjects(subjectList);
       } catch (err) {
-        console.error('Error obteniendo subjects:', err);
         setError(err.response?.data?.message || 'Error al cargar asuntos');
         setSubjects([]);
       } finally {

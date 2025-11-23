@@ -37,7 +37,6 @@ export function loadIncidencias(){
       fechaFalta: item.fechaFalta || ''
     }))
   }catch(e){
-    console.error('Error parseando incidencias', e)
     return []
   }
 }
@@ -58,7 +57,6 @@ export function trackPDFDownload(incidenciaId) {
     })
     localStorage.setItem(PDF_DOWNLOADS_KEY, JSON.stringify(downloads))
   } catch (e) {
-    console.error('Error registrando descarga de PDF', e)
   }
 }
 
@@ -67,7 +65,6 @@ export function getPDFDownloads() {
     const raw = localStorage.getItem(PDF_DOWNLOADS_KEY)
     return raw ? JSON.parse(raw) : []
   } catch (e) {
-    console.error('Error cargando descargas de PDF', e)
     return []
   }
 }
@@ -91,7 +88,6 @@ export function getPDFDownloadStats() {
       percentage: Math.min(percentage, 100) // Limitar a 100%
     }
   } catch (e) {
-    console.error('Error calculando estadísticas de PDF', e)
     return {
       totalIncidencias: 0,
       totalDownloads: 0,

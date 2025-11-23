@@ -47,7 +47,6 @@ const useBodycamSearch = () => {
         setResults(bodycams);
         setShowSuggestions(bodycams.length > 0);
       } catch (err) {
-        console.error('Error buscando bodycam:', err);
         setError(err.response?.data?.message || 'Error al buscar bodycam');
         setResults([]);
         setShowSuggestions(false);

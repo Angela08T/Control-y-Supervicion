@@ -55,11 +55,9 @@ const useOffenderSearch = () => {
           }
         }
 
-        console.log('📊 Offenders procesados:', offenders);
         setResults(offenders);
         setShowSuggestions(offenders.length > 0);
       } catch (err) {
-        console.error('Error buscando offender:', err);
         setError(err.response?.data?.message || 'Error al buscar offender');
         setResults([]);
         setShowSuggestions(false);

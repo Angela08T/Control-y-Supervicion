@@ -36,19 +36,11 @@ export default function LackPage() {
       try {
         const searchTerm = filters.search.trim()
 
-        console.log('🔍 Filtrando faltas:', {
-          search: searchTerm || 'sin búsqueda',
-          página: currentPage,
-          límite: itemsPerPage
-        })
-
         const result = await getLacks(
           currentPage,
           itemsPerPage,
           searchTerm || null
         )
-
-        console.log('✅ Faltas obtenidas:', result)
 
         const lacksData = result.data?.data || result.data || []
         setLacks(lacksData)
@@ -75,7 +67,6 @@ export default function LackPage() {
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar faltas:', error)
         alert('No se pudo cargar las faltas')
       } finally {
         setLoading(false)
@@ -91,9 +82,7 @@ export default function LackPage() {
     if (editItem) {
       // Actualizar falta existente
       try {
-        console.log('📤 Actualizando falta:', editItem.id, data)
         const response = await updateLack(editItem.id, data)
-        console.log('✅ Falta actualizada:', response)
 
         alert(response.data?.message || response.message || 'Falta actualizada exitosamente')
 
@@ -101,8 +90,6 @@ export default function LackPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar falta:', error)
-
         let errorMessage = 'Error al actualizar la falta'
 
         if (error.response?.data?.message) {
@@ -118,9 +105,7 @@ export default function LackPage() {
     } else {
       // Crear nueva falta
       try {
-        console.log('📤 Creando falta:', data)
         const response = await createLack(data)
-        console.log('✅ Falta creada:', response)
 
         alert(response.data?.message || response.message || 'Falta creada exitosamente')
 
@@ -128,8 +113,6 @@ export default function LackPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear falta:', error)
-
         let errorMessage = 'Error al crear la falta'
 
         if (error.response?.data?.message) {
@@ -155,19 +138,13 @@ export default function LackPage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de falta con ID:`, item.id)
-
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteLack(item.id)
-
-      console.log('✅ Respuesta:', response)
 
       alert(response.data?.message || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} falta:`, error)
-
       let errorMessage = `Error al ${action} la falta`
 
       if (error.response?.data?.message) {

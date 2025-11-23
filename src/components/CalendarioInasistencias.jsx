@@ -71,7 +71,6 @@ export default function CalendarioInasistencias({
       }
     })
 
-    console.log('📊 Marcas guardadas procesadas:', marks)
     return marks
   }, [savedAttendances])
 
@@ -215,7 +214,6 @@ export default function CalendarioInasistencias({
   }
 
   function handleDownloadPDF() {
-    console.log('Exportar PDF - Funcionalidad pendiente')
   }
 
   function handleToggleMark(tipo) {
@@ -359,8 +357,6 @@ export default function CalendarioInasistencias({
         return
       }
 
-      console.log('Guardando faltas:', marksToSave)
-
       if (onSave) {
         onSave(marksToSave)
       }
@@ -379,8 +375,6 @@ export default function CalendarioInasistencias({
         setEditMode(false)
         return
       }
-
-      console.log('Eliminando marcas:', marksToDelete)
 
       if (onDeleteMarks) {
         onDeleteMarks(marksToDelete)

@@ -223,13 +223,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     setForm(f => {
       const newForm = { ...f, [k]: v }
 
-      // Log cuando se actualiza la ubicación
-      if (k === 'ubicacion') {
-        console.log('🗺️ ModalIncidencia - Ubicación guardada en form:')
-        console.log('   Coordenadas:', v?.coordinates)
-        console.log('   Dirección:', v?.address)
-      }
-
       // Si cambia el asunto, resetear falta y campos relacionados
       if (k === 'asunto') {
         newForm.falta = ''
@@ -312,9 +305,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     // Rellenar el formulario con los datos del offender
     // Estructura del API: { dni, job, regime, shift, name, lastname }
     const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim()
-
-    console.log('👤 Offender seleccionado:', offender)
-    console.log('📝 Nombre completo:', nombreCompleto)
 
     setForm(f => ({
       ...f,
@@ -436,8 +426,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
         }
       }
     }
-
-    console.log('📋 Datos del formulario antes de enviar:', form);
 
     // Notificar al padre con los datos del formulario y allLeads
     if (onSave) {
@@ -762,9 +750,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 if (jurisdiccionBackend) {
                   setField('jurisdiccion', jurisdiccionBackend.name)
                   setField('jurisdictionId', jurisdiccionBackend.id)
-                  console.log('🏛️ Jurisdicción actualizada automáticamente:', jurisdiccionBackend.name)
-                } else {
-                  console.log('⚠️ No se encontró coincidencia para:', p.jurisdiccion)
                 }
               }
             }}
