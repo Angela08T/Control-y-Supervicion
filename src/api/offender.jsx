@@ -1,4 +1,4 @@
-import api from './config';
+import api, { offenderApi } from './config';
 
 /**
  * API para gestión de Infractores (Offenders)
@@ -10,10 +10,8 @@ export const getOffenders = async (page = 1, limit = 10) => {
     const response = await api.get('/offender', {
       params: { page, limit }
     });
-    console.log('✅ Infractores obtenidos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener infractores:', error);
     throw error;
   }
 };
@@ -22,10 +20,8 @@ export const getOffenders = async (page = 1, limit = 10) => {
 export const getOffenderByDni = async (dni) => {
   try {
     const response = await api.get(`/offender/dni/${dni}`);
-    console.log('✅ Infractor obtenido por DNI:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener infractor por DNI:', error);
     throw error;
   }
 };
@@ -34,10 +30,8 @@ export const getOffenderByDni = async (dni) => {
 export const createOffender = async (offenderData) => {
   try {
     const response = await api.post('/offender', offenderData);
-    console.log('✅ Infractor creado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear infractor:', error);
     throw error;
   }
 };
@@ -46,10 +40,8 @@ export const createOffender = async (offenderData) => {
 export const updateOffender = async (offenderId, offenderData) => {
   try {
     const response = await api.patch(`/offender/${offenderId}`, offenderData);
-    console.log('✅ Infractor actualizado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar infractor:', error);
     throw error;
   }
 };
@@ -58,10 +50,8 @@ export const updateOffender = async (offenderId, offenderData) => {
 export const deleteOffender = async (offenderId) => {
   try {
     const response = await api.delete(`/offender/${offenderId}`);
-    console.log('🔄 Estado de infractor cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al cambiar estado del infractor:', error);
     throw error;
   }
 };
@@ -72,9 +62,6 @@ export const deleteOffender = async (offenderId) => {
  * @returns {Object} - Datos formateados para la API de offender
  */
 export function mapFormDataToOffenderAPI(form) {
-  console.log('🔍 mapFormDataToOffenderAPI - Iniciando mapeo...');
-  console.log('📋 form recibido:', form);
-
   // Convertir el turno completo a la inicial si viene completo
   let shiftInitial = form.turno;
   if (form.turno === 'Mañana') {
@@ -101,8 +88,6 @@ export function mapFormDataToOffenderAPI(form) {
     attendance: false // Siempre false para inasistencias
   };
 
-  console.log('📤 Payload final para offender API:', JSON.stringify(payload, null, 2));
-
   return payload;
 }
 
@@ -125,12 +110,9 @@ export function mapFormDataToOffenderAPI(form) {
  */
 export const createAttendances = async (attendanceData) => {
   try {
-    console.log('📤 Enviando attendances a API:', attendanceData);
-    const response = await api.post('/attendance', attendanceData);
-    console.log('✅ Attendances creadas:', response.data);
+    const response = await offenderApi.post('/attendance', attendanceData);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear attendances:', error);
     throw error;
   }
 };
@@ -139,18 +121,18 @@ export const createAttendances = async (attendanceData) => {
  * Obtener inasistencias guardadas en un rango de fechas
  * @param {string} start - Fecha de inicio (YYYY-MM-DD)
  * @param {string} end - Fecha de fin (YYYY-MM-DD)
+ * @param {string} mode - Modo opcional: "JUSTIFIED" o "UNJUSTIFIED"
  * @returns {Promise} - Respuesta con las inasistencias guardadas
  */
-export const getAttendances = async (start, end) => {
+export const getAttendances = async (start, end, mode = null) => {
   try {
-    console.log(`📥 Obteniendo attendances: ${start} a ${end}`);
-    const response = await api.get('/attendance', {
-      params: { start, end }
-    });
-    console.log('✅ Attendances obtenidas:', response.data);
+    const params = { start, end };
+    if (mode) {
+      params.mode = mode;
+    }
+    const response = await offenderApi.get('/attendance', { params });
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener attendances:', error);
     throw error;
   }
 };
@@ -162,12 +144,31 @@ export const getAttendances = async (start, end) => {
  */
 export const deleteAttendance = async (attendanceId) => {
   try {
-    console.log(`🗑️ Eliminando attendance: ${attendanceId}`);
-    const response = await api.delete(`/attendance/${attendanceId}`);
-    console.log('✅ Attendance eliminada:', response.data);
+    const response = await offenderApi.delete(`/attendance/${attendanceId}`);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar attendance:', error);
+    throw error;
+  }
+};
+
+/**
+ * Crear reporte de inasistencias (absence report)
+ * @param {Object} reportData - Datos del reporte
+ * @param {Object} reportData.header - Encabezado del reporte
+ * @param {Object} reportData.header.to - Destinatario principal {name, job}
+ * @param {Array} reportData.header.cc - Array de destinatarios en copia [{name, job}]
+ * @param {string} reportData.subject_id - ID del asunto
+ * @param {string} reportData.lack_id - ID de la falta
+ * @param {string} reportData.mode - Modo: "JUSTIFIED" o "UNJUSTIFIED"
+ * @param {string} reportData.start - Fecha de inicio (YYYY-MM-DD)
+ * @param {string} reportData.end - Fecha de fin (YYYY-MM-DD)
+ * @returns {Promise} - Respuesta con el reporte generado
+ */
+export const createAbsenceReport = async (reportData) => {
+  try {
+    const response = await offenderApi.post('/absence', reportData);
+    return response.data;
+  } catch (error) {
     throw error;
   }
 };

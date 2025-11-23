@@ -129,7 +129,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
       inasistencias = [...inasistencias, ...lacksInasistenciaDeSubject]
     })
 
-    console.log('Faltas de inasistencia encontradas:', inasistencias)
     return inasistencias
   }, [subjectMap])
 
@@ -143,7 +142,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
     )
 
     if (asuntoKey && subjectMap[asuntoKey]) {
-      console.log('Subject de inasistencia encontrado:', asuntoKey)
       setForm(f => ({
         ...f,
         asunto: asuntoKey,
@@ -156,7 +154,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
       )
 
       if (subjectConInasistencias) {
-        console.log('Subject con inasistencias:', subjectConInasistencias)
         setForm(f => ({
           ...f,
           asunto: subjectConInasistencias,
@@ -220,7 +217,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
             if (foundLack) {
               newForm.asunto = subjectName
               newForm.subjectId = subject.id
-              console.log('Subject asignado:', subjectName, 'ID:', subject.id)
             }
           })
         }
@@ -329,8 +325,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
       alert('Debes seleccionar al menos 1 persona para copia (CC)')
       return
     }
-
-    console.log('📋 Datos de inasistencia a enviar:', form)
 
     if (onSave) {
       onSave(form, allLeads)

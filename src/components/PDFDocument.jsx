@@ -175,13 +175,6 @@ const styles = StyleSheet.create({
 
 // Componente para el header
 const PDFHeader = ({ logoBase64 }) => {
-  // Debug: verificar si llega el logo
-  if (logoBase64) {
-    console.log('✅ PDFHeader recibió logoBase64, longitud:', logoBase64.length)
-  } else {
-    console.warn('⚠️ PDFHeader NO recibió logoBase64')
-  }
-
   return (
     <View style={styles.header} fixed>
       <View style={styles.logoContainer}>

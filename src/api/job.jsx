@@ -10,10 +10,8 @@ export const getJobs = async (page = 1, limit = 10) => {
     const response = await api.get('/job', {
       params: { page, limit }
     });
-    console.log('✅ Cargos obtenidos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener cargos:', error);
     throw error;
   }
 };
@@ -22,10 +20,8 @@ export const getJobs = async (page = 1, limit = 10) => {
 export const getJobById = async (jobId) => {
   try {
     const response = await api.get(`/job/${jobId}`);
-    console.log('✅ Cargo obtenido por ID:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener cargo por ID:', error);
     throw error;
   }
 };
@@ -36,10 +32,8 @@ export const searchJob = async (searchTerm) => {
     const response = await api.get('/job', {
       params: { search: searchTerm }
     });
-    console.log('✅ Búsqueda de cargos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al buscar cargos:', error);
     throw error;
   }
 };
@@ -48,10 +42,8 @@ export const searchJob = async (searchTerm) => {
 export const createJob = async (jobData) => {
   try {
     const response = await api.post('/job', jobData);
-    console.log('✅ Cargo creado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear cargo:', error);
     throw error;
   }
 };
@@ -60,10 +52,8 @@ export const createJob = async (jobData) => {
 export const updateJob = async (jobId, jobData) => {
   try {
     const response = await api.put(`/job/${jobId}`, jobData);
-    console.log('✅ Cargo actualizado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar cargo:', error);
     throw error;
   }
 };
@@ -72,10 +62,8 @@ export const updateJob = async (jobId, jobData) => {
 export const deleteJob = async (jobId) => {
   try {
     const response = await api.delete(`/job/${jobId}`);
-    console.log('🔄 Estado de cargo cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al cambiar estado de cargo:', error);
     throw error;
   }
 };

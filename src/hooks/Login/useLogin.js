@@ -25,11 +25,6 @@ const useLogin = () => {
         // Normalizar el rol usando la función centralizada
         const normalizedRole = normalizeRole(rol);
 
-        // Debug logging - remover después del deploy
-        console.log('Login Debug - Role from backend:', rol);
-        console.log('Login Debug - Role normalized:', normalizedRole);
-        console.log('Login Debug - Username:', user);
-
         dispatch(
           setAuth({
             token,
@@ -42,12 +37,10 @@ const useLogin = () => {
         setToken(token);
         return { success: true, role: normalizedRole };
       } else {
-        console.error('Login fallido: respuesta inválida', response);
         setError('Respuesta del servidor inválida');
         return { success: false, role: null };
       }
     } catch (err) {
-      console.error('Error en login:', err.response ? err.response.data : err);
       const errorMessage = err.response?.data?.message || err.message || 'Error al iniciar sesión';
       setError(errorMessage);
       return { success: false, role: null };

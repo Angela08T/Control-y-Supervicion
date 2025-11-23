@@ -10,10 +10,8 @@ export const getLeads = async (page = 1, limit = 10) => {
     const response = await api.get('/lead', {
       params: { page, limit }
     });
-    console.log('✅ Personal obtenido:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener personal:', error);
     throw error;
   }
 };
@@ -22,10 +20,8 @@ export const getLeads = async (page = 1, limit = 10) => {
 export const getLeadById = async (leadId) => {
   try {
     const response = await api.get(`/lead/${leadId}`);
-    console.log('✅ Persona obtenida por ID:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener persona por ID:', error);
     throw error;
   }
 };
@@ -36,10 +32,8 @@ export const searchLead = async (searchTerm) => {
     const response = await api.get('/lead', {
       params: { search: searchTerm }
     });
-    console.log('✅ Búsqueda de personal:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al buscar personal:', error);
     throw error;
   }
 };
@@ -48,10 +42,8 @@ export const searchLead = async (searchTerm) => {
 export const createLead = async (leadData) => {
   try {
     const response = await api.post('/lead', leadData);
-    console.log('✅ Persona creada:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear persona:', error);
     throw error;
   }
 };
@@ -60,10 +52,8 @@ export const createLead = async (leadData) => {
 export const updateLead = async (leadId, leadData) => {
   try {
     const response = await api.patch(`/lead/${leadId}`, leadData);
-    console.log('✅ Persona actualizada:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar persona:', error);
     throw error;
   }
 };
@@ -72,10 +62,8 @@ export const updateLead = async (leadId, leadData) => {
 export const deleteLead = async (leadId) => {
   try {
     const response = await api.delete(`/lead/${leadId}`);
-    console.log('🔄 Estado de persona cambiado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al cambiar estado de persona:', error);
     throw error;
   }
 };

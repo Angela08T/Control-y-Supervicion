@@ -13,7 +13,6 @@ const useJurisdictions = () => {
 
       try {
         const response = await getJurisdictions();
-        console.log('🏛️ Respuesta completa de jurisdicciones:', response);
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
         let jurisdictionList = [];
@@ -27,10 +26,8 @@ const useJurisdictions = () => {
           jurisdictionList = response.data.data;
         }
 
-        console.log('🏛️ Lista de jurisdicciones procesada:', jurisdictionList);
         setJurisdictions(jurisdictionList);
       } catch (err) {
-        console.error('Error obteniendo jurisdicciones:', err);
         setError(err.response?.data?.message || 'Error al cargar jurisdicciones');
         setJurisdictions([]);
       } finally {

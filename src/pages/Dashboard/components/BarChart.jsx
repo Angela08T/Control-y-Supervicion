@@ -35,11 +35,6 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   const datosActuales = data
   const dias = Object.keys(datosActuales)
 
-  console.log('🔍 BarChart - Datos actuales:', datosActuales)
-  console.log('🔍 BarChart - Días:', dias)
-  console.log('🔍 BarChart - Prop data:', data)
-  console.log('🔍 BarChart - Prop incidencias:', incidencias)
-
   // Colores para los 6 nuevos asuntos
   const colores = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9', // Azul cielo

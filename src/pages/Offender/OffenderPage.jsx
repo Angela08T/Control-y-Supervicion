@@ -36,9 +36,7 @@ export default function OffenderPage() {
     async function fetchOffenders() {
       setLoading(true)
       try {
-        console.log(`📡 Obteniendo infractores desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
         const result = await getOffenders(currentPage, itemsPerPage)
-        console.log('✅ Infractores obtenidos:', result)
 
         const offendersData = result.data?.data || result.data || []
         setOffenders(offendersData)
@@ -65,7 +63,6 @@ export default function OffenderPage() {
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar infractores:', error)
         alert('No se pudo cargar los infractores')
       } finally {
         setLoading(false)
@@ -95,7 +92,6 @@ export default function OffenderPage() {
       const searchByDNI = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando infractor por DNI:', searchTerm)
           const result = await getOffenderByDni(searchTerm)
 
           // El backend puede devolver la data en diferentes estructuras
@@ -103,14 +99,11 @@ export default function OffenderPage() {
           const dataArray = Array.isArray(resultData) ? resultData : [resultData]
 
           if (dataArray.length > 0 && dataArray[0]) {
-            console.log('✅ Infractor encontrado:', dataArray)
             setSearchResult(dataArray)
           } else {
-            console.log('⚠️ No se encontró infractor con ese DNI')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por DNI:', error)
           // Si el error es 404, significa que no se encontró
           if (error.response?.status === 404) {
             setSearchResult([])
@@ -131,9 +124,7 @@ export default function OffenderPage() {
     if (editItem) {
       // Actualizar infractor existente
       try {
-        console.log('📤 Actualizando infractor:', editItem.id, data)
         const response = await updateOffender(editItem.id, data)
-        console.log('✅ Infractor actualizado:', response)
 
         alert(response.data?.message || response.message || 'Infractor actualizado exitosamente')
 
@@ -141,7 +132,6 @@ export default function OffenderPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar infractor:', error)
 
         let errorMessage = 'Error al actualizar el infractor'
 
@@ -158,9 +148,7 @@ export default function OffenderPage() {
     } else {
       // Crear nuevo infractor
       try {
-        console.log('📤 Creando infractor:', data)
         const response = await createOffender(data)
-        console.log('✅ Infractor creado:', response)
 
         alert(response.data?.message || response.message || 'Infractor creado exitosamente')
 
@@ -168,7 +156,6 @@ export default function OffenderPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear infractor:', error)
 
         let errorMessage = 'Error al crear el infractor'
 
@@ -195,18 +182,13 @@ export default function OffenderPage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de infractor con ID:`, item.id)
-
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteOffender(item.id)
-
-      console.log('✅ Respuesta:', response)
 
       alert(response.data?.message || response.message || `Infractor ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} infractor:`, error)
 
       let errorMessage = `Error al ${action} el infractor`
 

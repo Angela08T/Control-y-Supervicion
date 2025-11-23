@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
@@ -15,6 +16,10 @@ import TurnoList from './components/TurnoList'
 import DateRangeModal from './components/DateRangeModal'
 
 export default function DashboardPage() {
+  // Obtener el rol del usuario desde Redux
+  const userRole = useSelector(state => state.auth.role)
+  const isAdmin = userRole === 'ADMIN'
+
   const [incidencias, setIncidencias] = useState(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
   const [dateRange, setDateRange] = useState({ start: null, end: null })
@@ -47,13 +52,11 @@ export default function DashboardPage() {
         setIncidencias(reportsResponse.data)
       }
     } catch (error) {
-      console.warn('No se pudieron cargar reportes de la API, usando localStorage:', error)
     }
 
     try {
       // Obtener cantidad de serenos activos
       const offendersResponse = await getAllOffenders()
-      console.log('📋 Respuesta de offenders:', offendersResponse)
 
       // La estructura puede ser response.data.data o response.data
       const offendersList = Array.isArray(offendersResponse?.data?.data)
@@ -63,7 +66,6 @@ export default function DashboardPage() {
       const activeCount = offendersList.filter(o => o.status === 'active').length || 0
       setSerenosActivos(activeCount)
     } catch (error) {
-      console.warn('No se pudo obtener información de serenos:', error)
       setSerenosActivos(23) // Valor por defecto
     }
 
@@ -78,7 +80,6 @@ export default function DashboardPage() {
         })
       }
     } catch (error) {
-      console.warn('No se pudo obtener datos de supervisión:', error)
       // Mantener valores por defecto
       setSupervisionData({
         serenosEnCampo: 18,
@@ -111,17 +112,13 @@ export default function DashboardPage() {
         startDate = new Date(Date.now() - daysToSubtract * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       }
 
-      console.log('📊 Obteniendo estadísticas del dashboard:', { startDate, endDate, chartPeriod })
-
       // Obtener tendencias (gráficos)
       try {
         const trendsResponse = await getDashboardTrends(startDate, endDate)
         if (trendsResponse?.data) {
           setTrendsData(trendsResponse.data)
-          console.log('✅ Tendencias cargadas:', trendsResponse.data)
         }
       } catch (error) {
-        console.warn('⚠️ No se pudieron cargar tendencias del dashboard:', error)
         setTrendsData(null)
       }
 
@@ -130,10 +127,8 @@ export default function DashboardPage() {
         const generalResponse = await getDashboardGeneral(startDate, endDate)
         if (generalResponse?.data) {
           setGeneralStats(generalResponse.data)
-          console.log('✅ Estadísticas generales cargadas:', generalResponse.data)
         }
       } catch (error) {
-        console.warn('⚠️ No se pudieron cargar estadísticas generales:', error)
         setGeneralStats(null)
       }
     }
@@ -244,9 +239,6 @@ export default function DashboardPage() {
 
     // Si tenemos datos de la API de tendencias, usarlos
     if (trendsData && trendsData.days && trendsData.days.length > 0) {
-      console.log('📊 Procesando datos de tendencias:', trendsData)
-      console.log('🗂️ Mapa de IDs a nombres:', subjectIdToName)
-
       // Inicializar estructura para fechas del rango
       const fechasMap = {}
       trendsData.days.forEach(day => {
@@ -267,16 +259,13 @@ export default function DashboardPage() {
             const subjectName = subjectIdToName[subjectId]
             if (subjectName && day.subjects[subjectId].sent > 0) {
               fechasMap[labelFecha][subjectName] = day.subjects[subjectId].sent
-              console.log(`  ✅ ${labelFecha} - ${subjectName}: ${day.subjects[subjectId].sent}`)
             }
           })
         }
       })
 
       Object.assign(incidenciasPorMes, fechasMap)
-      console.log('📈 Datos procesados para LineChart:', incidenciasPorMes)
     } else {
-      console.log('⚠️ No hay datos de tendencias, usando cálculo local')
       // Fallback: usar cálculo local con incidencias filtradas
       meses.forEach((mes, idx) => {
         incidenciasPorMes[mes] = {}
@@ -310,17 +299,11 @@ export default function DashboardPage() {
 
     if (generalStats && (generalStats.morning !== undefined || generalStats.afternoon !== undefined || generalStats.evening !== undefined)) {
       // Usar datos de la API (mapear nombres en inglés a español)
-      console.log('📊 Usando datos de turnos desde API:', {
-        morning: generalStats.morning,
-        afternoon: generalStats.afternoon,
-        evening: generalStats.evening
-      })
       incidenciasPorTurno['Mañana'] = generalStats.morning || 0
       incidenciasPorTurno['Tarde'] = generalStats.afternoon || 0
       incidenciasPorTurno['Noche'] = generalStats.evening || 0
     } else {
       // Fallback a cálculo local
-      console.log('⚠️ Calculando turnos desde datos locales')
       filtered.forEach(inc => {
         if (inc.turno && incidenciasPorTurno[inc.turno] !== undefined) {
           incidenciasPorTurno[inc.turno]++
@@ -332,7 +315,6 @@ export default function DashboardPage() {
     const incidenciasPorAsunto = {}
 
     if (trendsData && trendsData.days && trendsData.days.length > 0) {
-      console.log('📊 Calculando datos para BarChart desde API...')
       // Inicializar con 0 para todos los asuntos
       nuevosAsuntos.forEach(asunto => {
         incidenciasPorAsunto[asunto] = 0
@@ -350,14 +332,11 @@ export default function DashboardPage() {
           })
         }
       })
-      console.log('📊 Datos para BarChart:', incidenciasPorAsunto)
     } else {
-      console.log('⚠️ Calculando datos para BarChart desde conteo local...')
       // Fallback: usar conteo local
       nuevosAsuntos.forEach(asunto => {
         incidenciasPorAsunto[asunto] = conteoAsuntos[asunto] || 0
       })
-      console.log('📊 Datos locales para BarChart:', incidenciasPorAsunto)
     }
 
     // También agregar el conteo de faltas por asunto
@@ -469,10 +448,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Última fila: Tabla de Centinelas */}
-      <div className="bottom-grid-full">
-        <PersonalTable />
-      </div>
+      {/* Última fila: Tabla de Centinelas (solo para ADMIN) */}
+      {isAdmin && (
+        <div className="bottom-grid-full">
+          <PersonalTable />
+        </div>
+      )}
 
       {/* Modal de rango de fechas */}
       {showDateModal && (

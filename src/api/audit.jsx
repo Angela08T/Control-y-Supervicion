@@ -12,9 +12,7 @@ export const getAllAudits = async (page = 1, limit = 10, filters = {}) => {
         if (filters.username) queryParams += `&username=${filters.username}`;
         if (filters.search) queryParams += `&search=${filters.search}`;
 
-        console.log('🔍 Query params construidos:', queryParams);
         const response = await api.get(`/audit${queryParams}`);
-        console.log('📡 Respuesta de API /audit:', response.data);
 
         return response.data;
     } catch (error) {

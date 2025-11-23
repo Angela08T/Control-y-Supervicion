@@ -47,11 +47,9 @@ function formatearFecha(fecha) {
 
   // Verificar si la fecha es válida
   if (isNaN(d.getTime())) {
-    console.error('❌ Fecha inválida:', fecha)
     return `Fecha inválida (${fecha})`
   }
 
-  console.log('✅ Fecha formateada:', `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`, 'desde:', fecha)
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
 
@@ -95,6 +93,8 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
     articulo: '',
     bodycam: '',
     bodycamAsignadaA: '',
+    tipoMedio: 'bodycam', // 'bodycam' o 'camara'
+    numeroCamara: '',
     supervisor: '',
     descripcionAdicional: '',
     tipoInasistencia: '',
@@ -112,19 +112,14 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   useEffect(() => {
     const convertLogoToBase64 = async () => {
       try {
-        console.log('🖼️ Cargando logo desde:', logoSJL)
         const response = await fetch(logoSJL)
-        console.log('📥 Respuesta del logo:', response.status)
         const blob = await response.blob()
-        console.log('📦 Blob del logo:', blob.size, 'bytes')
         const reader = new FileReader()
         reader.onloadend = () => {
-          console.log('✅ Logo convertido a base64, longitud:', reader.result.length)
           setLogoBase64(reader.result)
         }
         reader.readAsDataURL(blob)
       } catch (error) {
-        console.error('❌ Error al convertir logo a base64:', error)
       }
     }
 
@@ -133,13 +128,6 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   useEffect(() => {
     if (incidencia) {
-      console.log('📅 DEBUG - Datos de incidencia recibidos:', {
-        fechaIncidente: incidencia.fechaIncidente,
-        fechaFalta: incidencia.fechaFalta,
-        tipoFechaIncidente: typeof incidencia.fechaIncidente,
-        tipoFechaFalta: typeof incidencia.fechaFalta
-      })
-
       const numeroInforme = `${String(Math.floor(Math.random() * 999)).padStart(3, '0')}-2025-CS-SS-GOP/MDSJL`
 
       // Usar el cargo del destinatario de la API si está disponible, sino usar el mapeo antiguo
@@ -155,19 +143,13 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
       // OBTENER SOLO LA DIRECCIÓN, NO LAS COORDENADAS
       const obtenerDireccion = () => {
-        console.log('📍 Ubicación completa:', incidencia.ubicacion)
-
         if (incidencia.ubicacion?.address) {
-          console.log('✅ Dirección encontrada:', incidencia.ubicacion.address)
           return incidencia.ubicacion.address
         } else if (incidencia.ubicacion?.coordinates) {
-          console.log('⚠️ Solo coordenadas disponibles')
           return 'Dirección no especificada (solo coordenadas)'
         } else if (Array.isArray(incidencia.ubicacion)) {
-          console.log('⚠️ Formato antiguo de ubicación')
           return 'Dirección no especificada (solo coordenadas)'
         }
-        console.log('❌ Sin ubicación')
         return 'No especificada'
       }
 
@@ -184,6 +166,8 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         const falta = incidencia.falta || 'Falta no especificada'
         const bodycamNum = incidencia.bodycamNumber || 'N/A'
         const tipoInasistencia = incidencia.tipoInasistencia || 'Injustificada'
+        const tipoMedio = incidencia.tipoMedio || 'bodycam'
+        const numeroCamara = incidencia.numeroCamara || 'N/A'
 
         // Si es una inasistencia, usar plantilla específica
         if (falta.startsWith('Inasistencia')) {
@@ -200,6 +184,25 @@ Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${reg
 Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
 
 Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
+
+Se adjuntan las evidencias:`
+        }
+
+        // Para otras faltas - verificar si es bodycam o cámara
+        if (tipoMedio === 'camara') {
+          return `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+
+Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
+
+[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
+
+...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la CÁMARA ${numeroCamara}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
+
+[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
+
+Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la CÁMARA ${numeroCamara}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
+
+Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la CÁMARA. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
 
 Se adjuntan las evidencias:`
         }
@@ -246,6 +249,8 @@ Se adjuntan las evidencias:`
         articulo,
         bodycam: incidencia.bodycamNumber || '',
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
+        tipoMedio: incidencia.tipoMedio || 'bodycam',
+        numeroCamara: incidencia.numeroCamara || '',
         supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
         descripcionAdicional: generarContenidoInforme(),  // Generar plantilla para todos los tipos
         tipoInasistencia: incidencia.tipoInasistencia || '',
@@ -263,17 +268,14 @@ Se adjuntan las evidencias:`
 
       setLoadingEvidences(true)
       try {
-        console.log('📥 Cargando evidencias del reporte:', incidencia.id)
         const reportData = await getReportWithEvidences(incidencia.id)
 
         if (reportData && reportData.evidences && reportData.evidences.length > 0) {
-          console.log('✅ Evidencias cargadas:', reportData.evidences)
 
           // Cargar las imágenes existentes y convertirlas a base64 para el PDF
           const imagenesExistentes = await Promise.all(
             reportData.evidences.map(async (ev) => {
               try {
-                console.log('🖼️ Intentando cargar imagen:', ev.imageUrl)
 
                 // Obtener el token de localStorage
                 const getToken = () => {
@@ -287,7 +289,6 @@ Se adjuntan las evidencias:`
                       }
                     }
                   } catch (error) {
-                    console.error('Error al obtener token:', error)
                   }
                   return null
                 }
@@ -307,7 +308,6 @@ Se adjuntan las evidencias:`
                 }
 
                 const blob = await response.blob()
-                console.log('✅ Imagen cargada, tamaño:', blob.size, 'bytes')
 
                 // Convertir blob a base64
                 const base64 = await new Promise((resolve) => {
@@ -325,7 +325,6 @@ Se adjuntan las evidencias:`
                   isExisting: true // Marcar como imagen existente
                 }
               } catch (error) {
-                console.error('❌ Error al cargar imagen:', ev.imageUrl, error)
                 return null
               }
             })
@@ -334,8 +333,6 @@ Se adjuntan las evidencias:`
           // Filtrar imágenes que se cargaron exitosamente
           const imagenesValidas = imagenesExistentes.filter(img => img !== null)
 
-          console.log(`✅ ${imagenesValidas.length} de ${reportData.evidences.length} imágenes cargadas exitosamente`)
-
           setFormData(prev => ({
             ...prev,
             imagenes: imagenesValidas,
@@ -343,7 +340,6 @@ Se adjuntan las evidencias:`
           }))
         }
       } catch (error) {
-        console.error('❌ Error al cargar evidencias:', error)
       } finally {
         setLoadingEvidences(false)
       }
@@ -356,8 +352,8 @@ Se adjuntan las evidencias:`
     setFormData(prev => {
       const newData = { ...prev, [field]: value }
 
-      // Si cambia el número de bodycam, actualizar la plantilla automáticamente
-      if (field === 'bodycam' && !(incidencia.falta && incidencia.falta.startsWith('Inasistencia'))) {
+      // Si cambia el número de bodycam o numeroCamara, actualizar la plantilla automáticamente
+      if ((field === 'bodycam' || field === 'numeroCamara') && !(incidencia.falta && incidencia.falta.startsWith('Inasistencia'))) {
         const hora = obtenerHoraFormateada(incidencia.horaIncidente)
         const fecha = formatearFecha(incidencia.fechaIncidente)
         const direccion = prev.ubicacion
@@ -366,9 +362,32 @@ Se adjuntan las evidencias:`
         const regLab = incidencia.regLab || 'N/A'
         const turno = incidencia.turno || 'N/A'
         const falta = incidencia.falta || 'Falta no especificada'
-        const bodycamNum = value || 'N/A'  // Usar el nuevo valor
+        const tipoMedio = incidencia.tipoMedio || prev.tipoMedio || 'bodycam'
 
-        const nuevaPlantilla = `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+        let nuevaPlantilla
+
+        if (tipoMedio === 'camara') {
+          const numeroCamara = field === 'numeroCamara' ? value : (prev.numeroCamara || 'N/A')
+
+          nuevaPlantilla = `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+
+Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
+
+[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
+
+...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la CÁMARA ${numeroCamara}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
+
+[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
+
+Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la CÁMARA ${numeroCamara}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
+
+Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la CÁMARA. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
+
+Se adjuntan las evidencias:`
+        } else {
+          const bodycamNum = field === 'bodycam' ? value : (prev.bodycam || 'N/A')
+
+          nuevaPlantilla = `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
 
 Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
 
@@ -383,6 +402,7 @@ Como medida inmediata, se realizó el registro documental del incidente y se adj
 Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la BODYCAM. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
 
 Se adjuntan las evidencias:`
+        }
 
         newData.descripcionAdicional = nuevaPlantilla
       }
@@ -440,11 +460,8 @@ Se adjuntan las evidencias:`
       }
 
       try {
-        console.log('🗑️ Eliminando imagen del servidor:', img.id)
         await deleteEvidence(img.id)
-        console.log('✅ Imagen eliminada del servidor exitosamente')
       } catch (error) {
-        console.error('❌ Error al eliminar imagen:', error)
         alert('Error al eliminar la imagen del servidor. Por favor, intente nuevamente.')
         return
       }
@@ -455,6 +472,60 @@ Se adjuntan las evidencias:`
       ...prev,
       imagenes: prev.imagenes.filter((_, i) => i !== index)
     }))
+  }
+
+  // Función para guardar cambios sin descargar el PDF
+  async function guardarCambios() {
+    // Validar que todas las imágenes tengan descripción
+    const errores = []
+    formData.imagenes.forEach((img, index) => {
+      if (!img.anexo || !img.anexo.trim()) {
+        errores.push(index)
+      }
+    })
+
+    if (errores.length > 0) {
+      setValidationErrors(errores)
+      alert(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
+      return
+    }
+
+    setSavingReport(true)
+    try {
+      // Obtener imágenes nuevas para subir
+      const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
+      const files = nuevasImagenes.map(img => img.file).filter(Boolean)
+      const descriptions = nuevasImagenes.map(img => img.anexo)
+
+      await updateReportWithEvidences(
+        incidencia.id,
+        files,
+        descriptions,
+        formData.descripcionAdicional
+      )
+
+      alert('Cambios guardados exitosamente')
+
+      // Marcar las imágenes nuevas como existentes después de guardar
+      setFormData(prev => ({
+        ...prev,
+        imagenes: prev.imagenes.map(img => ({
+          ...img,
+          isExisting: true
+        }))
+      }))
+    } catch (error) {
+      let errorMessage = 'Error al guardar los cambios'
+      if (error.response?.data?.message) {
+        errorMessage = Array.isArray(error.response.data.message)
+          ? 'Errores:\n' + error.response.data.message.join('\n')
+          : error.response.data.message
+      }
+
+      alert(errorMessage)
+    } finally {
+      setSavingReport(false)
+    }
   }
 
   async function generarPDF() {
@@ -478,8 +549,6 @@ Se adjuntan las evidencias:`
     if (nuevasImagenes.length > 0 || formData.descripcionAdicional) {
       setSavingReport(true)
       try {
-        console.log('💾 Guardando evidencias en el backend...')
-
         const files = nuevasImagenes.map(img => img.file).filter(Boolean)
         const descriptions = nuevasImagenes.map(img => img.anexo)
 
@@ -490,9 +559,7 @@ Se adjuntan las evidencias:`
           formData.descripcionAdicional
         )
 
-        console.log('✅ Evidencias guardadas exitosamente')
       } catch (error) {
-        console.error('❌ Error al guardar evidencias:', error)
 
         let errorMessage = 'Error al guardar las evidencias en el servidor'
         if (error.response?.data?.message) {
@@ -511,9 +578,6 @@ Se adjuntan las evidencias:`
 
     // Generar el PDF usando @react-pdf/renderer
     try {
-      console.log('📄 Generando PDF con @react-pdf/renderer...')
-      console.log('🖼️ Logo base64 disponible:', logoBase64 ? `Sí (${logoBase64.length} caracteres)` : 'NO')
-
       const doc = (
         <InformePDFDocument
           formData={formData}
@@ -537,12 +601,9 @@ Se adjuntan las evidencias:`
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
-      console.log('✅ PDF generado exitosamente')
-
       // Registrar la descarga del PDF
       trackPDFDownload(incidencia.id)
     } catch (error) {
-      console.error('❌ Error al generar PDF:', error)
       alert('Error al generar el PDF. Por favor, intente nuevamente.')
     }
   }
@@ -738,31 +799,45 @@ Se adjuntan las evidencias:`
                 <>
                   <div className="editable-section">
                     <label>Artículo:</label>
-                    <input 
+                    <input
                       type="text"
                       value={formData.articulo}
                       onChange={e => handleChange('articulo', e.target.value)}
                     />
                   </div>
 
-                  <div className="editable-section">
-                    <label>N° Bodycam:</label>
-                    <input
-                      type="text"
-                      value={formData.bodycam}
-                      readOnly
-                      style={{ cursor: 'not-allowed' }}
-                    />
-                  </div>
+                  {formData.tipoMedio === 'bodycam' ? (
+                    <>
+                      <div className="editable-section">
+                        <label>N° Bodycam:</label>
+                        <input
+                          type="text"
+                          value={formData.bodycam}
+                          readOnly
+                          style={{ cursor: 'not-allowed' }}
+                        />
+                      </div>
 
-                  <div className="editable-section">
-                    <label>Bodycam asignada a:</label>
-                    <input
-                      type="text"
-                      value={formData.bodycamAsignadaA}
-                      onChange={e => handleChange('bodycamAsignadaA', e.target.value)}
-                    />
-                  </div>
+                      <div className="editable-section">
+                        <label>Bodycam asignada a:</label>
+                        <input
+                          type="text"
+                          value={formData.bodycamAsignadaA}
+                          onChange={e => handleChange('bodycamAsignadaA', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="editable-section">
+                      <label>N° Cámara:</label>
+                      <input
+                        type="text"
+                        value={formData.numeroCamara}
+                        readOnly
+                        style={{ cursor: 'not-allowed' }}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 
@@ -969,27 +1044,21 @@ Se adjuntan las evidencias:`
             Cancelar
           </button>
           <button
+            className="btn-secondary"
+            onClick={guardarCambios}
+            disabled={savingReport || loadingEvidences}
+            style={{ marginLeft: '10px' }}
+          >
+            {savingReport ? '💾 Guardando...' : 'Guardar'}
+          </button>
+          <button
             className="btn-primary"
             onClick={generarPDF}
             disabled={savingReport || loadingEvidences}
           >
-            {savingReport ? '💾 Guardando evidencias...' : 'Descargar PDF'}
+            Descargar PDF
           </button>
         </div>
-
-        {formData.imagenes.length > 0 && (
-          <div style={{
-            padding: '12px',
-            background: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '6px',
-            marginTop: '10px',
-            fontSize: '0.9rem',
-            color: 'var(--text-secondary)'
-          }}>
-            <strong>ℹ️ Información:</strong> Al hacer clic en "Descargar PDF", las imágenes nuevas y la descripción adicional se guardarán automáticamente en el servidor.
-          </div>
-        )}
       </div>
     </div>
   )

@@ -111,8 +111,9 @@ export default function Router() {
             </PrivateRoute>
           }
         >
-          <Route index element={<DashboardPage />} />
+          <Route index element={<Navigate to="incidencias" replace />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
         </Route>
 
         {/* Página 404 */}

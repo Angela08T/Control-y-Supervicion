@@ -89,33 +89,38 @@ export default function SubjectTable({ data = [], onToggleStatus, onEdit, startI
                       {item.lacks ? item.lacks.length : 0}
                     </span>
                   </td>
-                  <td>
+                  <td style={{ maxWidth: '350px' }}>
                     {item.lacks && item.lacks.length > 0 ? (
                       <div style={{
                         display: 'flex',
                         flexWrap: 'wrap',
-                        gap: '6px',
-                        maxWidth: '500px'
+                        gap: '4px'
                       }}>
                         {item.lacks.map((lack) => (
                           <span
                             key={lack.id}
                             style={{
-                              padding: '3px 10px',
+                              padding: '3px 8px',
                               borderRadius: '8px',
-                              fontSize: '0.8rem',
+                              fontSize: '0.75rem',
                               fontWeight: '400',
                               backgroundColor: 'rgba(168, 85, 247, 0.1)',
                               color: '#a855f7',
                               border: '1px solid rgba(168, 85, 247, 0.2)',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              gap: '4px',
+                              maxWidth: '150px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
                             }}
                             title={lack.name}
                           >
-                            <FaList style={{ fontSize: '0.7rem' }} />
-                            {lack.name}
+                            <FaList style={{ fontSize: '0.65rem', flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {lack.name}
+                            </span>
                           </span>
                         ))}
                       </div>

@@ -13,7 +13,6 @@ const useLacks = () => {
 
       try {
         const response = await getLacks();
-        console.log('📋 Respuesta completa de faltas:', response);
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
         let lackList = [];
@@ -27,10 +26,8 @@ const useLacks = () => {
           lackList = response.data.data;
         }
 
-        console.log('📋 Lista de faltas procesada:', lackList);
         setLacks(lackList);
       } catch (err) {
-        console.error('Error obteniendo faltas:', err);
         setError(err.response?.data?.message || 'Error al cargar faltas');
         setLacks([]);
       } finally {

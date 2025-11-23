@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { FaFilePdf, FaTrash } from 'react-icons/fa'
 
 export default function CalendarioInasistencias({
@@ -7,9 +7,17 @@ export default function CalendarioInasistencias({
   onDelete,
   onSave,
   onDeleteMarks,
-  onMonthChange
+  onMonthChange,
+  dateRange,
+  isReadOnly = false
 }) {
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  // Usar la fecha de inicio del rango si está disponible
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (dateRange?.start) {
+      return new Date(dateRange.start)
+    }
+    return new Date()
+  })
   const [markMode, setMarkMode] = useState(null) // Modo de marcado: 'I' (injustificado), 'J' (justificado) o null
   const [editMode, setEditMode] = useState(false) // Modo de edición para quitar marcas
   const [selectedCells, setSelectedCells] = useState({}) // Celdas seleccionadas: { "dni-dia": true }
@@ -17,6 +25,19 @@ export default function CalendarioInasistencias({
   const [marksToDelete, setMarksToDelete] = useState([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
   const itemsPerPage = 12 // Límite de personas por página
+
+  // Sincronizar selectedDate cuando cambie dateRange desde el padre
+  useEffect(() => {
+    if (dateRange?.start) {
+      setSelectedDate(new Date(dateRange.start))
+      setCurrentPage(1)
+      setSelectedCells({})
+      setTempMarks({})
+      setMarksToDelete([])
+      setMarkMode(null)
+      setEditMode(false)
+    }
+  }, [dateRange])
 
   // Obtener nombre del mes en español
   const meses = [
@@ -50,29 +71,51 @@ export default function CalendarioInasistencias({
       }
     })
 
-    console.log('📊 Marcas guardadas procesadas:', marks)
     return marks
   }, [savedAttendances])
 
-  // Calcular días del mes seleccionado
+  // Calcular días según el rango seleccionado
   const diasDelMes = useMemo(() => {
-    const year = selectedDate.getFullYear()
-    const month = selectedDate.getMonth()
-    const primerDia = new Date(year, month, 1)
-    const ultimoDia = new Date(year, month + 1, 0)
-    const totalDias = ultimoDia.getDate()
-
     const dias = []
-    for (let i = 1; i <= totalDias; i++) {
-      const fecha = new Date(year, month, i)
-      dias.push({
-        numero: i,
-        diaSemana: diasSemanaCorto[fecha.getDay()],
-        fecha: fecha
-      })
+
+    if (dateRange?.start && dateRange?.end) {
+      // Usar el rango de fechas seleccionado
+      const startDate = new Date(dateRange.start)
+      const endDate = new Date(dateRange.end)
+
+      // Iterar desde la fecha de inicio hasta la fecha de fin
+      const currentDate = new Date(startDate)
+      while (currentDate <= endDate) {
+        dias.push({
+          numero: currentDate.getDate(),
+          diaSemana: diasSemanaCorto[currentDate.getDay()],
+          fecha: new Date(currentDate),
+          mes: currentDate.getMonth(),
+          anio: currentDate.getFullYear()
+        })
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    } else {
+      // Fallback: mostrar todo el mes actual
+      const year = selectedDate.getFullYear()
+      const month = selectedDate.getMonth()
+      const ultimoDia = new Date(year, month + 1, 0)
+      const totalDias = ultimoDia.getDate()
+
+      for (let i = 1; i <= totalDias; i++) {
+        const fecha = new Date(year, month, i)
+        dias.push({
+          numero: i,
+          diaSemana: diasSemanaCorto[fecha.getDay()],
+          fecha: fecha,
+          mes: month,
+          anio: year
+        })
+      }
     }
+
     return dias
-  }, [selectedDate])
+  }, [selectedDate, dateRange])
 
   // Filtrar inasistencias del mes seleccionado (solo para mostrar faltas existentes)
   const inasistenciasDelMes = useMemo(() => {
@@ -171,7 +214,6 @@ export default function CalendarioInasistencias({
   }
 
   function handleDownloadPDF() {
-    console.log('Exportar PDF - Funcionalidad pendiente')
   }
 
   function handleToggleMark(tipo) {
@@ -205,33 +247,36 @@ export default function CalendarioInasistencias({
     }
   }
 
-  function handleCellClick(dni, dia) {
-    const key = `${dni}-${dia}`
+  function handleCellClick(dni, dia, mes, anio) {
+    // Key simple para savedMarks (compatibilidad con el formato actual)
+    const savedKey = `${dni}-${dia}`
+    // Key completa para tempMarks (incluye mes y año para evitar conflictos)
+    const fullKey = `${dni}-${dia}-${mes}-${anio}`
 
     // Modo de marcado (I o J): agregar marcas temporales (solo si NO hay marca guardada)
     if (markMode) {
       // No permitir marcar si ya existe una marca guardada
-      if (savedMarks[key]) {
+      if (savedMarks[savedKey]) {
         alert('Esta celda ya tiene una marca guardada. Usa el modo EDITAR para eliminarla.')
         return
       }
 
       setSelectedCells(prev => {
         const newSelected = { ...prev }
-        if (newSelected[key]) {
-          delete newSelected[key]
+        if (newSelected[fullKey]) {
+          delete newSelected[fullKey]
           // Quitar marca temporal
           setTempMarks(marks => {
             const newMarks = { ...marks }
-            delete newMarks[key]
+            delete newMarks[fullKey]
             return newMarks
           })
         } else {
-          newSelected[key] = true
+          newSelected[fullKey] = true
           // Agregar marca temporal con el tipo seleccionado (I o J)
           setTempMarks(marks => ({
             ...marks,
-            [key]: { tipo: markMode === 'I' ? 'injustificada' : 'justificada', id: null }
+            [fullKey]: { tipo: markMode === 'I' ? 'injustificada' : 'justificada', id: null }
           }))
         }
         return newSelected
@@ -241,8 +286,8 @@ export default function CalendarioInasistencias({
     // Modo edición: seleccionar marcas guardadas para eliminar
     if (editMode) {
       // Solo permitir seleccionar celdas que tienen marcas guardadas
-      if (savedMarks[key]) {
-        const markId = savedMarks[key].id
+      if (savedMarks[savedKey]) {
+        const markId = savedMarks[savedKey].id
 
         setMarksToDelete(prev => {
           const newMarks = [...prev]
@@ -262,10 +307,10 @@ export default function CalendarioInasistencias({
         // Toggle selección visual
         setSelectedCells(prev => {
           const newSelected = { ...prev }
-          if (newSelected[key]) {
-            delete newSelected[key]
+          if (newSelected[fullKey]) {
+            delete newSelected[fullKey]
           } else {
-            newSelected[key] = true
+            newSelected[fullKey] = true
           }
           return newSelected
         })
@@ -291,13 +336,18 @@ export default function CalendarioInasistencias({
     // Modo de marcado: guardar marcas nuevas
     if (markMode || Object.keys(tempMarks).length > 0) {
       const marksToSave = Object.keys(tempMarks).map(key => {
-        const [dni, dia] = key.split('-')
+        // El key ahora es "dni-dia-mes-anio" o "dni-dia" (para compatibilidad)
+        const parts = key.split('-')
+        const dni = parts[0]
+        const dia = parseInt(parts[1])
+        const mes = parts[2] ? parseInt(parts[2]) : selectedDate.getMonth() + 1
+        const anio = parts[3] ? parseInt(parts[3]) : selectedDate.getFullYear()
         const markData = tempMarks[key]
         return {
           dni,
-          dia: parseInt(dia),
-          mes: selectedDate.getMonth() + 1,
-          anio: selectedDate.getFullYear(),
+          dia,
+          mes,
+          anio,
           tipo: markData.tipo || 'injustificada'
         }
       })
@@ -306,8 +356,6 @@ export default function CalendarioInasistencias({
         alert('No hay faltas seleccionadas para guardar')
         return
       }
-
-      console.log('Guardando faltas:', marksToSave)
 
       if (onSave) {
         onSave(marksToSave)
@@ -327,8 +375,6 @@ export default function CalendarioInasistencias({
         setEditMode(false)
         return
       }
-
-      console.log('Eliminando marcas:', marksToDelete)
 
       if (onDeleteMarks) {
         onDeleteMarks(marksToDelete)
@@ -373,76 +419,65 @@ export default function CalendarioInasistencias({
 
   return (
     <div className="calendario-inasistencias">
-      {/* Controles superiores */}
-      <div className="calendario-controls">
-        <div className="fecha-selector">
-          <span className="label">Mes y año</span>
-          <div className="selector-group">
-            <select value={selectedDate.getMonth()} onChange={handleMonthChange}>
-              {meses.map((mes, index) => (
-                <option key={mes} value={index}>{mes}</option>
-              ))}
-            </select>
-            <select value={selectedDate.getFullYear()} onChange={handleYearChange}>
-              {years.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
+      {/* Botones de acción - Solo mostrar si no es modo solo lectura */}
+      {!isReadOnly && (
+        <div className="calendario-actions">
+          <button
+            className={`btn-fl btn-injustificado ${markMode === 'I' ? 'active' : ''}`}
+            onClick={() => handleToggleMark('I')}
+            title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
+          >
+            I
+          </button>
+          <button
+            className={`btn-fl btn-justificado ${markMode === 'J' ? 'active' : ''}`}
+            onClick={() => handleToggleMark('J')}
+            title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
+          >
+            J
+          </button>
+          <button
+            className={`btn-edit ${editMode ? 'active' : ''}`}
+            onClick={handleToggleEdit}
+            title={editMode ? 'Desactivar modo edición' : 'Activar modo edición'}
+          >
+            EDITAR
+          </button>
+          <button className="btn-icon btn-delete" onClick={handleDeleteSelected} title="Eliminar">
+            <FaTrash />
+          </button>
+          {markMode === 'I' && (
+            <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+              Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
+            </span>
+          )}
+          {markMode === 'J' && (
+            <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+              Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
+            </span>
+          )}
+          {editMode && (
+            <span style={{ marginLeft: '10px', color: '#f59e0b', fontWeight: '500', fontSize: '0.9rem' }}>
+              Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
+            </span>
+          )}
         </div>
-
-        <button className="btn-icon btn-pdf" onClick={handleDownloadPDF} title="Descargar PDF">
-          <FaFilePdf />
-        </button>
-      </div>
-
-      {/* Botones de acción */}
-      <div className="calendario-actions">
-        <button
-          className={`btn-fl btn-injustificado ${markMode === 'I' ? 'active' : ''}`}
-          onClick={() => handleToggleMark('I')}
-          title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
-        >
-          I
-        </button>
-        <button
-          className={`btn-fl btn-justificado ${markMode === 'J' ? 'active' : ''}`}
-          onClick={() => handleToggleMark('J')}
-          title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
-        >
-          J
-        </button>
-        <button
-          className={`btn-edit ${editMode ? 'active' : ''}`}
-          onClick={handleToggleEdit}
-          title={editMode ? 'Desactivar modo edición' : 'Activar modo edición'}
-        >
-          EDITAR
-        </button>
-        <button className="btn-icon btn-delete" onClick={handleDeleteSelected} title="Eliminar">
-          <FaTrash />
-        </button>
-        {markMode === 'I' && (
-          <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
-          </span>
-        )}
-        {markMode === 'J' && (
-          <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
-          </span>
-        )}
-        {editMode && (
-          <span style={{ marginLeft: '10px', color: '#f59e0b', fontWeight: '500', fontSize: '0.9rem' }}>
-            Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
-          </span>
-        )}
-      </div>
+      )}
 
       {/* Tabla calendario */}
       <div className="calendario-table-container">
         <div className="calendario-header">
-          INASISTENCIAS DE SERVICIO - MES DE {meses[selectedDate.getMonth()]}
+          {dateRange?.start && dateRange?.end ? (
+            <>
+              INASISTENCIAS DE SERVICIO - {
+                dateRange.start.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).toUpperCase()
+              } AL {
+                dateRange.end.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+              }
+            </>
+          ) : (
+            `INASISTENCIAS DE SERVICIO - MES DE ${meses[selectedDate.getMonth()]}`
+          )}
         </div>
 
         <div className="calendario-grid">
@@ -487,10 +522,16 @@ export default function CalendarioInasistencias({
                       <td className="col-cargo">{persona.cargo}</td>
                       <td className="col-regimen">{persona.regimen}</td>
                       {diasDelMes.map(dia => {
-                        const cellKey = `${persona.dni}-${dia.numero}`
-                        const isSelected = selectedCells[cellKey]
-                        const tempMark = tempMarks[cellKey]
-                        const savedMark = savedMarks[cellKey]
+                        // Key para savedMarks (simple)
+                        const savedKey = `${persona.dni}-${dia.numero}`
+                        // Key completa para tempMarks y selectedCells
+                        const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
+                        const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
+                        const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
+
+                        const isSelected = selectedCells[fullKey]
+                        const tempMark = tempMarks[fullKey]
+                        const savedMark = savedMarks[savedKey]
 
                         // Mostrar marca temporal o marca guardada, o guion si no hay nada
                         let content
@@ -524,9 +565,9 @@ export default function CalendarioInasistencias({
 
                         return (
                           <td
-                            key={dia.numero}
+                            key={`${dia.numero}-${mes}-${anio}`}
                             className={cellClass}
-                            onClick={() => handleCellClick(persona.dni, dia.numero)}
+                            onClick={() => handleCellClick(persona.dni, dia.numero, mes, anio)}
                           >
                             {content}
                           </td>
@@ -616,15 +657,17 @@ export default function CalendarioInasistencias({
         </div>
       )}
 
-      {/* Botones de Cancelar y Guardar */}
-      <div className="calendario-footer">
-        <button className="btn-secondary" onClick={handleCancel}>
-          CANCELAR
-        </button>
-        <button className="btn-primary" onClick={handleSave}>
-          GUARDAR
-        </button>
-      </div>
+      {/* Botones de Cancelar y Guardar - Solo mostrar si no es modo solo lectura */}
+      {!isReadOnly && (
+        <div className="calendario-footer">
+          <button className="btn-secondary" onClick={handleCancel}>
+            CANCELAR
+          </button>
+          <button className="btn-primary" onClick={handleSave}>
+            GUARDAR
+          </button>
+        </div>
+      )}
     </div>
   )
 }

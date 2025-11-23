@@ -9,20 +9,12 @@ import api from './config';
  */
 export const searchReport = async (searchTerm, page = 1, limit = 10) => {
   try {
-    console.log('🔎 searchReport - Parámetros recibidos:', { searchTerm, page, limit })
-    console.log('🔎 Haciendo request a: /report con params:', { search: searchTerm, page, limit })
-
     const response = await api.get(`/report`, {
       params: { search: searchTerm, page, limit }
     });
 
-    console.log('🔎 searchReport - Respuesta recibida:', response)
-    console.log('🔎 searchReport - response.data:', response.data)
-
     return response.data;
   } catch (error) {
-    console.error('🔎 searchReport - Error:', error)
-    console.error('🔎 searchReport - error.response:', error.response)
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -41,10 +33,6 @@ export const searchReport = async (searchTerm, page = 1, limit = 10) => {
  * @returns {Promise<Array>} - Lista de incidencias mapeadas al formato de tabla
  */
 export function mapFormDataToAPI(form, allLeads) {
-  console.log('🔍 mapFormDataToAPI - Iniciando mapeo...');
-  console.log('📋 form recibido:', form);
-  console.log('👥 allLeads:', allLeads);
-
   // Leaflet usa [latitude, longitude] - el orden ya es correcto
   const coords = form.ubicacion?.coordinates || [null, null];
 
@@ -64,9 +52,6 @@ export function mapFormDataToAPI(form, allLeads) {
   });
 
   // Si no hay CC, agregar un array vacío (la API puede requerirlo)
-  if (cc.length === 0) {
-    console.warn('⚠️ No hay elementos en CC. La API requiere al menos 1.');
-  }
 
   // Convertir fecha + hora a formato ISO sin conversión de zona horaria
   // Crear la fecha directamente en UTC con los valores exactos que ingresó el usuario
@@ -83,16 +68,6 @@ export function mapFormDataToAPI(form, allLeads) {
     0
   )).toISOString();
 
-  console.log('🕐 Conversión de fecha/hora:');
-  console.log('   📅 Fecha ingresada:', form.fechaIncidente);
-  console.log('   ⏰ Hora ingresada:', form.horaIncidente);
-  console.log('   📤 Fecha ISO a enviar:', date);
-  console.log('   ✅ Hora en el ISO:', date.substring(11, 16), '(debe ser exactamente', form.horaIncidente + ')');
-
-  console.log('📍 Coordenadas recibidas:', coords);
-  console.log('📍 Latitude (coords[0]):', coords[0]);
-  console.log('📍 Longitude (coords[1]):', coords[1]);
-
   // Construir el payload base
   const payload = {
     header: { to, cc },
@@ -106,13 +81,16 @@ export function mapFormDataToAPI(form, allLeads) {
     jurisdiction_id: form.jurisdictionId || null
   };
 
-  // Solo agregar campos de bodycam si NO es Inasistencia (es decir, si hay bodycamId)
-  if (form.bodycamId) {
+  // Solo agregar campos de bodycam si es tipo bodycam y hay bodycamId
+  if (form.tipoMedio === 'bodycam' && form.bodycamId) {
     payload.bodycam_id = form.bodycamId;
     payload.bodycam_dni = form.dni || '';
   }
 
-  console.log('📤 Payload final a enviar:', JSON.stringify(payload, null, 2));
+  // Si es tipo cámara, guardar el número de cámara en el campo camera_number
+  if (form.tipoMedio === 'camara' && form.numeroCamara) {
+    payload.camera_number = form.numeroCamara;
+  }
 
   return payload;
 }
@@ -135,35 +113,13 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
     if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId
     if (filters.shift) params.shift = filters.shift
 
-    console.log('📡 Parámetros de consulta:', params)
-
     const response = await api.get('/report', { params })
-    console.log('📡 Respuesta completa de API:', response.data)
 
     const reports = response.data?.data?.data || []
     const paginationData = response.data?.data || {}
 
-    console.log('📊 Estructura de paginación recibida:', {
-      currentPage: paginationData.currentPage,
-      pageCount: paginationData.pageCount,
-      totalCount: paginationData.totalCount,
-      totalPages: paginationData.totalPages
-    })
-
     // Transformar al formato plano para la tabla
     const transformedReports = reports.map(r => {
-      // Debug: mostrar todos los campos relacionados con bodycam
-      console.log('🔍 Datos del reporte desde API:', {
-        id: r.id,
-        bodycam_supervisor: r.bodycam_supervisor,
-        bodycamSupervisor: r.bodycamSupervisor,
-        bodycam_user: r.bodycam_user,
-        bodycamUser: r.bodycamUser,
-        supervisor: r.supervisor,
-        user: r.user,
-        'Todos los campos del objeto r:': Object.keys(r)
-      })
-
       // Intentar obtener el encargado de bodycam de múltiples posibles campos
       const encargadoBodycam =
         r.bodycam_supervisor ||
@@ -171,7 +127,9 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
         r.supervisor ||
         (r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '')
 
-      console.log('✅ encargadoBodycam final:', encargadoBodycam)
+      // Determinar tipo de medio: si tiene bodycam es 'bodycam', si tiene camera_number es 'camara'
+      const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
+      const numeroCamara = r.camera_number || ''
 
       return {
         id: r.id,
@@ -179,7 +137,9 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: r.bodycam ? 'Bodycam' : 'Otro',
+        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
+        tipoMedio: tipoMedio,
+        numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
@@ -218,15 +178,6 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
     const from = totalNum === 0 ? 0 : ((currentPageNum - 1) * perPageNum) + 1
     const to = Math.min(currentPageNum * perPageNum, totalNum)
 
-    console.log('📊 Paginación calculada:', {
-      currentPage: currentPageNum,
-      totalPages: totalPagesNum,
-      perPage: perPageNum,
-      total: totalNum,
-      from: from,
-      to: to
-    })
-
     // Retornar data y metadata de paginación adaptada
     return {
       data: transformedReports,
@@ -240,7 +191,6 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
       }
     }
   } catch (error) {
-    console.error('❌ Error al obtener reportes:', error)
     throw new Error('No se pudieron obtener los reportes')
   }
 }
@@ -273,18 +223,24 @@ export const createReport = async (reportData) => {
 export const getReportById = async (reportId) => {
   try {
     const response = await api.get(`/report/${reportId}`)
-    console.log('📡 Respuesta de búsqueda por ID:', response.data)
 
     if (response.data?.data) {
       // Transformar al formato de la tabla
       const r = response.data.data
+
+      // Determinar tipo de medio: si tiene bodycam es 'bodycam', si tiene camera_number es 'camara'
+      const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
+      const numeroCamara = r.camera_number || ''
+
       const transformed = {
         id: r.id,
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: r.bodycam ? 'Bodycam' : 'Otro',
+        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
+        tipoMedio: tipoMedio,
+        numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
@@ -319,7 +275,6 @@ export const getReportById = async (reportId) => {
 
     return { data: [], found: false }
   } catch (error) {
-    console.error('❌ Error al buscar reporte por ID:', error)
     if (error.response?.status === 404) {
       return { data: [], found: false }
     }
@@ -335,10 +290,8 @@ export const getReportById = async (reportId) => {
 export const deleteReport = async (reportId) => {
   try {
     const response = await api.delete(`/report/${reportId}`)
-    console.log('🗑️ Reporte eliminado:', response.data)
     return response.data
   } catch (error) {
-    console.error('❌ Error al eliminar reporte:', error)
     if (error.response) {
       throw error
     } else if (error.request) {
@@ -376,23 +329,14 @@ export const updateReportWithEvidences = async (reportId, files = [], descriptio
       formData.append('message', message)
     }
 
-    console.log('📤 Actualizando reporte con evidencias:', {
-      reportId,
-      filesCount: files.length,
-      descriptionsCount: descriptions.length,
-      hasMessage: !!message
-    })
-
     const response = await api.patch(`/report/${reportId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
 
-    console.log('✅ Reporte actualizado:', response.data)
     return response.data
   } catch (error) {
-    console.error('❌ Error al actualizar reporte:', error)
     if (error.response) {
       throw error
     } else if (error.request) {
@@ -409,18 +353,13 @@ export const updateReportWithEvidences = async (reportId, files = [], descriptio
  * @returns {string} - URL completa para acceder a la imagen
  */
 export const getEvidenceImageUrl = (evidencePath) => {
-  // Usar la URL base del API configurada (ej: http://192.168.137.217:3021/api)
-  const baseURL = api.defaults.baseURL || 'http://localhost:3000'
+  const baseURL = api.defaults.baseURL
+  if (!baseURL) return ''
 
   // Asegurarse de que no haya doble slash y que el path no empiece con /
   const cleanPath = evidencePath.startsWith('/') ? evidencePath.substring(1) : evidencePath
 
-  // Construir URL: baseURL + cleanPath
-  // Ejemplo: http://192.168.137.217:3021/api + / + evidence/2025-11-07/7d25c20e-5b8f-4318-885f-087442b2925a.jpeg
-  const finalURL = `${baseURL}/${cleanPath}`
-  console.log('🖼️ URL de evidencia construida:', finalURL)
-
-  return finalURL
+  return `${baseURL}/${cleanPath}`
 };
 
 /**
@@ -431,7 +370,6 @@ export const getEvidenceImageUrl = (evidencePath) => {
 export const getReportWithEvidences = async (reportId) => {
   try {
     const response = await api.get(`/report/${reportId}`)
-    console.log('📡 Reporte obtenido con evidencias:', response.data)
 
     if (response.data?.data) {
       const report = response.data.data
@@ -456,7 +394,6 @@ export const getReportWithEvidences = async (reportId) => {
 
     return null
   } catch (error) {
-    console.error('❌ Error al obtener reporte con evidencias:', error)
     if (error.response?.status === 404) {
       return null
     }
@@ -471,12 +408,9 @@ export const getReportWithEvidences = async (reportId) => {
  */
 export const deleteEvidence = async (evidenceId) => {
   try {
-    console.log('🗑️ Eliminando evidencia con ID:', evidenceId)
     const response = await api.delete(`/evidence/${evidenceId}`)
-    console.log('✅ Evidencia eliminada:', response.data)
     return response.data
   } catch (error) {
-    console.error('❌ Error al eliminar evidencia:', error)
     if (error.response) {
       throw error
     } else if (error.request) {
@@ -494,12 +428,9 @@ export const deleteEvidence = async (evidenceId) => {
  */
 export const sendToValidator = async (reportId) => {
   try {
-    console.log('📤 Enviando incidencia al validador:', reportId)
     const response = await api.patch(`/report/${reportId}/send`)
-    console.log('✅ Incidencia enviada al validador:', response.data)
     return response.data
   } catch (error) {
-    console.error('❌ Error al enviar incidencia:', error)
     if (error.response) {
       throw error
     } else if (error.request) {
@@ -518,12 +449,9 @@ export const sendToValidator = async (reportId) => {
  */
 export const validateReport = async (reportId, approved) => {
   try {
-    console.log(`${approved ? '✅ Aprobando' : '❌ Rechazando'} incidencia:`, reportId)
     const response = await api.patch(`/report/${reportId}/validate`, { approved })
-    console.log('✅ Incidencia validada:', response.data)
     return response.data
   } catch (error) {
-    console.error('❌ Error al validar incidencia:', error)
     if (error.response) {
       throw error
     } else if (error.request) {

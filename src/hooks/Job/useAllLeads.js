@@ -28,7 +28,6 @@ const useAllLeads = () => {
 
         setAllLeads(leadList);
       } catch (err) {
-        console.error('Error obteniendo todos los leads:', err);
         setError(err.response?.data?.message || 'Error al cargar lista de personas');
         setAllLeads([]);
       } finally {

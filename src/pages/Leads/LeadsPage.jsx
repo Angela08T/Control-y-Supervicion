@@ -36,9 +36,7 @@ export default function LeadsPage() {
     async function fetchLeads() {
       setLoading(true)
       try {
-        console.log(`📡 Obteniendo personal desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
         const result = await getLeads(currentPage, itemsPerPage)
-        console.log('✅ Personal obtenido:', result)
 
         const leadsData = result.data?.data || result.data || []
         setLeads(leadsData)
@@ -58,7 +56,6 @@ export default function LeadsPage() {
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar personal:', error)
         alert('No se pudo cargar el personal')
       } finally {
         setLoading(false)
@@ -89,18 +86,14 @@ export default function LeadsPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando personal por ID:', searchTerm)
           const result = await getLeadById(searchTerm)
 
           if (result.found && result.data.length > 0) {
-            console.log('✅ Personal encontrado:', result.data[0])
             setSearchResult(result.data)
           } else {
-            console.log('⚠️ No se encontró personal con ese ID')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por ID:', error)
           setSearchResult(null)
         } finally {
           setIsSearching(false)
@@ -113,21 +106,17 @@ export default function LeadsPage() {
       const searchByName = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando personal por nombre:', searchTerm)
           const response = await searchLead(searchTerm)
 
           // La API devuelve los datos en response.data?.data
           const results = response?.data?.data || []
 
           if (results.length > 0) {
-            console.log('✅ Personal encontrado:', results)
             setSearchResult(results)
           } else {
-            console.log('⚠️ No se encontró personal con ese término')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por nombre:', error)
           setSearchResult(null)
         } finally {
           setIsSearching(false)
@@ -143,9 +132,7 @@ export default function LeadsPage() {
     if (editItem) {
       // Actualizar personal existente
       try {
-        console.log('📤 Actualizando personal:', editItem.id, data)
         const response = await updateLead(editItem.id, data)
-        console.log('✅ Personal actualizado:', response)
 
         alert(response.data?.message || response.message || 'Personal actualizado exitosamente')
 
@@ -153,8 +140,6 @@ export default function LeadsPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar personal:', error)
-
         let errorMessage = 'Error al actualizar el personal'
 
         if (error.response?.data?.message) {
@@ -170,14 +155,7 @@ export default function LeadsPage() {
     } else {
       // Crear nuevo personal
       try {
-        console.log('📤 Creando personal:', data)
-        console.log('📤 Tipo de datos:', {
-          name: typeof data.name,
-          lastname: typeof data.lastname,
-          job_id: typeof data.job_id
-        })
         const response = await createLead(data)
-        console.log('✅ Personal creado:', response)
 
         alert(response.data?.message || response.message || 'Personal creado exitosamente')
 
@@ -185,10 +163,6 @@ export default function LeadsPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear personal:', error)
-        console.error('❌ Error completo:', error.response)
-        console.error('❌ Datos del error:', error.response?.data)
-
         let errorMessage = 'Error al crear el personal'
 
         if (error.response?.data?.message) {
@@ -214,19 +188,13 @@ export default function LeadsPage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de personal con ID:`, item.id)
-
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteLead(item.id)
-
-      console.log('✅ Respuesta:', response)
 
       alert(response.data?.message || response.message || `Personal ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} personal:`, error)
-
       let errorMessage = `Error al ${action} el personal`
 
       if (error.response?.data?.message) {
