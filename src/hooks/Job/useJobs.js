@@ -28,7 +28,6 @@ const useJobs = () => {
 
         setJobs(jobList);
       } catch (err) {
-        console.error('Error obteniendo jobs:', err);
         setError(err.response?.data?.message || 'Error al cargar cargos');
         setJobs([]);
       } finally {

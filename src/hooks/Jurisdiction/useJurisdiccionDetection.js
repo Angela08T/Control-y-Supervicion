@@ -10,7 +10,6 @@ const useJurisdiccionDetection = () => {
   useEffect(() => {
     const loadJurisdicciones = async () => {
       try {
-        console.log('🌍 Cargando jurisdicciones desde: /Data/juridiccion.geojson');
         const response = await fetch('/Data/juridiccion.geojson');
 
         if (!response.ok) {
@@ -18,20 +17,13 @@ const useJurisdiccionDetection = () => {
         }
 
         const data = await response.json();
-        console.log('📊 Datos recibidos:', data);
 
         if (data.status && data.data) {
-          console.log('✅ Jurisdicciones cargadas correctamente:', data.data.length);
-          data.data.forEach((j, index) => {
-            console.log(`  ${index + 1}. ${j.name} (ID: ${j.id})`);
-          });
           setJurisdicciones(data.data);
         } else {
-          console.error('❌ Formato de datos inválido:', data);
           throw new Error('Formato de datos inválido en el archivo GeoJSON');
         }
       } catch (err) {
-        console.error('💥 Error cargando jurisdicciones:', err);
         setError('Error al cargar las jurisdicciones: ' + err.message);
       }
     };
@@ -41,12 +33,7 @@ const useJurisdiccionDetection = () => {
 
   // Función para detectar la jurisdicción basada en coordenadas
   const detectarJurisdiccion = (latitude, longitude) => {
-    console.log('=== DETECTAR JURISDICCIÓN ===');
-    console.log('Coordenadas recibidas:', { latitude, longitude });
-    console.log('Jurisdicciones disponibles:', jurisdicciones.length);
-
     if (!jurisdicciones.length) {
-      console.log('No hay jurisdicciones cargadas');
       return null;
     }
 
@@ -54,12 +41,9 @@ const useJurisdiccionDetection = () => {
       // Crear un punto con las coordenadas del usuario
       // IMPORTANTE: Turf.js usa [longitude, latitude] (orden inverso)
       const punto = turf.point([longitude, latitude]);
-      console.log('Punto a evaluar:', [longitude, latitude]);
 
       // Buscar en qué jurisdicción se encuentra el punto
       for (const jurisdiccion of jurisdicciones) {
-        console.log('Evaluando jurisdicción:', jurisdiccion.name);
-
         if (jurisdiccion.geometry && jurisdiccion.geometry.coordinates) {
           try {
             // Crear el polígono de la jurisdicción
@@ -67,28 +51,20 @@ const useJurisdiccionDetection = () => {
 
             // Verificar si el punto está dentro del polígono
             if (turf.booleanPointInPolygon(punto, poligono)) {
-              console.log('✅ Jurisdicción encontrada:', jurisdiccion.name);
               return {
                 id: jurisdiccion.id,
                 name: jurisdiccion.name,
                 description: jurisdiccion.description,
                 color: jurisdiccion.color
               };
-            } else {
-              console.log('❌ Punto fuera de:', jurisdiccion.name);
             }
           } catch (geoErr) {
-            console.warn('Error procesando geometría de:', jurisdiccion.name, geoErr);
           }
-        } else {
-          console.warn('Jurisdicción sin geometría válida:', jurisdiccion.name);
         }
       }
 
-      console.log('❌ No se encontró jurisdicción para las coordenadas');
       return null;
     } catch (err) {
-      console.error('Error detectando jurisdicción:', err);
       return null;
     }
   };
@@ -108,12 +84,8 @@ const useJurisdiccionDetection = () => {
         (position) => {
           const { latitude, longitude } = position.coords;
 
-          console.log('=== DETECCIÓN DE JURISDICCIÓN ===');
-          console.log('Coordenadas obtenidas:', { latitude, longitude });
-
           try {
             const jurisdiccion = detectarJurisdiccion(latitude, longitude);
-            console.log('Jurisdicción detectada:', jurisdiccion);
 
             setLoading(false);
             resolve({
@@ -121,7 +93,6 @@ const useJurisdiccionDetection = () => {
               jurisdiccion
             });
           } catch (err) {
-            console.error('Error detectando jurisdicción:', err);
             setLoading(false);
             setError('Error al detectar jurisdicción');
             reject(err);

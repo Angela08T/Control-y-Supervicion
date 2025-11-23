@@ -1,7 +1,7 @@
 import React from 'react'
-import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
+import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaTimes, FaDesktop } from 'react-icons/fa'
 
-export default function UserTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactivateSession, startIndex = 0, canEdit = true, canDelete = true }) {
   const showActions = canEdit || canDelete
   // Función para formatear la fecha de deshabilitación
   const formatDate = (dateString) => {
@@ -27,13 +27,14 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, startInde
               <th>Apellido</th>
               <th>Usuario</th>
               <th>Rol</th>
+              <th>Sesiones Activas</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={showActions ? 7 : 6} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                <td colSpan={showActions ? 8 : 7} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                   No hay usuarios registrados
                 </td>
               </tr>
@@ -103,6 +104,50 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, startInde
                     }}>
                       {roleInfo.label}
                     </span>
+                  </td>
+                  <td>
+                    {item.sessions && item.sessions.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {item.sessions.map((ip, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '3px 8px',
+                              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <FaDesktop style={{ color: '#22c55e', fontSize: '10px' }} />
+                            <span style={{ color: 'var(--text)', fontFamily: 'monospace' }}>{ip}</span>
+                            {onDeactivateSession && (
+                              <button
+                                onClick={() => onDeactivateSession(item.id, ip)}
+                                title={`Cerrar sesión en ${ip}`}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: '2px',
+                                  cursor: 'pointer',
+                                  color: '#ef4444',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <FaTimes style={{ fontSize: '10px' }} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                        Sin sesiones
+                      </span>
+                    )}
                   </td>
                   <td>
                     {isEnabled ? (

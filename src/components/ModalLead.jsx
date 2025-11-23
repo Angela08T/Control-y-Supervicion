@@ -19,21 +19,16 @@ export default function ModalLead({ initial, onClose, onSave }) {
     async function fetchJobs() {
       setLoadingJobs(true)
       try {
-        console.log('🔄 Cargando cargos disponibles...')
         const response = await getJobs(1, 1000) // Obtener todos los cargos
-        console.log('📦 Respuesta completa de cargos:', response)
 
         // Extraer los datos correctamente según la estructura de la API
         const jobsData = response.data?.data || response.data || []
-        console.log('✅ Cargos extraídos:', jobsData)
 
         // Filtrar solo los cargos habilitados (sin deleted_at)
         const activeJobs = jobsData.filter(job => !job.deleted_at)
-        console.log('✅ Cargos activos:', activeJobs)
 
         setJobs(activeJobs)
       } catch (error) {
-        console.error('❌ Error al cargar cargos:', error)
         alert('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
       } finally {
         setLoadingJobs(false)
@@ -92,9 +87,6 @@ export default function ModalLead({ initial, onClose, onSave }) {
       lastname: form.lastname.trim(),
       job_id: form.job_id // Mantener como UUID string
     }
-
-    console.log('📋 Datos preparados para enviar:', dataToSave)
-    console.log('📋 Tipo de job_id:', typeof dataToSave.job_id)
 
     onSave(dataToSave)
   }

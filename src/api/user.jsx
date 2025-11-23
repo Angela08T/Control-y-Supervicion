@@ -20,13 +20,9 @@ import api from './config';
  */
 export const createUser = async (userData) => {
   try {
-    console.log('📤 Datos enviados al backend:', JSON.stringify(userData, null, 2));
     const response = await api.post('/user', userData);
-    console.log('✅ Usuario creado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear usuario:', error);
-    console.error('📥 Respuesta del servidor:', error.response?.data);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -60,10 +56,8 @@ export const getUsers = async (page = 1, limit = 10, rol = null, search = null) 
     }
 
     const response = await api.get('/user', { params });
-    console.log('✅ Usuarios obtenidos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener usuarios:', error);
     throw error;
   }
 };
@@ -84,10 +78,8 @@ export const searchUser = async (searchTerm, rol = null) => {
     }
 
     const response = await api.get('/user', { params });
-    console.log('✅ Búsqueda de usuarios:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al buscar usuarios:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -110,10 +102,8 @@ export const getUsersByRole = async (rol, page = 1, limit = 10) => {
     const response = await api.get('/user', {
       params: { rol, page, limit }
     });
-    console.log(`✅ Usuarios con rol ${rol} obtenidos:`, response.data);
     return response.data;
   } catch (error) {
-    console.error(`❌ Error al obtener usuarios con rol ${rol}:`, error);
     throw error;
   }
 };
@@ -127,10 +117,8 @@ export const getUsersByRole = async (rol, page = 1, limit = 10) => {
 export const updateUser = async (userId, userData) => {
   try {
     const response = await api.patch(`/user/${userId}`, userData);
-    console.log('✅ Usuario actualizado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar usuario:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -149,16 +137,38 @@ export const updateUser = async (userId, userData) => {
 export const deleteUser = async (userId) => {
   try {
     const response = await api.delete(`/user/${userId}`);
-    console.log('🗑️ Usuario eliminado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar usuario:', error);
     if (error.response) {
       throw error;
     } else if (error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
       throw new Error('Error al eliminar usuario: ' + error.message);
+    }
+  }
+};
+
+/**
+ * Desactivar sesión de un usuario
+ * @param {string} userId - ID del usuario
+ * @param {string} ip - IP de la sesión a desactivar
+ * @returns {Promise} - Respuesta de desactivación
+ */
+export const deactivateSession = async (userId, ip) => {
+  try {
+    const response = await api.post('/session/deactivate', {
+      user_id: userId,
+      ip: ip
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw error;
+    } else if (error.request) {
+      throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
+    } else {
+      throw new Error('Error al desactivar sesión: ' + error.message);
     }
   }
 };

@@ -13,21 +13,15 @@ export default function PersonalTable() {
   const fetchPersonal = async () => {
     try {
       // Obtener usuarios con rol SENTINEL
-      console.log('📡 PersonalTable: Obteniendo centinelas...')
       const response = await api.get('/user', {
         params: { rol: 'SENTINEL' }
       })
 
-      console.log('✅ Centinelas obtenidos:', response.data)
-
       // Extraer datos de la respuesta
       const usersData = response.data?.data?.data || response.data?.data || []
 
-      console.log('📊 Datos de usuarios extraídos:', usersData)
-
       // Si no hay datos, mostrar lista vacía
       if (!usersData || usersData.length === 0) {
-        console.log('⚠️ No hay centinelas registrados en la API')
         setPersonal([])
         setLoading(false)
         return
@@ -64,10 +58,6 @@ export default function PersonalTable() {
 
       setPersonal(personalData)
     } catch (error) {
-      console.error('❌ Error al cargar centinelas:', error)
-      console.error('❌ Error response:', error.response?.data)
-      console.error('❌ Error status:', error.response?.status)
-
       // No usar fallback, mostrar lista vacía para indicar que hubo un problema
       setPersonal([])
     } finally {

@@ -36,9 +36,7 @@ export default function JobsPage() {
     async function fetchJobs() {
       setLoading(true)
       try {
-        console.log(`📡 Obteniendo cargos desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
         const result = await getJobs(currentPage, itemsPerPage)
-        console.log('✅ Cargos obtenidos:', result)
 
         const jobsData = result.data?.data || result.data || []
         setJobs(jobsData)
@@ -58,7 +56,6 @@ export default function JobsPage() {
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar cargos:', error)
         alert('No se pudieron cargar los cargos')
       } finally {
         setLoading(false)
@@ -89,18 +86,14 @@ export default function JobsPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando cargo por ID:', searchTerm)
           const result = await getJobById(searchTerm)
 
           if (result.found && result.data.length > 0) {
-            console.log('✅ Cargo encontrado:', result.data[0])
             setSearchResult(result.data)
           } else {
-            console.log('⚠️ No se encontró cargo con ese ID')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por ID:', error)
           setSearchResult(null)
         } finally {
           setIsSearching(false)
@@ -113,21 +106,17 @@ export default function JobsPage() {
       const searchByName = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando cargo por nombre:', searchTerm)
           const response = await searchJob(searchTerm)
 
           // La API devuelve los datos en response.data?.data
           const results = response?.data?.data || []
 
           if (results.length > 0) {
-            console.log('✅ Cargos encontrados:', results)
             setSearchResult(results)
           } else {
-            console.log('⚠️ No se encontraron cargos con ese término')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por nombre:', error)
           setSearchResult(null)
         } finally {
           setIsSearching(false)
@@ -143,9 +132,7 @@ export default function JobsPage() {
     if (editItem) {
       // Actualizar cargo existente
       try {
-        console.log('📤 Actualizando cargo:', editItem.id, data)
         const response = await updateJob(editItem.id, data)
-        console.log('✅ Cargo actualizado:', response)
 
         alert(response.data?.message || response.message || 'Cargo actualizado exitosamente')
 
@@ -153,8 +140,6 @@ export default function JobsPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar cargo:', error)
-
         let errorMessage = 'Error al actualizar el cargo'
 
         if (error.response?.data?.message) {
@@ -170,9 +155,7 @@ export default function JobsPage() {
     } else {
       // Crear nuevo cargo
       try {
-        console.log('📤 Creando cargo:', data)
         const response = await createJob(data)
-        console.log('✅ Cargo creado:', response)
 
         alert(response.data?.message || response.message || 'Cargo creado exitosamente')
 
@@ -180,8 +163,6 @@ export default function JobsPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear cargo:', error)
-
         let errorMessage = 'Error al crear el cargo'
 
         if (error.response?.data?.message) {
@@ -207,19 +188,13 @@ export default function JobsPage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de cargo con ID:`, item.id)
-
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteJob(item.id)
-
-      console.log('✅ Respuesta:', response)
 
       alert(response.data?.message || response.message || `Cargo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} cargo:`, error)
-
       let errorMessage = `Error al ${action} el cargo`
 
       if (error.response?.data?.message) {

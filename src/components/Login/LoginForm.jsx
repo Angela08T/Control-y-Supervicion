@@ -126,13 +126,6 @@ export default function LoginForm() {
             {loading ? 'INGRESANDO...' : 'INGRESAR AL SISTEMA'}
           </button>
 
-          {/* Mensaje informativo */}
-          {import.meta.env.VITE_DEV_MODE === 'true' && (
-            <div className="login-info">
-              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>MODO DESARROLLO</p>
-              <p>Conectado a: {import.meta.env.VITE_API_URL}</p>
-            </div>
-          )}
         </form>
       </div>
     </div>

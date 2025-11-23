@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3021'
+const WS_URL = import.meta.env.VITE_WS_URL
 
 let socket = null
 
@@ -10,11 +10,12 @@ let socket = null
  */
 export const initSocket = () => {
   if (socket && socket.connected) {
-    console.log('🔌 WebSocket ya está conectado')
     return socket
   }
 
-  console.log('🔌 Conectando WebSocket a:', WS_URL)
+  if (!WS_URL) {
+    return null
+  }
 
   socket = io(WS_URL, {
     transports: ['websocket', 'polling'],
@@ -22,26 +23,6 @@ export const initSocket = () => {
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     timeout: 20000
-  })
-
-  socket.on('connect', () => {
-    console.log('✅ WebSocket conectado - ID:', socket.id)
-  })
-
-  socket.on('disconnect', (reason) => {
-    console.log('❌ WebSocket desconectado:', reason)
-  })
-
-  socket.on('connect_error', (error) => {
-    console.error('🔴 Error de conexión WebSocket:', error.message)
-  })
-
-  socket.on('reconnect', (attemptNumber) => {
-    console.log('🔄 WebSocket reconectado después de', attemptNumber, 'intentos')
-  })
-
-  socket.on('reconnect_attempt', (attemptNumber) => {
-    console.log('🔄 Intento de reconexión #', attemptNumber)
   })
 
   return socket
@@ -63,7 +44,6 @@ export const getSocket = () => {
  */
 export const disconnectSocket = () => {
   if (socket) {
-    console.log('🔌 Desconectando WebSocket...')
     socket.disconnect()
     socket = null
   }
@@ -76,19 +56,16 @@ export const disconnectSocket = () => {
  */
 export const onReportStatusChanged = (callback) => {
   const socketInstance = getSocket()
+  if (!socketInstance) return () => {}
 
   const handler = (data) => {
-    console.log('📨 Evento report_status_changed recibido:', data)
     callback(data)
   }
 
   socketInstance.on('report_status_changed', handler)
-  console.log('👂 Escuchando evento: report_status_changed')
 
-  // Retornar función para cancelar suscripción
   return () => {
     socketInstance.off('report_status_changed', handler)
-    console.log('🔇 Dejando de escuchar: report_status_changed')
   }
 }
 
@@ -99,19 +76,16 @@ export const onReportStatusChanged = (callback) => {
  */
 export const onReportStatusValidate = (callback) => {
   const socketInstance = getSocket()
+  if (!socketInstance) return () => {}
 
   const handler = (data) => {
-    console.log('📨 Evento report_status_validate recibido:', data)
     callback(data)
   }
 
   socketInstance.on('report_status_validate', handler)
-  console.log('👂 Escuchando evento: report_status_validate')
 
-  // Retornar función para cancelar suscripción
   return () => {
     socketInstance.off('report_status_validate', handler)
-    console.log('🔇 Dejando de escuchar: report_status_validate')
   }
 }
 
@@ -123,10 +97,7 @@ export const onReportStatusValidate = (callback) => {
 export const emitEvent = (event, data) => {
   const socketInstance = getSocket()
   if (socketInstance && socketInstance.connected) {
-    console.log('📤 Emitiendo evento:', event, data)
     socketInstance.emit(event, data)
-  } else {
-    console.error('❌ No se puede emitir evento, WebSocket no conectado')
   }
 }
 

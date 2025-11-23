@@ -20,8 +20,6 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
 
   useEffect(() => {
     if (initial) {
-      console.log('📋 Datos del usuario recibidos en modal:', initial)
-      console.log('📧 Email recibido:', initial.email)
       setForm({
         name: initial.name || '',
         lastname: initial.lastname || '',

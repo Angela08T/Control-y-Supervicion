@@ -12,7 +12,7 @@ const getTokenFromStorage = () => {
       }
     }
   } catch (error) {
-    console.error('Error al obtener token desde localStorage:', error);
+    // Error silencioso en producción
   }
   return null;
 };
@@ -44,9 +44,9 @@ const incidenceConfig = axios.create({
   timeout: 3000,
 });
 
-// Configuración específica para el endpoint de offender (puerto 3021)
+// Configuración específica para el endpoint de offender
 const offenderConfig = axios.create({
-  baseURL: import.meta.env.VITE_API_OFFENDER_URL,
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -57,27 +57,9 @@ const offenderConfig = axios.create({
 const addAuthTokenOffender = (config) => {
   const token = globalToken || getTokenFromStorage();
 
-  console.log('=== DEBUG OFFENDER API ===');
-  console.log('Global Token:', globalToken ? globalToken.substring(0, 30) + '...' : 'NULL');
-  console.log('Token from Storage:', getTokenFromStorage() ? getTokenFromStorage().substring(0, 30) + '...' : 'NULL');
-  console.log('Final Token:', token ? token.substring(0, 30) + '...' : 'NULL');
-  console.log('URL:', config.baseURL + config.url);
-
-  // Verificar si el token tiene espacios o caracteres raros
   if (token) {
-    const trimmedToken = token.trim();
-    console.log('Token length:', token.length);
-    console.log('Token trimmed length:', trimmedToken.length);
-    console.log('Token starts with:', token.substring(0, 10));
-    console.log('Token ends with:', token.substring(token.length - 10));
-
-    config.headers.Authorization = `Bearer ${trimmedToken}`;
-    console.log('✓ Token agregado al header Authorization');
-    console.log('Header completo:', config.headers.Authorization.substring(0, 50) + '...');
-  } else {
-    console.error('✗ NO HAY TOKEN DISPONIBLE - La petición fallará con 401');
+    config.headers.Authorization = `Bearer ${token.trim()}`;
   }
-  console.log('========================');
 
   return config;
 };
@@ -95,15 +77,7 @@ const addAuthToken = (config) => {
 // Interceptor de respuesta para manejar errores 401 en offender
 offenderConfig.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      console.error('Offender API 401: El servidor rechazó la petición. Posibles causas:');
-      console.error('1. El servidor no requiere token (prueba sin Authorization header)');
-      console.error('2. El token del puerto 3020 no es válido para el puerto 3021');
-      console.error('3. El servidor requiere un token diferente');
-    }
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Aplicar interceptors a todas las configuraciones

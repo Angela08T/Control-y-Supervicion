@@ -10,10 +10,8 @@ export const getSubjects = async (page = 1, limit = 10) => {
     const response = await api.get('/subject', {
       params: { page, limit }
     });
-    console.log('✅ Asuntos obtenidos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener asuntos:', error);
     throw error;
   }
 };
@@ -22,10 +20,8 @@ export const getSubjects = async (page = 1, limit = 10) => {
 export const getSubjectById = async (subjectId) => {
   try {
     const response = await api.get(`/subject/${subjectId}`);
-    console.log('✅ Asunto obtenido por ID:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al obtener asunto por ID:', error);
     throw error;
   }
 };
@@ -36,10 +32,8 @@ export const searchSubject = async (searchTerm) => {
     const response = await api.get('/subject', {
       params: { search: searchTerm }
     });
-    console.log('✅ Búsqueda de asuntos:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al buscar asuntos:', error);
     throw error;
   }
 };
@@ -48,10 +42,8 @@ export const searchSubject = async (searchTerm) => {
 export const createSubject = async (subjectData) => {
   try {
     const response = await api.post('/subject', subjectData);
-    console.log('✅ Asunto creado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al crear asunto:', error);
     throw error;
   }
 };
@@ -60,10 +52,8 @@ export const createSubject = async (subjectData) => {
 export const updateSubject = async (subjectId, subjectData) => {
   try {
     const response = await api.patch(`/subject/${subjectId}`, subjectData);
-    console.log('✅ Asunto actualizado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al actualizar asunto:', error);
     throw error;
   }
 };
@@ -72,10 +62,8 @@ export const updateSubject = async (subjectId, subjectData) => {
 export const deleteSubject = async (subjectId) => {
   try {
     const response = await api.delete(`/subject/${subjectId}`);
-    console.log('🗑️ Asunto eliminado:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error al eliminar asunto:', error);
     throw error;
   }
 };

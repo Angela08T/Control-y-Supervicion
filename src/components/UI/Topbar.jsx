@@ -22,7 +22,6 @@ export default function Topbar() {
       // Llamar al endpoint de logout del backend para cerrar la sesión en el servidor
       await logoutApi()
     } catch (error) {
-      console.error('Error al cerrar sesión en el servidor:', error)
       // Continuar con el logout local aunque falle el backend
     } finally {
       // Limpiar el estado local independientemente del resultado
@@ -35,7 +34,6 @@ export default function Topbar() {
   // Función deshabilitada - para reactivar más adelante
   const toggleTheme = () => {
     // Deshabilitado temporalmente
-    console.log('Cambio de tema deshabilitado temporalmente')
   }
 
   return (

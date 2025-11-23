@@ -36,9 +36,7 @@ export default function SubjectPage() {
     async function fetchSubjects() {
       setLoading(true)
       try {
-        console.log(`📡 Obteniendo asuntos desde API (página ${currentPage}, ${itemsPerPage} por página)...`)
         const result = await getSubjects(currentPage, itemsPerPage)
-        console.log('✅ Asuntos obtenidos:', result)
 
         const subjectsData = result.data?.data || result.data || []
         setSubjects(subjectsData)
@@ -65,7 +63,6 @@ export default function SubjectPage() {
           })
         }
       } catch (error) {
-        console.error('⚠️ Error al cargar asuntos:', error)
         alert('No se pudo cargar los asuntos')
       } finally {
         setLoading(false)
@@ -96,18 +93,14 @@ export default function SubjectPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando asunto por ID:', searchTerm)
           const result = await getSubjectById(searchTerm)
 
           if (result.found && result.data.length > 0) {
-            console.log('✅ Asunto encontrado:', result.data[0])
             setSearchResult(result.data)
           } else {
-            console.log('⚠️ No se encontró asunto con ese ID')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por ID:', error)
           setSearchResult(null)
         } finally {
           setIsSearching(false)
@@ -120,21 +113,17 @@ export default function SubjectPage() {
       const searchByName = async () => {
         setIsSearching(true)
         try {
-          console.log('🔍 Buscando asunto por nombre:', searchTerm)
           const response = await searchSubject(searchTerm)
 
           // La API devuelve los datos en response.data?.data
           const results = response?.data?.data || []
 
           if (results.length > 0) {
-            console.log('✅ Asuntos encontrados:', results)
             setSearchResult(results)
           } else {
-            console.log('⚠️ No se encontró asunto con ese término')
             setSearchResult([])
           }
         } catch (error) {
-          console.error('❌ Error al buscar por nombre:', error)
           setSearchResult(null)
         } finally {
           setIsSearching(false)
@@ -150,9 +139,7 @@ export default function SubjectPage() {
     if (editItem) {
       // Actualizar asunto existente
       try {
-        console.log('📤 Actualizando asunto:', editItem.id, data)
         const response = await updateSubject(editItem.id, data)
-        console.log('✅ Asunto actualizado:', response)
 
         alert(response.data?.message || response.message || 'Asunto actualizado exitosamente')
 
@@ -160,8 +147,6 @@ export default function SubjectPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al actualizar asunto:', error)
-
         let errorMessage = 'Error al actualizar el asunto'
 
         if (error.response?.data?.message) {
@@ -177,9 +162,7 @@ export default function SubjectPage() {
     } else {
       // Crear nuevo asunto
       try {
-        console.log('📤 Creando asunto:', data)
         const response = await createSubject(data)
-        console.log('✅ Asunto creado:', response)
 
         alert(response.data?.message || response.message || 'Asunto creado exitosamente')
 
@@ -187,8 +170,6 @@ export default function SubjectPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('❌ Error al crear asunto:', error)
-
         let errorMessage = 'Error al crear el asunto'
 
         if (error.response?.data?.message) {
@@ -214,19 +195,13 @@ export default function SubjectPage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de asunto con ID:`, item.id)
-
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteSubject(item.id)
-
-      console.log('✅ Respuesta:', response)
 
       alert(response.data?.message || response.message || `Asunto ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} asunto:`, error)
-
       let errorMessage = `Error al ${action} el asunto`
 
       if (error.response?.data?.message) {

@@ -38,12 +38,10 @@ const useAudit = () => {
         if (filters.username) activeFilters.username = filters.username;
         if (filters.search) activeFilters.search = filters.search;
 
-        console.log(`📡 Obteniendo auditorías - Página ${currentPage}, ${itemsPerPage} por página`);
         const response = await getAllAudits(currentPage, itemsPerPage, activeFilters);
 
         // Estructura esperada: { message: "...", data: { data: [...], currentPage, pageCount, totalCount, totalPages } }
         if (response.data) {
-          console.log('✅ Auditorías obtenidas:', response.data);
           setAudits(response.data.data || []);
           setPagination({
             currentPage: response.data.currentPage || 1,
@@ -53,7 +51,6 @@ const useAudit = () => {
           });
         }
       } catch (err) {
-        console.error('❌ Error al obtener auditorías:', err);
         setError(err.response?.data?.message || 'Error al obtener registros de auditoría');
         setAudits([]);
       } finally {
@@ -66,13 +63,11 @@ const useAudit = () => {
 
   const changePage = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
-      console.log(`📄 Cambiando a página ${newPage}`);
       setCurrentPage(newPage);
     }
   };
 
   const changeItemsPerPage = (newItemsPerPage) => {
-    console.log(`📊 Cambiando items por página a ${newItemsPerPage}`);
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1); // Volver a la primera página al cambiar items por página
   };

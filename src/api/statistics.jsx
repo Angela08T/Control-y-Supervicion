@@ -9,7 +9,6 @@ export const getDashboardStats = async () => {
     const response = await api.get('/statistics/dashboard');
     return response.data;
   } catch (error) {
-    console.warn('Endpoint de estadísticas no disponible, usando datos locales');
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -29,7 +28,6 @@ export const getActivePersonnel = async () => {
     const response = await api.get('/personnel/active');
     return response.data;
   } catch (error) {
-    console.warn('Endpoint de personal no disponible');
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -49,7 +47,6 @@ export const getFieldSupervisionStats = async () => {
     const response = await api.get('/statistics/field-supervision');
     return response.data;
   } catch (error) {
-    console.warn('Endpoint de supervisión de campo no disponible');
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -71,7 +68,6 @@ export const getAllOffenders = async () => {
     const response = await api.get('/offender');
     return response.data;
   } catch (error) {
-    console.warn('Endpoint de lista de offenders no disponible');
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -90,19 +86,14 @@ export const getAllOffenders = async () => {
  */
 export const getDashboardTrends = async (startDate, endDate) => {
   try {
-    console.log('📡 getDashboardTrends: Solicitando tendencias...', { startDate, endDate });
     const response = await api.get('/dashboard/trends/', {
       params: {
         start: startDate,
         end: endDate
       }
     });
-    console.log('✅ getDashboardTrends: Respuesta recibida', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ getDashboardTrends: Error', error);
-    console.error('❌ Status:', error.response?.status);
-    console.error('❌ Data:', error.response?.data);
     if (error.response) {
       throw error;
     } else if (error.request) {
@@ -121,19 +112,14 @@ export const getDashboardTrends = async (startDate, endDate) => {
  */
 export const getDashboardGeneral = async (startDate, endDate) => {
   try {
-    console.log('📡 getDashboardGeneral: Solicitando estadísticas generales...', { startDate, endDate });
     const response = await api.get('/dashboard/general/', {
       params: {
         start: startDate,
         end: endDate
       }
     });
-    console.log('✅ getDashboardGeneral: Respuesta recibida', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ getDashboardGeneral: Error', error);
-    console.error('❌ Status:', error.response?.status);
-    console.error('❌ Data:', error.response?.data);
     if (error.response) {
       throw error;
     } else if (error.request) {

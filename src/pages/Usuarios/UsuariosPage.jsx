@@ -7,7 +7,8 @@ import {
   searchUser,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  deactivateSession
 } from '../../api/user'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 
@@ -41,11 +42,6 @@ export default function UsuariosPage() {
         const searchTerm = filters.search.trim()
         const selectedRole = filters.roleFilter !== 'all' ? filters.roleFilter : null
 
-        console.log('🔍 Filtrando usuarios:', {
-          search: searchTerm || 'sin búsqueda',
-          rol: selectedRole || 'todos los roles'
-        })
-
         const response = await getUsers(
           1, // página
           1000, // límite
@@ -54,13 +50,8 @@ export default function UsuariosPage() {
         )
 
         const allUsers = response?.data?.data || []
-        console.log('📋 Usuarios obtenidos del backend:', allUsers)
-        console.log('📧 Primer usuario (verificar email):', allUsers[0])
         setUsers(allUsers)
-
-        console.log(`✅ ${allUsers.length} usuarios encontrados`)
       } catch (error) {
-        console.error('❌ Error al cargar usuarios:', error)
         alert('Error al cargar usuarios')
       } finally {
         setLoading(false)
@@ -84,8 +75,6 @@ export default function UsuariosPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('Error al actualizar usuario:', error)
-
         let errorMessage = 'Error al actualizar el usuario'
 
         if (error.response?.data?.message) {
@@ -129,8 +118,6 @@ export default function UsuariosPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
-        console.error('Error al crear usuario:', error)
-
         let errorMessage = 'Error al crear el usuario'
 
         if (error.response?.data?.message) {
@@ -156,19 +143,13 @@ export default function UsuariosPage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      console.log(`🔄 Cambiando estado de usuario con ID:`, item.id)
-
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteUser(item.id)
-
-      console.log('✅ Respuesta:', response)
 
       alert(response.data?.message || response.message || `Usuario ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      console.error(`❌ Error al ${action} usuario:`, error)
-
       let errorMessage = `Error al ${action} el usuario`
 
       if (error.response?.data?.message) {
@@ -186,6 +167,28 @@ export default function UsuariosPage() {
   function handleEdit(item) {
     setEditItem(item)
     setShowModal(true)
+  }
+
+  async function handleDeactivateSession(userId, ip) {
+    if (!confirm(`¿Estás seguro de cerrar la sesión en ${ip}?`)) return
+
+    try {
+      const response = await deactivateSession(userId, ip)
+      alert(response.data?.message || response.message || 'Sesión cerrada exitosamente')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      let errorMessage = 'Error al cerrar la sesión'
+
+      if (error.response?.data?.message) {
+        errorMessage = Array.isArray(error.response.data.message)
+          ? error.response.data.message.join('\n')
+          : error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      alert(errorMessage)
+    }
   }
 
   // Los usuarios ya vienen filtrados desde la API, no necesitamos filtrar en el frontend
@@ -294,6 +297,7 @@ export default function UsuariosPage() {
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
+            onDeactivateSession={userRole === 'admin' ? handleDeactivateSession : null}
             startIndex={0}
             canEdit={canEdit}
             canDelete={canDelete}
