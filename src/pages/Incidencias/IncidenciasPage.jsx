@@ -25,7 +25,9 @@ export default function IncidenciasPage() {
     search: '',
     lackId: '', // Filtro por ID de falta
     subjectId: '', // Filtro por ID de asunto
-    jurisdictionId: '' // Filtro por ID de jurisdicción
+    jurisdictionId: '', // Filtro por ID de jurisdicción
+    showDeleted: 'active', // 'active' = solo activos, 'deleted' = solo eliminados
+    status: '' // '' = todos, 'draft', 'pending', 'approved', 'rejected'
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
@@ -369,9 +371,31 @@ export default function IncidenciasPage() {
   }, [filters.search, currentPage, itemsPerPage])
 
   // Todos los filtros se manejan en el backend, incluyendo turno
+  // Filtrar por estado (activos/eliminados) y estado de proceso en el frontend
+  const applyFrontendFilters = (data) => {
+    let result = data
+
+    // Filtrar por activos/eliminados
+    if (filters.showDeleted === 'active') {
+      result = result.filter(item => !item.deletedAt)
+    } else if (filters.showDeleted === 'deleted') {
+      result = result.filter(item => item.deletedAt)
+    }
+
+    // Filtrar por estado de proceso (draft, pending, approved, rejected)
+    if (filters.status) {
+      result = result.filter(item => {
+        const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
+        return itemStatus === filters.status
+      })
+    }
+
+    return result
+  }
+
   const filteredData = searchResult !== null
-    ? searchResult // Si hay resultado de búsqueda, mostrar los resultados de la API
-    : incidencias // Mostrar incidencias directamente (ya filtradas por el backend)
+    ? applyFrontendFilters(searchResult) // Si hay resultado de búsqueda, aplicar filtros
+    : applyFrontendFilters(incidencias) // Aplicar filtros a incidencias
 
   return (
     <div className="incidencias-page">
@@ -398,16 +422,18 @@ export default function IncidenciasPage() {
                 }}
               >
                 <option value="">Filtrar por asunto</option>
-                {subjects && subjects.map(subject => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
+                {subjects && subjects
+                  .filter(subject => !subject.deleted_at) // Solo mostrar asuntos activos
+                  .map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
               </select>
             )}
 
-            {/* Filtro por Falta (Lack) - Usando datos de la API */}
-            {lacksLoading ? (
+            {/* Filtro por Falta (Lack) - Usando lacks anidadas del subject seleccionado */}
+            {subjectsLoading ? (
               <select disabled>
                 <option>Cargando faltas...</option>
               </select>
@@ -424,13 +450,29 @@ export default function IncidenciasPage() {
                 }}
               >
                 <option value="">Filtrar por falta</option>
-                {lacks && lacks
-                  .filter(lack => !filters.subjectId || lack.subjectId === filters.subjectId)
-                  .map(lack => (
-                    <option key={lack.id} value={lack.id}>
-                      {lack.name}
-                    </option>
-                  ))}
+                {(() => {
+                  // Si hay un subject seleccionado, obtener sus lacks anidadas
+                  if (filters.subjectId) {
+                    const selectedSubject = subjects.find(s => s.id === filters.subjectId)
+                    return (selectedSubject?.lacks || [])
+                      .filter(lack => !lack.deleted_at) // Solo mostrar faltas activas
+                      .map(lack => (
+                        <option key={lack.id} value={lack.id}>
+                          {lack.name}
+                        </option>
+                      ))
+                  }
+                  // Si no hay subject seleccionado, mostrar todas las lacks de todos los subjects
+                  return subjects
+                    .filter(subject => !subject.deleted_at) // Solo subjects activos
+                    .flatMap(subject => subject.lacks || [])
+                    .filter(lack => !lack.deleted_at) // Solo faltas activas
+                    .map(lack => (
+                      <option key={lack.id} value={lack.id}>
+                        {lack.name}
+                      </option>
+                    ))
+                })()}
               </select>
             )}
 
@@ -448,11 +490,13 @@ export default function IncidenciasPage() {
                 }}
               >
                 <option value="">Filtrar por jurisdicción</option>
-                {jurisdictions.map(jurisdiction => (
-                  <option key={jurisdiction.id} value={jurisdiction.id}>
-                    {jurisdiction.name}
-                  </option>
-                ))}
+                {jurisdictions
+                  .filter(jurisdiction => !jurisdiction.deleted_at) // Solo mostrar jurisdicciones activas
+                  .map(jurisdiction => (
+                    <option key={jurisdiction.id} value={jurisdiction.id}>
+                      {jurisdiction.name}
+                    </option>
+                  ))}
               </select>
             )}
 
@@ -465,6 +509,37 @@ export default function IncidenciasPage() {
               <option value="T">Tarde</option>
               <option value="N">Noche</option>
             </select>
+
+            {/* Filtros de estado y activos/eliminados - TEMPORALMENTE DESACTIVADOS
+            <select
+              value={filters.status}
+              onChange={e => {
+                setFilters(f => ({ ...f, status: e.target.value }))
+                setCurrentPage(1)
+              }}
+            >
+              <option value="">Todos los estados</option>
+              <option value="draft">Borrador</option>
+              <option value="pending">Pendiente</option>
+              <option value="approved">Aprobado</option>
+              <option value="rejected">Rechazado</option>
+            </select>
+
+            <select
+              value={filters.showDeleted}
+              onChange={e => {
+                setFilters(f => ({ ...f, showDeleted: e.target.value }))
+                setCurrentPage(1)
+              }}
+              style={{
+                background: filters.showDeleted === 'deleted' ? 'rgba(239, 68, 68, 0.1)' : undefined,
+                borderColor: filters.showDeleted === 'deleted' ? 'rgba(239, 68, 68, 0.5)' : undefined
+              }}
+            >
+              <option value="active">Registros activos</option>
+              <option value="deleted">Registros eliminados</option>
+            </select>
+            */}
 
             <div style={{ position: 'relative' }}>
               <FaSearch
@@ -749,6 +824,7 @@ export default function IncidenciasPage() {
           incidencia={editItem}
           inasistenciasHistoricas={getInasistenciasPorDNI(editItem.dni)}
           onClose={() => { setShowPDFModal(false); setEditItem(null) }}
+          onSave={() => setRefreshTrigger(prev => prev + 1)}
         />
       )}
     </div>

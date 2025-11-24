@@ -1,5 +1,12 @@
 import React from 'react'
-import { FaFilePdf, FaTrash, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import { FaFilePdf, FaTrash, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa'
+
+// Función para formatear fecha de eliminación
+function formatDeletedDate(isoDate) {
+  if (!isoDate) return ''
+  const d = new Date(isoDate)
+  return `Eliminado: ${d.toLocaleDateString('es-PE')} ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+}
 
 function formatDate(iso){
   if(!iso) return ''
@@ -89,9 +96,23 @@ export default function IncidenciasTable({
               const canValidateReport = canValidate && itemStatus === 'pending'
 
               return (
-                <tr key={item.id}>
+                <tr key={item.id} style={item.deletedAt ? { backgroundColor: 'rgba(239, 68, 68, 0.05)' } : {}}>
                   <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
-                    {startIndex + index + 1}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      {startIndex + index + 1}
+                      {item.deletedAt && (
+                        <span
+                          title={formatDeletedDate(item.deletedAt)}
+                          style={{
+                            color: '#ef4444',
+                            cursor: 'help',
+                            display: 'inline-flex'
+                          }}
+                        >
+                          <FaInfoCircle size={12} />
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td className="actions">
                     <button title="Ver/Generar PDF" onClick={()=> onEdit(item)}>

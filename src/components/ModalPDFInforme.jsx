@@ -70,7 +70,7 @@ const articulosPorFalta = {
   'Llegó fuera de horario': '72.06'
 }
 
-export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose }) {
+export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }) {
   // Obtener usuario logueado de Redux
   const { username } = useSelector((state) => state.auth)
 
@@ -336,7 +336,15 @@ Se adjuntan las evidencias:`
           setFormData(prev => ({
             ...prev,
             imagenes: imagenesValidas,
-            descripcionAdicional: reportData.message || prev.descripcionAdicional
+            descripcionAdicional: reportData.message || prev.descripcionAdicional,
+            links: reportData.link || prev.links
+          }))
+        } else if (reportData) {
+          // Si no hay evidencias pero hay datos del reporte, cargar message y link
+          setFormData(prev => ({
+            ...prev,
+            descripcionAdicional: reportData.message || prev.descripcionAdicional,
+            links: reportData.link || prev.links
           }))
         }
       } catch (error) {
@@ -501,19 +509,19 @@ Se adjuntan las evidencias:`
         incidencia.id,
         files,
         descriptions,
-        formData.descripcionAdicional
+        formData.descripcionAdicional,
+        formData.links
       )
 
       alert('Cambios guardados exitosamente')
 
-      // Marcar las imágenes nuevas como existentes después de guardar
-      setFormData(prev => ({
-        ...prev,
-        imagenes: prev.imagenes.map(img => ({
-          ...img,
-          isExisting: true
-        }))
-      }))
+      // Notificar al padre para actualizar las acciones
+      if (onSave) {
+        onSave()
+      }
+
+      // Cerrar el modal y volver a la pantalla principal
+      onClose()
     } catch (error) {
       let errorMessage = 'Error al guardar los cambios'
       if (error.response?.data?.message) {
@@ -556,7 +564,8 @@ Se adjuntan las evidencias:`
           incidencia.id,
           files,
           descriptions,
-          formData.descripcionAdicional
+          formData.descripcionAdicional,
+          formData.links
         )
 
       } catch (error) {
