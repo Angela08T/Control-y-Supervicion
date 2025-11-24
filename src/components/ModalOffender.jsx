@@ -80,89 +80,340 @@ export default function ModalOffender({ initial, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>{initial ? 'Editar Infractor' : 'Agregar Infractor'}</h3>
-          <button className="close-btn" onClick={onClose}>
+    <div className="modal-backdrop" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '20px'
+    }}>
+      <div style={{
+        backgroundColor: 'var(--card-bg)',
+        borderRadius: '12px',
+        maxWidth: '700px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+        animation: 'modalSlideIn 0.3s ease-out'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '20px 25px',
+          borderBottom: '1px solid var(--border)',
+          backgroundColor: 'var(--primary)',
+          color: 'white',
+          borderTopLeftRadius: '12px',
+          borderTopRightRadius: '12px'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600' }}>
+            {initial ? 'Editar Infractor' : 'Agregar Infractor'}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              padding: '5px 10px',
+              borderRadius: '6px',
+              transition: 'background-color 0.2s',
+              lineHeight: 1
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+            onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+          >
             <FaTimes />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        <form onSubmit={handleSubmit} style={{ padding: '25px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             {/* Nombre */}
-            <div className="form-group">
-              <label>Nombre *</label>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                Nombre <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Ingrese el nombre"
-                className={errors.name ? 'input-error' : ''}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: errors.name ? '2px solid #ef4444' : '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  if (!errors.name) e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.name ? '#ef4444' : 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              {errors.name && <span className="error-message">{errors.name}</span>}
+              {errors.name && (
+                <span style={{
+                  display: 'block',
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#ef4444'
+                }}>
+                  {errors.name}
+                </span>
+              )}
             </div>
 
             {/* Apellido */}
-            <div className="form-group">
-              <label>Apellido *</label>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                Apellido <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={formData.lastname}
                 onChange={(e) => handleChange('lastname', e.target.value)}
                 placeholder="Ingrese el apellido"
-                className={errors.lastname ? 'input-error' : ''}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: errors.lastname ? '2px solid #ef4444' : '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  if (!errors.lastname) e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.lastname ? '#ef4444' : 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              {errors.lastname && <span className="error-message">{errors.lastname}</span>}
+              {errors.lastname && (
+                <span style={{
+                  display: 'block',
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#ef4444'
+                }}>
+                  {errors.lastname}
+                </span>
+              )}
             </div>
 
             {/* DNI */}
-            <div className="form-group">
-              <label>DNI *</label>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                DNI <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={formData.dni}
                 onChange={(e) => handleChange('dni', e.target.value.replace(/\D/g, '').slice(0, 8))}
                 placeholder="8 dígitos"
                 maxLength={8}
-                className={errors.dni ? 'input-error' : ''}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: errors.dni ? '2px solid #ef4444' : '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  if (!errors.dni) e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.dni ? '#ef4444' : 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              {errors.dni && <span className="error-message">{errors.dni}</span>}
+              {errors.dni && (
+                <span style={{
+                  display: 'block',
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#ef4444'
+                }}>
+                  {errors.dni}
+                </span>
+              )}
             </div>
 
             {/* Cargo */}
-            <div className="form-group">
-              <label>Cargo *</label>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                Cargo <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={formData.job}
                 onChange={(e) => handleChange('job', e.target.value)}
                 placeholder="Ej: Inspector Comercial"
-                className={errors.job ? 'input-error' : ''}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: errors.job ? '2px solid #ef4444' : '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  if (!errors.job) e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.job ? '#ef4444' : 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              {errors.job && <span className="error-message">{errors.job}</span>}
+              {errors.job && (
+                <span style={{
+                  display: 'block',
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#ef4444'
+                }}>
+                  {errors.job}
+                </span>
+              )}
             </div>
 
             {/* Régimen */}
-            <div className="form-group">
-              <label>Régimen *</label>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                Régimen <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={formData.regime}
                 onChange={(e) => handleChange('regime', e.target.value)}
                 placeholder="Ej: Locador, Cas 1057, 728"
-                className={errors.regime ? 'input-error' : ''}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: errors.regime ? '2px solid #ef4444' : '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  if (!errors.regime) e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.regime ? '#ef4444' : 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              {errors.regime && <span className="error-message">{errors.regime}</span>}
+              {errors.regime && (
+                <span style={{
+                  display: 'block',
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#ef4444'
+                }}>
+                  {errors.regime}
+                </span>
+              )}
             </div>
 
             {/* Turno */}
-            <div className="form-group">
-              <label>Turno *</label>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                Turno <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <select
                 value={formData.shift}
                 onChange={(e) => handleChange('shift', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               >
                 <option value="Mañana">Mañana</option>
                 <option value="Tarde">Tarde</option>
@@ -171,24 +422,113 @@ export default function ModalOffender({ initial, onClose, onSave }) {
             </div>
 
             {/* Subgerencia - ocupa todo el ancho */}
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label>Subgerencia *</label>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--text)',
+                fontSize: '0.95rem'
+              }}>
+                Subgerencia <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={formData.subgerencia}
                 onChange={(e) => handleChange('subgerencia', e.target.value)}
                 placeholder="Ej: Fiscalización y Sanciones administrativas"
-                className={errors.subgerencia ? 'input-error' : ''}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: errors.subgerencia ? '2px solid #ef4444' : '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'var(--bg)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onFocus={(e) => {
+                  if (!errors.subgerencia) e.target.style.borderColor = 'var(--primary)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.subgerencia ? '#ef4444' : 'var(--border)'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              {errors.subgerencia && <span className="error-message">{errors.subgerencia}</span>}
+              {errors.subgerencia && (
+                <span style={{
+                  display: 'block',
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#ef4444'
+                }}>
+                  {errors.subgerencia}
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            marginTop: '25px',
+            paddingTop: '20px',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                flex: 1,
+                padding: '12px 24px',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                backgroundColor: 'var(--bg)',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = 'var(--bg-secondary)'
+                e.target.style.borderColor = 'var(--text-muted)'
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = 'var(--bg)'
+                e.target.style.borderColor = 'var(--border)'
+              }}
+            >
               Cancelar
             </button>
-            <button type="submit" className="btn-primary">
+            <button
+              type="submit"
+              style={{
+                flex: 1,
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                backgroundColor: 'var(--primary)',
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = 'var(--primary-dark)'
+                e.target.style.transform = 'translateY(-1px)'
+                e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)'
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = 'var(--primary)'
+                e.target.style.transform = 'translateY(0)'
+                e.target.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3)'
+              }}
+            >
               {initial ? 'Actualizar' : 'Guardar'}
             </button>
           </div>

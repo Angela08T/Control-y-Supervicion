@@ -5,10 +5,13 @@ import ModalOffender from '../../components/ModalOffender'
 import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { useNotification } from '../../context/NotificationContext'
+import ConfirmModal from '../../components/ConfirmModal'
 
 export default function OffenderPage() {
   const { role: userRole } = useSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'offenders')
+  const { showSuccess, showError } = useNotification()
 
   const [offenders, setOffenders] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -30,6 +33,7 @@ export default function OffenderPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [searchResult, setSearchResult] = useState(null)
   const [isSearching, setIsSearching] = useState(false)
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null })
 
   // Cargar infractores desde la API con paginación
   useEffect(() => {
@@ -126,7 +130,7 @@ export default function OffenderPage() {
       try {
         const response = await updateOffender(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Infractor actualizado exitosamente')
+        showSuccess(response.data?.message || response.message || 'Infractor actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -137,20 +141,20 @@ export default function OffenderPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación: ' + error.response.data.message.join(', ')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        showError(errorMessage)
       }
     } else {
       // Crear nuevo infractor
       try {
         const response = await createOffender(data)
 
-        alert(response.data?.message || response.message || 'Infractor creado exitosamente')
+        showSuccess(response.data?.message || response.message || 'Infractor creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
@@ -161,13 +165,13 @@ export default function OffenderPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación: ' + error.response.data.message.join(', ')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        showError(errorMessage)
       }
     }
   }
@@ -179,13 +183,22 @@ export default function OffenderPage() {
       ? '¿Estás seguro de deshabilitar este infractor? Ya no estará disponible para asignación.'
       : '¿Estás seguro de habilitar este infractor? Volverá a estar disponible para asignación.'
 
-    if (!confirm(confirmMessage)) return
+    setConfirmModal({
+      isOpen: true,
+      item,
+      message: confirmMessage,
+      action
+    })
+  }
+
+  async function confirmToggleStatus() {
+    const { item, action } = confirmModal
 
     try {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteOffender(item.id)
 
-      alert(response.data?.message || response.message || `Infractor ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      showSuccess(response.data?.message || response.message || `Infractor ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -194,13 +207,15 @@ export default function OffenderPage() {
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
+          ? error.response.data.message.join(', ')
           : error.response.data.message
       } else if (error.message) {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      showError(errorMessage)
+    } finally {
+      setConfirmModal({ isOpen: false, item: null })
     }
   }
 
@@ -506,6 +521,18 @@ export default function OffenderPage() {
           onSave={handleSave}
         />
       )}
+
+      {/* Modal de confirmación */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.action === 'habilitar' ? 'Confirmar Habilitación' : 'Confirmar Deshabilitación'}
+        message={confirmModal.message}
+        type={confirmModal.action === 'habilitar' ? 'info' : 'warning'}
+        onConfirm={confirmToggleStatus}
+        onCancel={() => setConfirmModal({ isOpen: false, item: null })}
+        confirmText={confirmModal.action === 'habilitar' ? 'Habilitar' : 'Deshabilitar'}
+        cancelText="Cancelar"
+      />
     </div>
   )
 }
