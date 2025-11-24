@@ -1,5 +1,5 @@
 import React from 'react'
-import { FaFilePdf, FaTrash, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa'
+import { FaFilePdf, FaBan, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa'
 
 // Función para formatear fecha de eliminación
 function formatDeletedDate(isoDate) {
@@ -146,8 +146,12 @@ export default function IncidenciasTable({
                       </>
                     )}
                     {canDelete && (
-                      <button title="Eliminar" onClick={()=> onDelete(item.id)}>
-                        <FaTrash/>
+                      <button
+                        title="Deshabilitar/Eliminar"
+                        onClick={()=> onDelete(item.id, item.status)}
+                        style={{ color: '#ef4444' }}
+                      >
+                        <FaBan/>
                       </button>
                     )}
                   </td>

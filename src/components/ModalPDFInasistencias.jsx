@@ -22,8 +22,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10
   },
   logo: {
-    width: 60,
-    height: 60
+    width: 120,
+    height: 50,
+    objectFit: 'contain'
   },
   headerText: {
     flex: 1,
@@ -210,7 +211,7 @@ function InasistenciasPDFDocument({ data, dateRange, logoBase64, username }) {
   )
 }
 
-export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange }) {
+export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange, onReportCreated }) {
   const { username } = useSelector((state) => state.auth)
   const [logoBase64, setLogoBase64] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -521,61 +522,72 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       const doc = (
         <Document>
           <Page size="A4" style={styles.page}>
-            {/* Header - Centrado */}
-            <View style={{ alignItems: 'center', marginBottom: 20, borderBottom: '2px solid #1e3a5f', paddingBottom: 10 }}>
+            {/* Header - Centrado con logo más grande */}
+            <View style={{ alignItems: 'center', marginBottom: 15 }}>
               {logoBase64 && (
                 <Image style={styles.logo} src={logoBase64} />
               )}
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e3a5f', marginTop: 5 }}>SAN JUAN DE LURIGANCHO</Text>
-              <Text style={{ fontSize: 10, color: '#666', fontStyle: 'italic', marginTop: 2 }}>es momento de crecer</Text>
+              <Text style={{ fontSize: 12, color: '#666', fontStyle: 'italic', marginTop: 5 }}>es momento de crecer</Text>
             </View>
 
-            {/* Año */}
-            <Text style={{ textAlign: 'center', fontSize: 8, fontStyle: 'italic', marginBottom: 15 }}>
+            {/* Año - Con tamaño de fuente más grande */}
+            <Text style={{ textAlign: 'center', fontSize: 10, fontStyle: 'italic', marginBottom: 20 }}>
               "Año de la recuperación y consolidación de la economía peruana"
             </Text>
 
-            {/* Número de informe */}
-            <View style={{ textAlign: 'center', marginBottom: 15 }}>
-              <Text style={{ fontSize: 11, fontWeight: 'bold' }}>INFORME N° {reportId}</Text>
-            </View>
-
-            {/* Datos del informe */}
+            {/* Datos del informe - Sin cuadro, solo campos */}
             <View style={{ marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>A :</Text>
-                <View>
-                  <Text style={{ fontSize: 9, fontWeight: 'bold' }}>
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>INFORME N°</Text>
+                <Text style={{ fontSize: 11, flex: 1 }}>{reportId}</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>A :</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11 }}>
                     {`${toLead.title || ''} ${toLead.name || ''} ${toLead.lastname || ''}`.trim()}
                   </Text>
-                  <Text style={{ fontSize: 8, color: '#666' }}>{toLeadJobValue}</Text>
+                  <Text style={{ fontSize: 10, color: '#333', marginTop: 2 }}>{toLeadJobValue}</Text>
                 </View>
               </View>
 
               {ccLeads.length > 0 && (
-                <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                  <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>CC :</Text>
-                  <Text style={{ fontSize: 9, flex: 1 }}>{ccLeads.map(c => c.name).join(', ')}</Text>
+                <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                  <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>CC :</Text>
+                  <Text style={{ fontSize: 11, flex: 1 }}>{ccLeads.map(c => c.name).join(', ')}</Text>
                 </View>
               )}
 
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>DE :</Text>
-                <Text style={{ fontSize: 9, fontWeight: 'bold' }}>CONTROL Y SUPERVISIÓN</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>DE :</Text>
+                <Text style={{ fontSize: 11 }}>CONTROL Y SUPERVISIÓN</Text>
               </View>
 
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>ASUNTO :</Text>
-                <Text style={{ fontSize: 9, flex: 1 }}>Conductas relacionadas con el cumplimiento del horario y asistencia</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>ASUNTO :</Text>
+                <Text style={{ fontSize: 11, flex: 1, textTransform: 'uppercase' }}>
+                  {subjects.find(s => s.id === selectedSubject)?.name || 'CONDUCTAS RELACIONADAS CON EL USO DE RECURSOS O BIENES MUNICIPALES'}
+                </Text>
               </View>
 
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>FECHA :</Text>
-                <Text style={{ fontSize: 9 }}>
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>FALTA :</Text>
+                <Text style={{ fontSize: 11, flex: 1, textTransform: 'uppercase' }}>
+                  {lacks.find(l => l.id === selectedLack)?.name || 'USO INDEBIDO O NO AUTORIZADO DE BIENES, MATERIALES O VEHÍCULOS INSTITUCIONALES'}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', marginBottom: 0 }}>
+                <Text style={{ width: 90, fontWeight: 'bold', fontSize: 11 }}>FECHA :</Text>
+                <Text style={{ fontSize: 11 }}>
                   {new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </Text>
               </View>
             </View>
+
+            {/* Separador horizontal */}
+            <View style={{ borderBottom: '2px solid #000', marginVertical: 15 }} />
 
             {/* Párrafo descriptivo */}
             <View style={{ marginBottom: 10 }}>
@@ -641,6 +653,11 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         toLead: toLead,
         ccLeads: ccLeads
       })
+
+      // Llamar al callback para notificar que se creó el reporte
+      if (onReportCreated) {
+        onReportCreated(response.data)
+      }
     } catch (error) {
       let errorMessage = 'Error al crear el reporte'
       if (error.response?.data?.message) {

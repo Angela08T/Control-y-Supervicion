@@ -1,17 +1,13 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
-import useJobs from '../hooks/Job/useJobs'
-import useLeads from '../hooks/Job/useLeads'
-import useAllLeads from '../hooks/Job/useAllLeads'
 import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
+import AlertModal from './AlertModal'
 import './Autocomplete.css'
 import {
   FaIdCard,
   FaClipboardList,
   FaClock,
-  FaUserTag,
-  FaUsers,
   FaUserTie,
   FaIdBadge,
   FaBalanceScale
@@ -27,19 +23,13 @@ const defaultState = {
   regLab: '',
   jurisdiccion: '',
   jurisdictionId: null,
-  dirigidoA: '',
-  destinatario: '',
-  cargoDestinatario: '',
-  conCopia: true,
-  cc: [],
   subjectId: null,
   lackId: null
 }
 
 export default function ModalInasistencia({ onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
-  const [selectedJobId, setSelectedJobId] = useState(null)
-  const [selectedLeadId, setSelectedLeadId] = useState('')
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' })
 
   // Hook para búsqueda de offender (DNI)
   const {
@@ -54,26 +44,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
     selectOffender
   } = useOffenderSearch()
 
-  // Hook para obtener lista de jobs (cargos)
-  const {
-    jobs,
-    loading: jobsLoading,
-    error: jobsError
-  } = useJobs()
-
-  // Hook para obtener lista de leads (personas) según el job seleccionado
-  const {
-    leads,
-    loading: leadsLoading,
-    error: leadsError
-  } = useLeads(selectedJobId)
-
-  // Hook para obtener TODOS los leads (para la sección CC)
-  const {
-    allLeads,
-    loading: allLeadsLoading,
-    error: allLeadsError
-  } = useAllLeads()
 
   // Hook para obtener subjects (asuntos) y lacks (faltas) desde la API
   const {
@@ -89,16 +59,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
     error: jurisdictionsError
   } = useJurisdictions()
 
-  // Filtrar lista de CC para excluir a la persona seleccionada y los deshabilitados
-  const listaCC = useMemo(() => {
-    if (!allLeads || allLeads.length === 0) return []
-
-    return allLeads.filter(lead => {
-      const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
-      const isEnabled = !lead.deleted_at
-      return nombreCompleto !== form.destinatario && isEnabled
-    })
-  }, [allLeads, form.destinatario])
 
   // Crear mapa de subjects con sus lacks desde la API
   const subjectMap = useMemo(() => {
@@ -163,17 +123,6 @@ export default function ModalInasistencia({ onClose, onSave }) {
     }
   }, [subjectMap])
 
-  // Filtrar solo jobs (cargos) habilitados
-  const jobsHabilitados = useMemo(() => {
-    if (!jobs || jobs.length === 0) return []
-    return jobs.filter(job => !job.deleted_at)
-  }, [jobs])
-
-  // Filtrar solo leads (personal) habilitados
-  const leadsHabilitados = useMemo(() => {
-    if (!leads || leads.length === 0) return []
-    return leads.filter(lead => !lead.deleted_at)
-  }, [leads])
 
   // Filtrar solo jurisdicciones habilitadas
   const jurisdiccionesHabilitadas = useMemo(() => {
@@ -222,41 +171,10 @@ export default function ModalInasistencia({ onClose, onSave }) {
         }
       }
 
-      // Si cambia dirigidoA, resetear destinatario
-      if (k === 'dirigidoA') {
-        newForm.destinatario = ''
-      }
-
       return newForm
     })
   }
 
-  // Función para manejar cambio de job/destinatario
-  function handleJobChange(jobId, jobName) {
-    setSelectedJobId(jobId)
-    setSelectedLeadId('')
-    setField('dirigidoA', jobName)
-  }
-
-  // Función para manejar selección de persona (lead)
-  function handleLeadChange(leadId) {
-    setSelectedLeadId(leadId)
-    const selectedLead = leads.find(lead => lead.id === leadId)
-    if (selectedLead) {
-      const nombreCompleto = `${selectedLead.name} ${selectedLead.lastname}`.trim()
-      setForm(f => ({
-        ...f,
-        destinatario: nombreCompleto,
-        cargoDestinatario: selectedLead.job?.name || form.dirigidoA
-      }))
-    } else {
-      setForm(f => ({
-        ...f,
-        destinatario: '',
-        cargoDestinatario: ''
-      }))
-    }
-  }
 
   function handleDNIChange(e) {
     const value = e.target.value.replace(/\D/g, '').slice(0, 8)
@@ -281,53 +199,52 @@ export default function ModalInasistencia({ onClose, onSave }) {
     setDniSearchTerm(offender.dni || '')
   }
 
-  function toggleCC(leadId) {
-    setForm(f => {
-      const cc = f.cc || []
-      const lead = allLeads.find(l => l.id === leadId)
-      if (!lead) return f
-
-      const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
-
-      if (cc.includes(nombreCompleto)) {
-        return { ...f, cc: cc.filter(p => p !== nombreCompleto) }
-      } else {
-        return { ...f, cc: [...cc, nombreCompleto] }
-      }
-    })
-  }
-
   async function handleSubmit(ev) {
     ev.preventDefault()
 
     // Validar campos obligatorios
     if (!form.dni || form.dni.length !== 8) {
-      alert('El DNI debe tener exactamente 8 dígitos')
+      setAlertModal({
+        isOpen: true,
+        title: 'DNI inválido',
+        message: 'El DNI debe tener exactamente 8 dígitos',
+        type: 'error'
+      })
       return
     }
 
-    if (!form.turno || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
-      alert('Completa todos los campos obligatorios')
+    if (!form.turno || !form.jurisdiccion || !form.cargo || !form.regLab) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Campos incompletos',
+        message: 'Por favor, completa todos los campos obligatorios marcados con *',
+        type: 'error'
+      })
       return
     }
 
     if (!form.subjectId) {
-      alert('Error: No se pudo obtener el ID del asunto.')
+      setAlertModal({
+        isOpen: true,
+        title: 'Error de configuración',
+        message: 'No se pudo obtener el ID del asunto. Por favor, contacta al administrador.',
+        type: 'error'
+      })
       return
     }
 
     if (!form.jurisdictionId) {
-      alert('Error: No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.')
-      return
-    }
-
-    if (!form.cc || form.cc.length === 0) {
-      alert('Debes seleccionar al menos 1 persona para copia (CC)')
+      setAlertModal({
+        isOpen: true,
+        title: 'Jurisdicción no seleccionada',
+        message: 'No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.',
+        type: 'error'
+      })
       return
     }
 
     if (onSave) {
-      onSave(form, allLeads)
+      onSave(form, []) // Enviar array vacío ya que no hay allLeads
     }
 
     onClose()
@@ -470,118 +387,21 @@ export default function ModalInasistencia({ onClose, onSave }) {
             </select>
           )}
 
-          <label>
-            <FaUserTag style={{ marginRight: '8px' }} />
-            Destinatario *
-          </label>
-          {jobsLoading ? (
-            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-              Cargando cargos...
-            </div>
-          ) : jobsError ? (
-            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
-              {jobsError}
-            </div>
-          ) : (
-            <select
-              value={form.dirigidoA}
-              onChange={e => {
-                const selectedJob = jobs.find(job => job.name === e.target.value)
-                if (selectedJob) {
-                  handleJobChange(selectedJob.id, selectedJob.name)
-                } else {
-                  handleJobChange(null, '')
-                }
-              }}
-            >
-              <option value="">Selecciona</option>
-              {jobsHabilitados.map(job => (
-                <option key={job.id} value={job.name}>{job.name}</option>
-              ))}
-            </select>
-          )}
-
-          {form.dirigidoA && (
-            <>
-              <label>Persona *</label>
-              {leadsLoading ? (
-                <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  Cargando personas...
-                </div>
-              ) : leadsError ? (
-                <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
-                  {leadsError}
-                </div>
-              ) : (
-                <select
-                  value={selectedLeadId}
-                  onChange={e => handleLeadChange(e.target.value)}
-                >
-                  <option value="">Selecciona</option>
-                  {leadsHabilitados.map(lead => (
-                    <option key={lead.id} value={lead.id}>
-                      {lead.name} {lead.lastname}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </>
-          )}
-
-          {/* Sección CC - Obligatoria */}
-          <div className="cc-section">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
-              <FaUsers />
-              Con copia (CC) - Obligatorio *
-            </label>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-              Selecciona al menos 1 persona para enviar copia del reporte
-            </p>
-          </div>
-
-          {/* Lista de personas para CC */}
-          {form.conCopia && (
-            <div className="cc-list">
-              <label>Seleccionar personas para copia:</label>
-              {allLeadsLoading ? (
-                <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  Cargando personas...
-                </div>
-              ) : allLeadsError ? (
-                <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
-                  {allLeadsError}
-                </div>
-              ) : (
-                <div className="checkbox-group">
-                  {listaCC.map(lead => {
-                    const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
-                    return (
-                      <label key={lead.id} className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={(form.cc || []).includes(nombreCompleto)}
-                          onChange={() => toggleCC(lead.id)}
-                        />
-                        <span>{nombreCompleto} - {lead.job?.name || 'Sin cargo'}</span>
-                      </label>
-                    )
-                  })}
-                  {listaCC.length === 0 && !allLeadsLoading && (
-                    <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                      No hay otras personas disponibles
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="btn-secondary">CANCELAR</button>
             <button type="submit" className="btn-primary">CREAR INCIDENCIA</button>
           </div>
         </form>
       </div>
+
+      {/* Modal de alerta personalizado */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
     </div>
   )
 }

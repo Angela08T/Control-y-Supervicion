@@ -80,7 +80,6 @@ export default function AuditoriaPage() {
               <option value="">Todos los estados</option>
               <option value="SUCCESS">Éxito</option>
               <option value="BLOCKED">Bloqueado</option>
-              <option value="ERROR">Error</option>
               <option value="FAILED">Fallido</option>
             </select>
 

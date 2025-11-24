@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
+import AlertModal from '../../components/AlertModal'
+import ConfirmModal from '../../components/ConfirmModal'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport } from '../../api/report'
 import useSubjects from '../../hooks/Subject/useSubjects'
@@ -45,6 +47,10 @@ export default function IncidenciasPage() {
   const [isSearching, setIsSearching] = useState(false) // Indica si está buscando
   const [searchPagination, setSearchPagination] = useState(null) // Paginación de búsqueda
   const [isSearchMode, setIsSearchMode] = useState(false) // Indica si está en modo búsqueda
+
+  // Estados para modales personalizados
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'success' })
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null })
 
   const { subjects, loading: subjectsLoading } = useSubjects()
   const { lacks, loading: lacksLoading } = useLacks()
@@ -122,11 +128,16 @@ export default function IncidenciasPage() {
         const apiData = mapFormDataToAPI(data, allLeads)
         const response = await createReport(apiData)
 
-        alert('Incidencia creada exitosamente')
+        setShowModal(false)
+        setAlertModal({
+          isOpen: true,
+          title: '¡Éxito!',
+          message: 'Incidencia creada exitosamente',
+          type: 'success'
+        })
 
         // Recargar la primera página para ver la nueva incidencia
         setCurrentPage(1)
-        setShowModal(false)
 
         // Forzar recarga de datos
         setRefreshTrigger(prev => prev + 1)
@@ -146,71 +157,179 @@ export default function IncidenciasPage() {
           errorMessage = error.message;
         }
 
-        alert(errorMessage)
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        })
       }
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar esta incidencia?')) return
+  async function handleDelete(id, status) {
+    // Función para ejecutar la eliminación
+    const executeDelete = async () => {
+      try {
+        const response = await deleteReport(id)
 
-    try {
-      const response = await deleteReport(id)
+        setAlertModal({
+          isOpen: true,
+          title: '¡Éxito!',
+          message: response.data?.message || response.message || 'Incidencia deshabilitada exitosamente',
+          type: 'success'
+        })
 
-      alert(response.data?.message || response.message || 'Incidencia eliminada exitosamente')
+        // Recargar datos desde la API
+        setRefreshTrigger(prev => prev + 1)
+      } catch (error) {
 
-      // Recargar datos desde la API
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
+        let errorMessage = 'Error al deshabilitar la incidencia'
 
-      let errorMessage = 'Error al eliminar la incidencia'
+        if (error.response?.data?.message) {
+          errorMessage = Array.isArray(error.response.data.message)
+            ? error.response.data.message.join('\n')
+            : error.response.data.message
+        } else if (error.message) {
+          errorMessage = error.message
+        }
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        })
       }
+    }
 
-      alert(errorMessage)
+    // Advertencia especial para registros aprobados
+    if (status === 'approved') {
+      setConfirmModal({
+        isOpen: true,
+        title: '⚠️ ADVERTENCIA: Informe Aprobado',
+        message: 'Este informe está APROBADO y tiene un código oficial asignado.\n\nAl eliminarlo:\n• El código quedará "consumido" y no se reutilizará\n• El informe puede ser restaurado más tarde si es necesario\n• Se recomienda consultar con un supervisor antes de proceder\n\n¿Está completamente seguro de que desea deshabilitar este informe aprobado?',
+        type: 'danger',
+        onConfirm: () => {
+          setConfirmModal({ ...confirmModal, isOpen: false })
+          // Segunda confirmación para informes aprobados
+          setConfirmModal({
+            isOpen: true,
+            title: '⚠️ CONFIRMACIÓN FINAL',
+            message: 'Esta es su última oportunidad para cancelar.\n\n¿Realmente desea deshabilitar este informe aprobado?',
+            type: 'danger',
+            confirmText: 'Sí, deshabilitar',
+            onConfirm: () => {
+              setConfirmModal({ ...confirmModal, isOpen: false })
+              executeDelete()
+            }
+          })
+        }
+      })
+    } else {
+      // Confirmación normal para otros estados
+      setConfirmModal({
+        isOpen: true,
+        title: 'Confirmar acción',
+        message: '¿Estás seguro de deshabilitar esta incidencia?\n\nPodrá ser restaurada más tarde.',
+        type: 'warning',
+        confirmText: 'Sí, deshabilitar',
+        onConfirm: () => {
+          setConfirmModal({ ...confirmModal, isOpen: false })
+          executeDelete()
+        }
+      })
     }
   }
 
   async function handleSendToValidator(reportId) {
-    if (!confirm('¿Enviar esta incidencia al validador? Debe tener al menos una imagen.')) return
-
-    try {
-      const response = await sendToValidator(reportId)
-      alert(response.data?.message || response.message || 'Incidencia enviada al validador exitosamente')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Error al enviar incidencia')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Enviar a validador',
+      message: '¿Enviar esta incidencia al validador?\n\nDebe tener al menos una imagen adjunta.',
+      type: 'info',
+      confirmText: 'Sí, enviar',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false })
+        try {
+          const response = await sendToValidator(reportId)
+          setAlertModal({
+            isOpen: true,
+            title: '¡Éxito!',
+            message: response.data?.message || response.message || 'Incidencia enviada al validador exitosamente',
+            type: 'success'
+          })
+          setRefreshTrigger(prev => prev + 1)
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || error.message || 'Error al enviar incidencia',
+            type: 'error'
+          })
+        }
+      }
+    })
   }
 
   async function handleApprove(reportId) {
-    if (!confirm('¿Aprobar esta incidencia?')) return
-
-    try {
-      const response = await validateReport(reportId, true)
-      alert(response.data?.message || response.message || 'Incidencia aprobada exitosamente')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Error al aprobar incidencia')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Aprobar incidencia',
+      message: '¿Aprobar esta incidencia?\n\nSe generará automáticamente un código oficial para el informe.',
+      type: 'info',
+      confirmText: 'Sí, aprobar',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false })
+        try {
+          const response = await validateReport(reportId, true)
+          setAlertModal({
+            isOpen: true,
+            title: '¡Éxito!',
+            message: response.data?.message || response.message || 'Incidencia aprobada exitosamente',
+            type: 'success'
+          })
+          setRefreshTrigger(prev => prev + 1)
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || error.message || 'Error al aprobar incidencia',
+            type: 'error'
+          })
+        }
+      }
+    })
   }
 
   async function handleReject(reportId) {
-    if (!confirm('¿Rechazar esta incidencia?')) return
-
-    try {
-      const response = await validateReport(reportId, false)
-      alert(response.data?.message || response.message || 'Incidencia rechazada exitosamente')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Error al rechazar incidencia')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Rechazar incidencia',
+      message: '¿Rechazar esta incidencia?\n\nEl informe no se aprobará y no se generará código oficial.',
+      type: 'warning',
+      confirmText: 'Sí, rechazar',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false })
+        try {
+          const response = await validateReport(reportId, false)
+          setAlertModal({
+            isOpen: true,
+            title: 'Incidencia rechazada',
+            message: response.data?.message || response.message || 'Incidencia rechazada exitosamente',
+            type: 'info'
+          })
+          setRefreshTrigger(prev => prev + 1)
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || error.message || 'Error al rechazar incidencia',
+            type: 'error'
+          })
+        }
+      }
+    })
   }
 
   function handleEdit(item) {
@@ -827,6 +946,25 @@ export default function IncidenciasPage() {
           onSave={() => setRefreshTrigger(prev => prev + 1)}
         />
       )}
+
+      {/* Modales personalizados */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.confirmText}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   )
 }

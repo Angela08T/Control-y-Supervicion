@@ -133,6 +133,7 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
 
       return {
         id: r.id,
+        code: r.code || null, // Código del informe (solo si está aprobado)
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
@@ -237,6 +238,7 @@ export const getReportById = async (reportId) => {
 
       const transformed = {
         id: r.id,
+        code: r.code || null, // Código del informe (solo si está aprobado)
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
