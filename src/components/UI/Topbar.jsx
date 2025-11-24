@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { logout as logoutAction } from '../../store/slices/authSlice'
 import { clearToken } from '../../api/config'
 import { logout as logoutApi } from '../../api/auth'
+import logoSJL from '../../assets/logo-sjl.png'
+import userAvatar from '../../assets/user-avatar.png'
 
 export default function Topbar() {
   const dispatch = useDispatch()
@@ -35,7 +37,7 @@ export default function Topbar() {
     <header className="topbar">
       <div className="topbar-left">
         <img
-          src="/src/assets/logo-sjl.png"
+          src={logoSJL}
           alt="Logo SJL"
           className="logo-sjl"
         />
@@ -45,7 +47,7 @@ export default function Topbar() {
       <div className="topbar-right">
         <span className="user-name">{username || 'Usuario'}</span>
         <img
-          src="/src/assets/user-avatar.png"
+          src={userAvatar}
           alt="Usuario"
           className="user-avatar"
         />

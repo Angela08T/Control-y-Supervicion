@@ -492,24 +492,30 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       // Obtener el report_id de la respuesta
       const reportId = response.data?.report_id || response.data?.id || '---'
 
-      // Preparar datos para el PDF
-      const pdfAttendances = filteredAttendances.map(person => {
-        const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-          const date = new Date(d.date)
-          return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-        }).join(', ') || '-'
+      // Preparar datos para el PDF - Filtrar solo los que tienen fechas válidas
+      const pdfAttendances = filteredAttendances
+        .filter(person => {
+          // Filtrar solo personas que tengan fechas de inasistencias válidas
+          const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+          return validDates && validDates.length > 0
+        })
+        .map(person => {
+          const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
+            const date = new Date(d.date)
+            return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          }).join(', ') || '-'
 
-        return {
-          name: person.name && person.lastname
-            ? `${person.lastname} ${person.name}`.toUpperCase()
-            : person.fullname?.toUpperCase() || '-',
-          job: typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-'),
-          regime: typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-'),
-          shift: typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-'),
-          jurisdiction: typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-'),
-          fechas
-        }
-      })
+          return {
+            name: person.name && person.lastname
+              ? `${person.lastname} ${person.name}`.toUpperCase()
+              : person.fullname?.toUpperCase() || '-',
+            job: typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-'),
+            regime: typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-'),
+            shift: typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-'),
+            jurisdiction: typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-'),
+            fechas
+          }
+        })
 
       // Obtener turnos únicos
       const turnos = [...new Set(filteredAttendances.map(p => {
@@ -1141,7 +1147,13 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredAttendances.map((person, index) => {
+                        {filteredAttendances
+                          .filter(person => {
+                            // Filtrar solo personas que tengan fechas de inasistencias válidas
+                            const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+                            return validDates && validDates.length > 0
+                          })
+                          .map((person, index) => {
                           // Obtener las fechas de inasistencia
                           const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
                             const date = new Date(d.date)

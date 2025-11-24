@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
 import useLogin from '../../hooks/Login/useLogin'
+import logoSJL from '../../assets/logo-sjl.png'
+import muniBackground from '../../assets/muni-background.png'
 
 export default function LoginForm() {
   const navigate = useNavigate()
@@ -38,20 +40,20 @@ export default function LoginForm() {
   return (
     <div className="login-container">
       <div className="login-background">
-        <img 
-          src="/src/assets/muni-background.png" 
-          alt="Municipalidad de San Juan de Lurigancho - CECOM" 
+        <img
+          src={muniBackground}
+          alt="Municipalidad de San Juan de Lurigancho - CECOM"
           className="background-image"
         />
         <div className="background-overlay"></div>
       </div>
-      
+
       <div className="login-card">
         {/* Logo Municipal */}
         <div className="login-header">
-          <img 
-            src="/src/assets/logo-sjl.png" 
-            alt="Logo Municipalidad San Juan de Lurigancho" 
+          <img
+            src={logoSJL}
+            alt="Logo Municipalidad San Juan de Lurigancho"
             className="login-logo"
           />
           <div className="login-title">
