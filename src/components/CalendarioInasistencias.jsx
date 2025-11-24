@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { FaFilePdf, FaTrash } from 'react-icons/fa'
+import { FaFilePdf } from 'react-icons/fa'
 
 export default function CalendarioInasistencias({
   inasistencias = [],
@@ -435,16 +435,6 @@ export default function CalendarioInasistencias({
             title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
           >
             J
-          </button>
-          <button
-            className={`btn-edit ${editMode ? 'active' : ''}`}
-            onClick={handleToggleEdit}
-            title={editMode ? 'Desactivar modo edición' : 'Activar modo edición'}
-          >
-            EDITAR
-          </button>
-          <button className="btn-icon btn-delete" onClick={handleDeleteSelected} title="Eliminar">
-            <FaTrash />
           </button>
           {markMode === 'I' && (
             <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>

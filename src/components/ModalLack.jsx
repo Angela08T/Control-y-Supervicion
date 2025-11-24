@@ -23,7 +23,9 @@ export default function ModalLack({ initial, onClose, onSave }) {
         setLoadingSubjects(true)
         const response = await getSubjects(1, 1000) // Obtener todos los asuntos
         const subjectsData = response.data?.data || response.data || []
-        setSubjects(subjectsData)
+        // Filtrar solo asuntos activos (deleted_at es null)
+        const activeSubjects = subjectsData.filter(subject => !subject.deleted_at)
+        setSubjects(activeSubjects)
       } catch (error) {
         alert('Error al cargar la lista de asuntos')
       } finally {

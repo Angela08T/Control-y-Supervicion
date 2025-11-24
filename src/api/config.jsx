@@ -74,16 +74,37 @@ const addAuthToken = (config) => {
   return config;
 };
 
-// Interceptor de respuesta para manejar errores 401 en offender
-offenderConfig.interceptors.response.use(
-  (response) => response,
-  (error) => Promise.reject(error)
-);
+// Variable para controlar el modal de sesión expirada
+let sessionExpiredCallback = null;
+
+// Función para establecer el callback del modal de sesión expirada
+export const setSessionExpiredCallback = (callback) => {
+  sessionExpiredCallback = callback;
+};
+
+// Interceptor de respuesta para manejar errores 401
+const handleUnauthorizedError = (error) => {
+  if (error.response && error.response.status === 401) {
+    // Verificar si no estamos en la página de login
+    if (!window.location.pathname.includes('/login')) {
+      // Llamar al callback para mostrar el modal
+      if (sessionExpiredCallback) {
+        sessionExpiredCallback();
+      }
+    }
+  }
+  return Promise.reject(error);
+};
 
 // Aplicar interceptors a todas las configuraciones
 config.interceptors.request.use(addAuthToken, (error) => Promise.reject(error));
+config.interceptors.response.use((response) => response, handleUnauthorizedError);
+
 incidenceConfig.interceptors.request.use(addAuthToken, error => Promise.reject(error));
+incidenceConfig.interceptors.response.use((response) => response, handleUnauthorizedError);
+
 offenderConfig.interceptors.request.use(addAuthTokenOffender, error => Promise.reject(error));
+offenderConfig.interceptors.response.use((response) => response, handleUnauthorizedError);
 
 
 // Exportar todas las configuraciones

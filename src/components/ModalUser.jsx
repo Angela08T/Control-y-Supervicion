@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { FaUser, FaEnvelope, FaLock, FaUserTag, FaIdCard, FaSearch, FaClock, FaBuilding } from 'react-icons/fa'
+import { FaUser, FaEnvelope, FaLock, FaUserTag, FaIdCard, FaSearch } from 'react-icons/fa'
 import { useSelector } from 'react-redux'
 
 const defaultState = {
@@ -9,10 +9,7 @@ const defaultState = {
   username: '',
   password: '',
   email: '',
-  rol: 'SENTINEL', // Por defecto SENTINEL
-  regime: '',
-  shift: '',
-  subgerencia: ''
+  rol: 'SENTINEL' // Por defecto SENTINEL
 }
 
 export default function ModalUser({ initial, onClose, onSave, userRole }) {
@@ -37,10 +34,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
         username: initial.username || '',
         password: '', // No mostrar password existente
         email: initial.email || '',
-        rol: initial.rol || initial.role || 'SENTINEL',
-        regime: initial.regime || '',
-        shift: initial.shift || '',
-        subgerencia: initial.subgerencia || ''
+        rol: initial.rol || initial.role || 'SENTINEL'
       })
     }
   }, [initial])
@@ -84,10 +78,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
           lastname: data.lastname || '',
           username: username,
           email: data.email || '',
-          rol: mapJobToRol(data.job) || 'SENTINEL',
-          regime: data.regime || '',
-          shift: data.shift || '',
-          subgerencia: data.subgerencia || ''
+          rol: mapJobToRol(data.job) || 'SENTINEL'
         }))
       } else {
         setDniError(result.message || 'No se encontró ningún registro con ese DNI')
@@ -183,10 +174,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
       lastname: form.lastname.trim(),
       username: form.username.trim(),
       email: form.email.trim(),
-      rol: form.rol,
-      regime: form.regime.trim(),
-      shift: form.shift,
-      subgerencia: form.subgerencia.trim()
+      rol: form.rol
     }
 
     // Solo incluir password si se está creando o si se modificó
@@ -359,51 +347,6 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
                 Solo puedes crear Sentinels
               </span>
             )}
-          </div>
-
-          {/* Régimen */}
-          <div className="form-group">
-            <label>
-              <FaUserTag style={{ marginRight: '8px' }} />
-              Régimen
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Locador, CAS, etc."
-              value={form.regime}
-              onChange={(e) => handleChange('regime', e.target.value)}
-            />
-          </div>
-
-          {/* Turno */}
-          <div className="form-group">
-            <label>
-              <FaClock style={{ marginRight: '8px' }} />
-              Turno
-            </label>
-            <select
-              value={form.shift}
-              onChange={(e) => handleChange('shift', e.target.value)}
-            >
-              <option value="">Seleccionar turno</option>
-              <option value="Mañana">Mañana</option>
-              <option value="Tarde">Tarde</option>
-              <option value="Noche">Noche</option>
-            </select>
-          </div>
-
-          {/* Subgerencia */}
-          <div className="form-group">
-            <label>
-              <FaBuilding style={{ marginRight: '8px' }} />
-              Subgerencia
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Serenazgo"
-              value={form.subgerencia}
-              onChange={(e) => handleChange('subgerencia', e.target.value)}
-            />
           </div>
 
           {/* Nota informativa */}

@@ -190,10 +190,13 @@ const PDFHeader = ({ logoBase64 }) => {
 // Componente para la sección de info
 const PDFInfoSection = ({ formData, incidencia }) => (
   <View style={styles.infoSection}>
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>INFORME N°</Text>
-      <Text style={styles.infoValue}>{formData.numeroInforme}</Text>
-    </View>
+    {/* Solo mostrar INFORME N° si el informe está aprobado y tiene código */}
+    {formData.numeroInforme && (
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>INFORME N°</Text>
+        <Text style={styles.infoValue}>{formData.numeroInforme}</Text>
+      </View>
+    )}
 
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>A :</Text>

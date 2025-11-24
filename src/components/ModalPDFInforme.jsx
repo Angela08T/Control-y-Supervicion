@@ -128,7 +128,9 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   useEffect(() => {
     if (incidencia) {
-      const numeroInforme = `${String(Math.floor(Math.random() * 999)).padStart(3, '0')}-2025-CS-SS-GOP/MDSJL`
+      // El código del informe (numeroInforme) SOLO se muestra si el informe está aprobado
+      // El backend lo genera automáticamente al aprobar, con número correlativo y año
+      const numeroInforme = incidencia.code || '' // Si no está aprobado, será vacío
 
       // Usar el cargo del destinatario de la API si está disponible, sino usar el mapeo antiguo
       let cargo = incidencia.cargoDestinatario || ''
@@ -623,7 +625,74 @@ Se adjuntan las evidencias:`
     <div className="modal-backdrop">
       <div className="modal-pdf">
         <div className="modal-header">
-          <h3>Vista Previa del Informe</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h3>Vista Previa del Informe</h3>
+            {/* Badge de estado */}
+            {incidencia.status === 'approved' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                border: '1px solid rgba(34, 197, 94, 0.5)',
+                borderRadius: '12px',
+                color: '#22c55e',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                ✓ Aprobado
+              </span>
+            )}
+            {incidencia.status === 'pending' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                border: '1px solid rgba(245, 158, 11, 0.5)',
+                borderRadius: '12px',
+                color: '#f59e0b',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                ⏳ Pendiente de aprobación
+              </span>
+            )}
+            {incidencia.status === 'draft' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(148, 163, 184, 0.2)',
+                border: '1px solid rgba(148, 163, 184, 0.5)',
+                borderRadius: '12px',
+                color: '#94a3b8',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                📝 Borrador
+              </span>
+            )}
+            {incidencia.status === 'rejected' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
+                borderRadius: '12px',
+                color: '#ef4444',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                ✗ Rechazado
+              </span>
+            )}
+          </div>
           <button className="close" onClick={onClose}>×</button>
         </div>
         
@@ -638,10 +707,46 @@ Se adjuntan las evidencias:`
             <div className="pdf-info">
               <div className="info-row">
                 <strong>INFORME N°</strong>
-                <input 
-                  value={formData.numeroInforme}
-                  onChange={e => handleChange('numeroInforme', e.target.value)}
-                />
+                {incidencia.status === 'approved' ? (
+                  <input
+                    value={formData.numeroInforme}
+                    readOnly
+                    style={{
+                      cursor: 'not-allowed',
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                      borderColor: 'rgba(34, 197, 94, 0.5)',
+                      fontWeight: 'bold'
+                    }}
+                    title="Código generado automáticamente al aprobar"
+                  />
+                ) : (
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      padding: '8px 12px',
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.5)',
+                      borderRadius: '4px',
+                      color: '#f59e0b',
+                      fontSize: '0.9rem',
+                      fontStyle: 'italic'
+                    }}>
+                      ⏳ Se generará automáticamente al aprobar el informe
+                    </div>
+                    <div style={{
+                      marginTop: '6px',
+                      padding: '6px 8px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                      lineHeight: '1.4'
+                    }}>
+                      <strong>ℹ️ Nota:</strong> El código del informe será asignado automáticamente por el sistema
+                      con el número correlativo y año correspondiente una vez que el informe sea aprobado.
+                      Hasta entonces, no es necesario ingresar ningún código manualmente.
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="info-row">
