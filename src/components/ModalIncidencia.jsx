@@ -55,8 +55,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
   const [form, setForm] = useState(defaultState)
   const [selectedJobId, setSelectedJobId] = useState(null) // ID del job seleccionado
   const [selectedLeadId, setSelectedLeadId] = useState('') // ID del lead seleccionado
+  const [camType, setCamType] = useState('BODYCAM') // Tipo de cámara para filtrar: 'BODYCAM' o 'CAMERA'
 
-  // Hook para búsqueda de bodycam
+  // Hook para búsqueda de bodycam - filtra por tipo de cámara
   const {
     searchTerm: bodycamSearchTerm,
     setSearchTerm: setBodycamSearchTerm,
@@ -66,7 +67,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     showSuggestions: showBodycamSuggestions,
     setShowSuggestions: setShowBodycamSuggestions,
     selectBodycam
-  } = useBodycamSearch()
+  } = useBodycamSearch(camType)
 
   // Hook para búsqueda de offender (DNI)
   const {
@@ -576,13 +577,18 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                   const nuevoTipo = e.target.value
                   setField('tipoMedio', nuevoTipo)
                   setField('medio', nuevoTipo)
+                  // Actualizar el tipo de cámara para el filtro de búsqueda
+                  setCamType(nuevoTipo === 'camara' ? 'CAMERA' : 'BODYCAM')
                   // Limpiar campos del otro tipo cuando se cambia
                   if (nuevoTipo === 'camara') {
                     setField('bodycamNumber', '')
                     setField('bodycamAsignadaA', '')
+                    setField('bodycamId', '')
                     setBodycamSearchTerm('')
                   } else {
                     setField('numeroCamara', '')
+                    setField('bodycamId', '')
+                    setBodycamSearchTerm('')
                   }
                 }}
               >
@@ -648,11 +654,41 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               {form.tipoMedio === 'camara' && (
                 <>
                   <label>N° de Cámara *</label>
-                  <input
-                    value={form.numeroCamara}
-                    onChange={e => setField('numeroCamara', e.target.value)}
-                    placeholder="Ingresa el número de cámara"
-                  />
+                  <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                    <input
+                      value={bodycamSearchTerm}
+                      onChange={handleBodycamInputChange}
+                      onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
+                      placeholder="Escribe para buscar cámara (ej: 104A)"
+                      autoComplete="off"
+                    />
+                    {bodycamLoading && (
+                      <div className="autocomplete-loading">Buscando...</div>
+                    )}
+                    {bodycamError && (
+                      <div className="autocomplete-error">{bodycamError}</div>
+                    )}
+                    {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
+                      <div className="autocomplete-suggestions">
+                        {bodycamsHabilitadas.map((camera, index) => (
+                          <div
+                            key={camera.id || index}
+                            className="autocomplete-item"
+                            onClick={() => {
+                              selectBodycam(camera)
+                              setShowBodycamSuggestions(false)
+                              setBodycamSearchTerm(camera.name)
+                              setField('numeroCamara', camera.name)
+                              setField('bodycamId', camera.id)
+                            }}
+                          >
+                            <strong>{camera.name}</strong>
+                            {camera.serie && <span style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>Serie: {camera.serie}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </>
