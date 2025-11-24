@@ -18,22 +18,21 @@ export default function BodycamTable({ data = [], onToggleStatus, onEdit, startI
   }
 
   return (
-    <div className="table-card">
+    <div className="table-card bodycam-table-container">
       <div className="table-scroll-container">
-        <table className="inc-table">
+        <table className="inc-table bodycam-table">
           <thead>
             <tr>
               <th>#</th>
               {showActions && <th>Acciones</th>}
               <th>Nombre</th>
-              <th>Serie</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={showActions ? 5 : 4} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                <td colSpan={showActions ? 4 : 3} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                   No hay bodycams registradas
                 </td>
               </tr>
@@ -75,7 +74,6 @@ export default function BodycamTable({ data = [], onToggleStatus, onEdit, startI
                     </td>
                   )}
                   <td>{item.name}</td>
-                  <td>{item.serie}</td>
                   <td>
                     {isEnabled ? (
                       <span style={{
