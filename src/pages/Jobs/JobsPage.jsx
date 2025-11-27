@@ -5,6 +5,7 @@ import ModalJob from '../../components/ModalJob'
 import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from '../../api/job'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { toast } from '../../utils/toast'
 
 export default function JobsPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -56,7 +57,7 @@ export default function JobsPage() {
           })
         }
       } catch (error) {
-        alert('No se pudieron cargar los cargos')
+        toast.error('No se pudieron cargar los cargos')
       } finally {
         setLoading(false)
       }
@@ -134,7 +135,7 @@ export default function JobsPage() {
       try {
         const response = await updateJob(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Cargo actualizado exitosamente')
+        toast.success(response.data?.message || response.message || 'Cargo actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -150,14 +151,14 @@ export default function JobsPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } else {
       // Crear nuevo cargo
       try {
         const response = await createJob(data)
 
-        alert(response.data?.message || response.message || 'Cargo creado exitosamente')
+        toast.success(response.data?.message || response.message || 'Cargo creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
@@ -173,7 +174,7 @@ export default function JobsPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     }
   }
@@ -191,7 +192,7 @@ export default function JobsPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteJob(item.id)
 
-      alert(response.data?.message || response.message || `Cargo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(response.data?.message || response.message || `Cargo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -205,7 +206,7 @@ export default function JobsPage() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 

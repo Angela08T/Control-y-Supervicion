@@ -7,6 +7,7 @@ import { getSubjects } from '../api/subject'
 import { getLacks } from '../api/lack'
 import { createAbsenceReport, getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
+import { toast } from '../utils/toast'
 
 // Función para formatear fechas
 function formatearFecha(fecha) {
@@ -262,15 +263,15 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
   async function handleGeneratePDF() {
     // Validar campos requeridos
     if (!selectedTo) {
-      alert('Debe seleccionar un destinatario principal')
+      toast.warning('Debe seleccionar un destinatario principal')
       return
     }
     if (!selectedSubject) {
-      alert('Debe seleccionar un asunto')
+      toast.warning('Debe seleccionar un asunto')
       return
     }
     if (!selectedLack) {
-      alert('Debe seleccionar una falta')
+      toast.warning('Debe seleccionar una falta')
       return
     }
 
@@ -418,7 +419,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setGenerating(false)
     }

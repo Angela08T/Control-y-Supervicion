@@ -11,6 +11,7 @@ import {
   deactivateSession
 } from '../../api/user'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { toast } from '../../utils/toast'
 
 export default function UsuariosPage() {
   const { role: userRole } = useSelector((state) => state.auth) // Rol del usuario actual
@@ -52,7 +53,7 @@ export default function UsuariosPage() {
         const allUsers = response?.data?.data || []
         setUsers(allUsers)
       } catch (error) {
-        alert('Error al cargar usuarios')
+        toast.error('Error al cargar usuarios')
       } finally {
         setLoading(false)
         setIsSearching(false)
@@ -69,7 +70,7 @@ export default function UsuariosPage() {
       try {
         const response = await updateUser(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Usuario actualizado exitosamente')
+        toast.success(response.data?.message || response.message || 'Usuario actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -79,41 +80,41 @@ export default function UsuariosPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación: ' + error.response.data.message.join(', ')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } else {
       // Crear nuevo usuario
       try {
         // Verificar permisos antes de crear
         if (data.rol === 'ADMINISTRATOR' && userRole !== 'admin') {
-          alert('No tienes permisos para crear administradores')
+          toast.warning('No tienes permisos para crear administradores')
           return
         }
 
         if (data.rol === 'SUPERVISOR' && !canCreateSupervisor) {
-          alert('No tienes permisos para crear supervisores')
+          toast.warning('No tienes permisos para crear supervisores')
           return
         }
 
         if (data.rol === 'VALIDATOR' && !canCreateValidator) {
-          alert('No tienes permisos para crear validadores')
+          toast.warning('No tienes permisos para crear validadores')
           return
         }
 
         if (!canCreateSentinel) {
-          alert('No tienes permisos para crear usuarios')
+          toast.warning('No tienes permisos para crear usuarios')
           return
         }
 
         const response = await createUser(data)
 
-        alert(response.data?.message || response.message || 'Usuario creado exitosamente')
+        toast.success(response.data?.message || response.message || 'Usuario creado exitosamente')
 
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
@@ -122,13 +123,13 @@ export default function UsuariosPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación: ' + error.response.data.message.join(', ')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     }
   }
@@ -146,7 +147,7 @@ export default function UsuariosPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteUser(item.id)
 
-      alert(response.data?.message || response.message || `Usuario ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(response.data?.message || response.message || `Usuario ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -154,13 +155,13 @@ export default function UsuariosPage() {
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
+          ? error.response.data.message.join(', ')
           : error.response.data.message
       } else if (error.message) {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -174,20 +175,20 @@ export default function UsuariosPage() {
 
     try {
       const response = await deactivateSession(userId, ip)
-      alert(response.data?.message || response.message || 'Sesión cerrada exitosamente')
+      toast.success(response.data?.message || response.message || 'Sesión cerrada exitosamente')
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
       let errorMessage = 'Error al cerrar la sesión'
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
+          ? error.response.data.message.join(', ')
           : error.response.data.message
       } else if (error.message) {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
