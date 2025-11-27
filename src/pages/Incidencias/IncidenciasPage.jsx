@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useSelector } from 'react-redux'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
@@ -56,6 +56,81 @@ export default function IncidenciasPage() {
   const { lacks, loading: lacksLoading } = useLacks()
   const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
 
+  // 🔹 Función para actualizar estado de un reporte específico
+  const updateReportStatus = useCallback(async (reportId, updates, fullData = null) => {
+    // Actualizar en la lista principal
+    setIncidencias(prev => {
+      const found = prev.find(i => i.id === reportId)
+
+      // Si el reporte ya está en la lista, actualizarlo
+      if (found) {
+        return prev.map(inc =>
+          inc.id === reportId ? { ...inc, ...updates } : inc
+        )
+      }
+
+      // Si NO está en la lista pero tenemos los datos completos del socket, agregarlo
+      if (fullData && fullData.offender && fullData.subject && fullData.lack) {
+        const newReport = {
+          id: fullData.id,
+          code: fullData.code || null,
+          dni: fullData.offender?.dni || '',
+          asunto: fullData.subject?.name || '',
+          falta: fullData.lack?.name || '',
+          tipoInasistencia: fullData.subject?.name === 'Inasistencia' ? fullData.lack?.name : null,
+          medio: fullData.bodycam ? 'Bodycam' : (fullData.camera_number ? 'Cámara' : 'Otro'),
+          tipoMedio: fullData.bodycam ? 'bodycam' : (fullData.camera_number ? 'camara' : 'bodycam'),
+          numeroCamara: fullData.camera_number || '',
+          fechaIncidente: fullData.date ? fullData.date.substring(0, 10).split('-').reverse().join('/') : '',
+          horaIncidente: fullData.date ? fullData.date.substring(11, 16) : '',
+          turno: fullData.offender?.shift || fullData.shift || '',
+          cargo: fullData.offender?.job || '',
+          regLab: fullData.offender?.regime || '',
+          jurisdiccion: fullData.jurisdiction?.name || '',
+          jurisdictionId: fullData.jurisdiction?.id || null,
+          bodycamNumber: fullData.bodycam?.name || '',
+          bodycamAsignadaA: fullData.bodycam_user || '',
+          encargadoBodycam: fullData.user ? `${fullData.user.name} ${fullData.user.lastname}`.trim() : '',
+          dirigidoA: fullData.header?.to?.job || '',
+          destinatario: fullData.header?.to?.name || '',
+          cargoDestinatario: fullData.header?.to?.job || '',
+          cc: (fullData.header?.cc || []).map(c => c.name),
+          ubicacion: {
+            address: fullData.address || '',
+            coordinates: [fullData.latitude || null, fullData.longitude || null]
+          },
+          nombreCompleto: fullData.offender ? `${fullData.offender.name} ${fullData.offender.lastname}`.trim() : '',
+          status: fullData.process ? fullData.process.toLowerCase() : 'draft',
+          evidences: fullData.evidences || [],
+          message: fullData.message || '',
+          link: fullData.link || '',
+          createdAt: fullData.created_at || fullData.date,
+          updatedAt: fullData.updated_at || fullData.date,
+          deletedAt: fullData.deleted_at || null
+        }
+
+        // Agregar al inicio de la lista
+        return [newReport, ...prev]
+      }
+
+      return prev
+    })
+
+    // Actualizar en searchResult si existe
+    setSearchResult(prev => {
+      if (!prev || prev.length === 0) return prev
+
+      const found = prev.find(i => i.id === reportId)
+      if (found) {
+        return prev.map(inc =>
+          inc.id === reportId ? { ...inc, ...updates } : inc
+        )
+      }
+
+      return prev
+    })
+  }, [])
+
   // 🔹 WebSocket: Escuchar cambios de estado de reportes en tiempo real
   useEffect(() => {
     // Inicializar conexión WebSocket
@@ -63,14 +138,44 @@ export default function IncidenciasPage() {
 
     // Suscribirse al evento de cambio de estado
     const unsubscribeStatusChanged = onReportStatusChanged((data) => {
-      // Recargar datos automáticamente cuando cambie el estado de un reporte
-      setRefreshTrigger(prev => prev + 1)
+      if (!data) return
+
+      const reportId = data.id || data.report_id || data.reportId
+      const newStatus = data.status || data.process || data.state
+
+      if (reportId && newStatus) {
+        updateReportStatus(
+          reportId,
+          {
+            status: newStatus.toLowerCase(),
+            ...(data.code && { code: data.code })
+          },
+          data
+        )
+      }
     })
 
     // Suscribirse al evento de validación (APPROVED/REJECTED)
     const unsubscribeStatusValidate = onReportStatusValidate((data) => {
-      // Recargar datos automáticamente cuando se apruebe/rechace un reporte
-      setRefreshTrigger(prev => prev + 1)
+      if (!data) return
+
+      const reportId = data.id || data.report_id || data.reportId
+      const newStatus = data.status || data.process || data.state
+
+      if (reportId) {
+        const updates = {}
+
+        if (newStatus) {
+          updates.status = newStatus.toLowerCase()
+        }
+        if (data.code) {
+          updates.code = data.code
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updateReportStatus(reportId, updates, data)
+        }
+      }
     })
 
     // Cleanup: desuscribirse al desmontar
@@ -79,7 +184,7 @@ export default function IncidenciasPage() {
       unsubscribeStatusValidate()
       disconnectSocket()
     }
-  }, [])
+  }, [updateReportStatus])
 
   // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
   useEffect(() => {

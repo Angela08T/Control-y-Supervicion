@@ -56,6 +56,17 @@ export default function IncidenciasTable({
   canSend = false,
   canValidate = false
 }){
+  // DEBUG: Ver si hay reportes de inasistencias
+  React.useEffect(() => {
+    const absenceReports = data.filter(item => item.isAbsenceReport)
+    if (absenceReports.length > 0) {
+      console.log('=== REPORTES DE INASISTENCIAS ENCONTRADOS ===')
+      console.log('Total:', absenceReports.length)
+      console.log('Datos:', absenceReports)
+      console.log('===========================================')
+    }
+  }, [data])
+
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -94,6 +105,15 @@ export default function IncidenciasTable({
               const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
               const canSendToValidator = canSend && hasImages && (itemStatus === 'draft')
               const canValidateReport = canValidate && itemStatus === 'pending'
+              const isAbsence = item.isAbsenceReport
+
+              // Formatear rango de fechas para reportes de inasistencias
+              const formatAbsenceDates = () => {
+                if (!item.absenceStart || !item.absenceEnd) return '-'
+                const start = new Date(item.absenceStart).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                const end = new Date(item.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                return `${start} - ${end}`
+              }
 
               return (
                 <tr key={item.id} style={item.deletedAt ? { backgroundColor: 'rgba(239, 68, 68, 0.05)' } : {}}>
@@ -156,18 +176,18 @@ export default function IncidenciasTable({
                     )}
                   </td>
                   <td><EstadoIncidencia status={item.status} /></td>
-                  <td>{item.dni}</td>
+                  <td>{isAbsence ? '-' : item.dni}</td>
                   <td>{item.asunto}</td>
                   <td>{item.falta}</td>
-                  <td>{item.medio}{item.bodycamNumber ? ` (${item.bodycamNumber})` : ''}</td>
-                  <td>{item.fechaIncidente}</td>
-                  <td>{item.horaIncidente}</td>
-                  <td>{item.turno}</td>
+                  <td>{isAbsence ? 'Reporte' : (item.medio + (item.bodycamNumber ? ` (${item.bodycamNumber})` : ''))}</td>
+                  <td>{isAbsence ? formatAbsenceDates() : item.fechaIncidente}</td>
+                  <td>{isAbsence ? (item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada') : item.horaIncidente}</td>
+                  <td>{isAbsence ? '-' : item.turno}</td>
                   <td>{item.cargo || '-'}</td>
                   <td>{item.regLab || '-'}</td>
                   <td>{item.jurisdiccion || '-'}</td>
-                  <td>{item.bodycamNumber || '-'}</td>
-                  <td>{item.bodycamAsignadaA || '-'}</td>
+                  <td>{isAbsence ? '-' : (item.bodycamNumber || '-')}</td>
+                  <td>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
                   <td>{item.dirigidoA || '-'}</td>
                   <td>{item.destinatario || '-'}</td>
                 </tr>
