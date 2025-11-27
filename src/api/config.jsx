@@ -61,6 +61,12 @@ const addAuthTokenOffender = (config) => {
     config.headers.Authorization = `Bearer ${token.trim()}`;
   }
 
+  // Agregar IP LAN del cliente desde localStorage
+  const lanIP = localStorage.getItem("lan_ip");
+  if (lanIP) {
+    config.headers["X-Client-LAN-IP"] = lanIP;
+  }
+
   return config;
 };
 
@@ -71,6 +77,13 @@ const addAuthToken = (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Agregar IP LAN del cliente desde localStorage
+  const lanIP = localStorage.getItem("lan_ip");
+  if (lanIP) {
+    config.headers["X-Client-LAN-IP"] = lanIP;
+  }
+
   return config;
 };
 
