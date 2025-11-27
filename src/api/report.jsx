@@ -131,6 +131,10 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
       const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
       const numeroCamara = r.camera_number || ''
 
+      // Verificar si es un reporte de inasistencias (tiene absences)
+      const isAbsenceReport = r.absences && r.absences.length > 0
+      const absenceData = isAbsenceReport ? r.absences[0] : null
+
       return {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
@@ -167,7 +171,13 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
         link: r.link || '', // Links del reporte (separados por \n)
         createdAt: r.lack?.created_at || r.date,
         updatedAt: r.lack?.updated_at || r.date,
-        deletedAt: r.deleted_at || null // Fecha de eliminación (soft delete)
+        deletedAt: r.deleted_at || null, // Fecha de eliminación (soft delete)
+        // Datos específicos de reportes de inasistencias
+        isAbsenceReport: isAbsenceReport,
+        absences: r.absences || [],
+        absenceStart: absenceData?.start || null,
+        absenceEnd: absenceData?.end || null,
+        absenceMode: absenceData?.mode || null // JUSTIFIED o UNJUSTIFIED
       }
     })
 
@@ -236,6 +246,10 @@ export const getReportById = async (reportId) => {
       const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
       const numeroCamara = r.camera_number || ''
 
+      // Verificar si es un reporte de inasistencias (tiene absences)
+      const isAbsenceReport = r.absences && r.absences.length > 0
+      const absenceData = isAbsenceReport ? r.absences[0] : null
+
       const transformed = {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
@@ -272,7 +286,13 @@ export const getReportById = async (reportId) => {
         link: r.link || '', // Links del reporte (separados por \n)
         createdAt: r.lack?.created_at || r.date,
         updatedAt: r.lack?.updated_at || r.date,
-        deletedAt: r.deleted_at || null // Fecha de eliminación (soft delete)
+        deletedAt: r.deleted_at || null, // Fecha de eliminación (soft delete)
+        // Datos específicos de reportes de inasistencias
+        isAbsenceReport: isAbsenceReport,
+        absences: r.absences || [],
+        absenceStart: absenceData?.start || null,
+        absenceEnd: absenceData?.end || null,
+        absenceMode: absenceData?.mode || null // JUSTIFIED o UNJUSTIFIED
       }
 
       return {
