@@ -1,216 +1,51 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import { useSelector } from 'react-redux'
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import logoSJL from '../assets/logo-sjl.png'
 import { getLeads } from '../api/lead'
 import { getSubjects } from '../api/subject'
 import { getLacks } from '../api/lack'
 import { createAbsenceReport, getAttendances } from '../api/offender'
+import InformePDFDocument from './PDFDocument'
 
-// Estilos para el PDF
-const styles = StyleSheet.create({
-  page: {
-    padding: 30,
-    fontSize: 10,
-    fontFamily: 'Helvetica'
-  },
-  header: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    borderBottom: '2px solid #1e3a5f',
-    paddingBottom: 10
-  },
-  logo: {
-    width: 60,
-    height: 60
-  },
-  headerText: {
-    flex: 1,
-    marginLeft: 15,
-    justifyContent: 'center'
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1e3a5f'
-  },
-  subtitle: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 2
-  },
-  dateRange: {
-    fontSize: 9,
-    marginTop: 4,
-    color: '#333'
-  },
-  section: {
-    marginBottom: 15
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#1e3a5f',
-    borderBottom: '1px solid #ddd',
-    paddingBottom: 4
-  },
-  table: {
-    display: 'table',
-    width: '100%',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderColor: '#ddd'
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd'
-  },
-  tableHeader: {
-    backgroundColor: '#f0f4f8'
-  },
-  tableCell: {
-    padding: 6,
-    fontSize: 8,
-    borderRightWidth: 1,
-    borderRightColor: '#ddd'
-  },
-  tableCellHeader: {
-    fontWeight: 'bold',
-    fontSize: 8
-  },
-  colNum: { width: '5%' },
-  colNombre: { width: '25%' },
-  colDNI: { width: '12%' },
-  colTurno: { width: '10%' },
-  colCargo: { width: '15%' },
-  colRegimen: { width: '10%' },
-  colTotal: { width: '8%' },
-  colFechas: { width: '15%' },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 30,
-    right: 30,
-    textAlign: 'center',
-    fontSize: 8,
-    color: '#666',
-    borderTop: '1px solid #ddd',
-    paddingTop: 10
-  },
-  summary: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#f8fafc',
-    borderRadius: 4
-  },
-  summaryText: {
-    fontSize: 9,
-    marginBottom: 4
-  },
-  noData: {
-    textAlign: 'center',
-    padding: 20,
-    color: '#666',
-    fontStyle: 'italic'
-  }
-})
+// Función para formatear fechas
+function formatearFecha(fecha) {
+  if (!fecha) return 'Fecha no disponible'
 
-// Componente del documento PDF
-function InasistenciasPDFDocument({ data, dateRange, logoBase64, username }) {
-  const formatDate = (date) => {
-    if (!date) return ''
-    const d = new Date(date)
-    return d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+  let d
+
+  if (typeof fecha === 'string') {
+    if (fecha.includes('/') || fecha.includes('-')) {
+      const separator = fecha.includes('/') ? '/' : '-'
+      const parts = fecha.split(separator)
+
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10)
+        const month = parseInt(parts[1], 10) - 1
+        const year = parseInt(parts[2], 10)
+        const fullYear = year < 100 ? 2000 + year : year
+        d = new Date(fullYear, month, day)
+      } else {
+        d = new Date(fecha)
+      }
+    } else {
+      d = new Date(fecha)
+    }
+  } else {
+    d = new Date(fecha)
   }
 
-  const formatDateRange = () => {
-    if (!dateRange?.start || !dateRange?.end) return ''
-    const options = { day: '2-digit', month: 'short', year: 'numeric' }
-    const startStr = dateRange.start.toLocaleDateString('es-PE', options)
-    const endStr = dateRange.end.toLocaleDateString('es-PE', options)
-    return `${startStr} - ${endStr}`
+  if (isNaN(d.getTime())) {
+    return `Fecha inválida (${fecha})`
   }
 
-  // Calcular totales
-  const totalInasistencias = data.reduce((sum, person) => sum + (person.totalFaltas || 0), 0)
-  const totalJustificadas = data.reduce((sum, person) => sum + (person.justificadas || 0), 0)
-  const totalInjustificadas = data.reduce((sum, person) => sum + (person.injustificadas || 0), 0)
-
-  return (
-    <Document>
-      <Page size="A4" orientation="landscape" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          {logoBase64 && (
-            <Image style={styles.logo} src={logoBase64} />
-          )}
-          <View style={styles.headerText}>
-            <Text style={styles.title}>REPORTE DE INASISTENCIAS DE SERVICIO</Text>
-            <Text style={styles.subtitle}>Sistema Centinela - Control y Supervisión</Text>
-            <Text style={styles.dateRange}>Período: {formatDateRange()}</Text>
-          </View>
-        </View>
-
-        {/* Tabla de inasistencias */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detalle de Inasistencias por Personal</Text>
-
-          {data.length === 0 ? (
-            <Text style={styles.noData}>No hay inasistencias registradas en el período seleccionado</Text>
-          ) : (
-            <View style={styles.table}>
-              {/* Header de la tabla */}
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colNum]}>#</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colNombre]}>Apellidos y Nombres</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colDNI]}>DNI</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colTurno]}>Turno</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colCargo]}>Cargo</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colRegimen]}>Régimen</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colTotal]}>Total</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, styles.colFechas]}>Fechas</Text>
-              </View>
-
-              {/* Filas de datos */}
-              {data.map((person, index) => (
-                <View key={index} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.colNum]}>{index + 1}</Text>
-                  <Text style={[styles.tableCell, styles.colNombre]}>{person.nombreCompleto || '-'}</Text>
-                  <Text style={[styles.tableCell, styles.colDNI]}>{person.dni || '-'}</Text>
-                  <Text style={[styles.tableCell, styles.colTurno]}>{person.turno || '-'}</Text>
-                  <Text style={[styles.tableCell, styles.colCargo]}>{person.cargo || '-'}</Text>
-                  <Text style={[styles.tableCell, styles.colRegimen]}>{person.regimen || '-'}</Text>
-                  <Text style={[styles.tableCell, styles.colTotal]}>{person.totalFaltas || 0}</Text>
-                  <Text style={[styles.tableCell, styles.colFechas]}>{person.fechas || '-'}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Resumen */}
-        {data.length > 0 && (
-          <View style={styles.summary}>
-            <Text style={styles.summaryText}>Total de personal con inasistencias: {data.length}</Text>
-            <Text style={styles.summaryText}>Total de inasistencias: {totalInasistencias}</Text>
-            <Text style={styles.summaryText}>Justificadas: {totalJustificadas} | Injustificadas: {totalInjustificadas}</Text>
-          </View>
-        )}
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text>Generado por: {username || 'Sistema'} | Fecha: {new Date().toLocaleDateString('es-PE')}</Text>
-          <Text>Sede CECOM - Sub Gerencia de Serenazgo - Av. Sta. Rosa de Lima, San Juan de Lurigancho</Text>
-        </View>
-      </Page>
-    </Document>
-  )
+  return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
 
-export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange }) {
+export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange, onReportCreated }) {
   const { username } = useSelector((state) => state.auth)
   const [logoBase64, setLogoBase64] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -488,137 +323,66 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       // Llamar a la API
       const response = await createAbsenceReport(reportData)
 
-      // Obtener el report_id de la respuesta
-      const reportId = response.data?.report_id || response.data?.id || '---'
+      // Obtener el code del reporte de la respuesta (ejemplo: "042-2025")
+      // createAbsenceReport ya devuelve response.data, por lo que response.code es el correcto
+      const reportCode = response.code || '---'
 
-      // Preparar datos para el PDF
-      const pdfAttendances = filteredAttendances.map(person => {
-        const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-          const date = new Date(d.date)
-          return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-        }).join(', ') || '-'
+      // Preparar datos para el PDF usando el formato que espera InformePDFDocument
+      // Mapear inasistencias al formato de inasistenciasHistoricas
+      const inasistenciasHistoricas = filteredAttendances
+        .filter(person => {
+          const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+          return validDates && validDates.length > 0
+        })
+        .flatMap(person => {
+          // Crear una entrada por cada fecha de inasistencia
+          const validDates = person.dates?.filter(d => !d.delete_at && d.date) || []
+          return validDates.map(dateObj => ({
+            nombreCompleto: person.name && person.lastname
+              ? `${person.lastname} ${person.name}`.trim()
+              : person.fullname || '-',
+            cargo: typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-'),
+            regLab: typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-'),
+            turno: typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-'),
+            jurisdiccion: typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-'),
+            fechaFalta: formatearFecha(dateObj.date),
+            tipoInasistencia: selectedMode === 'UNJUSTIFIED' ? 'INJUSTIFICADA' : 'JUSTIFICADA'
+          }))
+        })
 
-        return {
-          name: person.name && person.lastname
-            ? `${person.lastname} ${person.name}`.toUpperCase()
-            : person.fullname?.toUpperCase() || '-',
-          job: typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-'),
-          regime: typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-'),
-          shift: typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-'),
-          jurisdiction: typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-'),
-          fechas
-        }
-      })
+      // Obtener nombre del subject y lack seleccionados
+      const selectedSubjectName = subjects.find(s => s.id === selectedSubject)?.name || 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia'
+      const selectedLackName = lacks.find(l => l.id === selectedLack)?.name || 'Inasistencia'
 
-      // Obtener turnos únicos
-      const turnos = [...new Set(filteredAttendances.map(p => {
-        if (typeof p.shift === 'object') return p.shift?.name || ''
-        return p.shift || ''
-      }).filter(Boolean))]
-      const turnosStr = turnos.length > 0 ? turnos.join(' / ') : 'MAÑANA / TARDE / NOCHE'
+      // Preparar formData para el componente InformePDFDocument
+      const formData = {
+        numeroInforme: reportCode,
+        destinatarioNombre: `${toLead.title || ''} ${toLead.name || ''} ${toLead.lastname || ''}`.trim(),
+        destinatarioCargo: toLeadJobValue,
+        fecha: new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }),
+        falta: selectedLackName,
+        tipoInasistencia: selectedMode === 'UNJUSTIFIED' ? 'INJUSTIFICADA' : 'JUSTIFICADA',
+        descripcionAdicional: '', // Dejar vacío para usar el texto predeterminado
+        imagenes: [], // No hay imágenes en reportes de inasistencias
+        links: ''
+      }
 
-      // Crear el documento PDF
+      // Preparar incidencia para el componente InformePDFDocument
+      const incidencia = {
+        asunto: 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
+        falta: selectedLackName,
+        cc: ccLeads.map(c => c.name)
+      }
+
+      // Crear el documento PDF usando InformePDFDocument
       const doc = (
-        <Document>
-          <Page size="A4" style={styles.page}>
-            {/* Header - Centrado */}
-            <View style={{ alignItems: 'center', marginBottom: 20, borderBottom: '2px solid #1e3a5f', paddingBottom: 10 }}>
-              {logoBase64 && (
-                <Image style={styles.logo} src={logoBase64} />
-              )}
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e3a5f', marginTop: 5 }}>SAN JUAN DE LURIGANCHO</Text>
-              <Text style={{ fontSize: 10, color: '#666', fontStyle: 'italic', marginTop: 2 }}>es momento de crecer</Text>
-            </View>
-
-            {/* Año */}
-            <Text style={{ textAlign: 'center', fontSize: 8, fontStyle: 'italic', marginBottom: 15 }}>
-              "Año de la recuperación y consolidación de la economía peruana"
-            </Text>
-
-            {/* Número de informe */}
-            <View style={{ textAlign: 'center', marginBottom: 15 }}>
-              <Text style={{ fontSize: 11, fontWeight: 'bold' }}>INFORME N° {reportId}</Text>
-            </View>
-
-            {/* Datos del informe */}
-            <View style={{ marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>A :</Text>
-                <View>
-                  <Text style={{ fontSize: 9, fontWeight: 'bold' }}>
-                    {`${toLead.title || ''} ${toLead.name || ''} ${toLead.lastname || ''}`.trim()}
-                  </Text>
-                  <Text style={{ fontSize: 8, color: '#666' }}>{toLeadJobValue}</Text>
-                </View>
-              </View>
-
-              {ccLeads.length > 0 && (
-                <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                  <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>CC :</Text>
-                  <Text style={{ fontSize: 9, flex: 1 }}>{ccLeads.map(c => c.name).join(', ')}</Text>
-                </View>
-              )}
-
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>DE :</Text>
-                <Text style={{ fontSize: 9, fontWeight: 'bold' }}>CONTROL Y SUPERVISIÓN</Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>ASUNTO :</Text>
-                <Text style={{ fontSize: 9, flex: 1 }}>Conductas relacionadas con el cumplimiento del horario y asistencia</Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', marginBottom: 5 }}>
-                <Text style={{ width: 60, fontWeight: 'bold', fontSize: 9 }}>FECHA :</Text>
-                <Text style={{ fontSize: 9 }}>
-                  {new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </Text>
-              </View>
-            </View>
-
-            {/* Párrafo descriptivo */}
-            <View style={{ marginBottom: 10 }}>
-              <Text style={{ fontSize: 9, lineHeight: 1.5, textAlign: 'justify' }}>
-                {'        '}Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez informarle sobre el reporte de inasistencias al centro de labores del personal de la Subgerencia de Serenazgo, correspondiente del turno {turnosStr}. Durante el período {dateRange.start.toLocaleDateString('es-PE', { day: '2-digit' })} al {dateRange.end.toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}, se ha registrado un número significativo de inasistencias {selectedMode === 'UNJUSTIFIED' ? 'injustificadas' : 'justificadas'} por parte del personal mencionado.
-              </Text>
-            </View>
-
-            {/* Tabla de inasistencias */}
-            <View style={styles.table}>
-              {/* Header de la tabla */}
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '5%' }]}>N°</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '25%' }]}>APELLIDOS Y NOMBRES</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '12%' }]}>CARGO</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '10%' }]}>REG.</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '8%' }]}>TURNO</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '15%' }]}>FECHA</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '12%' }]}>TIPO</Text>
-                <Text style={[styles.tableCell, styles.tableCellHeader, { width: '13%' }]}>JURISD.</Text>
-              </View>
-
-              {/* Filas de datos */}
-              {pdfAttendances.map((person, index) => (
-                <View key={index} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, { width: '5%' }]}>{index + 1}</Text>
-                  <Text style={[styles.tableCell, { width: '25%' }]}>{person.name}</Text>
-                  <Text style={[styles.tableCell, { width: '12%' }]}>{person.job}</Text>
-                  <Text style={[styles.tableCell, { width: '10%' }]}>{person.regime}</Text>
-                  <Text style={[styles.tableCell, { width: '8%' }]}>{person.shift}</Text>
-                  <Text style={[styles.tableCell, { width: '15%', fontSize: 6 }]}>{person.fechas}</Text>
-                  <Text style={[styles.tableCell, { width: '12%' }]}>{selectedMode === 'UNJUSTIFIED' ? 'INJUST.' : 'JUST.'}</Text>
-                  <Text style={[styles.tableCell, { width: '13%' }]}>{person.jurisdiction}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text>Central de Emergencia y Videovigilancia del Bicentenario de San Juan de Lurigancho</Text>
-            </View>
-          </Page>
-        </Document>
+        <InformePDFDocument
+          formData={formData}
+          incidencia={incidencia}
+          inasistenciasHistoricas={inasistenciasHistoricas}
+          logoBase64={logoBase64}
+          formatearFecha={formatearFecha}
+        />
       )
 
       // Generar el blob del PDF
@@ -628,7 +392,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       const url = URL.createObjectURL(pdfBlob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `Reporte_Inasistencias_${reportId}_${Date.now()}.pdf`
+      link.download = `Reporte_Inasistencias_${reportCode}_${Date.now()}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -641,6 +405,11 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         toLead: toLead,
         ccLeads: ccLeads
       })
+
+      // Llamar al callback para notificar que se creó el reporte
+      if (onReportCreated) {
+        onReportCreated(response.data)
+      }
     } catch (error) {
       let errorMessage = 'Error al crear el reporte'
       if (error.response?.data?.message) {
@@ -1124,7 +893,13 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredAttendances.map((person, index) => {
+                        {filteredAttendances
+                          .filter(person => {
+                            // Filtrar solo personas que tengan fechas de inasistencias válidas
+                            const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+                            return validDates && validDates.length > 0
+                          })
+                          .map((person, index) => {
                           // Obtener las fechas de inasistencia
                           const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
                             const date = new Date(d.date)

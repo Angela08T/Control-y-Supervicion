@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useSelector } from 'react-redux'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
+import AlertModal from '../../components/AlertModal'
+import ConfirmModal from '../../components/ConfirmModal'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport } from '../../api/report'
 import useSubjects from '../../hooks/Subject/useSubjects'
@@ -25,7 +27,9 @@ export default function IncidenciasPage() {
     search: '',
     lackId: '', // Filtro por ID de falta
     subjectId: '', // Filtro por ID de asunto
-    jurisdictionId: '' // Filtro por ID de jurisdicción
+    jurisdictionId: '', // Filtro por ID de jurisdicción
+    showDeleted: 'active', // 'active' = solo activos, 'deleted' = solo eliminados
+    status: '' // '' = todos, 'draft', 'pending', 'approved', 'rejected'
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
@@ -44,9 +48,88 @@ export default function IncidenciasPage() {
   const [searchPagination, setSearchPagination] = useState(null) // Paginación de búsqueda
   const [isSearchMode, setIsSearchMode] = useState(false) // Indica si está en modo búsqueda
 
+  // Estados para modales personalizados
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'success' })
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null })
+
   const { subjects, loading: subjectsLoading } = useSubjects()
   const { lacks, loading: lacksLoading } = useLacks()
   const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
+
+  // 🔹 Función para actualizar estado de un reporte específico
+  const updateReportStatus = useCallback(async (reportId, updates, fullData = null) => {
+    // Actualizar en la lista principal
+    setIncidencias(prev => {
+      const found = prev.find(i => i.id === reportId)
+
+      // Si el reporte ya está en la lista, actualizarlo
+      if (found) {
+        return prev.map(inc =>
+          inc.id === reportId ? { ...inc, ...updates } : inc
+        )
+      }
+
+      // Si NO está en la lista pero tenemos los datos completos del socket, agregarlo
+      if (fullData && fullData.offender && fullData.subject && fullData.lack) {
+        const newReport = {
+          id: fullData.id,
+          code: fullData.code || null,
+          dni: fullData.offender?.dni || '',
+          asunto: fullData.subject?.name || '',
+          falta: fullData.lack?.name || '',
+          tipoInasistencia: fullData.subject?.name === 'Inasistencia' ? fullData.lack?.name : null,
+          medio: fullData.bodycam ? 'Bodycam' : (fullData.camera_number ? 'Cámara' : 'Otro'),
+          tipoMedio: fullData.bodycam ? 'bodycam' : (fullData.camera_number ? 'camara' : 'bodycam'),
+          numeroCamara: fullData.camera_number || '',
+          fechaIncidente: fullData.date ? fullData.date.substring(0, 10).split('-').reverse().join('/') : '',
+          horaIncidente: fullData.date ? fullData.date.substring(11, 16) : '',
+          turno: fullData.offender?.shift || fullData.shift || '',
+          cargo: fullData.offender?.job || '',
+          regLab: fullData.offender?.regime || '',
+          jurisdiccion: fullData.jurisdiction?.name || '',
+          jurisdictionId: fullData.jurisdiction?.id || null,
+          bodycamNumber: fullData.bodycam?.name || '',
+          bodycamAsignadaA: fullData.bodycam_user || '',
+          encargadoBodycam: fullData.user ? `${fullData.user.name} ${fullData.user.lastname}`.trim() : '',
+          dirigidoA: fullData.header?.to?.job || '',
+          destinatario: fullData.header?.to?.name || '',
+          cargoDestinatario: fullData.header?.to?.job || '',
+          cc: (fullData.header?.cc || []).map(c => c.name),
+          ubicacion: {
+            address: fullData.address || '',
+            coordinates: [fullData.latitude || null, fullData.longitude || null]
+          },
+          nombreCompleto: fullData.offender ? `${fullData.offender.name} ${fullData.offender.lastname}`.trim() : '',
+          status: fullData.process ? fullData.process.toLowerCase() : 'draft',
+          evidences: fullData.evidences || [],
+          message: fullData.message || '',
+          link: fullData.link || '',
+          createdAt: fullData.created_at || fullData.date,
+          updatedAt: fullData.updated_at || fullData.date,
+          deletedAt: fullData.deleted_at || null
+        }
+
+        // Agregar al inicio de la lista
+        return [newReport, ...prev]
+      }
+
+      return prev
+    })
+
+    // Actualizar en searchResult si existe
+    setSearchResult(prev => {
+      if (!prev || prev.length === 0) return prev
+
+      const found = prev.find(i => i.id === reportId)
+      if (found) {
+        return prev.map(inc =>
+          inc.id === reportId ? { ...inc, ...updates } : inc
+        )
+      }
+
+      return prev
+    })
+  }, [])
 
   // 🔹 WebSocket: Escuchar cambios de estado de reportes en tiempo real
   useEffect(() => {
@@ -55,14 +138,44 @@ export default function IncidenciasPage() {
 
     // Suscribirse al evento de cambio de estado
     const unsubscribeStatusChanged = onReportStatusChanged((data) => {
-      // Recargar datos automáticamente cuando cambie el estado de un reporte
-      setRefreshTrigger(prev => prev + 1)
+      if (!data) return
+
+      const reportId = data.id || data.report_id || data.reportId
+      const newStatus = data.status || data.process || data.state
+
+      if (reportId && newStatus) {
+        updateReportStatus(
+          reportId,
+          {
+            status: newStatus.toLowerCase(),
+            ...(data.code && { code: data.code })
+          },
+          data
+        )
+      }
     })
 
     // Suscribirse al evento de validación (APPROVED/REJECTED)
     const unsubscribeStatusValidate = onReportStatusValidate((data) => {
-      // Recargar datos automáticamente cuando se apruebe/rechace un reporte
-      setRefreshTrigger(prev => prev + 1)
+      if (!data) return
+
+      const reportId = data.id || data.report_id || data.reportId
+      const newStatus = data.status || data.process || data.state
+
+      if (reportId) {
+        const updates = {}
+
+        if (newStatus) {
+          updates.status = newStatus.toLowerCase()
+        }
+        if (data.code) {
+          updates.code = data.code
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updateReportStatus(reportId, updates, data)
+        }
+      }
     })
 
     // Cleanup: desuscribirse al desmontar
@@ -71,7 +184,7 @@ export default function IncidenciasPage() {
       unsubscribeStatusValidate()
       disconnectSocket()
     }
-  }, [])
+  }, [updateReportStatus])
 
   // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
@@ -120,11 +233,16 @@ export default function IncidenciasPage() {
         const apiData = mapFormDataToAPI(data, allLeads)
         const response = await createReport(apiData)
 
-        alert('Incidencia creada exitosamente')
+        setShowModal(false)
+        setAlertModal({
+          isOpen: true,
+          title: '¡Éxito!',
+          message: 'Incidencia creada exitosamente',
+          type: 'success'
+        })
 
         // Recargar la primera página para ver la nueva incidencia
         setCurrentPage(1)
-        setShowModal(false)
 
         // Forzar recarga de datos
         setRefreshTrigger(prev => prev + 1)
@@ -144,71 +262,179 @@ export default function IncidenciasPage() {
           errorMessage = error.message;
         }
 
-        alert(errorMessage)
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        })
       }
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('¿Estás seguro de eliminar esta incidencia?')) return
+  async function handleDelete(id, status) {
+    // Función para ejecutar la eliminación
+    const executeDelete = async () => {
+      try {
+        const response = await deleteReport(id)
 
-    try {
-      const response = await deleteReport(id)
+        setAlertModal({
+          isOpen: true,
+          title: '¡Éxito!',
+          message: response.data?.message || response.message || 'Incidencia deshabilitada exitosamente',
+          type: 'success'
+        })
 
-      alert(response.data?.message || response.message || 'Incidencia eliminada exitosamente')
+        // Recargar datos desde la API
+        setRefreshTrigger(prev => prev + 1)
+      } catch (error) {
 
-      // Recargar datos desde la API
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
+        let errorMessage = 'Error al deshabilitar la incidencia'
 
-      let errorMessage = 'Error al eliminar la incidencia'
+        if (error.response?.data?.message) {
+          errorMessage = Array.isArray(error.response.data.message)
+            ? error.response.data.message.join('\n')
+            : error.response.data.message
+        } else if (error.message) {
+          errorMessage = error.message
+        }
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        })
       }
+    }
 
-      alert(errorMessage)
+    // Advertencia especial para registros aprobados
+    if (status === 'approved') {
+      setConfirmModal({
+        isOpen: true,
+        title: '⚠️ ADVERTENCIA: Informe Aprobado',
+        message: 'Este informe está APROBADO y tiene un código oficial asignado.\n\nAl eliminarlo:\n• El código quedará "consumido" y no se reutilizará\n• El informe puede ser restaurado más tarde si es necesario\n• Se recomienda consultar con un supervisor antes de proceder\n\n¿Está completamente seguro de que desea deshabilitar este informe aprobado?',
+        type: 'danger',
+        onConfirm: () => {
+          setConfirmModal({ ...confirmModal, isOpen: false })
+          // Segunda confirmación para informes aprobados
+          setConfirmModal({
+            isOpen: true,
+            title: '⚠️ CONFIRMACIÓN FINAL',
+            message: 'Esta es su última oportunidad para cancelar.\n\n¿Realmente desea deshabilitar este informe aprobado?',
+            type: 'danger',
+            confirmText: 'Sí, deshabilitar',
+            onConfirm: () => {
+              setConfirmModal({ ...confirmModal, isOpen: false })
+              executeDelete()
+            }
+          })
+        }
+      })
+    } else {
+      // Confirmación normal para otros estados
+      setConfirmModal({
+        isOpen: true,
+        title: 'Confirmar acción',
+        message: '¿Estás seguro de deshabilitar esta incidencia?\n\nPodrá ser restaurada más tarde.',
+        type: 'warning',
+        confirmText: 'Sí, deshabilitar',
+        onConfirm: () => {
+          setConfirmModal({ ...confirmModal, isOpen: false })
+          executeDelete()
+        }
+      })
     }
   }
 
   async function handleSendToValidator(reportId) {
-    if (!confirm('¿Enviar esta incidencia al validador? Debe tener al menos una imagen.')) return
-
-    try {
-      const response = await sendToValidator(reportId)
-      alert(response.data?.message || response.message || 'Incidencia enviada al validador exitosamente')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Error al enviar incidencia')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Enviar a validador',
+      message: '¿Enviar esta incidencia al validador?\n\nDebe tener al menos una imagen adjunta.',
+      type: 'info',
+      confirmText: 'Sí, enviar',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false })
+        try {
+          const response = await sendToValidator(reportId)
+          setAlertModal({
+            isOpen: true,
+            title: '¡Éxito!',
+            message: response.data?.message || response.message || 'Incidencia enviada al validador exitosamente',
+            type: 'success'
+          })
+          setRefreshTrigger(prev => prev + 1)
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || error.message || 'Error al enviar incidencia',
+            type: 'error'
+          })
+        }
+      }
+    })
   }
 
   async function handleApprove(reportId) {
-    if (!confirm('¿Aprobar esta incidencia?')) return
-
-    try {
-      const response = await validateReport(reportId, true)
-      alert(response.data?.message || response.message || 'Incidencia aprobada exitosamente')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Error al aprobar incidencia')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Aprobar incidencia',
+      message: '¿Aprobar esta incidencia?\n\nSe generará automáticamente un código oficial para el informe.',
+      type: 'info',
+      confirmText: 'Sí, aprobar',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false })
+        try {
+          const response = await validateReport(reportId, true)
+          setAlertModal({
+            isOpen: true,
+            title: '¡Éxito!',
+            message: response.data?.message || response.message || 'Incidencia aprobada exitosamente',
+            type: 'success'
+          })
+          setRefreshTrigger(prev => prev + 1)
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || error.message || 'Error al aprobar incidencia',
+            type: 'error'
+          })
+        }
+      }
+    })
   }
 
   async function handleReject(reportId) {
-    if (!confirm('¿Rechazar esta incidencia?')) return
-
-    try {
-      const response = await validateReport(reportId, false)
-      alert(response.data?.message || response.message || 'Incidencia rechazada exitosamente')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Error al rechazar incidencia')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Rechazar incidencia',
+      message: '¿Rechazar esta incidencia?\n\nEl informe no se aprobará y no se generará código oficial.',
+      type: 'warning',
+      confirmText: 'Sí, rechazar',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false })
+        try {
+          const response = await validateReport(reportId, false)
+          setAlertModal({
+            isOpen: true,
+            title: 'Incidencia rechazada',
+            message: response.data?.message || response.message || 'Incidencia rechazada exitosamente',
+            type: 'info'
+          })
+          setRefreshTrigger(prev => prev + 1)
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || error.message || 'Error al rechazar incidencia',
+            type: 'error'
+          })
+        }
+      }
+    })
   }
 
   function handleEdit(item) {
@@ -369,9 +595,31 @@ export default function IncidenciasPage() {
   }, [filters.search, currentPage, itemsPerPage])
 
   // Todos los filtros se manejan en el backend, incluyendo turno
+  // Filtrar por estado (activos/eliminados) y estado de proceso en el frontend
+  const applyFrontendFilters = (data) => {
+    let result = data
+
+    // Filtrar por activos/eliminados
+    if (filters.showDeleted === 'active') {
+      result = result.filter(item => !item.deletedAt)
+    } else if (filters.showDeleted === 'deleted') {
+      result = result.filter(item => item.deletedAt)
+    }
+
+    // Filtrar por estado de proceso (draft, pending, approved, rejected)
+    if (filters.status) {
+      result = result.filter(item => {
+        const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
+        return itemStatus === filters.status
+      })
+    }
+
+    return result
+  }
+
   const filteredData = searchResult !== null
-    ? searchResult // Si hay resultado de búsqueda, mostrar los resultados de la API
-    : incidencias // Mostrar incidencias directamente (ya filtradas por el backend)
+    ? applyFrontendFilters(searchResult) // Si hay resultado de búsqueda, aplicar filtros
+    : applyFrontendFilters(incidencias) // Aplicar filtros a incidencias
 
   return (
     <div className="incidencias-page">
@@ -398,16 +646,18 @@ export default function IncidenciasPage() {
                 }}
               >
                 <option value="">Filtrar por asunto</option>
-                {subjects && subjects.map(subject => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
+                {subjects && subjects
+                  .filter(subject => !subject.deleted_at) // Solo mostrar asuntos activos
+                  .map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
               </select>
             )}
 
-            {/* Filtro por Falta (Lack) - Usando datos de la API */}
-            {lacksLoading ? (
+            {/* Filtro por Falta (Lack) - Usando lacks anidadas del subject seleccionado */}
+            {subjectsLoading ? (
               <select disabled>
                 <option>Cargando faltas...</option>
               </select>
@@ -424,13 +674,29 @@ export default function IncidenciasPage() {
                 }}
               >
                 <option value="">Filtrar por falta</option>
-                {lacks && lacks
-                  .filter(lack => !filters.subjectId || lack.subjectId === filters.subjectId)
-                  .map(lack => (
-                    <option key={lack.id} value={lack.id}>
-                      {lack.name}
-                    </option>
-                  ))}
+                {(() => {
+                  // Si hay un subject seleccionado, obtener sus lacks anidadas
+                  if (filters.subjectId) {
+                    const selectedSubject = subjects.find(s => s.id === filters.subjectId)
+                    return (selectedSubject?.lacks || [])
+                      .filter(lack => !lack.deleted_at) // Solo mostrar faltas activas
+                      .map(lack => (
+                        <option key={lack.id} value={lack.id}>
+                          {lack.name}
+                        </option>
+                      ))
+                  }
+                  // Si no hay subject seleccionado, mostrar todas las lacks de todos los subjects
+                  return subjects
+                    .filter(subject => !subject.deleted_at) // Solo subjects activos
+                    .flatMap(subject => subject.lacks || [])
+                    .filter(lack => !lack.deleted_at) // Solo faltas activas
+                    .map(lack => (
+                      <option key={lack.id} value={lack.id}>
+                        {lack.name}
+                      </option>
+                    ))
+                })()}
               </select>
             )}
 
@@ -448,11 +714,13 @@ export default function IncidenciasPage() {
                 }}
               >
                 <option value="">Filtrar por jurisdicción</option>
-                {jurisdictions.map(jurisdiction => (
-                  <option key={jurisdiction.id} value={jurisdiction.id}>
-                    {jurisdiction.name}
-                  </option>
-                ))}
+                {jurisdictions
+                  .filter(jurisdiction => !jurisdiction.deleted_at) // Solo mostrar jurisdicciones activas
+                  .map(jurisdiction => (
+                    <option key={jurisdiction.id} value={jurisdiction.id}>
+                      {jurisdiction.name}
+                    </option>
+                  ))}
               </select>
             )}
 
@@ -465,6 +733,37 @@ export default function IncidenciasPage() {
               <option value="T">Tarde</option>
               <option value="N">Noche</option>
             </select>
+
+            {/* Filtros de estado y activos/eliminados - TEMPORALMENTE DESACTIVADOS
+            <select
+              value={filters.status}
+              onChange={e => {
+                setFilters(f => ({ ...f, status: e.target.value }))
+                setCurrentPage(1)
+              }}
+            >
+              <option value="">Todos los estados</option>
+              <option value="draft">Borrador</option>
+              <option value="pending">Pendiente</option>
+              <option value="approved">Aprobado</option>
+              <option value="rejected">Rechazado</option>
+            </select>
+
+            <select
+              value={filters.showDeleted}
+              onChange={e => {
+                setFilters(f => ({ ...f, showDeleted: e.target.value }))
+                setCurrentPage(1)
+              }}
+              style={{
+                background: filters.showDeleted === 'deleted' ? 'rgba(239, 68, 68, 0.1)' : undefined,
+                borderColor: filters.showDeleted === 'deleted' ? 'rgba(239, 68, 68, 0.5)' : undefined
+              }}
+            >
+              <option value="active">Registros activos</option>
+              <option value="deleted">Registros eliminados</option>
+            </select>
+            */}
 
             <div style={{ position: 'relative' }}>
               <FaSearch
@@ -749,8 +1048,28 @@ export default function IncidenciasPage() {
           incidencia={editItem}
           inasistenciasHistoricas={getInasistenciasPorDNI(editItem.dni)}
           onClose={() => { setShowPDFModal(false); setEditItem(null) }}
+          onSave={() => setRefreshTrigger(prev => prev + 1)}
         />
       )}
+
+      {/* Modales personalizados */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.confirmText}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   )
 }

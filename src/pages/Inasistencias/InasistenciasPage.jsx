@@ -354,6 +354,10 @@ export default function InasistenciasPage() {
           inasistencias={inasistencias}
           savedAttendances={savedAttendances}
           dateRange={dateRange}
+          onReportCreated={() => {
+            // Forzar recarga de datos cuando se crea un reporte
+            setRefreshTrigger(prev => prev + 1)
+          }}
         />
       )}
     </div>

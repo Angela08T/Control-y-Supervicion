@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { searchBodycam } from '../../api/bodycam';
 
-const useBodycamSearch = () => {
+const useBodycamSearch = (camType = null) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,8 @@ const useBodycamSearch = () => {
       setError(null);
 
       try {
-        const response = await searchBodycam(searchTerm);
+        // Pasar el tipo de cámara al buscar
+        const response = await searchBodycam(searchTerm, 1000, camType);
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
         let bodycams = [];
@@ -61,7 +62,7 @@ const useBodycamSearch = () => {
         clearTimeout(debounceTimeout.current);
       }
     };
-  }, [searchTerm]);
+  }, [searchTerm, camType]);
 
   const selectBodycam = (bodycam) => {
     setShowSuggestions(false);

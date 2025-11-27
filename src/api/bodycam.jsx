@@ -4,13 +4,19 @@ import api from './config';
  * Buscar bodycams por código
  * @param {string} searchTerm - Término de búsqueda (ej: "SG004")
  * @param {number} limit - Límite de resultados (default: 1000)
+ * @param {string} cam - Tipo de cámara: 'BODYCAM' o 'CAMERA' (opcional)
  * @returns {Promise} - Respuesta con datos de bodycam
  */
-export const searchBodycam = async (searchTerm, limit = 1000) => {
+export const searchBodycam = async (searchTerm, limit = 1000, cam = null) => {
   try {
-    const response = await api.get(`/bodycam`, {
-      params: { search: searchTerm, limit }
-    });
+    const params = { search: searchTerm, limit };
+
+    // Agregar filtro por tipo de cámara si se especifica
+    if (cam) {
+      params.cam = cam;
+    }
+
+    const response = await api.get(`/bodycam`, { params });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -41,6 +47,7 @@ export const getBodycams = async (page = 1, limit = 10) => {
       id: b.id,
       name: b.name,
       serie: b.serie,
+      cam: b.cam || null, // Tipo de cámara: BODYCAM o CAMERA
       deleted_at: b.deleted_at
     }));
 
@@ -84,6 +91,7 @@ export const getBodycamById = async (bodycamId) => {
         id: b.id,
         name: b.name,
         serie: b.serie,
+        cam: b.cam || null, // Tipo de cámara: BODYCAM o CAMERA
         deleted_at: b.deleted_at
       };
 

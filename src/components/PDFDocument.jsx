@@ -190,10 +190,13 @@ const PDFHeader = ({ logoBase64 }) => {
 // Componente para la sección de info
 const PDFInfoSection = ({ formData, incidencia }) => (
   <View style={styles.infoSection}>
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>INFORME N°</Text>
-      <Text style={styles.infoValue}>{formData.numeroInforme}</Text>
-    </View>
+    {/* Solo mostrar INFORME N° si el informe está aprobado y tiene código */}
+    {formData.numeroInforme && (
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>INFORME N°</Text>
+        <Text style={styles.infoValue}>{formData.numeroInforme}</Text>
+      </View>
+    )}
 
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>A :</Text>
@@ -305,35 +308,35 @@ const PDFHistorialTable = ({ inasistenciasHistoricas, formatearFecha }) => {
         {/* Rows */}
         {inasistenciasHistoricas.map((inasistencia, index) => (
           <View key={index} style={styles.tableRow}>
-            <View style={{ width: '5%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { textAlign: 'center' }]}>{index + 1}</Text>
+            <View style={{ width: '5%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center', fontSize: 8 }]}>{index + 1}</Text>
             </View>
-            <View style={{ width: '18%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { fontSize: 9 }]}>
+            <View style={{ width: '18%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { fontSize: 7, lineHeight: 1.2 }]}>
                 {inasistencia.nombreCompleto?.toUpperCase() || inasistencia.sereno?.toUpperCase() || ''}
               </Text>
             </View>
-            <View style={{ width: '13%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { fontSize: 9 }]}>{inasistencia.cargo || ''}</Text>
+            <View style={{ width: '13%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { fontSize: 7, lineHeight: 1.2 }]}>{inasistencia.cargo || ''}</Text>
             </View>
-            <View style={{ width: '10%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { textAlign: 'center' }]}>{inasistencia.regLab || ''}</Text>
+            <View style={{ width: '10%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center', fontSize: 7 }]}>{inasistencia.regLab || ''}</Text>
             </View>
-            <View style={{ width: '10%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { textAlign: 'center' }]}>{inasistencia.turno || ''}</Text>
+            <View style={{ width: '10%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center', fontSize: 7 }]}>{inasistencia.turno || ''}</Text>
             </View>
-            <View style={{ width: '14%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { fontSize: 9, textAlign: 'center' }]}>
+            <View style={{ width: '14%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { fontSize: 7, textAlign: 'center', lineHeight: 1.2 }]}>
                 {inasistencia.fechaFalta || inasistencia.fechaIncidente || ''}
               </Text>
             </View>
-            <View style={{ width: '15%', padding: 5, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
-              <Text style={[styles.tableCell, { textAlign: 'center' }]}>
+            <View style={{ width: '15%', padding: 3, borderRightWidth: 1, borderRightColor: '#bfbfbf' }}>
+              <Text style={[styles.tableCell, { textAlign: 'center', fontSize: 7 }]}>
                 {inasistencia.tipoInasistencia || ''}
               </Text>
             </View>
-            <View style={{ width: '15%', padding: 5 }}>
-              <Text style={[styles.tableCell, { fontSize: 9, textAlign: 'center' }]}>
+            <View style={{ width: '15%', padding: 3 }}>
+              <Text style={[styles.tableCell, { fontSize: 7, textAlign: 'center', lineHeight: 1.2 }]}>
                 {inasistencia.jurisdiccion || ''}
               </Text>
             </View>

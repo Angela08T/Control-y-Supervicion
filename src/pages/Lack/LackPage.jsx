@@ -2,13 +2,17 @@ import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import LackTable from '../../components/LackTable'
 import ModalLack from '../../components/ModalLack'
+import SuccessModal from '../../components/SuccessModal'
+import ErrorModal from '../../components/ErrorModal'
 import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import useNotification from '../../hooks/useNotification'
 
 export default function LackPage() {
   const { role: userRole } = useSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'faltas')
+  const { successModal, errorModal, showSuccess, showError, closeSuccess, closeError } = useNotification()
 
   const [lacks, setLacks] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -67,7 +71,7 @@ export default function LackPage() {
           })
         }
       } catch (error) {
-        alert('No se pudo cargar las faltas')
+        showError('No se pudo cargar las faltas')
       } finally {
         setLoading(false)
       }
@@ -84,7 +88,7 @@ export default function LackPage() {
       try {
         const response = await updateLack(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Falta actualizada exitosamente')
+        showSuccess(response.data?.message || response.message || 'Falta actualizada exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -94,20 +98,20 @@ export default function LackPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación: ' + error.response.data.message.join(', ')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        showError(errorMessage)
       }
     } else {
       // Crear nueva falta
       try {
         const response = await createLack(data)
 
-        alert(response.data?.message || response.message || 'Falta creada exitosamente')
+        showSuccess(response.data?.message || response.message || 'Falta creada exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
@@ -117,13 +121,13 @@ export default function LackPage() {
 
         if (error.response?.data?.message) {
           errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
+            ? 'Errores de validación: ' + error.response.data.message.join(', ')
             : error.response.data.message
         } else if (error.message) {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        showError(errorMessage)
       }
     }
   }
@@ -141,7 +145,7 @@ export default function LackPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteLack(item.id)
 
-      alert(response.data?.message || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
+      showSuccess(response.data?.message || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -149,13 +153,13 @@ export default function LackPage() {
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
+          ? error.response.data.message.join(', ')
           : error.response.data.message
       } else if (error.message) {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      showError(errorMessage)
     }
   }
 
@@ -393,6 +397,18 @@ export default function LackPage() {
           onSave={handleSave}
         />
       )}
+
+      {/* Modales de notificación */}
+      <SuccessModal
+        show={successModal.show}
+        message={successModal.message}
+        onClose={closeSuccess}
+      />
+      <ErrorModal
+        show={errorModal.show}
+        message={errorModal.message}
+        onClose={closeError}
+      />
     </div>
   )
 }

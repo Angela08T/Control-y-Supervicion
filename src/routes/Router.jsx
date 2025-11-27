@@ -1,4 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { logout as logoutAction } from "../store/slices/authSlice";
+import { clearToken, setSessionExpiredCallback } from "../api/config";
 
 // LAYOUTS
 import DashboardLayoutAdmin from "../layouts/DashboardLayoutAdmin";
@@ -22,10 +26,31 @@ import SubjectPage from "../pages/Subject/SubjectPage";
 import LackPage from "../pages/Lack/LackPage";
 import OffenderPage from "../pages/Offender/OffenderPage";
 
+// COMPONENTS
+import SessionExpiredModal from "../components/SessionExpiredModal";
+
 import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
 
 export default function Router() {
+  const dispatch = useDispatch();
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+
+  useEffect(() => {
+    // Configurar el callback para mostrar el modal cuando la sesión expire
+    setSessionExpiredCallback(() => {
+      setShowSessionExpiredModal(true);
+    });
+  }, []);
+
+  const handleSessionExpiredAccept = () => {
+    // Limpiar el token y el estado de autenticación
+    clearToken();
+    dispatch(logoutAction());
+    setShowSessionExpiredModal(false);
+    // El componente SessionExpiredModal redirige automáticamente a /login
+  };
+
   return (
     <BrowserRouter>
       <Routes>
@@ -119,6 +144,12 @@ export default function Router() {
         {/* Página 404 */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+
+      {/* Modal de sesión expirada */}
+      <SessionExpiredModal
+        show={showSessionExpiredModal}
+        onAccept={handleSessionExpiredAccept}
+      />
     </BrowserRouter>
   );
 }

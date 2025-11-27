@@ -131,8 +131,13 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
       const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
       const numeroCamara = r.camera_number || ''
 
+      // Verificar si es un reporte de inasistencias (tiene absences)
+      const isAbsenceReport = r.absences && r.absences.length > 0
+      const absenceData = isAbsenceReport ? r.absences[0] : null
+
       return {
         id: r.id,
+        code: r.code || null, // Código del informe (solo si está aprobado)
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
@@ -162,8 +167,17 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
         status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
+        message: r.message || '', // Mensaje/descripción adicional del reporte
+        link: r.link || '', // Links del reporte (separados por \n)
         createdAt: r.lack?.created_at || r.date,
-        updatedAt: r.lack?.updated_at || r.date
+        updatedAt: r.lack?.updated_at || r.date,
+        deletedAt: r.deleted_at || null, // Fecha de eliminación (soft delete)
+        // Datos específicos de reportes de inasistencias
+        isAbsenceReport: isAbsenceReport,
+        absences: r.absences || [],
+        absenceStart: absenceData?.start || null,
+        absenceEnd: absenceData?.end || null,
+        absenceMode: absenceData?.mode || null // JUSTIFIED o UNJUSTIFIED
       }
     })
 
@@ -232,8 +246,13 @@ export const getReportById = async (reportId) => {
       const tipoMedio = r.bodycam ? 'bodycam' : (r.camera_number ? 'camara' : 'bodycam')
       const numeroCamara = r.camera_number || ''
 
+      // Verificar si es un reporte de inasistencias (tiene absences)
+      const isAbsenceReport = r.absences && r.absences.length > 0
+      const absenceData = isAbsenceReport ? r.absences[0] : null
+
       const transformed = {
         id: r.id,
+        code: r.code || null, // Código del informe (solo si está aprobado)
         dni: r.offender?.dni || '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
@@ -263,8 +282,17 @@ export const getReportById = async (reportId) => {
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
         status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
+        message: r.message || '', // Mensaje/descripción adicional del reporte
+        link: r.link || '', // Links del reporte (separados por \n)
         createdAt: r.lack?.created_at || r.date,
-        updatedAt: r.lack?.updated_at || r.date
+        updatedAt: r.lack?.updated_at || r.date,
+        deletedAt: r.deleted_at || null, // Fecha de eliminación (soft delete)
+        // Datos específicos de reportes de inasistencias
+        isAbsenceReport: isAbsenceReport,
+        absences: r.absences || [],
+        absenceStart: absenceData?.start || null,
+        absenceEnd: absenceData?.end || null,
+        absenceMode: absenceData?.mode || null // JUSTIFIED o UNJUSTIFIED
       }
 
       return {
@@ -308,9 +336,10 @@ export const deleteReport = async (reportId) => {
  * @param {Array<File>} files - Array de archivos de imagen
  * @param {Array<string>} descriptions - Array de descripciones (una por cada imagen)
  * @param {string} message - Descripción adicional del reporte
+ * @param {string} link - Links del reporte (separados por \n)
  * @returns {Promise<Object>} - Objeto con el reporte actualizado
  */
-export const updateReportWithEvidences = async (reportId, files = [], descriptions = [], message = '') => {
+export const updateReportWithEvidences = async (reportId, files = [], descriptions = [], message = '', link = '') => {
   try {
     const formData = new FormData()
 
@@ -327,6 +356,11 @@ export const updateReportWithEvidences = async (reportId, files = [], descriptio
     // Agregar el mensaje (descripción adicional)
     if (message) {
       formData.append('message', message)
+    }
+
+    // Agregar los links (separados por \n)
+    if (link) {
+      formData.append('link', link)
     }
 
     const response = await api.patch(`/report/${reportId}`, formData, {

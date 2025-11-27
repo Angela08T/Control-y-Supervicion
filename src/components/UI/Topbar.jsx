@@ -1,17 +1,19 @@
 import React, { useEffect } from 'react'
-import { FaSun, FaMoon, FaBell, FaSignOutAlt } from 'react-icons/fa'
+import { FaSignOutAlt } from 'react-icons/fa'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutAction } from '../../store/slices/authSlice'
 import { clearToken } from '../../api/config'
 import { logout as logoutApi } from '../../api/auth'
+import logoSJL from '../../assets/logo-sjl.png'
+import userAvatar from '../../assets/user-avatar.png'
 
 export default function Topbar() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { username, role } = useSelector((state) => state.auth)
 
-  // Forzar modo claro siempre (modo oscuro deshabilitado temporalmente)
+  // Forzar modo claro siempre
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'light')
     localStorage.setItem('centinela-theme', 'light')
@@ -31,16 +33,11 @@ export default function Topbar() {
     }
   }
 
-  // Función deshabilitada - para reactivar más adelante
-  const toggleTheme = () => {
-    // Deshabilitado temporalmente
-  }
-
   return (
     <header className="topbar">
       <div className="topbar-left">
         <img
-          src="/src/assets/logo-sjl.png"
+          src={logoSJL}
           alt="Logo SJL"
           className="logo-sjl"
         />
@@ -48,25 +45,9 @@ export default function Topbar() {
       </div>
 
       <div className="topbar-right">
-        {/* Notificaciones */}
-        <div className="notification-bell">
-          <FaBell className="bell-icon" />
-          <span className="notification-badge">3</span>
-        </div>
-
-        {/* Toggle de tema - Deshabilitado temporalmente */}
-        <button
-          className="theme-toggle"
-          onClick={toggleTheme}
-          title="Cambio de tema deshabilitado temporalmente"
-          style={{ opacity: 0.5, cursor: 'not-allowed' }}
-        >
-          <FaSun />
-        </button>
-
         <span className="user-name">{username || 'Usuario'}</span>
         <img
-          src="/src/assets/user-avatar.png"
+          src={userAvatar}
           alt="Usuario"
           className="user-avatar"
         />

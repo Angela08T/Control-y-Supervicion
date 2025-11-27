@@ -1,9 +1,10 @@
 import React from 'react'
 import { useSelector } from 'react-redux'
+import loboImage from '../../../assets/lobo.png'
 
 export default function WelcomeCard({ message }) {
   const { username } = useSelector((state) => state.auth)
-  
+
   return (
     <div className="welcome-card">
       <div className="welcome-content">
@@ -15,7 +16,7 @@ export default function WelcomeCard({ message }) {
 
         <div className="welcome-illustration">
           <img
-            src="/src/assets/lobo.png"
+            src={loboImage}
             alt="Lobo Centinela"
             className="wolf-image"
           />

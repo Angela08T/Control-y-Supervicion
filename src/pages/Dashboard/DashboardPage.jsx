@@ -383,7 +383,6 @@ export default function DashboardPage() {
           change={stats.cambioIncidencias}
           icon={<FaCalendarAlt />}
           color="#4a9b8e"
-          onIconClick={() => setShowDateModal(true)}
         />
 
         <StatCard

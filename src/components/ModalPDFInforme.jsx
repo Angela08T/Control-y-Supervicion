@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux'
 import logoSJL from '../assets/logo-sjl.png'
 import { trackPDFDownload } from '../utils/storage'
 import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } from '../api/report'
+import { getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
 
 function formatearFecha(fecha) {
@@ -70,9 +71,12 @@ const articulosPorFalta = {
   'Llegó fuera de horario': '72.06'
 }
 
-export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose }) {
+export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }) {
   // Obtener usuario logueado de Redux
   const { username } = useSelector((state) => state.auth)
+
+  // Detectar si es un reporte de inasistencias
+  const isAbsenceReport = incidencia?.isAbsenceReport || false
 
   const [formData, setFormData] = useState({
     numeroInforme: '',
@@ -107,6 +111,8 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   const [savingReport, setSavingReport] = useState(false)
   const [validationErrors, setValidationErrors] = useState([])
   const [logoBase64, setLogoBase64] = useState('')
+  const [attendanceData, setAttendanceData] = useState([]) // Datos de attendance para reportes de inasistencias
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
 
   // Convertir logo a base64
   useEffect(() => {
@@ -128,7 +134,43 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   useEffect(() => {
     if (incidencia) {
-      const numeroInforme = `${String(Math.floor(Math.random() * 999)).padStart(3, '0')}-2025-CS-SS-GOP/MDSJL`
+      // El código del informe (numeroInforme) SOLO se muestra si el informe está aprobado
+      // El backend lo genera automáticamente al aprobar, con número correlativo y año
+      const numeroInforme = incidencia.code || '' // Si no está aprobado, será vacío
+
+      // Si es un reporte de inasistencias, usar datos diferentes
+      if (isAbsenceReport) {
+        // Para reportes de inasistencias, el PDF ya está generado y solo lo mostramos
+        setFormData({
+          numeroInforme,
+          destinatarioCargo: incidencia.cargoDestinatario || incidencia.dirigidoA || '',
+          destinatarioNombre: incidencia.destinatario || '',
+          fecha: formatearFecha(incidencia.fechaIncidente),
+          horaIncidente: '',
+          fechaIncidente: '',
+          ubicacion: '',
+          jurisdiccion: '',
+          sereno: '',
+          dni: '',
+          cargo: '',
+          regLab: '',
+          turno: '',
+          nombreCompleto: '',
+          falta: incidencia.falta || 'Inasistencia',
+          articulo: '',
+          bodycam: '',
+          bodycamAsignadaA: '',
+          tipoMedio: 'reporte',
+          numeroCamara: '',
+          supervisor: '',
+          descripcionAdicional: incidencia.message || '',
+          tipoInasistencia: incidencia.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada',
+          fechaFalta: '',
+          imagenes: [],
+          links: incidencia.link || ''
+        })
+        return
+      }
 
       // Usar el cargo del destinatario de la API si está disponible, sino usar el mapeo antiguo
       let cargo = incidencia.cargoDestinatario || ''
@@ -266,6 +308,12 @@ Se adjuntan las evidencias:`
     async function loadExistingEvidences() {
       if (!incidencia || !incidencia.id) return
 
+      // No cargar evidencias para reportes de inasistencias
+      if (isAbsenceReport) {
+        setLoadingEvidences(false)
+        return
+      }
+
       setLoadingEvidences(true)
       try {
         const reportData = await getReportWithEvidences(incidencia.id)
@@ -336,7 +384,15 @@ Se adjuntan las evidencias:`
           setFormData(prev => ({
             ...prev,
             imagenes: imagenesValidas,
-            descripcionAdicional: reportData.message || prev.descripcionAdicional
+            descripcionAdicional: reportData.message || prev.descripcionAdicional,
+            links: reportData.link || prev.links
+          }))
+        } else if (reportData) {
+          // Si no hay evidencias pero hay datos del reporte, cargar message y link
+          setFormData(prev => ({
+            ...prev,
+            descripcionAdicional: reportData.message || prev.descripcionAdicional,
+            links: reportData.link || prev.links
           }))
         }
       } catch (error) {
@@ -347,6 +403,55 @@ Se adjuntan las evidencias:`
 
     loadExistingEvidences()
   }, [incidencia])
+
+  // Cargar datos de attendance para reportes de inasistencias
+  useEffect(() => {
+    async function loadAttendanceData() {
+      console.log('=== LOADING ATTENDANCE DATA ===')
+      console.log('incidencia:', incidencia)
+      console.log('isAbsenceReport:', isAbsenceReport)
+
+      if (!incidencia || !isAbsenceReport) {
+        console.log('No es un reporte de inasistencias o no hay incidencia')
+        return
+      }
+
+      if (!incidencia.absenceStart || !incidencia.absenceEnd) {
+        console.log('No hay absenceStart o absenceEnd:', {
+          absenceStart: incidencia.absenceStart,
+          absenceEnd: incidencia.absenceEnd,
+          absences: incidencia.absences
+        })
+        return
+      }
+
+      setLoadingAttendance(true)
+      try {
+        // Formatear fechas para la API (YYYY-MM-DD)
+        const startDate = new Date(incidencia.absenceStart)
+        const endDate = new Date(incidencia.absenceEnd)
+
+        const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
+        const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+        const mode = incidencia.absenceMode || 'UNJUSTIFIED'
+
+        console.log('Llamando a getAttendances con:', { startStr, endStr, mode })
+
+        const result = await getAttendances(startStr, endStr, mode)
+        const attendancesData = result.data || []
+
+        console.log('Datos de attendance recibidos:', attendancesData)
+        setAttendanceData(attendancesData)
+      } catch (error) {
+        console.error('Error al cargar datos de attendance:', error)
+        setAttendanceData([])
+      } finally {
+        setLoadingAttendance(false)
+      }
+    }
+
+    loadAttendanceData()
+  }, [incidencia, isAbsenceReport])
 
   function handleChange(field, value) {
     setFormData(prev => {
@@ -501,19 +606,19 @@ Se adjuntan las evidencias:`
         incidencia.id,
         files,
         descriptions,
-        formData.descripcionAdicional
+        formData.descripcionAdicional,
+        formData.links
       )
 
       alert('Cambios guardados exitosamente')
 
-      // Marcar las imágenes nuevas como existentes después de guardar
-      setFormData(prev => ({
-        ...prev,
-        imagenes: prev.imagenes.map(img => ({
-          ...img,
-          isExisting: true
-        }))
-      }))
+      // Notificar al padre para actualizar las acciones
+      if (onSave) {
+        onSave()
+      }
+
+      // Cerrar el modal y volver a la pantalla principal
+      onClose()
     } catch (error) {
       let errorMessage = 'Error al guardar los cambios'
       if (error.response?.data?.message) {
@@ -556,7 +661,8 @@ Se adjuntan las evidencias:`
           incidencia.id,
           files,
           descriptions,
-          formData.descripcionAdicional
+          formData.descripcionAdicional,
+          formData.links
         )
 
       } catch (error) {
@@ -578,11 +684,37 @@ Se adjuntan las evidencias:`
 
     // Generar el PDF usando @react-pdf/renderer
     try {
+      // Si es un reporte de inasistencias, transformar attendanceData a formato de inasistenciasHistoricas
+      let inasistenciasParaPDF = inasistenciasHistoricas
+
+      if (isAbsenceReport && attendanceData.length > 0) {
+        // Transformar attendanceData al formato esperado por PDFHistorialTable
+        inasistenciasParaPDF = attendanceData
+          .filter(person => {
+            const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+            return validDates && validDates.length > 0
+          })
+          .flatMap(person => {
+            const validDates = person.dates?.filter(d => !d.delete_at && d.date) || []
+            return validDates.map(dateObj => ({
+              nombreCompleto: person.name && person.lastname
+                ? `${person.lastname} ${person.name}`.trim()
+                : person.fullname || '-',
+              cargo: typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-'),
+              regLab: typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-'),
+              turno: typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-'),
+              jurisdiccion: typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-'),
+              fechaFalta: formatearFecha(dateObj.date),
+              tipoInasistencia: dateObj.mode === 'JUSTIFIED' ? 'JUSTIFICADA' : 'INJUSTIFICADA'
+            }))
+          })
+      }
+
       const doc = (
         <InformePDFDocument
           formData={formData}
           incidencia={incidencia}
-          inasistenciasHistoricas={inasistenciasHistoricas}
+          inasistenciasHistoricas={inasistenciasParaPDF}
           logoBase64={logoBase64}
           formatearFecha={formatearFecha}
         />
@@ -614,7 +746,74 @@ Se adjuntan las evidencias:`
     <div className="modal-backdrop">
       <div className="modal-pdf">
         <div className="modal-header">
-          <h3>Vista Previa del Informe</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h3>Vista Previa del Informe</h3>
+            {/* Badge de estado */}
+            {incidencia.status === 'approved' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                border: '1px solid rgba(34, 197, 94, 0.5)',
+                borderRadius: '12px',
+                color: '#22c55e',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                ✓ Aprobado
+              </span>
+            )}
+            {incidencia.status === 'pending' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                border: '1px solid rgba(245, 158, 11, 0.5)',
+                borderRadius: '12px',
+                color: '#f59e0b',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                ⏳ Pendiente de aprobación
+              </span>
+            )}
+            {incidencia.status === 'draft' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(148, 163, 184, 0.2)',
+                border: '1px solid rgba(148, 163, 184, 0.5)',
+                borderRadius: '12px',
+                color: '#94a3b8',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                📝 Borrador
+              </span>
+            )}
+            {incidencia.status === 'rejected' && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
+                borderRadius: '12px',
+                color: '#ef4444',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                ✗ Rechazado
+              </span>
+            )}
+          </div>
           <button className="close" onClick={onClose}>×</button>
         </div>
         
@@ -629,10 +828,46 @@ Se adjuntan las evidencias:`
             <div className="pdf-info">
               <div className="info-row">
                 <strong>INFORME N°</strong>
-                <input 
-                  value={formData.numeroInforme}
-                  onChange={e => handleChange('numeroInforme', e.target.value)}
-                />
+                {incidencia.status === 'approved' ? (
+                  <input
+                    value={formData.numeroInforme}
+                    readOnly
+                    style={{
+                      cursor: 'not-allowed',
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                      borderColor: 'rgba(34, 197, 94, 0.5)',
+                      fontWeight: 'bold'
+                    }}
+                    title="Código generado automáticamente al aprobar"
+                  />
+                ) : (
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      padding: '8px 12px',
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.5)',
+                      borderRadius: '4px',
+                      color: '#f59e0b',
+                      fontSize: '0.9rem',
+                      fontStyle: 'italic'
+                    }}>
+                      ⏳ Se generará automáticamente al aprobar el informe
+                    </div>
+                    <div style={{
+                      marginTop: '6px',
+                      padding: '6px 8px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                      lineHeight: '1.4'
+                    }}>
+                      <strong>ℹ️ Nota:</strong> El código del informe será asignado automáticamente por el sistema
+                      con el número correlativo y año correspondiente una vez que el informe sea aprobado.
+                      Hasta entonces, no es necesario ingresar ningún código manualmente.
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="info-row">

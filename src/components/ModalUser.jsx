@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { FaUser, FaEnvelope, FaLock, FaUserTag } from 'react-icons/fa'
+import { FaUser, FaEnvelope, FaLock, FaUserTag, FaIdCard, FaSearch } from 'react-icons/fa'
+import { useSelector } from 'react-redux'
 
 const defaultState = {
+  dni: '',
   name: '',
   lastname: '',
   username: '',
@@ -13,6 +15,11 @@ const defaultState = {
 export default function ModalUser({ initial, onClose, onSave, userRole }) {
   const [form, setForm] = useState(defaultState)
   const [errors, setErrors] = useState({})
+  const [searchingDni, setSearchingDni] = useState(false)
+  const [dniError, setDniError] = useState('')
+
+  // Obtener token de autenticación
+  const { token } = useSelector((state) => state.auth)
 
   // userRole: el rol del usuario actual (admin o supervisor)
   const canCreateSupervisor = userRole === 'admin'
@@ -21,6 +28,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
   useEffect(() => {
     if (initial) {
       setForm({
+        dni: initial.dni || '',
         name: initial.name || '',
         lastname: initial.lastname || '',
         username: initial.username || '',
@@ -30,6 +38,68 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
       })
     }
   }, [initial])
+
+  // Función para buscar por DNI
+  async function searchByDni() {
+    if (!form.dni || form.dni.length !== 8) {
+      setDniError('El DNI debe tener 8 dígitos')
+      return
+    }
+
+    setSearchingDni(true)
+    setDniError('')
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_API_URL}/offender/dni/${form.dni}`
+      console.log('Buscando en:', apiUrl)
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      console.log('Response status:', response.status)
+
+      const result = await response.json()
+      console.log('Resultado:', result)
+
+      if (response.ok && result.data) {
+        const data = result.data
+        // Generar username a partir del nombre
+        const firstName = data.name ? data.name.split(' ')[0].toLowerCase() : ''
+        const firstLastname = data.lastname ? data.lastname.split(' ')[0].toLowerCase() : ''
+        const username = `${firstName}${firstLastname}`
+
+        setForm(prev => ({
+          ...prev,
+          name: data.name || '',
+          lastname: data.lastname || '',
+          username: username,
+          email: data.email || '',
+          rol: mapJobToRol(data.job) || 'SENTINEL'
+        }))
+      } else {
+        setDniError(result.message || 'No se encontró ningún registro con ese DNI')
+      }
+    } catch (error) {
+      setDniError('Error al conectar con el servidor')
+      console.error('Error buscando DNI:', error)
+    } finally {
+      setSearchingDni(false)
+    }
+  }
+
+  // Mapear job a rol del sistema
+  function mapJobToRol(job) {
+    if (!job) return 'SENTINEL'
+    const jobUpper = job.toUpperCase()
+    if (jobUpper.includes('ADMIN') || jobUpper.includes('COORDINADOR')) return 'ADMINISTRATOR'
+    if (jobUpper.includes('SUPERVISOR')) return 'SUPERVISOR'
+    if (jobUpper.includes('VALIDATOR') || jobUpper.includes('VALIDADOR')) return 'VALIDATOR'
+    return 'SENTINEL'
+  }
 
   function handleChange(field, value) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -99,6 +169,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
     }
 
     const dataToSave = {
+      dni: form.dni.trim(),
       name: form.name.trim(),
       lastname: form.lastname.trim(),
       username: form.username.trim(),
@@ -123,6 +194,51 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
+          {/* DNI con búsqueda */}
+          {!initial && (
+            <div className="form-group">
+              <label>
+                <FaIdCard style={{ marginRight: '8px' }} />
+                DNI
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Ingrese DNI (8 dígitos)"
+                  value={form.dni}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 8)
+                    handleChange('dni', value)
+                    setDniError('')
+                  }}
+                  style={{ flex: 1 }}
+                  maxLength={8}
+                />
+                <button
+                  type="button"
+                  onClick={searchByDni}
+                  disabled={searchingDni || form.dni.length !== 8}
+                  className="btn-primary"
+                  style={{
+                    padding: '8px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    minWidth: '100px',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <FaSearch />
+                  {searchingDni ? 'Buscando...' : 'Buscar'}
+                </button>
+              </div>
+              {dniError && <span className="error-message">{dniError}</span>}
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                Ingrese el DNI para autocompletar los datos del personal
+              </span>
+            </div>
+          )}
+
           {/* Nombre */}
           <div className="form-group">
             <label>
@@ -213,7 +329,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
               value={form.rol}
               onChange={(e) => handleChange('rol', e.target.value)}
               className={errors.rol ? 'input-error' : ''}
-              disabled={initial} // No permitir cambiar rol al editar
+              disabled={initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR')}
             >
               <option value="SENTINEL">Sentinel</option>
               {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}
@@ -221,7 +337,12 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
               {canCreateValidator && <option value="ADMINISTRATOR">Admin</option>}
             </select>
             {errors.rol && <span className="error-message">{errors.rol}</span>}
-            {!canCreateSupervisor && (
+            {initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR') && (
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                No se puede cambiar el rol de un administrador
+              </span>
+            )}
+            {!canCreateSupervisor && !initial && (
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                 Solo puedes crear Sentinels
               </span>

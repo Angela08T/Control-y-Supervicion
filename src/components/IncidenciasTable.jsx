@@ -1,5 +1,12 @@
 import React from 'react'
-import { FaFilePdf, FaTrash, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import { FaFilePdf, FaBan, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa'
+
+// Función para formatear fecha de eliminación
+function formatDeletedDate(isoDate) {
+  if (!isoDate) return ''
+  const d = new Date(isoDate)
+  return `Eliminado: ${d.toLocaleDateString('es-PE')} ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+}
 
 function formatDate(iso){
   if(!iso) return ''
@@ -49,6 +56,17 @@ export default function IncidenciasTable({
   canSend = false,
   canValidate = false
 }){
+  // DEBUG: Ver si hay reportes de inasistencias
+  React.useEffect(() => {
+    const absenceReports = data.filter(item => item.isAbsenceReport)
+    if (absenceReports.length > 0) {
+      console.log('=== REPORTES DE INASISTENCIAS ENCONTRADOS ===')
+      console.log('Total:', absenceReports.length)
+      console.log('Datos:', absenceReports)
+      console.log('===========================================')
+    }
+  }, [data])
+
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -87,11 +105,34 @@ export default function IncidenciasTable({
               const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
               const canSendToValidator = canSend && hasImages && (itemStatus === 'draft')
               const canValidateReport = canValidate && itemStatus === 'pending'
+              const isAbsence = item.isAbsenceReport
+
+              // Formatear rango de fechas para reportes de inasistencias
+              const formatAbsenceDates = () => {
+                if (!item.absenceStart || !item.absenceEnd) return '-'
+                const start = new Date(item.absenceStart).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                const end = new Date(item.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                return `${start} - ${end}`
+              }
 
               return (
-                <tr key={item.id}>
+                <tr key={item.id} style={item.deletedAt ? { backgroundColor: 'rgba(239, 68, 68, 0.05)' } : {}}>
                   <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
-                    {startIndex + index + 1}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      {startIndex + index + 1}
+                      {item.deletedAt && (
+                        <span
+                          title={formatDeletedDate(item.deletedAt)}
+                          style={{
+                            color: '#ef4444',
+                            cursor: 'help',
+                            display: 'inline-flex'
+                          }}
+                        >
+                          <FaInfoCircle size={12} />
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td className="actions">
                     <button title="Ver/Generar PDF" onClick={()=> onEdit(item)}>
@@ -125,24 +166,28 @@ export default function IncidenciasTable({
                       </>
                     )}
                     {canDelete && (
-                      <button title="Eliminar" onClick={()=> onDelete(item.id)}>
-                        <FaTrash/>
+                      <button
+                        title="Deshabilitar/Eliminar"
+                        onClick={()=> onDelete(item.id, item.status)}
+                        style={{ color: '#ef4444' }}
+                      >
+                        <FaBan/>
                       </button>
                     )}
                   </td>
                   <td><EstadoIncidencia status={item.status} /></td>
-                  <td>{item.dni}</td>
+                  <td>{isAbsence ? '-' : item.dni}</td>
                   <td>{item.asunto}</td>
                   <td>{item.falta}</td>
-                  <td>{item.medio}{item.bodycamNumber ? ` (${item.bodycamNumber})` : ''}</td>
-                  <td>{item.fechaIncidente}</td>
-                  <td>{item.horaIncidente}</td>
-                  <td>{item.turno}</td>
+                  <td>{isAbsence ? 'Reporte' : (item.medio + (item.bodycamNumber ? ` (${item.bodycamNumber})` : ''))}</td>
+                  <td>{isAbsence ? formatAbsenceDates() : item.fechaIncidente}</td>
+                  <td>{isAbsence ? (item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada') : item.horaIncidente}</td>
+                  <td>{isAbsence ? '-' : item.turno}</td>
                   <td>{item.cargo || '-'}</td>
                   <td>{item.regLab || '-'}</td>
                   <td>{item.jurisdiccion || '-'}</td>
-                  <td>{item.bodycamNumber || '-'}</td>
-                  <td>{item.bodycamAsignadaA || '-'}</td>
+                  <td>{isAbsence ? '-' : (item.bodycamNumber || '-')}</td>
+                  <td>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
                   <td>{item.dirigidoA || '-'}</td>
                   <td>{item.destinatario || '-'}</td>
                 </tr>
