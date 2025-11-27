@@ -34,13 +34,14 @@ export default function SessionExpiredModal({ show, onAccept }) {
     >
       <div
         style={{
-          backgroundColor: 'var(--card-bg)',
+          backgroundColor: '#ffffff',
           borderRadius: '16px',
           maxWidth: '420px',
           width: '90%',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
           animation: 'slideDown 0.3s ease-out',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: '1px solid rgba(245, 158, 11, 0.2)'
         }}
       >
         {/* Header con icono */}
@@ -49,11 +50,11 @@ export default function SessionExpiredModal({ show, onAccept }) {
           flexDirection: 'column',
           alignItems: 'center',
           padding: '32px 24px 20px',
-          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)',
-          borderBottom: '2px solid rgba(245, 158, 11, 0.2)'
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%)',
+          borderBottom: '2px solid rgba(245, 158, 11, 0.3)'
         }}>
           <div style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            backgroundColor: 'rgba(245, 158, 11, 0.2)',
             border: '3px solid #f59e0b',
             borderRadius: '50%',
             padding: '20px',
@@ -65,9 +66,9 @@ export default function SessionExpiredModal({ show, onAccept }) {
           </div>
           <h3 style={{
             margin: 0,
-            fontSize: '1.4rem',
+            fontSize: '1.5rem',
             fontWeight: '700',
-            color: 'var(--text)',
+            color: '#1f2937',
             textAlign: 'center'
           }}>
             Sesión Expirada
@@ -77,10 +78,11 @@ export default function SessionExpiredModal({ show, onAccept }) {
         {/* Body */}
         <div style={{
           padding: '24px 28px',
-          fontSize: '1rem',
+          fontSize: '1.05rem',
           lineHeight: '1.6',
-          color: 'var(--text-secondary)',
-          textAlign: 'center'
+          color: '#4b5563',
+          textAlign: 'center',
+          fontWeight: '500'
         }}>
           Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente para continuar.
         </div>

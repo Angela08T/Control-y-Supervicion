@@ -5,6 +5,7 @@ import ModalLead from '../../components/ModalLead'
 import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { toast } from '../../utils/toast'
 
 export default function LeadsPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -56,7 +57,7 @@ export default function LeadsPage() {
           })
         }
       } catch (error) {
-        alert('No se pudo cargar el personal')
+        toast.error('No se pudo cargar el personal')
       } finally {
         setLoading(false)
       }
@@ -134,7 +135,7 @@ export default function LeadsPage() {
       try {
         const response = await updateLead(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Personal actualizado exitosamente')
+        toast.success(response.data?.message || response.message || 'Personal actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -150,14 +151,14 @@ export default function LeadsPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } else {
       // Crear nuevo personal
       try {
         const response = await createLead(data)
 
-        alert(response.data?.message || response.message || 'Personal creado exitosamente')
+        toast.success(response.data?.message || response.message || 'Personal creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
@@ -173,7 +174,7 @@ export default function LeadsPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     }
   }
@@ -191,7 +192,7 @@ export default function LeadsPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteLead(item.id)
 
-      alert(response.data?.message || response.message || `Personal ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(response.data?.message || response.message || `Personal ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -199,13 +200,13 @@ export default function LeadsPage() {
 
       if (error.response?.data?.message) {
         errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
+          ? error.response.data.message.join(', ')
           : error.response.data.message
       } else if (error.message) {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 

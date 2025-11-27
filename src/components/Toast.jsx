@@ -19,31 +19,35 @@ export default function Toast({ message, type = 'success', onClose }) {
 
   const configs = {
     success: {
-      icon: <FaCheckCircle size={24} />,
+      icon: <FaCheckCircle size={28} />,
       color: '#22c55e',
-      bgColor: 'rgba(34, 197, 94, 0.1)',
+      bgColor: '#22c55e',
       borderColor: '#22c55e',
+      lightBg: 'rgba(34, 197, 94, 0.15)',
       title: '¡Éxito!'
     },
     error: {
-      icon: <FaTimesCircle size={24} />,
+      icon: <FaTimesCircle size={28} />,
       color: '#ef4444',
-      bgColor: 'rgba(239, 68, 68, 0.1)',
+      bgColor: '#ef4444',
       borderColor: '#ef4444',
+      lightBg: 'rgba(239, 68, 68, 0.15)',
       title: 'Error'
     },
     warning: {
-      icon: <FaExclamationTriangle size={24} />,
+      icon: <FaExclamationTriangle size={28} />,
       color: '#f59e0b',
-      bgColor: 'rgba(245, 158, 11, 0.1)',
+      bgColor: '#f59e0b',
       borderColor: '#f59e0b',
+      lightBg: 'rgba(245, 158, 11, 0.15)',
       title: 'Advertencia'
     },
     info: {
-      icon: <FaInfoCircle size={24} />,
+      icon: <FaInfoCircle size={28} />,
       color: '#3b82f6',
-      bgColor: 'rgba(59, 130, 246, 0.1)',
+      bgColor: '#3b82f6',
       borderColor: '#3b82f6',
+      lightBg: 'rgba(59, 130, 246, 0.15)',
       title: 'Información'
     }
   }
@@ -54,32 +58,38 @@ export default function Toast({ message, type = 'success', onClose }) {
     <div
       style={{
         position: 'relative',
-        backgroundColor: 'var(--card-bg)',
-        borderLeft: `4px solid ${config.borderColor}`,
-        borderRadius: '12px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-        padding: '16px 20px',
+        backgroundColor: '#ffffff',
+        border: `3px solid ${config.borderColor}`,
+        borderRadius: '16px',
+        boxShadow: `0 10px 40px rgba(0, 0, 0, 0.25), 0 0 0 1px ${config.lightBg}`,
+        padding: '20px 24px',
         display: 'flex',
         alignItems: 'flex-start',
-        gap: '12px',
-        minWidth: '320px',
-        maxWidth: '400px',
+        gap: '16px',
+        minWidth: '380px',
+        maxWidth: '480px',
         opacity: isExiting ? 0 : isVisible ? 1 : 0,
         transform: isExiting
-          ? 'translateX(400px)'
+          ? 'translateX(450px) scale(0.9)'
           : isVisible
-            ? 'translateX(0)'
-            : 'translateX(400px)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            ? 'translateX(0) scale(1)'
+            : 'translateX(450px) scale(0.9)',
+        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
         pointerEvents: 'auto',
-        backdropFilter: 'blur(8px)'
+        backdropFilter: 'blur(12px)'
       }}
     >
-      {/* Icono */}
+      {/* Icono con fondo circular */}
       <div style={{
+        backgroundColor: config.lightBg,
+        borderRadius: '50%',
+        width: '48px',
+        height: '48px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         color: config.color,
-        flexShrink: 0,
-        marginTop: '2px'
+        flexShrink: 0
       }}>
         {config.icon}
       </div>
@@ -87,18 +97,20 @@ export default function Toast({ message, type = 'success', onClose }) {
       {/* Contenido */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontWeight: '600',
-          fontSize: '0.95rem',
-          color: 'var(--text)',
-          marginBottom: '4px'
+          fontWeight: '700',
+          fontSize: '1.1rem',
+          color: '#1a1a1a',
+          marginBottom: '6px',
+          letterSpacing: '-0.01em'
         }}>
           {config.title}
         </div>
         <div style={{
-          fontSize: '0.875rem',
-          color: 'var(--text-secondary)',
-          lineHeight: '1.5',
-          wordBreak: 'break-word'
+          fontSize: '1rem',
+          color: '#4a5568',
+          lineHeight: '1.6',
+          wordBreak: 'break-word',
+          fontWeight: '500'
         }}>
           {message}
         </div>
@@ -108,28 +120,32 @@ export default function Toast({ message, type = 'success', onClose }) {
       <button
         onClick={handleClose}
         style={{
-          background: 'transparent',
+          background: 'rgba(0, 0, 0, 0.05)',
           border: 'none',
-          color: 'var(--text-muted)',
+          color: '#6b7280',
           cursor: 'pointer',
-          padding: '4px',
-          borderRadius: '4px',
+          padding: '8px',
+          borderRadius: '8px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transition: 'all 0.2s',
-          flexShrink: 0
+          flexShrink: 0,
+          width: '32px',
+          height: '32px'
         }}
         onMouseOver={(e) => {
           e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
-          e.target.style.color = 'var(--text)'
+          e.target.style.color = '#1a1a1a'
+          e.target.style.transform = 'scale(1.1)'
         }}
         onMouseOut={(e) => {
-          e.target.style.backgroundColor = 'transparent'
-          e.target.style.color = 'var(--text-muted)'
+          e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+          e.target.style.color = '#6b7280'
+          e.target.style.transform = 'scale(1)'
         }}
       >
-        <FaTimes size={14} />
+        <FaTimes size={16} />
       </button>
 
       {/* Barra de progreso */}
@@ -138,16 +154,17 @@ export default function Toast({ message, type = 'success', onClose }) {
         bottom: 0,
         left: 0,
         right: 0,
-        height: '3px',
-        backgroundColor: config.bgColor,
-        borderBottomLeftRadius: '12px',
-        borderBottomRightRadius: '12px',
+        height: '5px',
+        backgroundColor: config.lightBg,
+        borderBottomLeftRadius: '16px',
+        borderBottomRightRadius: '16px',
         overflow: 'hidden'
       }}>
         <div style={{
           height: '100%',
-          backgroundColor: config.color,
-          animation: 'progress 4s linear forwards'
+          backgroundColor: config.bgColor,
+          animation: 'progress 4s linear forwards',
+          boxShadow: `0 0 10px ${config.color}`
         }} />
       </div>
 

@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
+import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import AlertModal from '../../components/AlertModal'
 import ConfirmModal from '../../components/ConfirmModal'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
@@ -1044,12 +1045,22 @@ export default function IncidenciasPage() {
       )}
 
       {showPDFModal && editItem && (
-        <ModalPDFInforme
-          incidencia={editItem}
-          inasistenciasHistoricas={getInasistenciasPorDNI(editItem.dni)}
-          onClose={() => { setShowPDFModal(false); setEditItem(null) }}
-          onSave={() => setRefreshTrigger(prev => prev + 1)}
-        />
+        // Mostrar modal diferente según el tipo de incidencia
+        editItem.asunto === 'Inasistencia' ? (
+          <ModalPDFInasistencias
+            incidencia={editItem}
+            inasistenciasHistoricas={getInasistenciasPorDNI(editItem.dni)}
+            onClose={() => { setShowPDFModal(false); setEditItem(null) }}
+            onSave={() => setRefreshTrigger(prev => prev + 1)}
+          />
+        ) : (
+          <ModalPDFInforme
+            incidencia={editItem}
+            inasistenciasHistoricas={getInasistenciasPorDNI(editItem.dni)}
+            onClose={() => { setShowPDFModal(false); setEditItem(null) }}
+            onSave={() => setRefreshTrigger(prev => prev + 1)}
+          />
+        )
       )}
 
       {/* Modales personalizados */}
