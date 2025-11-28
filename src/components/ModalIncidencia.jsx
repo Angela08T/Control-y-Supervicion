@@ -22,6 +22,7 @@ import {
   FaBalanceScale
 } from 'react-icons/fa'
 import { BsCameraVideo } from 'react-icons/bs'
+import { toast } from '../utils/toast'
 
 const defaultState = {
   dni: '',
@@ -368,40 +369,40 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     // Validar campos obligatorios
     if (!form.dni || form.dni.length !== 8) {
-      alert('El DNI debe tener exactamente 8 dígitos');
+      toast.warning('El DNI debe tener exactamente 8 dígitos');
       return;
     }
 
     if (!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
-      alert('Completa todos los campos obligatorios');
+      toast.warning('Completa todos los campos obligatorios');
       return;
     }
 
     // Validar que se hayan cargado los IDs necesarios de la API
     if (!form.subjectId) {
-      alert('Error: No se pudo obtener el ID del asunto. Por favor, reselecciona el asunto.');
+      toast.error('Error: No se pudo obtener el ID del asunto. Por favor, reselecciona el asunto.');
       return;
     }
 
     if (!form.lackId) {
-      alert('Error: No se pudo obtener el ID de la falta. Por favor, reselecciona la falta.');
+      toast.error('Error: No se pudo obtener el ID de la falta. Por favor, reselecciona la falta.');
       return;
     }
 
     if (!form.jurisdictionId) {
-      alert('Error: No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.');
+      toast.error('Error: No se pudo obtener el ID de la jurisdicción. Por favor, reselecciona la jurisdicción.');
       return;
     }
 
     // Validar que haya al menos 1 persona en CC (la API lo requiere)
     if (!form.cc || form.cc.length === 0) {
-      alert('Debes seleccionar al menos 1 persona para copia (CC)');
+      toast.warning('Debes seleccionar al menos 1 persona para copia (CC)');
       return;
     }
 
     // Validar ubicación (la API requiere coordenadas y dirección)
     if (!form.ubicacion || !form.ubicacion.coordinates || !form.ubicacion.address) {
-      alert('Debes seleccionar una ubicación en el mapa');
+      toast.warning('Debes seleccionar una ubicación en el mapa');
       return;
     }
 
@@ -412,17 +413,17 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       // Validaciones para otras faltas (requieren bodycam o cámara)
       if (form.tipoMedio === 'bodycam') {
         if (!form.bodycamNumber || !form.bodycamAsignadaA) {
-          alert('Completa los campos de bodycam');
+          toast.warning('Completa los campos de bodycam');
           return;
         }
 
         if (!form.bodycamId) {
-          alert('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
+          toast.error('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
           return;
         }
       } else if (form.tipoMedio === 'camara') {
         if (!form.numeroCamara) {
-          alert('Ingresa el número de cámara');
+          toast.warning('Ingresa el número de cámara');
           return;
         }
       }

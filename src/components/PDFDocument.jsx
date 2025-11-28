@@ -159,6 +159,24 @@ const styles = StyleSheet.create({
     lineHeight: 1.4,
     marginTop: 8
   },
+  // Signature section
+  signatureSection: {
+    marginTop: 40,
+    marginBottom: 20,
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%'
+  },
+  signatureLine: {
+    width: 250,
+    borderTop: '1px solid #000',
+    marginBottom: 8
+  },
+  signatureName: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
   // Footer
   footer: {
     position: 'absolute',
@@ -390,6 +408,14 @@ const PDFLinks = ({ links }) => {
   )
 }
 
+// Componente para la firma
+const PDFSignature = () => (
+  <View style={styles.signatureSection}>
+    <View style={styles.signatureLine} />
+    <Text style={styles.signatureName}>VIERI FLORES PINEDIO</Text>
+  </View>
+)
+
 // Componente para footer
 const PDFFooter = () => (
   <View style={styles.footer} fixed>
@@ -423,10 +449,13 @@ const InformePDFDocument = ({
           />
         )}
 
+        {esInasistencia && <PDFSignature />}
+
         {!esInasistencia && (
           <>
             <PDFImages imagenes={formData.imagenes} />
             <PDFLinks links={formData.links} />
+            <PDFSignature />
           </>
         )}
 

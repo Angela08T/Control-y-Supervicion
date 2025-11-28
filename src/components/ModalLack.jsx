@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { FaClipboardList, FaFolder, FaFileAlt, FaBook, FaInfoCircle } from 'react-icons/fa'
 import { getSubjects } from '../api/subject'
+import { toast } from '../utils/toast'
 
 const defaultState = {
   name: '',
@@ -27,7 +28,7 @@ export default function ModalLack({ initial, onClose, onSave }) {
         const activeSubjects = subjectsData.filter(subject => !subject.deleted_at)
         setSubjects(activeSubjects)
       } catch (error) {
-        alert('Error al cargar la lista de asuntos')
+        toast.error('Error al cargar la lista de asuntos')
       } finally {
         setLoadingSubjects(false)
       }

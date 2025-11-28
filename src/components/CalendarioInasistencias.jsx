@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { FaFilePdf } from 'react-icons/fa'
+import { toast } from '../utils/toast'
 
 export default function CalendarioInasistencias({
   inasistencias = [],
@@ -257,7 +258,7 @@ export default function CalendarioInasistencias({
     if (markMode) {
       // No permitir marcar si ya existe una marca guardada
       if (savedMarks[savedKey]) {
-        alert('Esta celda ya tiene una marca guardada. Usa el modo EDITAR para eliminarla.')
+        toast.warning('Esta celda ya tiene una marca guardada. Usa el modo EDITAR para eliminarla.')
         return
       }
 
@@ -353,7 +354,7 @@ export default function CalendarioInasistencias({
       })
 
       if (marksToSave.length === 0) {
-        alert('No hay faltas seleccionadas para guardar')
+        toast.warning('No hay faltas seleccionadas para guardar')
         return
       }
 
@@ -371,7 +372,7 @@ export default function CalendarioInasistencias({
     // Modo edición: eliminar marcas seleccionadas
     if (editMode) {
       if (marksToDelete.length === 0) {
-        alert('No hay marcas seleccionadas para eliminar')
+        toast.warning('No hay marcas seleccionadas para eliminar')
         setEditMode(false)
         return
       }
@@ -500,7 +501,20 @@ export default function CalendarioInasistencias({
               ) : (
                 personasPaginadas.map((persona, index) => {
                   // Calcular total de inasistencias para esta persona
-                  const totalInasistencias = Object.keys(persona.faltas).length
+                  // Contar marcas guardadas + marcas temporales para este DNI
+                  const totalInasistencias = diasDelMes.reduce((count, dia) => {
+                    const savedKey = `${persona.dni}-${dia.numero}`
+                    const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
+                    const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
+                    const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
+
+                    // Contar si hay marca guardada O marca temporal
+                    if (savedMarks[savedKey] || tempMarks[fullKey]) {
+                      return count + 1
+                    }
+                    return count
+                  }, 0)
+
                   // Número de fila global (considerando la paginación)
                   const numeroFila = startIndex + index + 1
 

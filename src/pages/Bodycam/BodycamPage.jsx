@@ -5,6 +5,7 @@ import ModalBodycam from '../../components/ModalBodycam'
 import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '../../api/bodycam'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { toast } from '../../utils/toast'
 
 export default function BodycamPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -98,7 +99,7 @@ export default function BodycamPage() {
         setBodycams(result.data)
         setPagination(result.pagination)
       } catch (error) {
-        alert('No se pudieron cargar los dispositivos')
+        toast.info('No se pudieron cargar los dispositivos')
       } finally {
         setLoading(false)
       }
@@ -183,7 +184,7 @@ export default function BodycamPage() {
       try {
         const response = await updateBodycam(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Dispositivo actualizado exitosamente')
+        toast.success(response.data?.message || response.message || 'Dispositivo actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -200,14 +201,14 @@ export default function BodycamPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } else {
       // Crear nuevo dispositivo
       try {
         const response = await createBodycam(data)
 
-        alert(response.data?.message || response.message || 'Dispositivo creado exitosamente')
+        toast.success(response.data?.message || response.message || 'Dispositivo creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
@@ -224,7 +225,7 @@ export default function BodycamPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     }
   }
@@ -242,7 +243,7 @@ export default function BodycamPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteBodycam(item.id)
 
-      alert(response.data?.message || response.message || `Dispositivo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(response.data?.message || response.message || `Dispositivo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -257,7 +258,7 @@ export default function BodycamPage() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 

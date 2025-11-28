@@ -1,5 +1,5 @@
 import React from 'react'
-import { FaTimesCircle } from 'react-icons/fa'
+import { FaExclamationTriangle } from 'react-icons/fa'
 
 export default function ErrorModal({ show, message, onClose }) {
   if (!show) return null
@@ -30,13 +30,14 @@ export default function ErrorModal({ show, message, onClose }) {
     >
       <div
         style={{
-          backgroundColor: 'var(--card-bg)',
+          backgroundColor: '#ffffff',
           borderRadius: '16px',
           maxWidth: '420px',
           width: '90%',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
           animation: 'slideDown 0.3s ease-out',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: '1px solid rgba(239, 68, 68, 0.1)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -46,38 +47,39 @@ export default function ErrorModal({ show, message, onClose }) {
           flexDirection: 'column',
           alignItems: 'center',
           padding: '32px 24px 20px',
-          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
-          borderBottom: '2px solid rgba(239, 68, 68, 0.2)'
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.05) 100%)',
+          borderBottom: '3px solid rgba(245, 158, 11, 0.3)'
         }}>
           <div style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            border: '3px solid #ef4444',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '4px solid #f59e0b',
             borderRadius: '50%',
-            padding: '20px',
+            padding: '24px',
             marginBottom: '16px',
-            color: '#ef4444',
+            color: '#f59e0b',
             animation: 'scaleIn 0.4s ease-out'
           }}>
-            <FaTimesCircle size={56} />
+            <FaExclamationTriangle size={60} />
           </div>
           <h3 style={{
             margin: 0,
-            fontSize: '1.4rem',
+            fontSize: '1.5rem',
             fontWeight: '700',
-            color: 'var(--text)',
+            color: '#1a1a1a',
             textAlign: 'center'
           }}>
-            Error
+            Sesión Expirada
           </h3>
         </div>
 
         {/* Body */}
         <div style={{
           padding: '24px 28px',
-          fontSize: '1rem',
+          fontSize: '1.05rem',
           lineHeight: '1.6',
-          color: 'var(--text-secondary)',
-          textAlign: 'center'
+          color: '#374151',
+          textAlign: 'center',
+          fontWeight: '500'
         }}>
           {message || 'Ha ocurrido un error'}
         </div>
@@ -91,30 +93,32 @@ export default function ErrorModal({ show, message, onClose }) {
           <button
             onClick={handleAccept}
             style={{
-              minWidth: '140px',
-              padding: '12px 32px',
-              backgroundColor: '#ef4444',
-              color: 'white',
+              minWidth: '200px',
+              padding: '14px 40px',
+              backgroundColor: '#f59e0b',
+              color: '#ffffff',
               border: 'none',
               borderRadius: '10px',
-              fontSize: '1rem',
-              fontWeight: '600',
+              fontSize: '1.05rem',
+              fontWeight: '700',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}
             onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#dc2626'
+              e.target.style.backgroundColor = '#d97706'
               e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)'
+              e.target.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.5)'
             }}
             onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#ef4444'
+              e.target.style.backgroundColor = '#f59e0b'
               e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'
+              e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)'
             }}
           >
-            Aceptar
+            Ir a Inicio de Sesión
           </button>
         </div>
       </div>

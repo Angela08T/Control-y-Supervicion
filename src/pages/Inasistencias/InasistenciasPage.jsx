@@ -9,6 +9,7 @@ import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaCalendarAlt, FaFilePdf } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
+import { toast } from '../../utils/toast'
 
 export default function InasistenciasPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -96,7 +97,7 @@ export default function InasistenciasPage() {
 
         // No mostrar alert si es 404 (no hay datos)
         if (error.response?.status !== 404) {
-          alert(errorMessage)
+          toast.error(errorMessage)
         }
       } finally {
         setLoading(false)
@@ -127,7 +128,7 @@ export default function InasistenciasPage() {
       const offenderData = mapFormDataToOffenderAPI(data)
       const response = await createOffender(offenderData)
 
-      alert('Inasistencia creada exitosamente')
+      toast.success('Inasistencia creada exitosamente')
 
       setShowModal(false)
 
@@ -151,7 +152,7 @@ export default function InasistenciasPage() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -159,7 +160,7 @@ export default function InasistenciasPage() {
     // Guardar las marcas de falta seleccionadas en la API usando /api/attendance
 
     if (!marks || marks.length === 0) {
-      alert('No hay marcas para guardar')
+      toast.info('No hay marcas para guardar')
       return
     }
 
@@ -211,10 +212,10 @@ export default function InasistenciasPage() {
       const count = response.data?.count || 0
 
       if (count > 0 || response.message?.includes('exitosa')) {
-        alert(`Se guardaron ${count} inasistencia(s) exitosamente`)
+        toast.success(`Se guardaron ${count} inasistencia(s) exitosamente`)
         setRefreshTrigger(prev => prev + 1)
       } else {
-        alert('No se pudieron guardar las inasistencias. Verifica los datos.')
+        toast.info('No se pudieron guardar las inasistencias. Verifica los datos.')
       }
     } catch (error) {
       let errorMessage = 'Error al guardar las inasistencias'
@@ -224,12 +225,12 @@ export default function InasistenciasPage() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
   function handleDelete() {
-    alert('Selecciona una inasistencia para eliminar')
+    toast.warning('Selecciona una inasistencia para eliminar')
   }
 
   // Manejar cambio de mes en el calendario
@@ -240,7 +241,7 @@ export default function InasistenciasPage() {
   // Eliminar marcas (attendances) en modo edición
   async function handleDeleteMarks(marksToDelete) {
     if (!marksToDelete || marksToDelete.length === 0) {
-      alert('No hay marcas para eliminar')
+      toast.info('No hay marcas para eliminar')
       return
     }
 
@@ -250,7 +251,7 @@ export default function InasistenciasPage() {
         await deleteAttendance(markId)
       }
 
-      alert(`Se eliminaron ${marksToDelete.length} marca(s) exitosamente`)
+      toast.info(`Se eliminaron ${marksToDelete.length} marca(s) exitosamente`)
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
 
@@ -261,7 +262,7 @@ export default function InasistenciasPage() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
