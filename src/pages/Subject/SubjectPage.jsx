@@ -5,6 +5,7 @@ import ModalSubject from '../../components/ModalSubject'
 import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject, searchSubject } from '../../api/subject'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { toast } from '../../utils/toast'
 
 export default function SubjectPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -63,7 +64,7 @@ export default function SubjectPage() {
           })
         }
       } catch (error) {
-        alert('No se pudo cargar los asuntos')
+        toast.error('No se pudo cargar los asuntos')
       } finally {
         setLoading(false)
       }
@@ -141,7 +142,7 @@ export default function SubjectPage() {
       try {
         const response = await updateSubject(editItem.id, data)
 
-        alert(response.data?.message || response.message || 'Asunto actualizado exitosamente')
+        toast.success(response.data?.message || response.message || 'Asunto actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
@@ -157,14 +158,14 @@ export default function SubjectPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } else {
       // Crear nuevo asunto
       try {
         const response = await createSubject(data)
 
-        alert(response.data?.message || response.message || 'Asunto creado exitosamente')
+        toast.success(response.data?.message || response.message || 'Asunto creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
@@ -180,7 +181,7 @@ export default function SubjectPage() {
           errorMessage = error.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     }
   }
@@ -198,7 +199,7 @@ export default function SubjectPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteSubject(item.id)
 
-      alert(response.data?.message || response.message || `Asunto ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(response.data?.message || response.message || `Asunto ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
@@ -212,7 +213,7 @@ export default function SubjectPage() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     }
   }
 

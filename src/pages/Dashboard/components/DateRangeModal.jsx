@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { FaTimes, FaCalendarAlt } from 'react-icons/fa'
+import { toast } from '../../../utils/toast'
 
 export default function DateRangeModal({ onClose, onApply }) {
   const [startDate, setStartDate] = useState('')
@@ -9,7 +10,7 @@ export default function DateRangeModal({ onClose, onApply }) {
     if (startDate && endDate) {
       onApply(new Date(startDate), new Date(endDate))
     } else {
-      alert('Por favor selecciona ambas fechas')
+      toast.warning('Por favor selecciona ambas fechas')
     }
   }
   

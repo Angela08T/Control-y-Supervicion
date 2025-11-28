@@ -6,6 +6,7 @@ import { trackPDFDownload } from '../utils/storage'
 import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } from '../api/report'
 import { getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
+import { toast } from '../utils/toast'
 
 function formatearFecha(fecha) {
   if (!fecha) return 'Fecha no disponible'
@@ -567,7 +568,7 @@ Se adjuntan las evidencias:`
       try {
         await deleteEvidence(img.id)
       } catch (error) {
-        alert('Error al eliminar la imagen del servidor. Por favor, intente nuevamente.')
+        toast.error('Error al eliminar la imagen del servidor. Por favor, intente nuevamente.')
         return
       }
     }
@@ -591,7 +592,7 @@ Se adjuntan las evidencias:`
 
     if (errores.length > 0) {
       setValidationErrors(errores)
-      alert(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
+      toast.error(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
       return
     }
 
@@ -610,7 +611,7 @@ Se adjuntan las evidencias:`
         formData.links
       )
 
-      alert('Cambios guardados exitosamente')
+      toast.success('Cambios guardados exitosamente')
 
       // Notificar al padre para actualizar las acciones
       if (onSave) {
@@ -627,7 +628,7 @@ Se adjuntan las evidencias:`
           : error.response.data.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setSavingReport(false)
     }
@@ -644,7 +645,7 @@ Se adjuntan las evidencias:`
 
     if (errores.length > 0) {
       setValidationErrors(errores)
-      alert(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
+      toast.error(`⚠️ Todas las imágenes requieren una descripción. Por favor, agrega descripciones a las imágenes: ${errores.map(i => i + 1).join(', ')}`)
       return
     }
 
@@ -674,7 +675,7 @@ Se adjuntan las evidencias:`
             : error.response.data.message
         }
 
-        alert(errorMessage)
+        toast.error(errorMessage)
         setSavingReport(false)
         return
       } finally {
@@ -736,7 +737,7 @@ Se adjuntan las evidencias:`
       // Registrar la descarga del PDF
       trackPDFDownload(incidencia.id)
     } catch (error) {
-      alert('Error al generar el PDF. Por favor, intente nuevamente.')
+      toast.error('Error al generar el PDF. Por favor, intente nuevamente.')
     }
   }
 
@@ -919,112 +920,230 @@ Se adjuntan las evidencias:`
             <hr className="separator" />
 
             <div className="pdf-body">
-              <p className="intro">Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:</p>
-              
-              <div className="editable-section">
-                <label>Hora del incidente:</label>
-                <input 
-                  type="text"
-                  value={formData.horaIncidente}
-                  onChange={e => handleChange('horaIncidente', e.target.value)}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Fecha del incidente:</label>
-                <input 
-                  type="text"
-                  value={formData.fechaIncidente}
-                  onChange={e => handleChange('fechaIncidente', e.target.value)}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Ubicación (Dirección):</label>
-                <input
-                  type="text"
-                  value={formData.ubicacion}
-                  onChange={e => handleChange('ubicacion', e.target.value)}
-                  placeholder="Dirección completa del incidente"
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Jurisdicción:</label>
-                <input 
-                  type="text"
-                  value={formData.jurisdiccion}
-                  onChange={e => handleChange('jurisdiccion', e.target.value)}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Sereno:</label>
-                <input
-                  type="text"
-                  value={formData.sereno}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>DNI:</label>
-                <input
-                  type="text"
-                  value={formData.dni}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Cargo:</label>
-                <input
-                  type="text"
-                  value={formData.cargo}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Reg. Lab:</label>
-                <input
-                  type="text"
-                  value={formData.regLab}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>Falta:</label>
-                <input
-                  type="text"
-                  value={formData.falta}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
-                />
-              </div>
-
-              {esInasistencia && (
+              {/* Mostrar contenido simplificado para inasistencias (modelo del validador) */}
+              {esInasistencia ? (
                 <>
+                  {/* Párrafo descriptivo del reporte de inasistencias */}
+                  <div style={{
+                    fontSize: '10px',
+                    lineHeight: '1.6',
+                    marginTop: '15px',
+                    textAlign: 'justify'
+                  }}>
+                    <p style={{ margin: '0 0 10px 0', textIndent: '40px' }}>
+                      Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez
+                      informarle sobre el reporte de inasistencias al centro de labores del personal
+                      de la Subgerencia de Serenazgo, correspondiente del turno{' '}
+                      <strong>
+                        {(() => {
+                          // Obtener turnos únicos de los datos de inasistencias
+                          if (attendanceData && attendanceData.length > 0) {
+                            const turnos = [...new Set(attendanceData.map(p => {
+                              if (typeof p.shift === 'object') return p.shift?.name || ''
+                              return p.shift || ''
+                            }).filter(Boolean))]
+                            if (turnos.length === 0) return 'MAÑANA / TARDE / NOCHE'
+                            return turnos.join(' / ')
+                          }
+                          return 'MAÑANA / TARDE / NOCHE'
+                        })()}
+                      </strong>.
+                      Durante el período{' '}
+                      <strong>
+                        {incidencia.absenceStart && incidencia.absenceEnd ? (
+                          <>
+                            {new Date(incidencia.absenceStart).toLocaleDateString('es-PE', { day: '2-digit' })} al{' '}
+                            {new Date(incidencia.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
+                          </>
+                        ) : (
+                          'PERÍODO NO ESPECIFICADO'
+                        )}
+                      </strong>
+                      , se ha registrado un número significativo de inasistencias{' '}
+                      <strong>{incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'justificadas' : 'injustificadas'}</strong>{' '}
+                      por parte del personal mencionado.
+                    </p>
+                  </div>
+
+                  {/* Tabla de inasistencias */}
+                  {loadingAttendance ? (
+                    <div style={{ textAlign: 'center', padding: '20px', color: '#666', fontSize: '10px' }}>
+                      Cargando inasistencias...
+                    </div>
+                  ) : attendanceData.length === 0 ? (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '20px',
+                      color: '#666',
+                      fontSize: '10px',
+                      fontStyle: 'italic',
+                      background: '#f8fafc',
+                      borderRadius: '4px',
+                      marginTop: '10px'
+                    }}>
+                      No hay inasistencias registradas en el período seleccionado
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '10px', overflowX: 'auto' }}>
+                      <table style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontSize: '8px',
+                        border: '1px solid #000'
+                      }}>
+                        <thead>
+                          <tr style={{ background: '#f0f0f0' }}>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>N°</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'left' }}>APELLIDOS Y NOMBRES</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>CARGO</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>REG. LAB.</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>TURNO</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>FECHA</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>TIPO DE INASISTENCIA</th>
+                            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>JURISDICCION</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {attendanceData
+                            .filter(person => {
+                              const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+                              return validDates && validDates.length > 0
+                            })
+                            .map((person, index) => {
+                            // Obtener las fechas de inasistencia
+                            const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
+                              const date = new Date(d.date)
+                              return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                            }).join(', ') || '-'
+
+                            // Manejar campos que pueden ser objetos
+                            const jobValue = typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-')
+                            const regimeValue = typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-')
+                            const shiftValue = typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-')
+                            const jurisdictionValue = typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-')
+
+                            return (
+                              <tr key={person.id || index}>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
+                                <td style={{ border: '1px solid #000', padding: '4px' }}>
+                                  {person.name && person.lastname
+                                    ? `${person.lastname} ${person.name}`.toUpperCase()
+                                    : person.fullname?.toUpperCase() || '-'}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                  {jobValue}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                  {regimeValue}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                  {shiftValue}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', fontSize: '7px' }}>
+                                  {fechas}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                  {incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'JUSTIFICADA' : 'INJUSTIFICADA'}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                  {jurisdictionValue}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="intro">Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:</p>
+
                   <div className="editable-section">
-                    <label>Tipo de Inasistencia:</label>
-                    <input 
+                    <label>Hora del incidente:</label>
+                    <input
                       type="text"
-                      value={formData.tipoInasistencia}
-                      onChange={e => handleChange('tipoInasistencia', e.target.value)}
+                      value={formData.horaIncidente}
+                      onChange={e => handleChange('horaIncidente', e.target.value)}
                     />
                   </div>
 
                   <div className="editable-section">
-                    <label>Fecha de Falta:</label>
-                    <input 
+                    <label>Fecha del incidente:</label>
+                    <input
                       type="text"
-                      value={formData.fechaFalta}
-                      onChange={e => handleChange('fechaFalta', e.target.value)}
+                      value={formData.fechaIncidente}
+                      onChange={e => handleChange('fechaIncidente', e.target.value)}
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Ubicación (Dirección):</label>
+                    <input
+                      type="text"
+                      value={formData.ubicacion}
+                      onChange={e => handleChange('ubicacion', e.target.value)}
+                      placeholder="Dirección completa del incidente"
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Jurisdicción:</label>
+                    <input
+                      type="text"
+                      value={formData.jurisdiccion}
+                      onChange={e => handleChange('jurisdiccion', e.target.value)}
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Sereno:</label>
+                    <input
+                      type="text"
+                      value={formData.sereno}
+                      readOnly
+                      style={{ cursor: 'not-allowed' }}
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>DNI:</label>
+                    <input
+                      type="text"
+                      value={formData.dni}
+                      readOnly
+                      style={{ cursor: 'not-allowed' }}
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Cargo:</label>
+                    <input
+                      type="text"
+                      value={formData.cargo}
+                      readOnly
+                      style={{ cursor: 'not-allowed' }}
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Reg. Lab:</label>
+                    <input
+                      type="text"
+                      value={formData.regLab}
+                      readOnly
+                      style={{ cursor: 'not-allowed' }}
+                    />
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Falta:</label>
+                    <input
+                      type="text"
+                      value={formData.falta}
+                      readOnly
+                      style={{ cursor: 'not-allowed' }}
                     />
                   </div>
                 </>
@@ -1076,191 +1195,165 @@ Se adjuntan las evidencias:`
                 </>
               )}
 
-              <div className="editable-section">
-                <label>Supervisor:</label>
-                <input
-                  type="text"
-                  value={formData.supervisor}
-                  readOnly
-                  style={{ cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <div className="editable-section">
-                <label>CONTENIDO DEL INFORME:</label>
-                <textarea
-                  value={formData.descripcionAdicional}
-                  onChange={e => handleChange('descripcionAdicional', e.target.value)}
-                  placeholder="Edite el contenido del informe según sea necesario..."
-                  rows={18}
-                  style={{
-                    fontSize: '11px',
-                    lineHeight: '1.6',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'pre-wrap'
-                  }}
-                />
-                <div style={{
-                  fontSize: '10px',
-                  color: 'var(--text-secondary)',
-                  marginTop: '8px',
-                  padding: '8px',
-                  background: 'rgba(59, 130, 246, 0.1)',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(59, 130, 246, 0.3)'
-                }}>
-                  <strong>💡 Instrucciones:</strong>
-                  <ul style={{marginTop: '4px', marginLeft: '20px', lineHeight: '1.5'}}>
-                    <li>Complete las secciones marcadas con [INSTRUCCIÓN] con los detalles específicos del incidente</li>
-                    <li>Use términos objetivos como "presuntamente", "aparentemente" para describir los hechos</li>
-                    <li>Puede editar cualquier parte del texto según sea necesario</li>
-                    <li>La plantilla se adapta automáticamente según el tipo de incidente</li>
-                  </ul>
-                </div>
-              </div>
-
-              {esInasistencia && inasistenciasHistoricas.length > 0 && (
+              {!esInasistencia && (
                 <div className="editable-section">
-                  <label>Historial de Inasistencias del Personal:</label>
-                  <div style={{marginTop: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden'}}>
-                    <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '10px'}}>
-                      <thead>
-                        <tr style={{background: '#f1f5f9'}}>
-                          <th style={{padding: '6px', border: '1px solid #e2e8f0', textAlign: 'left'}}>Fecha</th>
-                          <th style={{padding: '6px', border: '1px solid #e2e8f0', textAlign: 'left'}}>Falta</th>
-                          <th style={{padding: '6px', border: '1px solid #e2e8f0', textAlign: 'left'}}>Tipo</th>
-                          <th style={{padding: '6px', border: '1px solid #e2e8f0', textAlign: 'left'}}>Fecha Falta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {inasistenciasHistoricas.map((inasistencia, index) => (
-                          <tr key={index}>
-                            <td style={{padding: '6px', border: '1px solid #e2e8f0'}}>
-                              {formatearFecha(inasistencia.fechaIncidente)}
-                            </td>
-                            <td style={{padding: '6px', border: '1px solid #e2e8f0'}}>
-                              {inasistencia.falta}
-                            </td>
-                            <td style={{padding: '6px', border: '1px solid #e2e8f0'}}>
-                              {inasistencia.tipoInasistencia || 'No especificado'}
-                            </td>
-                            <td style={{padding: '6px', border: '1px solid #e2e8f0'}}>
-                              {inasistencia.fechaFalta || inasistencia.fechaIncidente}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <label>Supervisor:</label>
+                  <input
+                    type="text"
+                    value={formData.supervisor}
+                    readOnly
+                    style={{ cursor: 'not-allowed' }}
+                  />
+                </div>
+              )}
+
+              {!esInasistencia && (
+                <div className="editable-section">
+                  <label>CONTENIDO DEL INFORME:</label>
+                  <textarea
+                    value={formData.descripcionAdicional}
+                    onChange={e => handleChange('descripcionAdicional', e.target.value)}
+                    placeholder="Edite el contenido del informe según sea necesario..."
+                    rows={18}
+                    style={{
+                      fontSize: '11px',
+                      lineHeight: '1.6',
+                      fontFamily: 'inherit',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  />
+                  <div style={{
+                    fontSize: '10px',
+                    color: 'var(--text-secondary)',
+                    marginTop: '8px',
+                    padding: '8px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(59, 130, 246, 0.3)'
+                  }}>
+                    <strong>💡 Instrucciones:</strong>
+                    <ul style={{marginTop: '4px', marginLeft: '20px', lineHeight: '1.5'}}>
+                      <li>Complete las secciones marcadas con [INSTRUCCIÓN] con los detalles específicos del incidente</li>
+                      <li>Use términos objetivos como "presuntamente", "aparentemente" para describir los hechos</li>
+                      <li>Puede editar cualquier parte del texto según sea necesario</li>
+                      <li>La plantilla se adapta automáticamente según el tipo de incidente</li>
+                    </ul>
                   </div>
                 </div>
               )}
 
-              <div className="editable-section">
-                <label>Adjuntar imágenes:</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  disabled={loadingEvidences || savingReport}
-                  style={{padding: '8px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px'}}
-                />
+              {/* Historial de inasistencias ya no se muestra porque la tabla principal ya contiene todos los datos */}
 
-                {loadingEvidences && (
-                  <div style={{
-                    padding: '12px',
-                    textAlign: 'center',
-                    color: 'var(--primary)',
-                    fontSize: '0.9rem'
-                  }}>
-                    ⏳ Cargando evidencias existentes...
-                  </div>
-                )}
+              {!esInasistencia && (
+                <>
+                  <div className="editable-section">
+                    <label>Adjuntar imágenes:</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={loadingEvidences || savingReport}
+                      style={{padding: '8px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px'}}
+                    />
 
-                {formData.imagenes.length > 0 && (
-                  <div className="images-preview">
-                    {formData.imagenes.map((img, index) => (
-                      <div key={index} className="image-item-container">
-                        <div className="image-item">
-                          <img src={img.base64 || img.url} alt={img.name} />
-                          {img.isExisting && (
-                            <span style={{
-                              position: 'absolute',
-                              top: '5px',
-                              left: '5px',
-                              background: 'rgba(59, 130, 246, 0.9)',
-                              color: 'white',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '10px',
-                              fontWeight: 'bold'
-                            }}>
-                              GUARDADA
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="btn-remove-img"
-                            disabled={savingReport}
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div style={{marginTop: '8px'}}>
-                          <label style={{
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            display: 'block',
-                            marginBottom: '4px',
-                            color: validationErrors.includes(index) ? '#dc2626' : 'inherit'
-                          }}>
-                            Anexo {index + 1} (OBLIGATORIO):
-                          </label>
-                          <textarea
-                            value={img.anexo || ''}
-                            onChange={(e) => updateImageAnexo(index, e.target.value)}
-                            placeholder="⚠️ Descripción OBLIGATORIA para esta imagen..."
-                            rows={2}
-                            disabled={savingReport}
-                            style={{
-                              width: '100%',
-                              padding: '6px',
-                              fontSize: '11px',
-                              border: validationErrors.includes(index) ? '2px solid #dc2626' : '1px solid #ddd',
-                              borderRadius: '4px',
-                              fontFamily: 'inherit',
-                              resize: 'vertical',
-                              background: validationErrors.includes(index) ? '#fee2e2' : 'white'
-                            }}
-                          />
-                          {validationErrors.includes(index) && (
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#dc2626',
-                              display: 'block',
-                              marginTop: '4px',
-                              fontWeight: '500'
-                            }}>
-                              ⚠️ Esta imagen requiere una descripción
-                            </span>
-                          )}
-                        </div>
+                    {loadingEvidences && (
+                      <div style={{
+                        padding: '12px',
+                        textAlign: 'center',
+                        color: 'var(--primary)',
+                        fontSize: '0.9rem'
+                      }}>
+                        ⏳ Cargando evidencias existentes...
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    )}
 
-              <div className="editable-section">
-                <label>Links de referencia:</label>
-                <textarea
-                  value={formData.links}
-                  onChange={e => handleChange('links', e.target.value)}
-                  placeholder="https://ejemplo.com&#10;https://otro-link.com"
-                  rows={3}
-                />
-              </div>
+                    {formData.imagenes.length > 0 && (
+                      <div className="images-preview">
+                        {formData.imagenes.map((img, index) => (
+                          <div key={index} className="image-item-container">
+                            <div className="image-item">
+                              <img src={img.base64 || img.url} alt={img.name} />
+                              {img.isExisting && (
+                                <span style={{
+                                  position: 'absolute',
+                                  top: '5px',
+                                  left: '5px',
+                                  background: 'rgba(59, 130, 246, 0.9)',
+                                  color: 'white',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '10px',
+                                  fontWeight: 'bold'
+                                }}>
+                                  GUARDADA
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeImage(index)}
+                                className="btn-remove-img"
+                                disabled={savingReport}
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <div style={{marginTop: '8px'}}>
+                              <label style={{
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                display: 'block',
+                                marginBottom: '4px',
+                                color: validationErrors.includes(index) ? '#dc2626' : 'inherit'
+                              }}>
+                                Anexo {index + 1} (OBLIGATORIO):
+                              </label>
+                              <textarea
+                                value={img.anexo || ''}
+                                onChange={(e) => updateImageAnexo(index, e.target.value)}
+                                placeholder="⚠️ Descripción OBLIGATORIA para esta imagen..."
+                                rows={2}
+                                disabled={savingReport}
+                                style={{
+                                  width: '100%',
+                                  padding: '6px',
+                                  fontSize: '11px',
+                                  border: validationErrors.includes(index) ? '2px solid #dc2626' : '1px solid #ddd',
+                                  borderRadius: '4px',
+                                  fontFamily: 'inherit',
+                                  resize: 'vertical',
+                                  background: validationErrors.includes(index) ? '#fee2e2' : 'white'
+                                }}
+                              />
+                              {validationErrors.includes(index) && (
+                                <span style={{
+                                  fontSize: '11px',
+                                  color: '#dc2626',
+                                  display: 'block',
+                                  marginTop: '4px',
+                                  fontWeight: '500'
+                                }}>
+                                  ⚠️ Esta imagen requiere una descripción
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="editable-section">
+                    <label>Links de referencia:</label>
+                    <textarea
+                      value={formData.links}
+                      onChange={e => handleChange('links', e.target.value)}
+                      placeholder="https://ejemplo.com&#10;https://otro-link.com"
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="pdf-footer">

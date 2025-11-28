@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { FaUser, FaBriefcase } from 'react-icons/fa'
 import { getJobs } from '../api/job'
+import { toast } from '../utils/toast'
 
 const defaultState = {
   name: '',
@@ -29,7 +30,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
 
         setJobs(activeJobs)
       } catch (error) {
-        alert('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
+        toast.info('No se pudieron cargar los cargos. Por favor, intenta de nuevo.')
       } finally {
         setLoadingJobs(false)
       }

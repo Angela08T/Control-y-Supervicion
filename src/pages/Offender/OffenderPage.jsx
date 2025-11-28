@@ -7,6 +7,7 @@ import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { useNotification } from '../../context/NotificationContext'
 import ConfirmModal from '../../components/ConfirmModal'
+import { toast } from '../../utils/toast'
 
 export default function OffenderPage() {
   const { role: userRole } = useSelector((state) => state.auth)
@@ -67,7 +68,7 @@ export default function OffenderPage() {
           })
         }
       } catch (error) {
-        alert('No se pudo cargar los infractores')
+        toast.error('No se pudo cargar los infractores')
       } finally {
         setLoading(false)
       }
