@@ -19,9 +19,20 @@ const useAudit = () => {
     action: '',
     model: '',
     status: '',
-    username: '',
     search: ''
   });
+
+  // Debounced search term
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce effect para search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+    }, 500); // 500ms de delay
+
+    return () => clearTimeout(timer);
+  }, [filters.search]);
 
   // Cargar datos cuando cambien filtros, página o items por página
   useEffect(() => {
@@ -35,8 +46,7 @@ const useAudit = () => {
         if (filters.action) activeFilters.action = filters.action;
         if (filters.model) activeFilters.model = filters.model;
         if (filters.status) activeFilters.status = filters.status;
-        if (filters.username) activeFilters.username = filters.username;
-        if (filters.search) activeFilters.search = filters.search;
+        if (debouncedSearch) activeFilters.search = debouncedSearch;
 
         const response = await getAllAudits(currentPage, itemsPerPage, activeFilters);
 
@@ -59,7 +69,7 @@ const useAudit = () => {
     };
 
     fetchAudits();
-  }, [currentPage, itemsPerPage, filters]);
+  }, [currentPage, itemsPerPage, filters.action, filters.model, filters.status, debouncedSearch]);
 
   const changePage = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
@@ -82,7 +92,6 @@ const useAudit = () => {
       action: '',
       model: '',
       status: '',
-      username: '',
       search: ''
     });
     setCurrentPage(1);
