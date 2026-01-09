@@ -410,6 +410,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     // Validaciones específicas para inasistencia
     if (form.falta && form.falta.startsWith('Inasistencia')) {
       // Para inasistencia no se requiere bodycam ni cámara ni radio
+    } else if (form.tipoMedio === 'Phone') {
+      // Para celular no se requieren campos adicionales
     } else {
       // Validaciones para otras faltas (requieren bodycam, cámara o radio)
       if (form.tipoMedio === 'bodycam') {
@@ -598,6 +600,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                     setCamType('CAMERA')
                   } else if (nuevoTipo === 'radio') {
                     setCamType('RADIO')
+                  } else if (nuevoTipo === 'Phone') {
+                    // Phone no necesita tipo de cámara
                   } else {
                     setCamType('BODYCAM')
                   }
@@ -622,6 +626,13 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                       newForm.bodycamAsignadaA = ''
                       newForm.bodycamId = ''
                       newForm.numeroCamara = ''
+                    } else if (nuevoTipo === 'Phone') {
+                      // Limpiar todos los campos relacionados a bodycam/cámara/radio
+                      newForm.bodycamNumber = ''
+                      newForm.bodycamAsignadaA = ''
+                      newForm.bodycamId = ''
+                      newForm.numeroCamara = ''
+                      newForm.numeroRadio = ''
                     } else {
                       newForm.numeroCamara = ''
                       newForm.numeroRadio = ''
@@ -635,6 +646,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 <option value="bodycam">Bodycam</option>
                 <option value="camara">Cámara</option>
                 <option value="radio">Radio</option>
+                <option value="Phone">Celular</option>
               </select>
 
               {/* Campos de Bodycam */}
