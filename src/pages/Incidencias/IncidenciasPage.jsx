@@ -30,7 +30,7 @@ export default function IncidenciasPage() {
     subjectId: '', // Filtro por ID de asunto
     jurisdictionId: '', // Filtro por ID de jurisdicción
     showDeleted: 'active', // 'active' = solo activos, 'deleted' = solo eliminados
-    status: '' // '' = todos, 'draft', 'pending', 'approved', 'rejected'
+    process: '' // '' = todos, 'PENDING', 'APPROVED', 'REJECTED', null=draft
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
@@ -198,6 +198,9 @@ export default function IncidenciasPage() {
         if (filters.subjectId) apiFilters.subjectId = filters.subjectId
         if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
         if (filters.turno) apiFilters.shift = filters.turno // Agregar filtro de turno
+        if (filters.process) apiFilters.process = filters.process // Agregar filtro de proceso
+
+        console.log('🔍 Filtros enviados al backend:', apiFilters)
 
         const result = await getReports(currentPage, itemsPerPage, apiFilters)
         setIncidencias(result.data)
@@ -212,7 +215,7 @@ export default function IncidenciasPage() {
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno])
+  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -595,8 +598,8 @@ export default function IncidenciasPage() {
     }
   }, [filters.search, currentPage, itemsPerPage])
 
-  // Todos los filtros se manejan en el backend, incluyendo turno
-  // Filtrar por estado (activos/eliminados) y estado de proceso en el frontend
+  // Todos los filtros se manejan en el backend, incluyendo turno y process
+  // Filtrar por estado (activos/eliminados) en el frontend
   const applyFrontendFilters = (data) => {
     let result = data
 
@@ -605,14 +608,6 @@ export default function IncidenciasPage() {
       result = result.filter(item => !item.deletedAt)
     } else if (filters.showDeleted === 'deleted') {
       result = result.filter(item => item.deletedAt)
-    }
-
-    // Filtrar por estado de proceso (draft, pending, approved, rejected)
-    if (filters.status) {
-      result = result.filter(item => {
-        const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
-        return itemStatus === filters.status
-      })
     }
 
     return result
@@ -735,36 +730,20 @@ export default function IncidenciasPage() {
               <option value="N">Noche</option>
             </select>
 
-            {/* Filtros de estado y activos/eliminados - TEMPORALMENTE DESACTIVADOS
+            {/* Filtro de estado de proceso */}
             <select
-              value={filters.status}
+              value={filters.process}
               onChange={e => {
-                setFilters(f => ({ ...f, status: e.target.value }))
+                setFilters(f => ({ ...f, process: e.target.value }))
                 setCurrentPage(1)
               }}
             >
               <option value="">Todos los estados</option>
-              <option value="draft">Borrador</option>
-              <option value="pending">Pendiente</option>
-              <option value="approved">Aprobado</option>
-              <option value="rejected">Rechazado</option>
+              <option value="null">Borrador</option>
+              <option value="PENDING">Pendiente</option>
+              <option value="APPROVED">Aprobado</option>
+              <option value="REJECTED">Rechazado</option>
             </select>
-
-            <select
-              value={filters.showDeleted}
-              onChange={e => {
-                setFilters(f => ({ ...f, showDeleted: e.target.value }))
-                setCurrentPage(1)
-              }}
-              style={{
-                background: filters.showDeleted === 'deleted' ? 'rgba(239, 68, 68, 0.1)' : undefined,
-                borderColor: filters.showDeleted === 'deleted' ? 'rgba(239, 68, 68, 0.5)' : undefined
-              }}
-            >
-              <option value="active">Registros activos</option>
-              <option value="deleted">Registros eliminados</option>
-            </select>
-            */}
 
             <div style={{ position: 'relative' }}>
               <FaSearch
