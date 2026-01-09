@@ -9,8 +9,7 @@ export const getAllAudits = async (page = 1, limit = 10, filters = {}) => {
         if (filters.action) queryParams += `&action=${filters.action}`;
         if (filters.model) queryParams += `&model=${filters.model}`;
         if (filters.status) queryParams += `&status=${filters.status}`;
-        if (filters.username) queryParams += `&username=${filters.username}`;
-        if (filters.search) queryParams += `&search=${filters.search}`;
+        if (filters.search) queryParams += `&search=${encodeURIComponent(filters.search)}`;
 
         const response = await api.get(`/audit${queryParams}`);
 

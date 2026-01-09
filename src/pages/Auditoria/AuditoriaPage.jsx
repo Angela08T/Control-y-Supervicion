@@ -95,8 +95,8 @@ export default function AuditoriaPage() {
               />
               <input
                 placeholder="Buscar por usuario..."
-                value={filters.username}
-                onChange={(e) => handleFilterChange('username', e.target.value)}
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
                 style={{ paddingLeft: '35px' }}
               />
             </div>
@@ -133,7 +133,11 @@ export default function AuditoriaPage() {
         </div>
       ) : (
         <div className="table-container-wrapper">
-          <AuditoriaTable data={audits} />
+          <AuditoriaTable
+            data={audits}
+            currentPage={pagination.currentPage}
+            itemsPerPage={itemsPerPage}
+          />
 
           {/* Controles de paginación */}
           <div style={{
@@ -209,37 +213,77 @@ export default function AuditoriaPage() {
                   gap: '5px',
                   alignItems: 'center'
                 }}>
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (pagination.totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (pagination.currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
-                      pageNum = pagination.totalPages - 4 + i;
+                  {(() => {
+                    const pages = [];
+                    const totalPages = pagination.totalPages;
+                    const currentPage = pagination.currentPage;
+
+                    if (totalPages <= 7) {
+                      // Mostrar todas las páginas si son 7 o menos
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
                     } else {
-                      pageNum = pagination.currentPage - 2 + i;
+                      // Lógica para mostrar páginas con elipsis
+                      if (currentPage <= 4) {
+                        // Inicio: 1 2 3 4 5 ... último
+                        pages.push(1, 2, 3, 4, 5);
+                        pages.push('...');
+                        pages.push(totalPages);
+                      } else if (currentPage >= totalPages - 3) {
+                        // Final: 1 ... penúltimo-3 penúltimo-2 penúltimo-1 penúltimo último
+                        pages.push(1);
+                        pages.push('...');
+                        for (let i = totalPages - 4; i <= totalPages; i++) {
+                          pages.push(i);
+                        }
+                      } else {
+                        // Medio: 1 ... actual-1 actual actual+1 ... último
+                        pages.push(1);
+                        pages.push('...');
+                        pages.push(currentPage - 1, currentPage, currentPage + 1);
+                        pages.push('...');
+                        pages.push(totalPages);
+                      }
                     }
 
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        style={{
-                          padding: '8px 12px',
-                          background: pagination.currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                          color: pagination.currentPage === pageNum ? 'white' : 'var(--text)',
-                          border: `1px solid ${pagination.currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: pagination.currentPage === pageNum ? 'bold' : 'normal',
-                          minWidth: '40px'
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                    return pages.map((pageNum, idx) => {
+                      if (pageNum === '...') {
+                        return (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            style={{
+                              padding: '8px 12px',
+                              color: 'var(--text-muted)',
+                              minWidth: '40px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          style={{
+                            padding: '8px 12px',
+                            background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
+                            color: currentPage === pageNum ? 'white' : 'var(--text)',
+                            border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: currentPage === pageNum ? 'bold' : 'normal',
+                            minWidth: '40px'
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               )}
 

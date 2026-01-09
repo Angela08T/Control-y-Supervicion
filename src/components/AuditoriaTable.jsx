@@ -42,7 +42,7 @@ function getActionBadge(action) {
   );
 }
 
-export default function AuditoriaTable({ data = [] }) {
+export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPage = 10 }) {
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -69,7 +69,7 @@ export default function AuditoriaTable({ data = [] }) {
             {data.map((item, index) => (
               <tr key={item.id}>
                 <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
-                  {index + 1}
+                  {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
                 <td>
                   <strong>{item.user?.username || 'N/A'}</strong>

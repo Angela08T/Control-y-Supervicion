@@ -99,7 +99,7 @@ export function mapFormDataToAPI(form, allLeads) {
  * Obtener reportes con paginación y filtros
  * @param {number} page - Número de página (default: 1)
  * @param {number} limit - Cantidad de items por página (default: 10)
- * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId, shift }
+ * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId, shift, process }
  * @returns {Promise<Object>} - Objeto con data (reportes) y pagination (metadata)
  */
 export const getReports = async (page = 1, limit = 10, filters = {}) => {
@@ -112,6 +112,7 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
     if (filters.subjectId) params.subject = filters.subjectId
     if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId
     if (filters.shift) params.shift = filters.shift
+    if (filters.process) params.process = filters.process
 
     const response = await api.get('/report', { params })
 

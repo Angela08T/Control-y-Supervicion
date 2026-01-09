@@ -31,12 +31,13 @@ const defaultState = {
   falta: '',
   turno: '',
   medio: 'bodycam',
-  tipoMedio: 'bodycam', // Tipo de medio: 'bodycam' o 'camara'
+  tipoMedio: 'bodycam', // Tipo de medio: 'bodycam', 'camara' o 'radio'
   fechaIncidente: '',
   horaIncidente: '',
   bodycamNumber: '',
   bodycamAsignadaA: '',
   numeroCamara: '', // Número de cámara cuando se selecciona cámara
+  numeroRadio: '', // Número de radio cuando se selecciona radio
   ubicacion: null,
   jurisdiccion: '',
   jurisdictionId: null,  // ID de la jurisdicción para la API
@@ -408,9 +409,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     // Validaciones específicas para inasistencia
     if (form.falta && form.falta.startsWith('Inasistencia')) {
-      // Para inasistencia no se requiere bodycam ni cámara
+      // Para inasistencia no se requiere bodycam ni cámara ni radio
+    } else if (form.tipoMedio === 'Phone') {
+      // Para celular no se requieren campos adicionales
     } else {
-      // Validaciones para otras faltas (requieren bodycam o cámara)
+      // Validaciones para otras faltas (requieren bodycam, cámara o radio)
       if (form.tipoMedio === 'bodycam') {
         if (!form.bodycamNumber || !form.bodycamAsignadaA) {
           toast.warning('Completa los campos de bodycam');
@@ -424,6 +427,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       } else if (form.tipoMedio === 'camara') {
         if (!form.numeroCamara) {
           toast.warning('Ingresa el número de cámara');
+          return;
+        }
+
+        if (!form.bodycamId) {
+          toast.error('Error: No se pudo obtener el ID de la cámara. Por favor, selecciona una cámara de la lista.');
+          return;
+        }
+      } else if (form.tipoMedio === 'radio') {
+        if (!form.numeroRadio) {
+          toast.warning('Ingresa el número de radio');
+          return;
+        }
+
+        if (!form.bodycamId) {
+          toast.error('Error: No se pudo obtener el ID del radio. Por favor, selecciona un radio de la lista.');
           return;
         }
       }
@@ -576,25 +594,59 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                 value={form.tipoMedio}
                 onChange={e => {
                   const nuevoTipo = e.target.value
-                  setField('tipoMedio', nuevoTipo)
-                  setField('medio', nuevoTipo)
-                  // Actualizar el tipo de cámara para el filtro de búsqueda
-                  setCamType(nuevoTipo === 'camara' ? 'CAMERA' : 'BODYCAM')
-                  // Limpiar campos del otro tipo cuando se cambia
+
+                  // Actualizar el tipo de cámara para el filtro de búsqueda primero
                   if (nuevoTipo === 'camara') {
-                    setField('bodycamNumber', '')
-                    setField('bodycamAsignadaA', '')
-                    setField('bodycamId', '')
-                    setBodycamSearchTerm('')
+                    setCamType('CAMERA')
+                  } else if (nuevoTipo === 'radio') {
+                    setCamType('RADIO')
+                  } else if (nuevoTipo === 'Phone') {
+                    // Phone no necesita tipo de cámara
                   } else {
-                    setField('numeroCamara', '')
-                    setField('bodycamId', '')
-                    setBodycamSearchTerm('')
+                    setCamType('BODYCAM')
                   }
+
+                  // Limpiar el término de búsqueda
+                  setBodycamSearchTerm('')
+
+                  // Actualizar el formulario en un solo batch para evitar re-renders
+                  setForm(f => {
+                    const newForm = { ...f }
+                    newForm.tipoMedio = nuevoTipo
+                    newForm.medio = nuevoTipo
+
+                    // Limpiar campos de los otros tipos
+                    if (nuevoTipo === 'camara') {
+                      newForm.bodycamNumber = ''
+                      newForm.bodycamAsignadaA = ''
+                      newForm.bodycamId = ''
+                      newForm.numeroRadio = ''
+                    } else if (nuevoTipo === 'radio') {
+                      newForm.bodycamNumber = ''
+                      newForm.bodycamAsignadaA = ''
+                      newForm.bodycamId = ''
+                      newForm.numeroCamara = ''
+                    } else if (nuevoTipo === 'Phone') {
+                      // Limpiar todos los campos relacionados a bodycam/cámara/radio
+                      newForm.bodycamNumber = ''
+                      newForm.bodycamAsignadaA = ''
+                      newForm.bodycamId = ''
+                      newForm.numeroCamara = ''
+                      newForm.numeroRadio = ''
+                    } else {
+                      newForm.numeroCamara = ''
+                      newForm.numeroRadio = ''
+                      newForm.bodycamId = ''
+                    }
+
+                    return newForm
+                  })
                 }}
               >
                 <option value="bodycam">Bodycam</option>
                 <option value="camara">Cámara</option>
+                <option value="radio">Radio</option>
+                <option value="Phone">Celular</option>
               </select>
 
               {/* Campos de Bodycam */}
@@ -685,6 +737,48 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
                           >
                             <strong>{camera.name}</strong>
                             {camera.serie && <span style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>Serie: {camera.serie}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Campos de Radio */}
+              {form.tipoMedio === 'radio' && (
+                <>
+                  <label>N° de Radio *</label>
+                  <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                    <input
+                      value={bodycamSearchTerm}
+                      onChange={handleBodycamInputChange}
+                      onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
+                      placeholder="Escribe para buscar radio (ej: 22110)"
+                      autoComplete="off"
+                    />
+                    {bodycamLoading && (
+                      <div className="autocomplete-loading">Buscando...</div>
+                    )}
+                    {bodycamError && (
+                      <div className="autocomplete-error">{bodycamError}</div>
+                    )}
+                    {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
+                      <div className="autocomplete-suggestions">
+                        {bodycamsHabilitadas.map((radio, index) => (
+                          <div
+                            key={radio.id || index}
+                            className="autocomplete-item"
+                            onClick={() => {
+                              selectBodycam(radio)
+                              setShowBodycamSuggestions(false)
+                              setBodycamSearchTerm(radio.name)
+                              setField('numeroRadio', radio.name)
+                              setField('bodycamId', radio.id)
+                            }}
+                          >
+                            <strong>{radio.name}</strong>
+                            {radio.serie && <span style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>Serie: {radio.serie}</span>}
                           </div>
                         ))}
                       </div>
