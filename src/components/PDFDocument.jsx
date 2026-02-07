@@ -13,10 +13,10 @@ import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/
 // Estilos para el PDF
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 95,        // Margen superior amplio para el header fijo
-    paddingBottom: 90,     // Margen inferior para el footer fijo
-    paddingLeft: 50,       // Margen izquierdo (1.8cm)
-    paddingRight: 50,      // Margen derecho (1.8cm)
+    paddingTop: 60,        // Margen superior reducido
+    paddingBottom: 60,     // Margen inferior reducido
+    paddingLeft: 40,       // Margen izquierdo reducido
+    paddingRight: 40,      // Margen derecho reducido
     fontSize: 11,
     fontFamily: 'Helvetica',
     lineHeight: 1.5
@@ -220,7 +220,7 @@ const PDFInfoSection = ({ formData, incidencia }) => (
       <Text style={styles.infoLabel}>A :</Text>
       <Text style={styles.infoValue}>
         Sr. {formData.destinatarioNombre?.toUpperCase()}{'\n'}
-        {formData.destinatarioCargo}
+        {formData.destinatarioCargo?.toUpperCase()}
       </Text>
     </View>
 
@@ -265,7 +265,7 @@ const PDFInfoSection = ({ formData, incidencia }) => (
 // Componente para el cuerpo del informe
 const PDFBody = ({ formData, incidencia }) => {
   const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
-                         incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+    incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
   return (
     <View>
@@ -412,7 +412,7 @@ const PDFLinks = ({ links }) => {
 const PDFSignature = () => (
   <View style={styles.signatureSection}>
     <View style={styles.signatureLine} />
-    <Text style={styles.signatureName}>VIERI FLORES PINEDIO</Text>
+    <Text style={styles.signatureName}>[NOMBRE DEL FIRMANTE]</Text>
   </View>
 )
 
@@ -433,7 +433,7 @@ const InformePDFDocument = ({
   formatearFecha
 }) => {
   const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
-                         incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+    incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
   return (
     <Document>

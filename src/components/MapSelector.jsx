@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import useJurisdiccionDetection from '../hooks/Jurisdiction/useJurisdiccionDetection'
 
@@ -40,8 +40,14 @@ function ClickHandler({ onLocationSelect }) {
         const data = await response.json()
 
         let newAddress = 'Dirección no encontrada'
-        if (data && data.display_name) {
-          newAddress = data.display_name
+        if (data && data.address) {
+          const addressParts = [
+            data.address.suburb,
+            data.address.city,
+            data.address.country,
+            data.address.postcode
+          ].filter(Boolean)
+          newAddress = addressParts.length > 0 ? addressParts.join(', ') : 'Dirección no encontrada'
         }
 
         // 3. Actualizar con la dirección real cuando llegue
@@ -110,6 +116,38 @@ export default function MapSelector({ value, onChange }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
+
+          /* Renderisar Jurisdicciones*/
+          {jurisdicciones && jurisdicciones.map(jurisdiccion => {
+            if (!jurisdiccion.geometry || !jurisdiccion.geometry.coordinates) return null;
+
+            let positions = []
+            try {
+              positions = jurisdiccion.geometry.coordinates.map(ring => ring.map(card => [card[1], card[0]]))
+            } catch (error) {
+              console.error('Error al procesar jurisdicción:', error)
+              return null
+            }
+            const isSelected = jurisdiccionDetectada && jurisdiccionDetectada.id === jurisdiccion.id
+            return (
+              <Polygon
+                key={jurisdiccion.id}
+                positions={positions}
+                pathOptions={{
+                  color: (isSelected ? jurisdiccion.color : (jurisdiccion.color || '#3b82f6')),
+                  fillColor: (isSelected ? jurisdiccion.color : (jurisdiccion.color || '#3b82f6')),
+                  fillOpacity: isSelected ? 0.2 : 0.1,
+                  weight: isSelected ? 3 : 2,
+                  opacity: 1 // Asegura que el borde no sea transparente ni negro por defecto
+                }}
+              >
+                <Tooltip sticky direction="center" opacity={0.9}>
+                  <span>{jurisdiccion.name}</span>
+                </Tooltip>
+              </Polygon>
+            )
+          })}
+
           <ClickHandler
             onLocationSelect={handleLocationSelect}
           />

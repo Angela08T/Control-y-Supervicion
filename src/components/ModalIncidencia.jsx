@@ -280,11 +280,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     setSelectedLeadId(leadId) // Guardar ID para el select
     const selectedLead = leads.find(lead => lead.id === leadId)
     if (selectedLead) {
-      const nombreCompleto = `${selectedLead.name} ${selectedLead.lastname}`.trim()
+      const nombreCompleto = `${selectedLead.name} ${selectedLead.lastname}`.trim().toUpperCase()
       setForm(f => ({
         ...f,
         destinatario: nombreCompleto,
-        cargoDestinatario: selectedLead.job?.name || form.dirigidoA // Guardar el cargo del lead
+        cargoDestinatario: (selectedLead.job?.name || form.dirigidoA).toUpperCase() // Guardar el cargo del lead en mayúsculas
       }))
     } else {
       setForm(f => ({
@@ -296,7 +296,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
   }
 
   function handleDNIChange(e) {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 8)
+    const value = e.target.value
     setDniSearchTerm(value)
     setField('dni', value)
   }
@@ -307,16 +307,16 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
 
     // Rellenar el formulario con los datos del offender
     // Estructura del API: { dni, job, regime, shift, name, lastname }
-    const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim()
+    const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim().toUpperCase()
 
     setForm(f => ({
       ...f,
       dni: offender.dni || '',
-      nombreCompleto: nombreCompleto,   // Guardar nombre completo
-      turno: offender.shift || '',      // shift → turno
-      cargo: offender.job || '',         // job → cargo
-      regLab: offender.regime || '',     // regime → regLab
-      bodycamAsignadaA: nombreCompleto   // Auto-llenar bodycam asignada a
+      nombreCompleto: nombreCompleto,
+      turno: (offender.shift || '').toUpperCase(),
+      cargo: (offender.job || '').toUpperCase(),
+      regLab: (offender.regime || '').toUpperCase(),
+      bodycamAsignadaA: nombreCompleto
     }))
 
     // Actualizar también el searchTerm
@@ -369,7 +369,13 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
     ev.preventDefault();
 
     // Validar campos obligatorios
-    if (!form.dni || form.dni.length !== 8) {
+    if (!form.dni) {
+      toast.warning('El campo DNI/Nombre es obligatorio');
+      return;
+    }
+
+    // Si es numérico, debe tener 8 dígitos (DNI)
+    if (/^\d+$/.test(form.dni) && form.dni.length !== 8) {
       toast.warning('El DNI debe tener exactamente 8 dígitos');
       return;
     }
@@ -476,9 +482,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               value={dniSearchTerm}
               onChange={handleDNIChange}
               onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
-              placeholder="Ingresa 8 dígitos del DNI"
-              maxLength={8}
-              pattern="[0-9]{8}"
+              placeholder="Ingresa DNI o Apellidos"
               autoComplete="off"
             />
             {offenderLoading && (

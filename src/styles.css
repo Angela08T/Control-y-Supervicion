@@ -74,7 +74,8 @@ body,
   margin: 0;
   background: var(--bg);
   color: var(--text-primary);
-  overflow-x: hidden;  /* Solo prevenir scroll horizontal */
+  overflow-x: hidden;
+  /* Solo prevenir scroll horizontal */
   width: 100%;
 }
 
@@ -88,11 +89,15 @@ body,
   animation: fadeInUp 0.6s ease-out;
   background: var(--bg) !important;
   background-attachment: fixed !important;
-  overflow-x: hidden;  /* Prevenir scroll horizontal */
-  overflow-y: auto;    /* Permitir scroll vertical solo en el área principal */
-  width: calc(100vw - 80px);  /* Ancho correcto sin sidebar */
+  overflow-x: hidden;
+  /* Prevenir scroll horizontal */
+  overflow-y: auto;
+  /* Permitir scroll vertical solo en el área principal */
+  width: calc(100vw - 80px);
+  /* Ancho correcto sin sidebar */
   box-sizing: border-box;
-  height: calc(100vh - 65px);  /* Altura del viewport menos el topbar */
+  height: calc(100vh - 65px);
+  /* Altura del viewport menos el topbar */
 }
 
 .dashboard-page,
@@ -407,7 +412,8 @@ body,
   flex-direction: column;
   width: 100%;
   height: 100%;
-  overflow-y: auto;  /* Permitir scroll vertical para ver el footer */
+  overflow-y: auto;
+  /* Permitir scroll vertical para ver el footer */
 }
 
 @keyframes fadeInUp {
@@ -782,11 +788,14 @@ body,
 .table-container-wrapper {
   display: flex;
   flex: 1;
-  overflow-y: auto;  /* Scroll vertical general para ver todo el contenido cuando el zoom aumenta */
-  overflow-x: hidden;  /* Sin scroll horizontal en el contenedor principal */
+  overflow-y: auto;
+  /* Scroll vertical general para ver todo el contenido cuando el zoom aumenta */
+  overflow-x: hidden;
+  /* Sin scroll horizontal en el contenedor principal */
   flex-direction: column;
   width: 100%;
-  min-width: 0;  /* Permite que el contenedor se reduzca cuando sea necesario */
+  min-width: 0;
+  /* Permite que el contenedor se reduzca cuando sea necesario */
 }
 
 /* Estilos del scrollbar para el contenedor principal */
@@ -825,15 +834,20 @@ body,
   flex-direction: column;
   width: 100%;
   height: 100%;
-  max-height: 600px;  /* Altura máxima del card */
+  max-height: 600px;
+  /* Altura máxima del card */
 }
 
 /* Contenedor con scroll interno */
 .table-scroll-container {
-  flex: 1;  /* Toma todo el espacio disponible */
-  max-height: 100%;  /* Limita al 100% del padre */
-  overflow-y: auto;  /* Scroll vertical interno */
-  overflow-x: auto;  /* Scroll horizontal interno */
+  flex: 1;
+  /* Toma todo el espacio disponible */
+  max-height: 100%;
+  /* Limita al 100% del padre */
+  overflow-y: auto;
+  /* Scroll vertical interno */
+  overflow-x: auto;
+  /* Scroll horizontal interno */
   border-radius: 8px;
   width: 100%;
 }
@@ -872,10 +886,12 @@ body,
 
 .inc-table {
   width: 100%;
-  min-width: 1200px;  /* Ancho mínimo para asegurar que todos los botones sean visibles */
+  min-width: 1200px;
+  /* Ancho mínimo para asegurar que todos los botones sean visibles */
   border-collapse: collapse;
   font-size: 13px;
-  white-space: nowrap;  /* Previene que el texto se divida, fuerza scroll horizontal */
+  white-space: nowrap;
+  /* Previene que el texto se divida, fuerza scroll horizontal */
 }
 
 /* ============================================
@@ -891,16 +907,19 @@ body,
   letter-spacing: 1px;
   white-space: nowrap;
   border-bottom: 2px solid var(--primary);
-  background: #e0f2fe;  /* Background sólido para sticky */
+  background: #e0f2fe;
+  /* Background sólido para sticky */
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  /* Sombra para distinguir del contenido */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  /* Sombra para distinguir del contenido */
 }
 
 [data-theme="dark"] .inc-table thead th {
   color: #f8fafc !important;
-  background: #1e3a8a;  /* Background sólido para modo oscuro */
+  background: #1e3a8a;
+  /* Background sólido para modo oscuro */
   border-bottom: 2px solid #3b82f6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -1427,6 +1446,16 @@ body,
 /* ============================================
    MAPA
    ============================================ */
+/* Fix para evitar borde negro al seleccionar (outline del contenedor) */
+.leaflet-container {
+  outline: none !important;
+}
+
+/* Fix para evitar borde negro en paths al seleccionar */
+path.leaflet-interactive:focus {
+  outline: none !important;
+}
+
 .map-hint {
   font-size: 12px;
   color: var(--text-muted);
@@ -2046,6 +2075,7 @@ body,
     opacity: 0;
     transform: scale(0.8);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -2086,6 +2116,7 @@ body,
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2401,9 +2432,11 @@ body,
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  position: relative; /* Para posicionamiento de tooltips */
+  position: relative;
+  /* Para posicionamiento de tooltips */
   box-sizing: border-box;
-  overflow: visible; /* Permitir que tooltips se muestren fuera */
+  overflow: visible;
+  /* Permitir que tooltips se muestren fuera */
 }
 
 .chart-header {
@@ -2650,6 +2683,7 @@ body,
   0% {
     stroke-dashoffset: 1000;
   }
+
   100% {
     stroke-dashoffset: 0;
   }
@@ -2660,9 +2694,11 @@ body,
     opacity: 0;
     transform: scale(0) translateY(-10px);
   }
+
   50% {
     transform: scale(1.2) translateY(0);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -2674,10 +2710,12 @@ body,
     opacity: 0;
     transform: scale(0);
   }
+
   60% {
     opacity: 0.8;
     transform: scale(1.15);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -2688,6 +2726,7 @@ body,
   0% {
     opacity: 0;
   }
+
   100% {
     opacity: 1;
   }
@@ -2719,8 +2758,10 @@ body,
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  position: relative; /* Para posicionamiento de tooltips */
-  overflow: visible; /* Permitir que tooltips se muestren fuera */
+  position: relative;
+  /* Para posicionamiento de tooltips */
+  overflow: visible;
+  /* Permitir que tooltips se muestren fuera */
 }
 
 .bar-chart-svg {
@@ -3022,14 +3063,32 @@ body,
 @media(max-width:900px) {
   .sidebar {
     width: 80px;
+    /* Restaurar barra lateral en modo compacto */
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
   }
 
   .main-area {
     margin-left: 80px;
+    /* Margen para no tapar contenido */
+    padding: 15px;
+    width: calc(100% - 80px);
   }
 
   .modal-card {
     width: 95%;
+    max-height: 90vh;
+    /* Limitar altura */
+    overflow-y: auto;
+    /* Permitir scroll interno */
+    margin: 10px auto;
+  }
+
+  .modal-body {
+    max-height: calc(90vh - 120px);
+    /* Restar cabecera y footer */
+    overflow-y: auto;
   }
 
   .modal-pdf {
@@ -3039,6 +3098,15 @@ body,
   .controls {
     flex-wrap: wrap;
     gap: 8px;
+    justify-content: space-between;
+    /* Mejor distribución */
+  }
+
+  .controls select,
+  .controls input {
+    flex: 1 1 100%;
+    /* Ocupar ancho completo en móviles */
+    min-width: 0;
   }
 
   .page-header {
@@ -3050,16 +3118,32 @@ body,
 
 @media(max-width:600px) {
   .sidebar {
-    display: none;
+    display: flex;
+    /* Mostrar sidebar también en móviles */
+    width: 60px;
+    /* Un poco más estrecha */
+    z-index: 1000;
+    /* Asegurar que esté encima */
   }
 
   .main-area {
-    margin-left: 0;
-    padding: 15px;
+    margin-left: 60px;
+    width: calc(100% - 60px);
+    padding: 10px;
   }
 
   .topbar {
-    padding: 0 15px;
+    padding: 0 10px;
+  }
+
+  .user-name {
+    display: none;
+    /* Ocultar nombre en móviles para dar espacio al botón salir */
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
   }
 
   .topbar-title {
@@ -3640,9 +3724,12 @@ body,
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -4058,9 +4145,12 @@ body,
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -4528,6 +4618,7 @@ body,
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -4555,6 +4646,7 @@ body,
     transform: scale(0);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;

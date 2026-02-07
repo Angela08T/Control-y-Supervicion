@@ -5,11 +5,12 @@ import api, { offenderApi } from './config';
  */
 
 // Obtener todos los infractores con paginación
-export const getOffenders = async (page = 1, limit = 10) => {
+export const getOffenders = async (page = 1, limit = 10, search = '') => {
   try {
-    const response = await api.get('/offender', {
-      params: { page, limit }
-    });
+    const params = { page, limit };
+    if (search) params.search = search;
+
+    const response = await api.get('/offender', { params });
     return response.data;
   } catch (error) {
     throw error;
