@@ -74,7 +74,9 @@ const articulosPorFalta = {
 
 export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }) {
   // Obtener usuario logueado de Redux
-  const { username } = useSelector((state) => state.auth)
+  const { username, nombre, apellido } = useSelector((state) => state.auth)
+
+  const nombreFirmante = (nombre && apellido) ? `${nombre} ${apellido}`.toUpperCase() : (username ? username.toUpperCase() : 'SUPERVISOR')
 
   // Detectar si es un reporte de inasistencias
   const isAbsenceReport = incidencia?.isAbsenceReport || false
@@ -294,7 +296,7 @@ Se adjuntan las evidencias:`
         bodycamAsignadaA: incidencia.bodycamAsignadaA || '',
         tipoMedio: incidencia.tipoMedio || 'bodycam',
         numeroCamara: incidencia.numeroCamara || '',
-        supervisor: username ? username.toUpperCase() : 'SUPERVISOR',  // Usuario logueado
+        supervisor: nombreFirmante,  // Usuario logueado
         descripcionAdicional: generarContenidoInforme(),  // Generar plantilla para todos los tipos
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: fechaFaltaFormateada,  // Usar fecha ya formateada

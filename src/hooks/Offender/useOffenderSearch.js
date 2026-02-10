@@ -54,19 +54,11 @@ const useOffenderSearch = () => {
             }
           }
         } else {
-          // Búsqueda por Nombre
-          const response = await getOffenders(1, 20, searchTerm);
-          // Asumimos que getOffenders devuelve { data: [...], ... } o [...] o { items: [...] }
-          // La API suele devolver items o data.
-          // Revisando getOffenders en offender.jsx, devuelve response.data.
-          // Si el backend sigue estructura estándar:
-          if (Array.isArray(response)) {
-            offenders = response;
-          } else if (response.data && Array.isArray(response.data)) {
-            offenders = response.data;
-          } else if (response.items && Array.isArray(response.items)) {
-            offenders = response.items;
-          }
+          // Si no es numérico, no buscar (deshabilitar búsqueda por nombre)
+          setResults([]);
+          setShowSuggestions(false);
+          setLoading(false);
+          return;
         }
 
         setResults(offenders);
