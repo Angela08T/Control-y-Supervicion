@@ -40,7 +40,7 @@ const getFormattedAddress = (addr) => {
     addr.postcode
   ].filter(Boolean)
 
-
+  // Quitar valores repetidos
   let uniqueParts = [...new Set(rawParts)]
 
   // Para que no repita Lima

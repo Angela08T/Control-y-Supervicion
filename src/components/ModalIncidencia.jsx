@@ -294,9 +294,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
       }))
     }
   }
-
+ 
   function handleDNIChange(e) {
-    const value = e.target.value
+    const value = e.target.value.replace(/\D/g, '').slice(0, 8)
     setDniSearchTerm(value)
     setField('dni', value)
   }
@@ -482,7 +482,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }) {
               value={dniSearchTerm}
               onChange={handleDNIChange}
               onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
-              placeholder="Ingresa DNI o Apellidos"
+              placeholder="Ingresa 8 dígitos del DNI"
               autoComplete="off"
             />
             {offenderLoading && (

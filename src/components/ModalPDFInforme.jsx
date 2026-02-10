@@ -12,7 +12,7 @@ function formatearFecha(fecha) {
   if (!fecha) return 'Fecha no disponible'
 
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
   let d
 
@@ -144,8 +144,8 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         // Para reportes de inasistencias, el PDF ya está generado y solo lo mostramos
         setFormData({
           numeroInforme,
-          destinatarioCargo: incidencia.cargoDestinatario || incidencia.dirigidoA || '',
-          destinatarioNombre: incidencia.destinatario || '',
+          destinatarioCargo: (incidencia.cargoDestinatario || incidencia.dirigidoA || '').toUpperCase(),
+          destinatarioNombre: (incidencia.destinatario || '').toUpperCase(),
           fecha: formatearFecha(incidencia.fechaIncidente),
           horaIncidente: '',
           fechaIncidente: '',
@@ -718,6 +718,7 @@ Se adjuntan las evidencias:`
           inasistenciasHistoricas={inasistenciasParaPDF}
           logoBase64={logoBase64}
           formatearFecha={formatearFecha}
+          esInasistencia={esInasistencia}
         />
       )
 
@@ -817,7 +818,7 @@ Se adjuntan las evidencias:`
           </div>
           <button className="close" onClick={onClose}>×</button>
         </div>
-        
+
         <div className="pdf-preview">
           <div className="pdf-content">
             <div className="pdf-header">
@@ -870,19 +871,21 @@ Se adjuntan las evidencias:`
                   </div>
                 )}
               </div>
-              
+
               <div className="info-row">
                 <strong>A :</strong>
                 <div className="info-input-group">
                   <span>Sr.</span>
-                  <input 
+                  <input
                     value={formData.destinatarioNombre}
-                    onChange={e => handleChange('destinatarioNombre', e.target.value)}
+                    onChange={e => handleChange('destinatarioNombre', e.target.value.toUpperCase())}
+                    style={{ textTransform: 'uppercase' }}
                   />
-                  <input 
+                  <input
                     value={formData.destinatarioCargo}
-                    onChange={e => handleChange('destinatarioCargo', e.target.value)}
+                    onChange={e => handleChange('destinatarioCargo', e.target.value.toUpperCase())}
                     placeholder="Cargo"
+                    style={{ textTransform: 'uppercase' }}
                   />
                 </div>
               </div>
@@ -890,7 +893,7 @@ Se adjuntan las evidencias:`
               {incidencia.cc && incidencia.cc.length > 0 && (
                 <div className="info-row">
                   <strong>CC :</strong>
-                  <span>{incidencia.cc.join(', ')}</span>
+                  <span>{incidencia.cc.join(', ').toUpperCase()}</span>
                 </div>
               )}
 
@@ -901,18 +904,19 @@ Se adjuntan las evidencias:`
 
               <div className="info-row">
                 <strong>ASUNTO :</strong>
-                <input 
+                <input
                   value={incidencia.asunto}
                   disabled
-                  style={{textTransform: 'uppercase'}}
+                  style={{ textTransform: 'uppercase' }}
                 />
               </div>
 
               <div className="info-row">
                 <strong>FECHA :</strong>
-                <input 
+                <input
                   value={formData.fecha}
-                  onChange={e => handleChange('fecha', e.target.value)}
+                  onChange={e => handleChange('fecha', e.target.value.toUpperCase())}
+                  style={{ textTransform: 'uppercase' }}
                 />
               </div>
             </div>
@@ -1010,47 +1014,47 @@ Se adjuntan las evidencias:`
                               return validDates && validDates.length > 0
                             })
                             .map((person, index) => {
-                            // Obtener las fechas de inasistencia
-                            const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-                              const date = new Date(d.date)
-                              return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                            }).join(', ') || '-'
+                              // Obtener las fechas de inasistencia
+                              const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
+                                const date = new Date(d.date)
+                                return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                              }).join(', ') || '-'
 
-                            // Manejar campos que pueden ser objetos
-                            const jobValue = typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-')
-                            const regimeValue = typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-')
-                            const shiftValue = typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-')
-                            const jurisdictionValue = typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-')
+                              // Manejar campos que pueden ser objetos
+                              const jobValue = typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-')
+                              const regimeValue = typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-')
+                              const shiftValue = typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-')
+                              const jurisdictionValue = typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-')
 
-                            return (
-                              <tr key={person.id || index}>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
-                                <td style={{ border: '1px solid #000', padding: '4px' }}>
-                                  {person.name && person.lastname
-                                    ? `${person.lastname} ${person.name}`.toUpperCase()
-                                    : person.fullname?.toUpperCase() || '-'}
-                                </td>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
-                                  {jobValue}
-                                </td>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
-                                  {regimeValue}
-                                </td>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
-                                  {shiftValue}
-                                </td>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', fontSize: '7px' }}>
-                                  {fechas}
-                                </td>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
-                                  {incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'JUSTIFICADA' : 'INJUSTIFICADA'}
-                                </td>
-                                <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
-                                  {jurisdictionValue}
-                                </td>
-                              </tr>
-                            )
-                          })}
+                              return (
+                                <tr key={person.id || index}>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
+                                  <td style={{ border: '1px solid #000', padding: '4px' }}>
+                                    {person.name && person.lastname
+                                      ? `${person.lastname} ${person.name}`.toUpperCase()
+                                      : person.fullname?.toUpperCase() || '-'}
+                                  </td>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                    {jobValue}
+                                  </td>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                    {regimeValue}
+                                  </td>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                    {shiftValue}
+                                  </td>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', fontSize: '7px' }}>
+                                    {fechas}
+                                  </td>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                    {incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'JUSTIFICADA' : 'INJUSTIFICADA'}
+                                  </td>
+                                  <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                                    {jurisdictionValue}
+                                  </td>
+                                </tr>
+                              )
+                            })}
                         </tbody>
                       </table>
                     </div>
@@ -1232,7 +1236,7 @@ Se adjuntan las evidencias:`
                     border: '1px solid rgba(59, 130, 246, 0.3)'
                   }}>
                     <strong>💡 Instrucciones:</strong>
-                    <ul style={{marginTop: '4px', marginLeft: '20px', lineHeight: '1.5'}}>
+                    <ul style={{ marginTop: '4px', marginLeft: '20px', lineHeight: '1.5' }}>
                       <li>Complete las secciones marcadas con [INSTRUCCIÓN] con los detalles específicos del incidente</li>
                       <li>Use términos objetivos como "presuntamente", "aparentemente" para describir los hechos</li>
                       <li>Puede editar cualquier parte del texto según sea necesario</li>
@@ -1254,7 +1258,7 @@ Se adjuntan las evidencias:`
                       multiple
                       onChange={handleImageUpload}
                       disabled={loadingEvidences || savingReport}
-                      style={{padding: '8px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px'}}
+                      style={{ padding: '8px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px' }}
                     />
 
                     {loadingEvidences && (
@@ -1298,7 +1302,7 @@ Se adjuntan las evidencias:`
                                 ×
                               </button>
                             </div>
-                            <div style={{marginTop: '8px'}}>
+                            <div style={{ marginTop: '8px' }}>
                               <label style={{
                                 fontSize: '12px',
                                 fontWeight: 'bold',
