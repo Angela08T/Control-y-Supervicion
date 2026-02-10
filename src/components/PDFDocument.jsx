@@ -420,10 +420,10 @@ const PDFLinks = ({ links }) => {
 }
 
 // Componente para la firma
-const PDFSignature = () => (
+const PDFSignature = ({ nombre }) => (
   <View style={styles.signatureSection}>
     <View style={styles.signatureLine} />
-    <Text style={styles.signatureName}>[NOMBRE DEL FIRMANTE]</Text>
+    <Text style={styles.signatureName}>{nombre || '[NOMBRE DEL FIRMANTE]'}</Text>
   </View>
 )
 
@@ -464,13 +464,13 @@ const InformePDFDocument = ({
           />
         )}
 
-        {isAbsence && <PDFSignature />}
+        {isAbsence && <PDFSignature nombre={formData.supervisor} />}
 
         {!isAbsence && (
           <>
             <PDFImages imagenes={formData.imagenes} />
             <PDFLinks links={formData.links} />
-            <PDFSignature />
+            <PDFSignature nombre={formData.supervisor} />
           </>
         )}
 
