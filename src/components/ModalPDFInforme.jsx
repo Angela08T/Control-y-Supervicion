@@ -76,7 +76,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   // Obtener usuario logueado de Redux
   const { username, nombre, apellido } = useSelector((state) => state.auth)
 
-  const nombreFirmante = (nombre && apellido) ? `${nombre} ${apellido}`.toUpperCase() : (username ? username.toUpperCase() : 'SUPERVISOR')
+  const nombreFirmante = 'JOHN ANTONNY GÓMEZ BOCANEGRA'
 
   // Detectar si es un reporte de inasistencias
   const isAbsenceReport = incidencia?.isAbsenceReport || false

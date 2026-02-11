@@ -73,7 +73,7 @@ function ClickHandler({ onLocationSelect, validarJurisdiccion }) {
       try {
         // Timeout 
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        const timeoutId = setTimeout(() => controller.abort(), 10000)
 
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPos[0]}&lon=${newPos[1]}&zoom=18&addressdetails=1`,
