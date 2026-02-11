@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import useJurisdiccionDetection from '../hooks/Jurisdiction/useJurisdiccionDetection'
 
@@ -17,17 +17,61 @@ const icon = L.icon({
   shadowSize: [41, 41]
 })
 
-function ClickHandler({ onLocationSelect }) {
+// Función helper para formatear direccion
+const getFormattedAddress = (addr) => {
+  if (!addr) return null
+
+  // Helper para buscar el primer valor existente
+  const get = (keys) => keys.map(k => addr[k]).find(Boolean)
+
+  const placeName = get(['amenity', 'shop', 'building', 'office', 'tourism', 'historic', 'leisure'])
+
+  const streetName = get(['road', 'pedestrian', 'construction', 'residential', 'hamlet'])
+  const streetPart = [streetName, addr.house_number].filter(Boolean).join(' ')
+
+  const rawParts = [
+    placeName,
+    streetPart,
+    get(['neighbourhood', 'suburb', 'quarter', 'city_block']),
+    get(['city_district', 'district', 'borough']) || 'San Juan de Lurigancho', // Forzar SJL
+    get(['city', 'town', 'village']),
+    get(['state', 'region']),
+    addr.country,
+    addr.postcode
+  ].filter(Boolean)
+
+  // Quitar valores repetidos
+  let uniqueParts = [...new Set(rawParts)]
+
+  // Para que no repita Lima
+  if (uniqueParts.includes('Lima')) {
+    uniqueParts = uniqueParts.filter(p => !p.includes('Metropolitana') && !p.includes('Provincia de'))
+  }
+
+
+  return uniqueParts.join(', ')
+}
+
+function ClickHandler({ onLocationSelect, validarJurisdiccion }) {
   useMapEvents({
     async click(e) {
       const newPos = [e.latlng.lat, e.latlng.lng]
 
-      // 1. Actualizar INMEDIATAMENTE con las coordenadas
+      // 1. Validar si está dentro de una jurisdicción permitida
+      if (validarJurisdiccion) {
+        const isInJurisdiction = validarJurisdiccion(newPos[0], newPos[1])
+        if (!isInJurisdiction) {
+          onLocationSelect(newPos, 'Direccion no encontrada')
+          return // Detener ejecución
+        }
+      }
+
+      // 2. Actualizar INMEDIATAMENTE con las coordenadas
       onLocationSelect(newPos, 'Cargando dirección...')
 
-      // 2. Obtener dirección de forma asíncrona (en background)
+      // 3. Obtener dirección de forma asíncrona (en background)
       try {
-        // Timeout de 5 segundos para la petición
+        // Timeout 
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
 
@@ -39,12 +83,11 @@ function ClickHandler({ onLocationSelect }) {
 
         const data = await response.json()
 
-        let newAddress = 'Dirección no encontrada'
-        if (data && data.display_name) {
-          newAddress = data.display_name
-        }
+        const newAddress = (data && data.address)
+          ? (getFormattedAddress(data.address) || 'Dirección no encontrada')
+          : 'Dirección no encontrada'
 
-        // 3. Actualizar con la dirección real cuando llegue
+        // 4. Actualizar con la dirección real cuando llegue
         onLocationSelect(newPos, newAddress)
       } catch (error) {
         if (error.name === 'AbortError') {
@@ -110,8 +153,41 @@ export default function MapSelector({ value, onChange }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
+
+          /* Renderisar Jurisdicciones*/
+          {jurisdicciones && jurisdicciones.map(jurisdiccion => {
+            if (!jurisdiccion.geometry || !jurisdiccion.geometry.coordinates) return null;
+
+            let positions = []
+            try {
+              positions = jurisdiccion.geometry.coordinates.map(ring => ring.map(card => [card[1], card[0]]))
+            } catch (error) {
+              console.error('Error al procesar jurisdicción:', error)
+              return null
+            }
+            const isSelected = jurisdiccionDetectada && jurisdiccionDetectada.id === jurisdiccion.id
+            return (
+              <Polygon
+                key={jurisdiccion.id}
+                positions={positions}
+                pathOptions={{
+                  color: (isSelected ? jurisdiccion.color : (jurisdiccion.color || '#3b82f6')),
+                  fillColor: (isSelected ? jurisdiccion.color : (jurisdiccion.color || '#3b82f6')),
+                  fillOpacity: isSelected ? 0.2 : 0.1,
+                  weight: isSelected ? 3 : 2,
+                  opacity: 1 // Asegura que el borde no sea transparente ni negro por defecto
+                }}
+              >
+                <Tooltip sticky direction="center" opacity={0.9}>
+                  <span>{jurisdiccion.name}</span>
+                </Tooltip>
+              </Polygon>
+            )
+          })}
+
           <ClickHandler
             onLocationSelect={handleLocationSelect}
+            validarJurisdiccion={detectarJurisdiccion}
           />
           {position && <Marker position={position} icon={icon} />}
         </MapContainer>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getOffenderByDni } from '../../api/offender';
+import { getOffenderByDni, getOffenders } from '../../api/offender';
 
 const useOffenderSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,7 +17,7 @@ const useOffenderSearch = () => {
       clearTimeout(debounceTimeout.current);
     }
 
-    // Si el término de búsqueda está vacío o tiene menos de 3 dígitos, resetear
+    // Si el término de búsqueda está vacío o tiene menos de 3 caracteres, resetear
     if (!searchTerm || searchTerm.length < 3) {
       setResults([]);
       setShowSuggestions(false);
@@ -30,42 +30,52 @@ const useOffenderSearch = () => {
       setError(null);
 
       try {
-        const response = await getOffenderByDni(searchTerm);
-
-        // Estructura del API: { message: "...", data: { dni, job, shift, regime, ... } }
-        // La respuesta es UN SOLO OBJETO, no un array
+        const isNumeric = /^\d+$/.test(searchTerm);
         let offenders = [];
 
-        if (Array.isArray(response)) {
-          offenders = response;
-        } else if (response.data) {
-          // Si response.data es un objeto (no array), convertirlo a array de un elemento
-          if (Array.isArray(response.data)) {
-            offenders = response.data;
-          } else if (typeof response.data === 'object' && response.data.dni) {
-            // Es un solo offender, convertirlo a array
-            offenders = [response.data];
-          } else if (response.data.data) {
-            // Caso anidado
-            if (Array.isArray(response.data.data)) {
-              offenders = response.data.data;
-            } else if (typeof response.data.data === 'object' && response.data.data.dni) {
-              offenders = [response.data.data];
+        if (isNumeric) {
+          // Búsqueda por DNI
+          const response = await getOffenderByDni(searchTerm);
+
+          // Lógica de parsers para DNI
+          if (Array.isArray(response)) {
+            offenders = response;
+          } else if (response.data) {
+            if (Array.isArray(response.data)) {
+              offenders = response.data;
+            } else if (typeof response.data === 'object' && response.data.dni) {
+              offenders = [response.data];
+            } else if (response.data.data) {
+              if (Array.isArray(response.data.data)) {
+                offenders = response.data.data;
+              } else if (typeof response.data.data === 'object' && response.data.data.dni) {
+                offenders = [response.data.data];
+              }
             }
           }
+        } else {
+          // Si no es numérico, no buscar (deshabilitar búsqueda por nombre)
+          setResults([]);
+          setShowSuggestions(false);
+          setLoading(false);
+          return;
         }
 
         setResults(offenders);
         setShowSuggestions(offenders.length > 0);
       } catch (err) {
-        setError(err.response?.data?.message || 'Error al buscar offender');
+        // Ignorar error 404 si es búsqueda por DNI (simplemente no encontrado)
+        // Para búsqueda por nombre, también podría ser vacío
         setResults([]);
         setShowSuggestions(false);
+        if (err.response && err.response.status !== 404) {
+          setError(err.response?.data?.message || 'Error al buscar');
+        }
       } finally {
         setLoading(false);
       }
     }, 400);
-    
+
     // Cleanup
     return () => {
       if (debounceTimeout.current) {
