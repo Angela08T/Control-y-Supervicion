@@ -13,10 +13,10 @@ import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/
 // Estilos para el PDF
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 95,        // Margen superior amplio para el header fijo
-    paddingBottom: 90,     // Margen inferior para el footer fijo
-    paddingLeft: 50,       // Margen izquierdo (1.8cm)
-    paddingRight: 50,      // Margen derecho (1.8cm)
+    paddingTop: 80,        // Margen superior aumentado para evitar solapamiento con header
+    paddingBottom: 60,
+    paddingLeft: 40,
+    paddingRight: 40,
     fontSize: 11,
     fontFamily: 'Helvetica',
     lineHeight: 1.5
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   logoContainer: {
     display: 'flex',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: 0
   },
   logo: {
     width: 150,
@@ -127,10 +127,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     width: '100%',
-    marginVertical: 10
+    marginVertical: 5
   },
   imageContainer: {
-    marginVertical: 15,
+    marginVertical: 10,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 450,
-    height: 280,
+    height: 250,
     backgroundColor: '#f5f5f5',
     border: '1px solid #e0e0e0',
     borderRadius: 4
@@ -195,11 +195,18 @@ const styles = StyleSheet.create({
 const PDFHeader = ({ logoBase64 }) => {
   return (
     <View style={styles.header} fixed>
+      {/* Logo */}
       <View style={styles.logoContainer}>
         {logoBase64 && <Image src={logoBase64} style={styles.logo} />}
       </View>
-      <Text style={styles.headerText}>
-        "Año de la recuperación y consolidación de la economía peruana"
+
+      {/* Año */}
+      <Text style={[styles.headerText, {
+        fontSize: 9,
+        fontStyle: 'italic',
+        marginTop: -5,
+        color: '#444'
+      }]}>"Año de la Esperanza y el Fortalecimiento de la Democracia"
       </Text>
     </View>
   )
@@ -220,20 +227,22 @@ const PDFInfoSection = ({ formData, incidencia }) => (
       <Text style={styles.infoLabel}>A :</Text>
       <Text style={styles.infoValue}>
         Sr. {formData.destinatarioNombre?.toUpperCase()}{'\n'}
-        {formData.destinatarioCargo}
+        {formData.destinatarioCargo?.toUpperCase()}
       </Text>
     </View>
 
     {incidencia.cc && incidencia.cc.length > 0 && (
       <View style={styles.infoRow}>
         <Text style={styles.infoLabel}>CC :</Text>
-        <Text style={styles.infoValue}>{incidencia.cc.join(', ')}</Text>
+        <Text style={[styles.infoValue, { textTransform: 'uppercase' }]}>{incidencia.cc.join(', ')}</Text>
       </View>
     )}
 
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>DE :</Text>
-      <Text style={styles.infoValue}>CONTROL Y SUPERVISIÓN</Text>
+      <Text style={[styles.infoValue, {
+        fontWeight: 'bold'
+      }]}>{formData.areaEmisora || 'CONTROL Y SUPERVISIÓN'} </Text>
     </View>
 
     <View style={styles.infoRow}>
@@ -255,7 +264,9 @@ const PDFInfoSection = ({ formData, incidencia }) => (
 
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>FECHA :</Text>
-      <Text style={styles.infoValue}>San Juan de Lurigancho, {formData.fecha}</Text>
+      <Text style={styles.infoValue}>
+        {`SAN JUAN DE LURIGANCHO, ${formData.fecha}`.toUpperCase()}
+      </Text>
     </View>
 
     <View style={styles.separator} />
@@ -265,7 +276,7 @@ const PDFInfoSection = ({ formData, incidencia }) => (
 // Componente para el cuerpo del informe
 const PDFBody = ({ formData, incidencia }) => {
   const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
-                         incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+    incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
   return (
     <View>
@@ -409,10 +420,10 @@ const PDFLinks = ({ links }) => {
 }
 
 // Componente para la firma
-const PDFSignature = () => (
+const PDFSignature = ({ nombre }) => (
   <View style={styles.signatureSection}>
     <View style={styles.signatureLine} />
-    <Text style={styles.signatureName}>VIERI FLORES PINEDIO</Text>
+    <Text style={styles.signatureName}>{nombre || '[NOMBRE DEL FIRMANTE]'}</Text>
   </View>
 )
 
@@ -430,10 +441,14 @@ const InformePDFDocument = ({
   incidencia,
   inasistenciasHistoricas = [],
   logoBase64,
-  formatearFecha
+  formatearFecha,
+  esInasistencia // Recibir prop directa
 }) => {
-  const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
-                         incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+  // Usar la prop o fallback a la lógica anterior si no se pasa (para retrocompatibilidad)
+  const isAbsence = esInasistencia !== undefined
+    ? esInasistencia
+    : (incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
+      incidencia.falta && incidencia.falta.startsWith('Inasistencia'))
 
   return (
     <Document>
@@ -442,20 +457,20 @@ const InformePDFDocument = ({
         <PDFInfoSection formData={formData} incidencia={incidencia} />
         <PDFBody formData={formData} incidencia={incidencia} />
 
-        {esInasistencia && inasistenciasHistoricas.length > 0 && (
+        {isAbsence && inasistenciasHistoricas.length > 0 && (
           <PDFHistorialTable
             inasistenciasHistoricas={inasistenciasHistoricas}
             formatearFecha={formatearFecha}
           />
         )}
 
-        {esInasistencia && <PDFSignature />}
+        {isAbsence && <PDFSignature nombre={formData.supervisor} />}
 
-        {!esInasistencia && (
+        {!isAbsence && (
           <>
             <PDFImages imagenes={formData.imagenes} />
             <PDFLinks links={formData.links} />
-            <PDFSignature />
+            <PDFSignature nombre={formData.supervisor} />
           </>
         )}
 

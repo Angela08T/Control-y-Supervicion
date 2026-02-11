@@ -18,8 +18,9 @@ const useLogin = () => {
 
       // La respuesta del backend tiene esta estructura:
       // { message: "Login exitoso", data: { user: "diego", rol: "administrator", token: "..." } }
-      const { data } = response;
-      const { token, user, rol } = data;
+      // A veces la respuesta viene directa, o dentro de 'data'.
+      const data = response.data || response;
+      const { token, user, rol, nombre, apellido } = data;
 
       if (token && user && rol) {
         // Normalizar el rol usando la función centralizada
@@ -31,6 +32,8 @@ const useLogin = () => {
             id: null, // El backend no devuelve ID, puedes agregarlo después si lo necesitas
             username: user,
             role: normalizedRole,
+            nombre: nombre,
+            apellido: apellido,
           })
         );
 

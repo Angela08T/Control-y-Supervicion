@@ -620,16 +620,38 @@ export default function IncidenciasPage() {
   return (
     <div className="incidencias-page">
       <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>CONTROL Y SUPERVISIÓN</h2>
-          <div className="controls">
+        <div className="header-top">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <h2>CONTROL Y SUPERVISIÓN</h2>
+            <div style={{ 
+              backgroundColor: 'var(--primary)', 
+              color: 'white', 
+              padding: '2px 10px', 
+              borderRadius: '12px', 
+              fontSize: '0.8rem', 
+              fontWeight: '600' 
+            }}>
+              {pagination.total} Reg.
+            </div>
+          </div>
+          
+          {permissions.canCreate && (
+            <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
+              <FaPlus style={{ marginRight: '8px' }} />
+              Agregar Nueva Incidencia
+            </button>
+          )}
+        </div>
+
+        <div className="header-filters">
             {/* Filtro por Asunto (Subject) - Usando datos de la API */}
             {subjectsLoading ? (
-              <select disabled>
+              <select disabled className="filter-select">
                 <option>Cargando asuntos...</option>
               </select>
             ) : (
               <select
+                className="filter-select"
                 value={filters.subjectId}
                 onChange={e => {
                   const selectedSubjectId = e.target.value
@@ -641,7 +663,7 @@ export default function IncidenciasPage() {
                   setCurrentPage(1) // Resetear a página 1 al cambiar filtro
                 }}
               >
-                <option value="">Filtrar por asunto</option>
+                <option value="">Todos los Asuntos</option>
                 {subjects && subjects
                   .filter(subject => !subject.deleted_at) // Solo mostrar asuntos activos
                   .map(subject => (
@@ -654,11 +676,12 @@ export default function IncidenciasPage() {
 
             {/* Filtro por Falta (Lack) - Usando lacks anidadas del subject seleccionado */}
             {subjectsLoading ? (
-              <select disabled>
+              <select disabled className="filter-select">
                 <option>Cargando faltas...</option>
               </select>
             ) : (
               <select
+                className="filter-select"
                 value={filters.lackId || ''}
                 onChange={e => {
                   const selectedLackId = e.target.value
@@ -669,7 +692,7 @@ export default function IncidenciasPage() {
                   setCurrentPage(1) // Resetear a página 1 al cambiar filtro
                 }}
               >
-                <option value="">Filtrar por falta</option>
+                <option value="">Todas las Faltas</option>
                 {(() => {
                   // Si hay un subject seleccionado, obtener sus lacks anidadas
                   if (filters.subjectId) {
@@ -698,18 +721,19 @@ export default function IncidenciasPage() {
 
             {/* Filtro por Jurisdicción - Envía ID al backend */}
             {jurisdictionsLoading ? (
-              <select disabled>
+              <select disabled className="filter-select">
                 <option>Cargando jurisdicciones...</option>
               </select>
             ) : (
               <select
+                className="filter-select"
                 value={filters.jurisdictionId}
                 onChange={e => {
                   setFilters(f => ({ ...f, jurisdictionId: e.target.value }))
                   setCurrentPage(1) // Resetear a página 1 al cambiar filtro
                 }}
               >
-                <option value="">Filtrar por jurisdicción</option>
+                <option value="">Todas las Jurisdicciones</option>
                 {jurisdictions
                   .filter(jurisdiction => !jurisdiction.deleted_at) // Solo mostrar jurisdicciones activas
                   .map(jurisdiction => (
@@ -721,10 +745,11 @@ export default function IncidenciasPage() {
             )}
 
             <select
+              className="filter-select"
               value={filters.turno}
               onChange={e => setFilters(f => ({ ...f, turno: e.target.value }))}
             >
-              <option value="">Todos los turnos</option>
+              <option value="">Todos los Turnos</option>
               <option value="M">Mañana</option>
               <option value="T">Tarde</option>
               <option value="N">Noche</option>
@@ -732,58 +757,34 @@ export default function IncidenciasPage() {
 
             {/* Filtro de estado de proceso */}
             <select
+              className="filter-select"
               value={filters.process}
               onChange={e => {
                 setFilters(f => ({ ...f, process: e.target.value }))
                 setCurrentPage(1)
               }}
             >
-              <option value="">Todos los estados</option>
+              <option value="">Todos los Estados</option>
               <option value="null">Borrador</option>
               <option value="PENDING">Pendiente</option>
               <option value="APPROVED">Aprobado</option>
               <option value="REJECTED">Rechazado</option>
             </select>
 
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+            <div className="search-container">
+              <FaSearch className="search-icon" />
               <input
-                placeholder="Buscar por DNI, nombre o ID"
+                className="search-input"
+                placeholder="Buscar (DNI, Nombre, ID...)"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
               />
               {isSearching && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--primary)',
-                    animation: 'spin 1s linear infinite'
-                  }}
-                >
+                <div className="search-spinner">
                   ⏳
                 </div>
               )}
             </div>
-
-            {permissions.canCreate && (
-              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus style={{ marginRight: '8px' }} />
-                Agregar
-              </button>
-            )}
-          </div>
         </div>
       </header>
 
