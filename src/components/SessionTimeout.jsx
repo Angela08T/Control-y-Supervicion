@@ -5,8 +5,8 @@ import { logout as logoutApi } from '../api/auth'
 import { logout } from '../store/slices/authSlice'
 import { clearToken } from '../api/config'
 
-const TIMEOUT_MS = 60 * 1000;
-const WARNING_MS = 30 * 1000;
+const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutos
+const WARNING_MS = (14 * 60 + 30) * 1000; // 14 minutos y 30 segundos
 
 const SessionTimeout = ({children}) => {
     const dispath = useDispatch();
