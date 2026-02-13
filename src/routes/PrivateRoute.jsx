@@ -1,6 +1,7 @@
 
 import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
+import SessionTimeout from '../components/SessionTimeout';
 
 const PrivateRoute = ({ children, requiredRole }) => {
   const { authorized, role } = useSelector((state) => state.auth);
@@ -17,7 +18,11 @@ const PrivateRoute = ({ children, requiredRole }) => {
 
   if (!hasAccess()) return <Navigate to="/unauthorized" />;
 
-  return children;
+  return (
+    <SessionTimeout>
+      {children}
+    </SessionTimeout>
+  );
 };
 
 export default PrivateRoute;

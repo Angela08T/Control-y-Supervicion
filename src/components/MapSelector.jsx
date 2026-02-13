@@ -155,31 +155,38 @@ export default function MapSelector({ value, onChange }) {
           />
 
           /* Renderisar Jurisdicciones*/
-          {jurisdicciones && jurisdicciones.map(jurisdiccion => {
-            if (!jurisdiccion.geometry || !jurisdiccion.geometry.coordinates) return null;
+          {jurisdicciones && jurisdicciones.map(feature => {
+            if (!feature.geometry || !feature.geometry.coordinates) return null;
+
+            const props = feature.properties || {};
+            const jurisdiccionId = props.id;
+            const jurisdiccionName = props.name;
+            const jurisdiccionColor = props.color || '#3b82f6';
 
             let positions = []
             try {
-              positions = jurisdiccion.geometry.coordinates.map(ring => ring.map(card => [card[1], card[0]]))
+              positions = feature.geometry.coordinates.map(ring => ring.map(card => [card[1], card[0]]))
             } catch (error) {
               console.error('Error al procesar jurisdicción:', error)
               return null
             }
-            const isSelected = jurisdiccionDetectada && jurisdiccionDetectada.id === jurisdiccion.id
+            
+            const isSelected = jurisdiccionDetectada && jurisdiccionDetectada.id === jurisdiccionId
+            
             return (
               <Polygon
-                key={jurisdiccion.id}
+                key={jurisdiccionId || Math.random()}
                 positions={positions}
                 pathOptions={{
-                  color: (isSelected ? jurisdiccion.color : (jurisdiccion.color || '#3b82f6')),
-                  fillColor: (isSelected ? jurisdiccion.color : (jurisdiccion.color || '#3b82f6')),
+                  color: (isSelected ? jurisdiccionColor : jurisdiccionColor),
+                  fillColor: (isSelected ? jurisdiccionColor : jurisdiccionColor),
                   fillOpacity: isSelected ? 0.2 : 0.1,
                   weight: isSelected ? 3 : 2,
-                  opacity: 1 // Asegura que el borde no sea transparente ni negro por defecto
+                  opacity: 1 
                 }}
               >
                 <Tooltip sticky direction="center" opacity={0.9}>
-                  <span>{jurisdiccion.name}</span>
+                  <span>{jurisdiccionName}</span>
                 </Tooltip>
               </Polygon>
             )

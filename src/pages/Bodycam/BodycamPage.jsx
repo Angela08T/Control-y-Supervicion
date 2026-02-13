@@ -4,7 +4,7 @@ import BodycamTable from '../../components/BodycamTable'
 import ModalBodycam from '../../components/ModalBodycam'
 import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '../../api/bodycam'
 import { getModulePermissions } from '../../utils/permissions'
-import { FaPlus, FaSearch } from 'react-icons/fa'
+import { FaSearch, FaPlus, FaFilter, FaVideo, FaTimes, FaMicrophone } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
 
 export default function BodycamPage() {
@@ -62,6 +62,7 @@ export default function BodycamPage() {
             id: b.id,
             name: b.name,
             serie: b.serie,
+            cam: b.cam,
             deleted_at: b.deleted_at
           }))
           setSearchResult(transformed)
@@ -160,6 +161,7 @@ export default function BodycamPage() {
               id: b.id,
               name: b.name,
               serie: b.serie,
+              cam: b.cam,
               deleted_at: b.deleted_at
             }))
             setSearchResult(transformed)
@@ -313,7 +315,7 @@ export default function BodycamPage() {
               }}
             >
               <option value="all">📋 Todos</option>
-              <option value="camera">📹 Cámaras</option>
+              <option value="camera">🔊 Radios</option>
               <option value="sg">🎥 Bodycam SG</option>
               <option value="fisca">🎥 Bodycam FISCA</option>
             </select>

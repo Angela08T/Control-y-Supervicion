@@ -3,7 +3,8 @@ import { FaVideo, FaBarcode } from 'react-icons/fa'
 
 const defaultState = {
   name: '',
-  serie: ''
+  serie: '',
+  cam: ''
 }
 
 export default function ModalBodycam({ initial, onClose, onSave }) {
@@ -14,7 +15,8 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
     if (initial) {
       setForm({
         name: initial.name || '',
-        serie: initial.serie || ''
+        serie: initial.serie || '',
+        cam: initial.cam || ''
       })
     }
   }, [initial])
@@ -38,6 +40,10 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
       newErrors.serie = 'La serie es requerida'
     }
 
+    if (!form.cam) {
+      newErrors.cam = 'El tipo de dispositivo es requerido'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -51,7 +57,8 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
 
     const dataToSave = {
       name: form.name.trim(),
-      serie: form.serie.trim()
+      serie: form.serie.trim(),
+      cam: form.cam
     }
 
     onSave(dataToSave)
@@ -98,6 +105,33 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
             {errors.serie && <span className="error-message">{errors.serie}</span>}
           </div>
 
+          {/* Tipo de Dispositivo */}
+          <div className="form-group">
+            <label>
+              <FaVideo style={{ marginRight: '8px' }} />
+              Tipo de Dispositivo *
+            </label>
+            <select
+              value={form.cam}
+              onChange={(e) => handleChange('cam', e.target.value)}
+              className={errors.cam ? 'input-error' : ''}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                background: 'var(--bg-input)',
+                color: 'var(--text)'
+              }}
+            >
+              <option value="">Seleccione un tipo...</option>
+              <option value="RADIO">Radio</option>
+              <option value="BODYCAM_SG">Bodycam SG</option>
+              <option value="BODYCAM_FISCA">Bodycam FISCA</option>
+            </select>
+            {errors.cam && <span className="error-message">{errors.cam}</span>}
+          </div>
+
           {/* Nota informativa */}
           <div style={{
             padding: '12px',
@@ -117,7 +151,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
               CANCELAR
             </button>
             <button type="submit" className="btn-primary">
-              {initial ? 'ACTUALIZAR BODYCAM' : 'CREAR BODYCAM'}
+              {initial ? 'ACTUALIZAR DISPOSITIVO' : 'CREAR DISPOSITIVO'}
             </button>
           </div>
         </form>

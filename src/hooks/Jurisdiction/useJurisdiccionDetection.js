@@ -10,7 +10,7 @@ const useJurisdiccionDetection = () => {
   useEffect(() => {
     const loadJurisdicciones = async () => {
       try {
-        const response = await fetch('/Data/juridiccion.geojson');
+        const response = await fetch('/Data/jurisdicciones.geojson');
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -18,10 +18,10 @@ const useJurisdiccionDetection = () => {
 
         const data = await response.json();
 
-        if (data.status && data.data) {
-          setJurisdicciones(data.data);
+        if (data.features) {
+          setJurisdicciones(data.features);
         } else {
-          throw new Error('Formato de datos inválido en el archivo GeoJSON');
+          throw new Error('Formato de datos inválido en el archivo GeoJSON (se esperaba features)');
         }
       } catch (err) {
         setError('Error al cargar las jurisdicciones: ' + err.message);
@@ -43,19 +43,20 @@ const useJurisdiccionDetection = () => {
       const punto = turf.point([longitude, latitude]);
 
       // Buscar en qué jurisdicción se encuentra el punto
-      for (const jurisdiccion of jurisdicciones) {
-        if (jurisdiccion.geometry && jurisdiccion.geometry.coordinates) {
+      for (const feature of jurisdicciones) {
+        if (feature.geometry && feature.geometry.coordinates) {
           try {
             // Crear el polígono de la jurisdicción
-            const poligono = turf.polygon(jurisdiccion.geometry.coordinates);
+            const poligono = turf.polygon(feature.geometry.coordinates);
 
             // Verificar si el punto está dentro del polígono
             if (turf.booleanPointInPolygon(punto, poligono)) {
+              const props = feature.properties || {};
               return {
-                id: jurisdiccion.id,
-                name: jurisdiccion.name,
-                description: jurisdiccion.description,
-                color: jurisdiccion.color
+                id: props.id,
+                name: props.name,
+                description: props.description,
+                color: props.color
               };
             }
           } catch (geoErr) {

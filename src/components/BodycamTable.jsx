@@ -17,6 +17,30 @@ export default function BodycamTable({ data = [], onToggleStatus, onEdit, startI
     })
   }
 
+  // Helper para mostrar el tipo formateado
+  const formatType = (type, name) => {
+    // Si tiene tipo explícito válido (ingorar BODYCAM genérico), usarlo
+    if (type && type !== 'BODYCAM') {
+      switch (type) {
+        case 'CAMERA': return 'Radio' // Mapear CAMERA a Radio si existe
+        case 'RADIO': return 'Radio'
+        case 'BODYCAM_SG': return 'Bodycam SG'
+        case 'BODYCAM_FISCA': return 'Bodycam FISCA'
+        default: return type
+      }
+    }
+    
+    // Si no tiene tipo, o es genérico, inferir del nombre
+    if (!name) return 'Radio' 
+    
+    const upperName = name.toUpperCase()
+    if (upperName.startsWith('SG')) return 'Bodycam SG'
+    if (upperName.startsWith('FISCA')) return 'Bodycam FISCA'
+    
+    // Por defecto, todo lo demás es Radio
+    return 'Radio'
+  }
+
   return (
     <div className="table-card bodycam-table-container">
       <div className="table-scroll-container">
@@ -26,13 +50,14 @@ export default function BodycamTable({ data = [], onToggleStatus, onEdit, startI
               <th>#</th>
               {showActions && <th>Acciones</th>}
               <th>Nombre</th>
+              <th>Tipo</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={showActions ? 4 : 3} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                <td colSpan={showActions ? 5 : 4} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                   No hay bodycams registradas
                 </td>
               </tr>
@@ -74,6 +99,7 @@ export default function BodycamTable({ data = [], onToggleStatus, onEdit, startI
                     </td>
                   )}
                   <td>{item.name}</td>
+                  <td>{formatType(item.cam, item.name)}</td>
                   <td>
                     {isEnabled ? (
                       <span style={{
