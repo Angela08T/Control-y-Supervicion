@@ -122,6 +122,20 @@ export const getDashboardPerformance = async (startDate, endDate) => {
 };
 
 /**
+ * Obtener métricas de infractores (offenders) con desglose por tipo de falta
+ */
+export const getDashboardOffenders = async (startDate, endDate) => {
+  try {
+    const response = await api.get('/dashboard/offenders', {
+      params: { start: startDate, end: endDate }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
  * Obtener estadísticas generales del dashboard (incidencias críticas y zonas)
  * @param {string} startDate - Fecha de inicio en formato YYYY-MM-DD
  * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD

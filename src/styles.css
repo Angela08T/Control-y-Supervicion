@@ -3281,8 +3281,9 @@ path.leaflet-interactive:focus {
 }
 
 .login-logo {
-  width: 80px;
+  width: 200px;
   height: 80px;
+  object-fit: fill;
   margin: 0 auto 20px;
   display: block;
   filter: drop-shadow(0 4px 15px rgba(30, 58, 138, 0.4));

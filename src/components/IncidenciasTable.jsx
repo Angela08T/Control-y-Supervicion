@@ -1,43 +1,47 @@
 import React from 'react'
-import { FaFilePdf, FaBan, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa'
+import { FaFilePdf, FaBan, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaUndo } from 'react-icons/fa'
+import { MdBlock } from 'react-icons/md'
 
-// Función para formatear fecha de eliminación
 function formatDeletedDate(isoDate) {
   if (!isoDate) return ''
   const d = new Date(isoDate)
-  return `Eliminado: ${d.toLocaleDateString('es-PE')} ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+  return `Deshabilitado el ${d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })} a las ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-function formatDate(iso){
-  if(!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
+function formatAbsenceDates(item) {
+  if (!item.absenceStart || !item.absenceEnd) return '-'
+  const fmt = (d) => new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return `${fmt(item.absenceStart)} - ${fmt(item.absenceEnd)}`
 }
 
-// Componente para mostrar el estado de la incidencia
-function EstadoIncidencia({ status }) {
-  const estados = {
-    pending: { label: 'Pendiente', icon: <FaClock />, color: '#f59e0b' },
-    approved: { label: 'Aprobado', icon: <FaCheckCircle />, color: '#22c55e' },
-    rejected: { label: 'Rechazado', icon: <FaTimesCircle />, color: '#ef4444' },
-    draft: { label: 'Borrador', icon: <FaClock />, color: '#94a3b8' }
+function EstadoIncidencia({ status, disabled }) {
+  if (disabled) {
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: '5px',
+        padding: '4px 10px', borderRadius: '12px', fontSize: '0.82rem',
+        fontWeight: '700', backgroundColor: 'rgba(239,68,68,0.12)',
+        color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)'
+      }}>
+        <MdBlock size={13} /> Deshabilitado
+      </span>
+    )
   }
 
-  // Convertir a minúsculas por si el backend envía en mayúsculas
+  const estados = {
+    pending:  { label: 'Pendiente',  icon: <FaClock />,       color: '#f59e0b' },
+    approved: { label: 'Aprobado',   icon: <FaCheckCircle />, color: '#22c55e' },
+    rejected: { label: 'Rechazado',  icon: <FaTimesCircle />, color: '#ef4444' },
+    draft:    { label: 'Borrador',   icon: <FaClock />,       color: '#94a3b8' },
+  }
   const statusLower = status ? status.toLowerCase() : 'draft'
   const estado = estados[statusLower] || estados.draft
 
   return (
     <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '5px',
-      padding: '4px 12px',
-      borderRadius: '12px',
-      fontSize: '0.85rem',
-      fontWeight: '600',
-      backgroundColor: `${estado.color}20`,
-      color: estado.color
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      padding: '4px 12px', borderRadius: '12px', fontSize: '0.85rem',
+      fontWeight: '600', backgroundColor: `${estado.color}20`, color: estado.color
     }}>
       {estado.icon} {estado.label}
     </span>
@@ -55,18 +59,7 @@ export default function IncidenciasTable({
   canDelete = true,
   canSend = false,
   canValidate = false
-}){
-  // DEBUG: Ver si hay reportes de inasistencias
-  React.useEffect(() => {
-    const absenceReports = data.filter(item => item.isAbsenceReport)
-    if (absenceReports.length > 0) {
-      console.log('=== REPORTES DE INASISTENCIAS ENCONTRADOS ===')
-      console.log('Total:', absenceReports.length)
-      console.log('Datos:', absenceReports)
-      console.log('===========================================')
-    }
-  }, [data])
-
+}) {
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -96,102 +89,116 @@ export default function IncidenciasTable({
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={18} style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
+                <td colSpan={18} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                   No hay incidencias registradas
                 </td>
               </tr>
             )}
             {data.map((item, index) => {
-              const hasImages = item.evidences && item.evidences.length > 0
+              const isDisabled = !!item.deletedAt
+              const isAbsence  = item.isAbsenceReport
               const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
-              const canSendToValidator = canSend && hasImages && (itemStatus === 'draft')
-              const canValidateReport = canValidate && itemStatus === 'pending'
-              const isAbsence = item.isAbsenceReport
+              const canSendToValidator  = !isDisabled && canSend     && item.evidences?.length > 0 && itemStatus === 'draft'
+              const canValidateReport   = !isDisabled && canValidate && itemStatus === 'pending'
 
-              // Formatear rango de fechas para reportes de inasistencias
-              const formatAbsenceDates = () => {
-                if (!item.absenceStart || !item.absenceEnd) return '-'
-                const start = new Date(item.absenceStart).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                const end = new Date(item.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                return `${start} - ${end}`
-              }
+              // Estilos de fila según estado habilitado/deshabilitado
+              const rowStyle = isDisabled ? {
+                backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                opacity: 0.72,
+              } : {}
+
+              // Estilo de texto en celdas de una fila deshabilitada
+              const cellTextStyle = isDisabled ? {
+                textDecoration: 'line-through',
+                color: 'var(--text-muted)',
+              } : {}
 
               return (
-                <tr key={item.id} style={item.deletedAt ? { backgroundColor: 'rgba(239, 68, 68, 0.05)' } : {}}>
-                  <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      {startIndex + index + 1}
-                      {item.deletedAt && (
-                        <span
-                          title={formatDeletedDate(item.deletedAt)}
-                          style={{
-                            color: '#ef4444',
-                            cursor: 'help',
-                            display: 'inline-flex'
-                          }}
-                        >
-                          <FaInfoCircle size={12} />
-                        </span>
-                      )}
-                    </span>
+                <tr key={item.id} style={rowStyle}>
+
+                  {/* Número */}
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px' }}>
+                    {startIndex + index + 1}
                   </td>
+
+                  {/* Acciones */}
                   <td className="actions">
-                    <button title="Ver/Generar PDF" onClick={()=> onEdit(item)}>
-                      <FaFilePdf/>
+                    <button title="Ver/Generar PDF" onClick={() => onEdit(item)}>
+                      <FaFilePdf />
                     </button>
+
                     {canSendToValidator && (
-                      <button
-                        title="Enviar a validador"
-                        onClick={()=> onSend(item.id)}
-                        style={{ color: '#3b82f6' }}
-                      >
-                        <FaPaperPlane/>
+                      <button title="Enviar a validador" onClick={() => onSend(item.id)} style={{ color: '#3b82f6' }}>
+                        <FaPaperPlane />
                       </button>
                     )}
+
                     {canValidateReport && (
                       <>
-                        <button
-                          title="Aprobar"
-                          onClick={()=> onApprove(item.id)}
-                          style={{ color: '#22c55e' }}
-                        >
-                          <FaCheck/>
+                        <button title="Aprobar" onClick={() => onApprove(item.id)} style={{ color: '#22c55e' }}>
+                          <FaCheck />
                         </button>
-                        <button
-                          title="Rechazar"
-                          onClick={()=> onReject(item.id)}
-                          style={{ color: '#ef4444' }}
-                        >
-                          <FaTimes/>
+                        <button title="Rechazar" onClick={() => onReject(item.id)} style={{ color: '#ef4444' }}>
+                          <FaTimes />
                         </button>
                       </>
                     )}
+
                     {canDelete && (
-                      <button
-                        title="Deshabilitar/Eliminar"
-                        onClick={()=> onDelete(item.id, item.status)}
-                        style={{ color: '#ef4444' }}
-                      >
-                        <FaBan/>
-                      </button>
+                      isDisabled ? (
+                        <button
+                          title="Habilitar incidencia"
+                          onClick={() => onDelete(item.id, item.status)}
+                          style={{ color: '#22c55e' }}
+                        >
+                          <FaUndo />
+                        </button>
+                      ) : (
+                        <button
+                          title="Deshabilitar incidencia"
+                          onClick={() => onDelete(item.id, item.status)}
+                          style={{ color: '#ef4444' }}
+                        >
+                          <FaBan />
+                        </button>
+                      )
                     )}
                   </td>
-                  <td><EstadoIncidencia status={item.status} /></td>
-                  <td>{isAbsence ? '-' : item.dni}</td>
-                  <td>{item.asunto}</td>
-                  <td>{item.falta}</td>
-                  <td>{isAbsence ? 'Reporte' : (item.medio + (item.bodycamNumber ? ` (${item.bodycamNumber})` : ''))}</td>
-                  <td>{isAbsence ? formatAbsenceDates() : item.fechaIncidente}</td>
-                  <td>{isAbsence ? (item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada') : item.horaIncidente}</td>
-                  <td>{isAbsence ? '-' : item.turno}</td>
-                  <td>{item.subgerencia || '-'}</td>
-                  <td>{item.cargo || '-'}</td>
-                  <td>{item.regLab || '-'}</td>
-                  <td>{item.jurisdiccion || '-'}</td>
-                  <td>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
-                  <td>{item.dirigidoA || '-'}</td>
-                  <td>{item.destinatario || '-'}</td>
-                  <td>{item.registradoPor || '-'}</td>
+
+                  {/* Estado — muestra "Deshabilitado" si está eliminada */}
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                      <EstadoIncidencia status={item.status} disabled={isDisabled} />
+                      {isDisabled && (
+                        <span title={formatDeletedDate(item.deletedAt)} style={{
+                          fontSize: '0.7rem', color: '#94a3b8', cursor: 'help', whiteSpace: 'nowrap'
+                        }}>
+                          {formatDeletedDate(item.deletedAt)}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Resto de celdas con tachado si está deshabilitada */}
+                  <td style={cellTextStyle}>{isAbsence ? '-' : (item.dni || '-')}</td>
+                  <td style={cellTextStyle}>{item.asunto}</td>
+                  <td style={cellTextStyle}>{item.falta}</td>
+                  <td style={cellTextStyle}>
+                    {isAbsence ? 'Reporte' : (item.medio + (item.bodycamNumber ? ` (${item.bodycamNumber})` : ''))}
+                  </td>
+                  <td style={cellTextStyle}>{isAbsence ? formatAbsenceDates(item) : item.fechaIncidente}</td>
+                  <td style={cellTextStyle}>
+                    {isAbsence ? (item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada') : item.horaIncidente}
+                  </td>
+                  <td style={cellTextStyle}>{isAbsence ? '-' : item.turno}</td>
+                  <td style={cellTextStyle}>{item.subgerencia || '-'}</td>
+                  <td style={cellTextStyle}>{item.cargo || '-'}</td>
+                  <td style={cellTextStyle}>{item.regLab || '-'}</td>
+                  <td style={cellTextStyle}>{item.jurisdiccion || '-'}</td>
+                  <td style={cellTextStyle}>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
+                  <td style={cellTextStyle}>{item.dirigidoA || '-'}</td>
+                  <td style={cellTextStyle}>{item.destinatario || '-'}</td>
+                  <td style={cellTextStyle}>{item.registradoPor || '-'}</td>
                 </tr>
               )
             })}

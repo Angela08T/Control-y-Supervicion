@@ -31,7 +31,7 @@ export default function IncidenciasPage() {
     subjectId: '', // Filtro por ID de asunto
     jurisdictionId: '', // Filtro por ID de jurisdicción
     subgerencia: '', // Filtro por subgerencia
-    showDeleted: 'active', // 'active' = solo activos, 'deleted' = solo eliminados
+    showDeleted: permissions.canDelete ? 'all' : 'active', // 'all' = todos, 'active' = solo activos, 'deleted' = solo eliminados
     process: '' // '' = todos, 'PENDING', 'APPROVED', 'REJECTED', null=draft
   })
   const [subgerencias, setSubgerencias] = useState([])
