@@ -83,19 +83,20 @@ export default function IncidenciasTable({
               <th>Fecha</th>
               <th>Hora</th>
               <th>Turno</th>
+              <th>Subgerencia</th>
               <th>Cargo</th>
               <th>Reg. Lab</th>
               <th>Jurisdicción</th>
-              <th>N° Bodycam</th>
               <th>Bodycam Asignada</th>
               <th>Dirigido a</th>
               <th>Destinatario</th>
+              <th>Registrado Por</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan={17} style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
+                <td colSpan={18} style={{textAlign:'center', color: 'var(--muted)', padding: '40px'}}>
                   No hay incidencias registradas
                 </td>
               </tr>
@@ -183,13 +184,14 @@ export default function IncidenciasTable({
                   <td>{isAbsence ? formatAbsenceDates() : item.fechaIncidente}</td>
                   <td>{isAbsence ? (item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada') : item.horaIncidente}</td>
                   <td>{isAbsence ? '-' : item.turno}</td>
+                  <td>{item.subgerencia || '-'}</td>
                   <td>{item.cargo || '-'}</td>
                   <td>{item.regLab || '-'}</td>
                   <td>{item.jurisdiccion || '-'}</td>
-                  <td>{isAbsence ? '-' : (item.bodycamNumber || '-')}</td>
                   <td>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
                   <td>{item.dirigidoA || '-'}</td>
                   <td>{item.destinatario || '-'}</td>
+                  <td>{item.registradoPor || '-'}</td>
                 </tr>
               )
             })}

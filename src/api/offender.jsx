@@ -17,6 +17,12 @@ export const getOffenders = async (page = 1, limit = 10, search = '') => {
   }
 };
 
+// Obtener lista de subgerencias únicas
+export const getSubgerencias = async () => {
+  const response = await api.get('/offender/subgerencias');
+  return response.data?.data || response.data || [];
+};
+
 // Buscar infractor por DNI
 export const getOffenderByDni = async (dni) => {
   try {
