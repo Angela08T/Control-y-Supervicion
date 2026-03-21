@@ -113,6 +113,7 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
     if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId
     if (filters.shift) params.shift = filters.shift
     if (filters.process) params.process = filters.process
+    if (filters.subgerencia) params.subgerencia = filters.subgerencia
 
     const response = await api.get('/report', { params })
 
@@ -152,11 +153,13 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
         turno: r.offender?.shift || '',
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
+        subgerencia: r.offender?.subgerencia || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         jurisdictionId: r.jurisdiction?.id || null,
         bodycamNumber: r.bodycam?.name || '',
         bodycamAsignadaA: r.bodycam_user || r.bodycamUser || '',
         encargadoBodycam: encargadoBodycam,
+        registradoPor: r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '',
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
         cargoDestinatario: r.header?.to?.job || '',
@@ -267,11 +270,13 @@ export const getReportById = async (reportId) => {
         turno: r.offender?.shift || '',
         cargo: r.offender?.job || '',
         regLab: r.offender?.regime || '',
+        subgerencia: r.offender?.subgerencia || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         jurisdictionId: r.jurisdiction?.id || null,
         bodycamNumber: r.bodycam?.name || '',
         bodycamAsignadaA: r.bodycam_user || '',
         encargadoBodycam: r.bodycam_supervisor || (r.user ? `${r.user.name} ${r.user.lastname}` : ''),
+        registradoPor: r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '',
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
         cargoDestinatario: r.header?.to?.job || '',
@@ -434,6 +439,34 @@ export const getReportWithEvidences = async (reportId) => {
     }
     throw new Error('Error al obtener reporte: ' + error.message)
   }
+};
+
+/**
+ * Exportar incidencias a Excel con los filtros actuales
+ * @param {Object} filters - Filtros activos (lackId, subjectId, jurisdictionId, shift, process, search)
+ */
+export const exportReportsExcel = async (filters = {}) => {
+  const params = {};
+  if (filters.lackId) params.lack = filters.lackId;
+  if (filters.subjectId) params.subject = filters.subjectId;
+  if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId;
+  if (filters.shift) params.shift = filters.shift;
+  if (filters.process) params.process = filters.process;
+  if (filters.search) params.search = filters.search;
+  if (filters.subgerencia) params.subgerencia = filters.subgerencia;
+
+  const response = await api.get('/report/export', {
+    params,
+    responseType: 'blob',
+  });
+
+  const fecha = new Date().toISOString().substring(0, 10);
+  const url = URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `incidencias_${fecha}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 /**

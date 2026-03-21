@@ -105,6 +105,23 @@ export const getDashboardTrends = async (startDate, endDate) => {
 };
 
 /**
+ * Obtener métricas de performance por usuario
+ * @param {string} startDate - Fecha de inicio en formato YYYY-MM-DD
+ * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD
+ * @returns {Promise} - Respuesta con { general, performance }
+ */
+export const getDashboardPerformance = async (startDate, endDate) => {
+  try {
+    const response = await api.get('/dashboard/performance', {
+      params: { start: startDate, end: endDate }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
  * Obtener estadísticas generales del dashboard (incidencias críticas y zonas)
  * @param {string} startDate - Fecha de inicio en formato YYYY-MM-DD
  * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD

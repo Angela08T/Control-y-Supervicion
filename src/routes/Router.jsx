@@ -25,6 +25,7 @@ import LeadsPage from "../pages/Leads/LeadsPage";
 import SubjectPage from "../pages/Subject/SubjectPage";
 import LackPage from "../pages/Lack/LackPage";
 import OffenderPage from "../pages/Offender/OffenderPage";
+import MetricasPage from "../pages/Metricas/MetricasPage";
 
 // COMPONENTS
 import SessionExpiredModal from "../components/SessionExpiredModal";
@@ -81,7 +82,7 @@ export default function Router() {
           {/* Placeholder para futuras rutas */}
           <Route path="supervisores" element={<div className="main-area"><h1>Supervisores</h1><p>Próximamente...</p></div>} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
-          <Route path="estadisticas" element={<div className="main-area"><h1>Estadísticas</h1><p>Próximamente...</p></div>} />
+          <Route path="estadisticas" element={<MetricasPage />} />
           <Route path="camaras" element={<div className="main-area"><h1>Cámaras</h1><p>Próximamente...</p></div>} />
           <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
           <Route path="configuracion" element={<div className="main-area"><h1>Configuración</h1><p>Próximamente...</p></div>} />
@@ -108,7 +109,7 @@ export default function Router() {
           <Route path="faltas" element={<LackPage />} />
           <Route path="infractores" element={<OffenderPage />} />
           <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
-          <Route path="estadisticas" element={<div className="main-area"><h1>Estadísticas</h1><p>Próximamente...</p></div>} />
+          <Route path="estadisticas" element={<MetricasPage />} />
           <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
         </Route>
 

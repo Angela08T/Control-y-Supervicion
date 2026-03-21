@@ -7,12 +7,13 @@ import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import AlertModal from '../../components/AlertModal'
 import ConfirmModal from '../../components/ConfirmModal'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
-import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport } from '../../api/report'
+import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport, exportReportsExcel } from '../../api/report'
+import { getSubgerencias } from '../../api/offender'
 import useSubjects from '../../hooks/Subject/useSubjects'
 import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
-import { FaPlus, FaSearch } from 'react-icons/fa'
+import { FaPlus, FaSearch, FaFileExcel } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
 
 export default function IncidenciasPage() {
@@ -29,9 +30,11 @@ export default function IncidenciasPage() {
     lackId: '', // Filtro por ID de falta
     subjectId: '', // Filtro por ID de asunto
     jurisdictionId: '', // Filtro por ID de jurisdicción
+    subgerencia: '', // Filtro por subgerencia
     showDeleted: 'active', // 'active' = solo activos, 'deleted' = solo eliminados
     process: '' // '' = todos, 'PENDING', 'APPROVED', 'REJECTED', null=draft
   })
+  const [subgerencias, setSubgerencias] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
   const [pagination, setPagination] = useState({
@@ -43,6 +46,7 @@ export default function IncidenciasPage() {
     to: 0
   })
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger para forzar recarga
   const [searchResult, setSearchResult] = useState(null) // Resultado de búsqueda por ID
   const [isSearching, setIsSearching] = useState(false) // Indica si está buscando
@@ -56,6 +60,18 @@ export default function IncidenciasPage() {
   const { subjects, loading: subjectsLoading } = useSubjects()
   const { lacks, loading: lacksLoading } = useLacks()
   const { jurisdictions, loading: jurisdictionsLoading } = useJurisdictions()
+
+  useEffect(() => {
+    getSubgerencias().then(data => {
+      const lista = Array.isArray(data) ? data : []
+      const seen = new Map()
+      lista.forEach(s => {
+        const key = s.trim().toUpperCase()
+        if (key && !seen.has(key)) seen.set(key, s.trim())
+      })
+      setSubgerencias([...seen.values()].sort())
+    }).catch(() => {})
+  }, [])
 
   // 🔹 Función para actualizar estado de un reporte específico
   const updateReportStatus = useCallback(async (reportId, updates, fullData = null) => {
@@ -197,8 +213,9 @@ export default function IncidenciasPage() {
         if (filters.lackId) apiFilters.lackId = filters.lackId
         if (filters.subjectId) apiFilters.subjectId = filters.subjectId
         if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
-        if (filters.turno) apiFilters.shift = filters.turno // Agregar filtro de turno
-        if (filters.process) apiFilters.process = filters.process // Agregar filtro de proceso
+        if (filters.turno) apiFilters.shift = filters.turno
+        if (filters.process) apiFilters.process = filters.process
+        if (filters.subgerencia) apiFilters.subgerencia = filters.subgerencia
 
         console.log('🔍 Filtros enviados al backend:', apiFilters)
 
@@ -215,7 +232,7 @@ export default function IncidenciasPage() {
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process])
+  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -598,6 +615,22 @@ export default function IncidenciasPage() {
     }
   }, [filters.search, currentPage, itemsPerPage])
 
+  async function handleExportExcel() {
+    setExporting(true)
+    try {
+      await exportReportsExcel(filters)
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'No se pudo exportar el Excel. Intente nuevamente.',
+        type: 'error'
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Todos los filtros se manejan en el backend, incluyendo turno y process
   // Filtrar por estado (activos/eliminados) en el frontend
   const applyFrontendFilters = (data) => {
@@ -635,12 +668,24 @@ export default function IncidenciasPage() {
             </div>
           </div>
           
-          {permissions.canCreate && (
-            <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-              <FaPlus style={{ marginRight: '8px' }} />
-              Agregar Nueva Incidencia
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              className="btn-secondary"
+              onClick={handleExportExcel}
+              disabled={exporting}
+              title="Exportar lista a Excel con los filtros actuales"
+            >
+              <FaFileExcel style={{ marginRight: '8px' }} />
+              {exporting ? 'Exportando...' : 'Exportar Excel'}
             </button>
-          )}
+
+            {permissions.canCreate && (
+              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus style={{ marginRight: '8px' }} />
+                Agregar Nueva Incidencia
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="header-filters">
@@ -743,6 +788,21 @@ export default function IncidenciasPage() {
                   ))}
               </select>
             )}
+
+            {/* Filtro por Subgerencia */}
+            <select
+              className="filter-select"
+              value={filters.subgerencia}
+              onChange={e => {
+                setFilters(f => ({ ...f, subgerencia: e.target.value }))
+                setCurrentPage(1)
+              }}
+            >
+              <option value="">Todas las Subgerencias</option>
+              {subgerencias.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
 
             <select
               className="filter-select"
