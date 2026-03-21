@@ -370,6 +370,104 @@
 .met-bar-lbl  { opacity: 0.7; }
 .met-bar-empty { color: var(--text-muted); font-size: 0.85rem; }
 
+/* ── TABS ───────────────────────────────────────────────── */
+.met-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+
+.met-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.87rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  border-radius: 6px 6px 0 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.met-tab:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.met-tab-active {
+  color: var(--primary, #3b82f6);
+  border-bottom-color: var(--primary, #3b82f6);
+  background: transparent;
+}
+
+/* ── DNI ────────────────────────────────────────────────── */
+.met-dni {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: monospace;
+  font-size: 0.88rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ── Avatar rojo para infractores ───────────────────────── */
+.met-avatar-red {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+}
+
+/* ── Total rojo ─────────────────────────────────────────── */
+.met-total-red {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #ef4444;
+}
+
+/* ── Texto secundario ───────────────────────────────────── */
+.met-sub-text {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  display: block;
+}
+
+/* ── Badges de faltas ───────────────────────────────────── */
+.met-lack-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.met-lack-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.met-lack-count {
+  font-weight: 800;
+  font-size: 0.82rem;
+  margin-right: 2px;
+}
+
 /* ═══════════════════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════════════════ */
