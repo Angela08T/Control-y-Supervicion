@@ -103,7 +103,13 @@ export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPag
                             maxHeight: '150px',
                             border: '1px solid var(--border)'
                           }}>
-                            {JSON.stringify(JSON.parse(item.preview_content || '{}'), null, 2)}
+                          {(() => {
+                            try {
+                              return JSON.stringify(JSON.parse(item.preview_content), null, 2);
+                            } catch {
+                              return item.preview_content;
+                            }
+                          })()}
                           </pre>
                         </details>
                       )}
@@ -122,7 +128,13 @@ export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPag
                             maxHeight: '150px',
                             border: '1px solid var(--border)'
                           }}>
-                            {JSON.stringify(JSON.parse(item.new_content || '{}'), null, 2)}
+                            {(() => {
+                            try {
+                              return JSON.stringify(JSON.parse(item.new_content), null, 2);
+                            } catch {
+                              return item.new_content;
+                            }
+                          })()}
                           </pre>
                         </details>
                       )}
