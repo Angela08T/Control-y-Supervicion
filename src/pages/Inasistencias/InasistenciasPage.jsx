@@ -4,7 +4,7 @@ import CalendarioInasistencias from '../../components/CalendarioInasistencias'
 import ModalInasistencia from '../../components/ModalInasistencia'
 import CalendarModal from '../Dashboard/components/CalendarModal'
 import { createReport, getReports, mapFormDataToAPI } from '../../api/report'
-import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance } from '../../api/offender'
+import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaCalendarAlt, FaFilePdf } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
@@ -229,8 +229,22 @@ export default function InasistenciasPage() {
     }
   }
 
-  function handleDelete() {
-    toast.warning('Selecciona una inasistencia para eliminar')
+  async function handleDelete(offenderId, nombre) {
+    if (!offenderId) {
+      toast.warning('No se pudo identificar a la persona')
+      return
+    }
+    const confirmMsg = nombre
+      ? `¿Eliminar a ${nombre} del registro de inasistencias?`
+      : '¿Eliminar esta persona del registro de inasistencias?'
+    if (!window.confirm(confirmMsg)) return
+    try {
+      await deleteOffender(offenderId)
+      toast.success('Persona eliminada correctamente')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al eliminar la persona')
+    }
   }
 
   // Manejar cambio de mes en el calendario
@@ -332,6 +346,7 @@ export default function InasistenciasPage() {
           onMonthChange={handleMonthChange}
           dateRange={dateRange}
           isReadOnly={userRole === 'validator'}
+          canDelete={userRole === 'admin'}
         />
       )}
 

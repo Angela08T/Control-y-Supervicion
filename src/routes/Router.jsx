@@ -9,6 +9,7 @@ import DashboardLayoutAdmin from "../layouts/DashboardLayoutAdmin";
 import DashboardLayoutSupervisor from "../layouts/DashboardLayoutSupervisor";
 import DashboardLayoutCentinela from "../layouts/DashboardLayoutCentinela";
 import DashboardLayoutValidator from "../layouts/DashboardLayoutValidator";
+import DashboardLayoutSubgerente from "../layouts/DashboardLayoutSubgerente";
 
 // PAGES
 import LoginPage from "../pages/LoginPage";
@@ -140,6 +141,20 @@ export default function Router() {
           <Route index element={<Navigate to="incidencias" replace />} />
           <Route path="incidencias" element={<IncidenciasPage />} />
           <Route path="inasistencias" element={<InasistenciasPage />} />
+        </Route>
+
+        {/* Rutas protegidas - SUBGERENTE */}
+        <Route
+          path="/dashboard/subgerente"
+          element={
+            <PrivateRoute requiredRole="subgerente">
+              <DashboardLayoutSubgerente />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="estadisticas" element={<MetricasPage />} />
         </Route>
 
         {/* Página 404 */}
