@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { FaFilePdf } from 'react-icons/fa'
+import { FaFilePdf, FaTrash } from 'react-icons/fa'
 import { toast } from '../utils/toast'
 
 export default function CalendarioInasistencias({
@@ -10,7 +10,8 @@ export default function CalendarioInasistencias({
   onDeleteMarks,
   onMonthChange,
   dateRange,
-  isReadOnly = false
+  isReadOnly = false,
+  canDelete = false
 }) {
   // Usar la fecha de inicio del rango si está disponible
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -146,6 +147,7 @@ export default function CalendarioInasistencias({
       const key = item.dni
       if (!personas[key]) {
         personas[key] = {
+          id: item.id,
           dni: item.dni,
           nombreCompleto: item.nombreCompleto || `${item.apellidos || ''} ${item.nombres || ''}`.trim(),
           turno: item.turno || '-',
@@ -476,6 +478,7 @@ export default function CalendarioInasistencias({
             <thead>
               <tr>
                 <th className="col-numero">#</th>
+                {canDelete && <th className="col-accion"></th>}
                 <th className="col-nombre">APELLIDOS Y NOMBRES</th>
                 <th className="col-turno">TURNO</th>
                 <th className="col-cargo">CARGO</th>
@@ -521,6 +524,21 @@ export default function CalendarioInasistencias({
                   return (
                     <tr key={persona.dni}>
                       <td className="col-numero">{numeroFila}</td>
+                      {canDelete && (
+                        <td className="col-accion">
+                          <button
+                            title="Eliminar persona"
+                            onClick={() => onDelete && onDelete(persona.id, persona.nombreCompleto)}
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer',
+                              color: '#ef4444', padding: '4px', borderRadius: '4px',
+                              display: 'flex', alignItems: 'center'
+                            }}
+                          >
+                            <FaTrash size={13} />
+                          </button>
+                        </td>
+                      )}
                       <td className="col-nombre">{persona.nombreCompleto}</td>
                       <td className="col-turno">{persona.turno}</td>
                       <td className="col-cargo">{persona.cargo}</td>
@@ -588,6 +606,7 @@ export default function CalendarioInasistencias({
               {Array.from({ length: Math.max(0, itemsPerPage - personasPaginadas.length) }).map((_, index) => (
                 <tr key={`empty-${index}`}>
                   <td className="col-numero">{startIndex + personasPaginadas.length + index + 1}</td>
+                  {canDelete && <td className="col-accion"></td>}
                   <td className="col-nombre"></td>
                   <td className="col-turno"></td>
                   <td className="col-cargo"></td>

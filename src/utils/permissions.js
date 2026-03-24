@@ -8,7 +8,8 @@ export const ROLES = {
   ADMIN: 'admin',
   SUPERVISOR: 'supervisor',
   CENTINELA: 'centinela',
-  VALIDATOR: 'validator'
+  VALIDATOR: 'validator',
+  SUBGERENTE: 'subgerente'
 }
 
 /**
@@ -27,7 +28,8 @@ export function normalizeRole(backendRole) {
     'SUPERVISOR': ROLES.SUPERVISOR,
     'SENTINEL': ROLES.CENTINELA,
     'CENTINELA': ROLES.CENTINELA,
-    'VALIDATOR': ROLES.VALIDATOR
+    'VALIDATOR': ROLES.VALIDATOR,
+    'SUBGERENTE': ROLES.SUBGERENTE
   }
 
   const normalized = roleMap[backendRole.toUpperCase()]
@@ -38,12 +40,12 @@ export function normalizeRole(backendRole) {
 export const PERMISSIONS = {
   // DASHBOARD
   dashboard: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR]
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR, ROLES.SUBGERENTE]
   },
 
   // INCIDENCIAS
   incidencias: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR],
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR, ROLES.SUBGERENTE],
     create: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA],
     edit: [ROLES.ADMIN, ROLES.SUPERVISOR],
     delete: [ROLES.ADMIN, ROLES.SUPERVISOR],
@@ -113,6 +115,11 @@ export const PERMISSIONS = {
     create: [ROLES.ADMIN],
     edit: [ROLES.ADMIN],
     delete: [ROLES.ADMIN]
+  },
+
+  // ESTADÍSTICAS
+  estadisticas: {
+    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.SUBGERENTE]
   }
 }
 

@@ -30,7 +30,8 @@ export default function LoginForm() {
         admin: '/dashboard/admin',
         supervisor: '/dashboard/supervisor',
         centinela: '/dashboard/centinela',
-        validator: '/dashboard/validator'
+        validator: '/dashboard/validator',
+        subgerente: '/dashboard/subgerente'
       }
 
       navigate(roleRoutes[result.role] || '/dashboard/admin')

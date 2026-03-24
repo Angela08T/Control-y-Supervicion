@@ -169,12 +169,16 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
     }
 
     const dataToSave = {
-      dni: form.dni.trim(),
       name: form.name.trim(),
       lastname: form.lastname.trim(),
       username: form.username.trim(),
       email: form.email.trim(),
       rol: form.rol
+    }
+
+    // Solo incluir dni si tiene valor (el backend falla si se envía string vacío)
+    if (form.dni.trim()) {
+      dataToSave.dni = form.dni.trim()
     }
 
     // Solo incluir password si se está creando o si se modificó
@@ -334,6 +338,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
               <option value="SENTINEL">Sentinel</option>
               {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}
               {canCreateValidator && <option value="VALIDATOR">Validador</option>}
+              {canCreateValidator && <option value="SUBGERENTE">Subgerente</option>}
               {canCreateValidator && <option value="ADMINISTRATOR">Admin</option>}
             </select>
             {errors.rol && <span className="error-message">{errors.rol}</span>}
