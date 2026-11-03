@@ -1,6 +1,7 @@
 /* Tailwind v4 sin preflight: se conservan los estilos por defecto del navegador */
-@layer theme, base, components, utilities;
+@layer theme, base, legacy, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
+@import "./styles.css" layer(legacy);
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /* El tema oscuro de la app usa <html data-theme="dark"> */
@@ -256,6 +257,38 @@
   }
   50% {
     opacity: 0.7;
+  }
+}
+
+/* Animaciones propias de los modales de aviso y del toast */
+@keyframes alertSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
   }
 }
 
