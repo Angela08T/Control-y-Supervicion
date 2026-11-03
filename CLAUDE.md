@@ -24,8 +24,9 @@ npm run preview
 
 ## Tech Stack
 
-- **Frontend Framework**: React 18.2 with JSX
+- **Frontend Framework**: React 18.2 with TypeScript (strict)
 - **Build Tool**: Vite 5.0
+- **Styling**: Tailwind CSS v4 (utility classes only, no preflight)
 - **Map Integration**: Leaflet + React-Leaflet
 - **PDF Generation**: jsPDF
 - **Icons**: react-icons
@@ -151,9 +152,11 @@ The app supports light/dark mode:
 
 ## Styling
 
-- Global styles in src/styles.css
-- CSS custom properties for theming (defined with [data-theme] attribute)
-- No CSS framework - custom styles throughout
+- Tailwind CSS v4, utility classes in the components; no component CSS files
+- src/index.css holds the theme variables ([data-theme] attribute), the keyframes and the global base rules. Tailwind runs without preflight so browser defaults stay as they were
+- Dark mode: the `dark:` variant is bound to `<html data-theme="dark">`; colors come from semantic tokens (bg-card, bg-surface, border-line, text-content, text-muted, ...) that follow the theme variables
+- Class sets shared by several components (buttons, modals, tables, layout) live in src/utils/classes.ts
+- Write full class names in the source: Tailwind cannot detect classes built by string interpolation
 
 ## Development Notes
 
