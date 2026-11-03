@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaInfoCircle, FaTimes } from 'react-icons/fa'
 import type { ToastType } from '../utils/toast'
+import { cn } from '../utils/classes'
 
 export interface ToastProps {
   message: string
   type?: ToastType
   onClose?: () => void
 }
-
-/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
-const styledJsxAttr = { jsx: 'true' }
 
 export default function Toast({ message, type = 'success', onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false)
@@ -30,34 +28,42 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
   const configs = {
     success: {
       icon: <FaCheckCircle size={28} />,
-      color: '#22c55e',
-      bgColor: '#22c55e',
-      borderColor: '#22c55e',
-      lightBg: 'rgba(34, 197, 94, 0.15)',
+      textCls: 'text-[#22c55e]',
+      bgCls: 'bg-[#22c55e]',
+      borderCls: 'border-[#22c55e]',
+      lightBgCls: 'bg-[rgba(34,197,94,0.15)]',
+      shadowCls: 'shadow-[0_10px_40px_rgba(0,0,0,0.25),0_0_0_1px_rgba(34,197,94,0.15)]',
+      glowCls: 'shadow-[0_0_10px_#22c55e]',
       title: '¡Éxito!'
     },
     error: {
       icon: <FaTimesCircle size={28} />,
-      color: '#ef4444',
-      bgColor: '#ef4444',
-      borderColor: '#ef4444',
-      lightBg: 'rgba(239, 68, 68, 0.15)',
+      textCls: 'text-[#ef4444]',
+      bgCls: 'bg-[#ef4444]',
+      borderCls: 'border-[#ef4444]',
+      lightBgCls: 'bg-[rgba(239,68,68,0.15)]',
+      shadowCls: 'shadow-[0_10px_40px_rgba(0,0,0,0.25),0_0_0_1px_rgba(239,68,68,0.15)]',
+      glowCls: 'shadow-[0_0_10px_#ef4444]',
       title: 'Error'
     },
     warning: {
       icon: <FaExclamationTriangle size={28} />,
-      color: '#f59e0b',
-      bgColor: '#f59e0b',
-      borderColor: '#f59e0b',
-      lightBg: 'rgba(245, 158, 11, 0.15)',
+      textCls: 'text-[#f59e0b]',
+      bgCls: 'bg-[#f59e0b]',
+      borderCls: 'border-[#f59e0b]',
+      lightBgCls: 'bg-[rgba(245,158,11,0.15)]',
+      shadowCls: 'shadow-[0_10px_40px_rgba(0,0,0,0.25),0_0_0_1px_rgba(245,158,11,0.15)]',
+      glowCls: 'shadow-[0_0_10px_#f59e0b]',
       title: 'Advertencia'
     },
     info: {
       icon: <FaInfoCircle size={28} />,
-      color: '#3b82f6',
-      bgColor: '#3b82f6',
-      borderColor: '#3b82f6',
-      lightBg: 'rgba(59, 130, 246, 0.15)',
+      textCls: 'text-[#3b82f6]',
+      bgCls: 'bg-[#3b82f6]',
+      borderCls: 'border-[#3b82f6]',
+      lightBgCls: 'bg-[rgba(59,130,246,0.15)]',
+      shadowCls: 'shadow-[0_10px_40px_rgba(0,0,0,0.25),0_0_0_1px_rgba(59,130,246,0.15)]',
+      glowCls: 'shadow-[0_0_10px_#3b82f6]',
       title: 'Información'
     }
   }
@@ -66,62 +72,26 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
 
   return (
     <div
-      style={{
-        position: 'relative',
-        backgroundColor: '#ffffff',
-        border: `3px solid ${config.borderColor}`,
-        borderRadius: '16px',
-        boxShadow: `0 10px 40px rgba(0, 0, 0, 0.25), 0 0 0 1px ${config.lightBg}`,
-        padding: '20px 24px',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '16px',
-        minWidth: '380px',
-        maxWidth: '480px',
-        opacity: isExiting ? 0 : isVisible ? 1 : 0,
-        transform: isExiting
-          ? 'translateX(450px) scale(0.9)'
-          : isVisible
-            ? 'translateX(0) scale(1)'
-            : 'translateX(450px) scale(0.9)',
-        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        pointerEvents: 'auto',
-        backdropFilter: 'blur(12px)'
-      }}
+      className={cn(
+        'pointer-events-auto relative flex min-w-[380px] max-w-[480px] items-start gap-4 rounded-[16px] border-[3px] bg-white px-6 py-5 [backdrop-filter:blur(12px)] transition-all duration-[400ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+        config.borderCls,
+        config.shadowCls,
+        isVisible && !isExiting
+          ? 'translate-x-0 scale-100 opacity-100'
+          : 'translate-x-[450px] scale-90 opacity-0'
+      )}
     >
       {/* Icono con fondo circular */}
-      <div style={{
-        backgroundColor: config.lightBg,
-        borderRadius: '50%',
-        width: '48px',
-        height: '48px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: config.color,
-        flexShrink: 0
-      }}>
+      <div className={cn('flex size-12 shrink-0 items-center justify-center rounded-full', config.lightBgCls, config.textCls)}>
         {config.icon}
       </div>
 
       {/* Contenido */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontWeight: '700',
-          fontSize: '1.1rem',
-          color: '#1a1a1a',
-          marginBottom: '6px',
-          letterSpacing: '-0.01em'
-        }}>
+      <div className="min-w-0 flex-1">
+        <div className="mb-1.5 text-[1.1rem] font-bold tracking-[-0.01em] text-[#1a1a1a]">
           {config.title}
         </div>
-        <div style={{
-          fontSize: '1rem',
-          color: '#4a5568',
-          lineHeight: '1.6',
-          wordBreak: 'break-word',
-          fontWeight: '500'
-        }}>
+        <div className="text-[1rem] leading-[1.6] font-medium text-[#4a5568] [word-break:break-word]">
           {message}
         </div>
       </div>
@@ -129,21 +99,7 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
       {/* Botón cerrar */}
       <button
         onClick={handleClose}
-        style={{
-          background: 'rgba(0, 0, 0, 0.05)',
-          border: 'none',
-          color: '#6b7280',
-          cursor: 'pointer',
-          padding: '8px',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.2s',
-          flexShrink: 0,
-          width: '32px',
-          height: '32px'
-        }}
+        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-[rgba(0,0,0,0.05)] p-2 text-[#6b7280] transition-all duration-200 ease-[ease]"
         onMouseOver={(e) => {
           const target = e.target as HTMLElement
           target.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
@@ -161,35 +117,9 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
       </button>
 
       {/* Barra de progreso */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '5px',
-        backgroundColor: config.lightBg,
-        borderBottomLeftRadius: '16px',
-        borderBottomRightRadius: '16px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          height: '100%',
-          backgroundColor: config.bgColor,
-          animation: 'progress 4s linear forwards',
-          boxShadow: `0 0 10px ${config.color}`
-        }} />
+      <div className={cn('absolute inset-x-0 bottom-0 h-[5px] overflow-hidden rounded-b-[16px]', config.lightBgCls)}>
+        <div className={cn('h-full animate-[progress_4s_linear_forwards]', config.bgCls, config.glowCls)} />
       </div>
-
-      <style {...styledJsxAttr}>{`
-        @keyframes progress {
-          from {
-            width: 100%;
-          }
-          to {
-            width: 0%;
-          }
-        }
-      `}</style>
     </div>
   )
 }

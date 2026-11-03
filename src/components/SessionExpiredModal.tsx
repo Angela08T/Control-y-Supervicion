@@ -7,9 +7,6 @@ export interface SessionExpiredModalProps {
   onAccept?: () => void
 }
 
-/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
-const styledJsxAttr = { jsx: 'true' }
-
 export default function SessionExpiredModal({ show, onAccept }: SessionExpiredModalProps) {
   const navigate = useNavigate()
 
@@ -24,98 +21,28 @@ export default function SessionExpiredModal({ show, onAccept }: SessionExpiredMo
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 99999,
-        animation: 'fadeIn 0.2s ease-in-out',
-        backdropFilter: 'blur(4px)'
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          maxWidth: '420px',
-          width: '90%',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-          animation: 'slideDown 0.3s ease-out',
-          overflow: 'hidden',
-          border: '1px solid rgba(245, 158, 11, 0.2)'
-        }}
-      >
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 [backdrop-filter:blur(4px)] animate-[fadeInPointInstant_0.2s_ease-in-out]">
+      <div className="w-[90%] max-w-[420px] overflow-hidden rounded-[16px] border border-[rgba(245,158,11,0.2)] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.5)] animate-[modalSlideDown_0.3s_ease-out]">
         {/* Header con icono */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '32px 24px 20px',
-          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%)',
-          borderBottom: '2px solid rgba(245, 158, 11, 0.3)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.2)',
-            border: '3px solid #f59e0b',
-            borderRadius: '50%',
-            padding: '20px',
-            marginBottom: '16px',
-            color: '#f59e0b',
-            animation: 'scaleIn 0.4s ease-out'
-          }}>
+        <div className="flex flex-col items-center border-b-2 border-[rgba(245,158,11,0.3)] bg-[linear-gradient(135deg,rgba(245,158,11,0.15)_0%,rgba(245,158,11,0.08)_100%)] px-6 pt-8 pb-5">
+          <div className="mb-4 rounded-[50%] border-[3px] border-[#f59e0b] bg-[rgba(245,158,11,0.2)] p-5 text-[#f59e0b] animate-[scaleIn_0.4s_ease-out]">
             <FaExclamationTriangle size={56} />
           </div>
-          <h3 style={{
-            margin: 0,
-            fontSize: '1.5rem',
-            fontWeight: '700',
-            color: '#1f2937',
-            textAlign: 'center'
-          }}>
+          <h3 className="m-0 text-center text-[1.5rem] font-bold text-[#1f2937]">
             Sesión Expirada
           </h3>
         </div>
 
         {/* Body */}
-        <div style={{
-          padding: '24px 28px',
-          fontSize: '1.05rem',
-          lineHeight: '1.6',
-          color: '#4b5563',
-          textAlign: 'center',
-          fontWeight: '500'
-        }}>
+        <div className="px-7 py-6 text-center text-[1.05rem] leading-[1.6] font-medium text-[#4b5563]">
           Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente para continuar.
         </div>
 
         {/* Footer con botón */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '20px 24px 28px'
-        }}>
+        <div className="flex justify-center px-6 pt-5 pb-7">
           <button
             onClick={handleAccept}
-            style={{
-              minWidth: '140px',
-              padding: '12px 32px',
-              backgroundColor: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '1rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
-            }}
+            className="min-w-[140px] cursor-pointer rounded-[10px] border-none bg-[#f59e0b] px-8 py-3 text-[1rem] font-semibold text-white shadow-[0_4px_12px_rgba(245,158,11,0.3)] transition-all duration-200 ease-[ease]"
             onMouseOver={(e) => {
               const target = e.target as HTMLElement
               target.style.backgroundColor = '#d97706'
@@ -133,35 +60,6 @@ export default function SessionExpiredModal({ show, onAccept }: SessionExpiredMo
           </button>
         </div>
       </div>
-
-      <style {...styledJsxAttr}>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-30px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            transform: scale(0);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   )
 }

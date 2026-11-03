@@ -7,9 +7,6 @@ export interface ErrorModalProps {
   onClose?: () => void
 }
 
-/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
-const styledJsxAttr = { jsx: 'true' }
-
 export default function ErrorModal({ show, message, onClose }: ErrorModalProps) {
   if (!show) return null
 
@@ -21,101 +18,33 @@ export default function ErrorModal({ show, message, onClose }: ErrorModalProps) 
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        animation: 'fadeIn 0.2s ease-in-out',
-        backdropFilter: 'blur(4px)'
-      }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 [backdrop-filter:blur(4px)] animate-[fadeInPointInstant_0.2s_ease-in-out]"
       onClick={handleAccept}
     >
       <div
-        style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          maxWidth: '420px',
-          width: '90%',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-          animation: 'slideDown 0.3s ease-out',
-          overflow: 'hidden',
-          border: '1px solid rgba(239, 68, 68, 0.1)'
-        }}
+        className="w-[90%] max-w-[420px] overflow-hidden rounded-[16px] border border-[rgba(239,68,68,0.1)] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.5)] animate-[modalSlideDown_0.3s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header con icono */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '32px 24px 20px',
-          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.05) 100%)',
-          borderBottom: '3px solid rgba(245, 158, 11, 0.3)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            border: '4px solid #f59e0b',
-            borderRadius: '50%',
-            padding: '24px',
-            marginBottom: '16px',
-            color: '#f59e0b',
-            animation: 'scaleIn 0.4s ease-out'
-          }}>
+        <div className="flex flex-col items-center border-b-[3px] border-[rgba(245,158,11,0.3)] bg-[linear-gradient(135deg,rgba(245,158,11,0.12)_0%,rgba(245,158,11,0.05)_100%)] px-6 pt-8 pb-5">
+          <div className="mb-4 rounded-[50%] border-[4px] border-[#f59e0b] bg-[rgba(245,158,11,0.15)] p-6 text-[#f59e0b] animate-[scaleIn_0.4s_ease-out]">
             <FaExclamationTriangle size={60} />
           </div>
-          <h3 style={{
-            margin: 0,
-            fontSize: '1.5rem',
-            fontWeight: '700',
-            color: '#1a1a1a',
-            textAlign: 'center'
-          }}>
+          <h3 className="m-0 text-center text-[1.5rem] font-bold text-[#1a1a1a]">
             Sesión Expirada
           </h3>
         </div>
 
         {/* Body */}
-        <div style={{
-          padding: '24px 28px',
-          fontSize: '1.05rem',
-          lineHeight: '1.6',
-          color: '#374151',
-          textAlign: 'center',
-          fontWeight: '500'
-        }}>
+        <div className="px-7 py-6 text-center text-[1.05rem] leading-[1.6] font-medium text-[#374151]">
           {message || 'Ha ocurrido un error'}
         </div>
 
         {/* Footer con botón */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '20px 24px 28px'
-        }}>
+        <div className="flex justify-center px-6 pt-5 pb-7">
           <button
             onClick={handleAccept}
-            style={{
-              minWidth: '200px',
-              padding: '14px 40px',
-              backgroundColor: '#f59e0b',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '1.05rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
+            className="min-w-[200px] cursor-pointer rounded-[10px] border-none bg-[#f59e0b] px-10 py-3.5 text-[1.05rem] font-bold tracking-[0.5px] text-white uppercase shadow-[0_4px_12px_rgba(245,158,11,0.4)] transition-all duration-200 ease-[ease]"
             onMouseOver={(e) => {
               const target = e.target as HTMLElement
               target.style.backgroundColor = '#d97706'
@@ -133,35 +62,6 @@ export default function ErrorModal({ show, message, onClose }: ErrorModalProps) 
           </button>
         </div>
       </div>
-
-      <style {...styledJsxAttr}>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-30px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            transform: scale(0);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   )
 }
