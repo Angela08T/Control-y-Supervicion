@@ -2,8 +2,25 @@ import React, { useEffect, useState } from 'react'
 import { FaClipboardList, FaFolder, FaFileAlt, FaBook, FaInfoCircle } from 'react-icons/fa'
 import { getSubjects } from '../api/subject'
 import { toast } from '../utils/toast'
+import type { CreateLackDto, Lack, Subject } from '@/types'
 
-const defaultState = {
+export interface ModalLackProps {
+  initial?: Lack | null
+  onClose: () => void
+  onSave: (data: CreateLackDto) => void | Promise<void>
+}
+
+interface LackForm {
+  name: string
+  content: string
+  article: string
+  description: string
+  subject_id: string
+}
+
+type LackFormErrors = Partial<Record<keyof LackForm, string>>
+
+const defaultState: LackForm = {
   name: '',
   content: '',
   article: '',
@@ -11,10 +28,10 @@ const defaultState = {
   subject_id: ''
 }
 
-export default function ModalLack({ initial, onClose, onSave }) {
-  const [form, setForm] = useState(defaultState)
-  const [errors, setErrors] = useState({})
-  const [subjects, setSubjects] = useState([])
+export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) {
+  const [form, setForm] = useState<LackForm>(defaultState)
+  const [errors, setErrors] = useState<LackFormErrors>({})
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [loadingSubjects, setLoadingSubjects] = useState(true)
 
   // Cargar asuntos al montar el componente
@@ -23,7 +40,7 @@ export default function ModalLack({ initial, onClose, onSave }) {
       try {
         setLoadingSubjects(true)
         const response = await getSubjects(1, 1000) // Obtener todos los asuntos
-        const subjectsData = response.data?.data || response.data || []
+        const subjectsData: Subject[] = response.data?.data || (response.data as unknown as Subject[]) || []
         // Filtrar solo asuntos activos (deleted_at es null)
         const activeSubjects = subjectsData.filter(subject => !subject.deleted_at)
         setSubjects(activeSubjects)
@@ -50,7 +67,7 @@ export default function ModalLack({ initial, onClose, onSave }) {
     }
   }, [initial])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof LackForm, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
@@ -59,7 +76,7 @@ export default function ModalLack({ initial, onClose, onSave }) {
   }
 
   function validate() {
-    const newErrors = {}
+    const newErrors: LackFormErrors = {}
 
     if (!form.name.trim()) {
       newErrors.name = 'El nombre de la falta es requerido'
@@ -85,14 +102,14 @@ export default function ModalLack({ initial, onClose, onSave }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validate()) {
       return
     }
 
-    const dataToSave = {
+    const dataToSave: CreateLackDto = {
       name: form.name.trim(),
       content: form.content.trim(),
       subject_id: form.subject_id

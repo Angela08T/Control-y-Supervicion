@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { FaBriefcase } from 'react-icons/fa'
+import type { CreateJobDto, Job } from '@/types'
 
-const defaultState = {
+export interface ModalJobProps {
+  initial?: Job | null
+  onClose: () => void
+  onSave: (data: CreateJobDto) => void | Promise<void>
+}
+
+interface JobForm {
+  name: string
+}
+
+type JobFormErrors = Partial<Record<keyof JobForm, string>>
+
+const defaultState: JobForm = {
   name: ''
 }
 
-export default function ModalJob({ initial, onClose, onSave }) {
-  const [form, setForm] = useState(defaultState)
-  const [errors, setErrors] = useState({})
+export default function ModalJob({ initial, onClose, onSave }: ModalJobProps) {
+  const [form, setForm] = useState<JobForm>(defaultState)
+  const [errors, setErrors] = useState<JobFormErrors>({})
 
   useEffect(() => {
     if (initial) {
@@ -17,7 +30,7 @@ export default function ModalJob({ initial, onClose, onSave }) {
     }
   }, [initial])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof JobForm, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
@@ -26,7 +39,7 @@ export default function ModalJob({ initial, onClose, onSave }) {
   }
 
   function validate() {
-    const newErrors = {}
+    const newErrors: JobFormErrors = {}
 
     if (!form.name.trim()) {
       newErrors.name = 'El nombre del cargo es requerido'
@@ -36,7 +49,7 @@ export default function ModalJob({ initial, onClose, onSave }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validate()) {

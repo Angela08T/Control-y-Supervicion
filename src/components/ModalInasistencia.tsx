@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
@@ -12,8 +12,46 @@ import {
   FaIdBadge,
   FaBalanceScale
 } from 'react-icons/fa'
+import type { ID, ISODateString, Jurisdiction, Lead, OffenderDniLookup, SubjectLack } from '@/types'
 
-const defaultState = {
+/** Datos del formulario de inasistencia */
+export interface InasistenciaForm {
+  dni: string
+  nombreCompleto: string
+  asunto: string
+  falta: string
+  turno: string
+  cargo: string
+  regLab: string
+  jurisdiccion: string
+  jurisdictionId: ID | null
+  subjectId: ID | null
+  lackId: ID | null
+}
+
+/** Infractor mostrado en las sugerencias (el resultado del hook puede traer id y deleted_at) */
+type OffenderSuggestion = OffenderDniLookup & {
+  id?: ID
+  deleted_at?: ISODateString | null
+}
+
+/** Mapa de asuntos por nombre con su id y sus faltas */
+type SubjectMap = Record<string, { id: ID; lacks: SubjectLack[] }>
+
+/** Estado del modal de alerta */
+interface AlertState {
+  isOpen: boolean
+  title: string
+  message: string
+  type: 'success' | 'error' | 'info'
+}
+
+export interface ModalInasistenciaProps {
+  onClose: () => void
+  onSave?: (form: InasistenciaForm, leads: Lead[]) => void
+}
+
+const defaultState: InasistenciaForm = {
   dni: '',
   nombreCompleto: '',
   asunto: 'Conductas relacionadas con el cumplimiento del horario y asistencia',
@@ -27,13 +65,13 @@ const defaultState = {
   lackId: null
 }
 
-export default function ModalInasistencia({ onClose, onSave }) {
-  const [form, setForm] = useState(defaultState)
-  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' })
+export default function ModalInasistencia({ onClose, onSave }: ModalInasistenciaProps) {
+  const [form, setForm] = useState<InasistenciaForm>(defaultState)
+  const [alertModal, setAlertModal] = useState<AlertState>({ isOpen: false, title: '', message: '', type: 'error' })
 
   // Hook para búsqueda de offender (DNI)
   const {
-    
+
     searchTerm: dniSearchTerm,
     setSearchTerm: setDniSearchTerm,
     results: offenderResults,
@@ -61,8 +99,8 @@ export default function ModalInasistencia({ onClose, onSave }) {
 
 
   // Crear mapa de subjects con sus lacks desde la API
-  const subjectMap = useMemo(() => {
-    const map = {}
+  const subjectMap = useMemo<SubjectMap>(() => {
+    const map: SubjectMap = {}
 
     if (subjects && subjects.length > 0) {
       subjects.forEach(subject => {
@@ -77,9 +115,9 @@ export default function ModalInasistencia({ onClose, onSave }) {
   }, [subjects])
 
   // Obtener faltas de inasistencia disponibles
-  const lacksInasistencia = useMemo(() => {
+  const lacksInasistencia = useMemo<SubjectLack[]>(() => {
     // Buscar en todos los subjects las faltas que contengan "Inasistencia"
-    let inasistencias = []
+    let inasistencias: SubjectLack[] = []
 
     Object.keys(subjectMap).forEach(subjectName => {
       const subject = subjectMap[subjectName]
@@ -125,23 +163,23 @@ export default function ModalInasistencia({ onClose, onSave }) {
 
 
   // Filtrar solo jurisdicciones habilitadas
-  const jurisdiccionesHabilitadas = useMemo(() => {
+  const jurisdiccionesHabilitadas = useMemo<Jurisdiction[]>(() => {
     if (!jurisdictions || jurisdictions.length === 0) return []
     return jurisdictions.filter(jurisdiction => !jurisdiction.deleted_at)
   }, [jurisdictions])
 
   // Filtrar solo offenders habilitados
-  const offendersHabilitados = useMemo(() => {
+  const offendersHabilitados = useMemo<OffenderSuggestion[]>(() => {
     if (!offenderResults || offenderResults.length === 0) return []
-    return offenderResults.filter(offender => !offender.deleted_at)
+    return (offenderResults as OffenderSuggestion[]).filter(offender => !offender.deleted_at)
   }, [offenderResults])
 
-  const dniAutocompleteRef = useRef(null)
+  const dniAutocompleteRef = useRef<HTMLDivElement | null>(null)
 
   // Cerrar sugerencias al hacer clic fuera
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dniAutocompleteRef.current && !dniAutocompleteRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (dniAutocompleteRef.current && !dniAutocompleteRef.current.contains(event.target as Node)) {
         setShowOffenderSuggestions(false)
       }
     }
@@ -149,9 +187,9 @@ export default function ModalInasistencia({ onClose, onSave }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  function setField(k, v) {
+  function setField(k: keyof InasistenciaForm, v: string) {
     setForm(f => {
-      const newForm = { ...f, [k]: v }
+      const newForm: InasistenciaForm = { ...f, [k]: v }
 
       // Si cambia la falta, guardar el ID de la falta y el subjectId correspondiente
       if (k === 'falta') {
@@ -176,13 +214,13 @@ export default function ModalInasistencia({ onClose, onSave }) {
   }
 
 
-  function handleDNIChange(e) {
+  function handleDNIChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.replace(/\D/g, '').slice(0, 8)
     setDniSearchTerm(value)
     setField('dni', value)
   }
 
-  function handleOffenderSelect(offender) {
+  function handleOffenderSelect(offender: OffenderSuggestion) {
     selectOffender(offender)
 
     const nombreCompleto = `${offender.name || ''} ${offender.lastname || ''}`.trim()
@@ -199,7 +237,7 @@ export default function ModalInasistencia({ onClose, onSave }) {
     setDniSearchTerm(offender.dni || '')
   }
 
-  async function handleSubmit(ev) {
+  async function handleSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault()
 
     // Validar campos obligatorios
@@ -361,7 +399,7 @@ export default function ModalInasistencia({ onClose, onSave }) {
           ) : (
             <select
               value={form.jurisdiccion}
-              onChange={e => {
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
                 if (selectedJurisdiction) {
                   setForm(f => ({

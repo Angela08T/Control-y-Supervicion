@@ -1,7 +1,28 @@
 import React, { useState, useEffect } from 'react'
+import type { Offender } from '@/types'
 
-export default function ModalOffender({ initial, onClose, onSave }) {
-  const [formData, setFormData] = useState({
+/** Datos del formulario de infractor que se envían al guardar */
+export interface OffenderFormData {
+  name: string
+  lastname: string
+  dni: string
+  job: string
+  regime: string
+  shift: string
+  subgerencia: string
+}
+
+/** Errores por campo del formulario (null = sin error) */
+type OffenderFormErrors = Partial<Record<keyof OffenderFormData, string | null>>
+
+export interface ModalOffenderProps {
+  initial?: Partial<Offender> | null
+  onClose: () => void
+  onSave: (data: OffenderFormData) => void
+}
+
+export default function ModalOffender({ initial, onClose, onSave }: ModalOffenderProps) {
+  const [formData, setFormData] = useState<OffenderFormData>({
     name: '',
     lastname: '',
     dni: '',
@@ -11,7 +32,7 @@ export default function ModalOffender({ initial, onClose, onSave }) {
     subgerencia: ''
   })
 
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState<OffenderFormErrors>({})
 
   useEffect(() => {
     if (initial) {
@@ -27,7 +48,7 @@ export default function ModalOffender({ initial, onClose, onSave }) {
     }
   }, [initial])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof OffenderFormData, value: string) {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))
@@ -35,7 +56,7 @@ export default function ModalOffender({ initial, onClose, onSave }) {
   }
 
   function validateForm() {
-    const newErrors = {}
+    const newErrors: OffenderFormErrors = {}
 
     if (!formData.name.trim()) {
       newErrors.name = 'El nombre es requerido'
@@ -67,7 +88,7 @@ export default function ModalOffender({ initial, onClose, onSave }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validateForm()) {

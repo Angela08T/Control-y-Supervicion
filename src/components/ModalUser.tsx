@@ -1,8 +1,50 @@
 import React, { useEffect, useState } from 'react'
 import { FaUser, FaEnvelope, FaLock, FaUserTag, FaIdCard, FaSearch } from 'react-icons/fa'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '@/store/hooks'
+import type { AppRole, OffenderDniLookup, Role, User } from '@/types'
 
-const defaultState = {
+/** Estado del formulario de usuario */
+interface UserFormState {
+  dni: string
+  name: string
+  lastname: string
+  username: string
+  password: string
+  email: string
+  rol: Role
+}
+
+/** Errores por campo del formulario */
+type UserFormErrors = Partial<Record<keyof UserFormState, string>>
+
+/** Datos del usuario a editar (admite `role` además de `rol`) */
+export type UserModalInitial = Partial<User> & { role?: Role }
+
+/** Payload que se envía al guardar */
+export interface UserSavePayload {
+  name: string
+  lastname: string
+  username: string
+  email: string
+  rol: Role
+  dni?: string
+  password?: string
+}
+
+/** Respuesta de búsqueda por DNI (GET /offender/dni/:dni) */
+interface OffenderLookupResponse {
+  message?: string
+  data?: OffenderDniLookup
+}
+
+export interface ModalUserProps {
+  initial?: UserModalInitial | null
+  onClose: () => void
+  onSave: (data: UserSavePayload) => void
+  userRole?: AppRole | null
+}
+
+const defaultState: UserFormState = {
   dni: '',
   name: '',
   lastname: '',
@@ -12,14 +54,14 @@ const defaultState = {
   rol: 'SENTINEL' // Por defecto SENTINEL
 }
 
-export default function ModalUser({ initial, onClose, onSave, userRole }) {
-  const [form, setForm] = useState(defaultState)
-  const [errors, setErrors] = useState({})
-  const [searchingDni, setSearchingDni] = useState(false)
-  const [dniError, setDniError] = useState('')
+export default function ModalUser({ initial, onClose, onSave, userRole }: ModalUserProps) {
+  const [form, setForm] = useState<UserFormState>(defaultState)
+  const [errors, setErrors] = useState<UserFormErrors>({})
+  const [searchingDni, setSearchingDni] = useState<boolean>(false)
+  const [dniError, setDniError] = useState<string>('')
 
   // Obtener token de autenticación
-  const { token } = useSelector((state) => state.auth)
+  const { token } = useAppSelector((state) => state.auth)
 
   // userRole: el rol del usuario actual (admin o supervisor)
   const canCreateSupervisor = userRole === 'admin'
@@ -62,7 +104,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
       })
       console.log('Response status:', response.status)
 
-      const result = await response.json()
+      const result: OffenderLookupResponse = await response.json()
       console.log('Resultado:', result)
 
       if (response.ok && result.data) {
@@ -92,7 +134,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
   }
 
   // Mapear job a rol del sistema
-  function mapJobToRol(job) {
+  function mapJobToRol(job: string | null | undefined): Role {
     if (!job) return 'SENTINEL'
     const jobUpper = job.toUpperCase()
     if (jobUpper.includes('ADMIN') || jobUpper.includes('COORDINADOR')) return 'ADMINISTRATOR'
@@ -101,7 +143,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
     return 'SENTINEL'
   }
 
-  function handleChange(field, value) {
+  function handleChange<K extends keyof UserFormState>(field: K, value: UserFormState[K]) {
     setForm(prev => ({ ...prev, [field]: value }))
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
@@ -110,7 +152,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
   }
 
   function validate() {
-    const newErrors = {}
+    const newErrors: UserFormErrors = {}
 
     if (!form.name.trim()) {
       newErrors.name = 'El nombre es requerido'
@@ -161,14 +203,14 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validate()) {
       return
     }
 
-    const dataToSave = {
+    const dataToSave: UserSavePayload = {
       name: form.name.trim(),
       lastname: form.lastname.trim(),
       username: form.username.trim(),
@@ -331,9 +373,9 @@ export default function ModalUser({ initial, onClose, onSave, userRole }) {
             </label>
             <select
               value={form.rol}
-              onChange={(e) => handleChange('rol', e.target.value)}
+              onChange={(e) => handleChange('rol', e.target.value as Role)}
               className={errors.rol ? 'input-error' : ''}
-              disabled={initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR')}
+              disabled={!!initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR')}
             >
               <option value="SENTINEL">Sentinel</option>
               {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}

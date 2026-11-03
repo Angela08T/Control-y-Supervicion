@@ -2,11 +2,40 @@ import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import useJurisdiccionDetection from '../hooks/Jurisdiction/useJurisdiccionDetection'
+import type { DetectedJurisdiction } from '@/types'
 
 // Importar CSS de Leaflet
 import 'leaflet/dist/leaflet.css'
 
 // Configurar íconos (usando recursos locales en lugar de CDN)
+/** Par [latitud, longitud] */
+type Coordinates = [number, number]
+
+/** Dirección de Nominatim (addressdetails=1) */
+type NominatimAddress = Record<string, string | undefined>
+
+/** Respuesta de Nominatim reverse */
+interface NominatimReverseResponse {
+  address?: NominatimAddress
+}
+
+/** Valor del selector: coordenadas, dirección y jurisdicción detectada */
+export interface MapSelectorValue {
+  coordinates?: Coordinates | null
+  address?: string
+  jurisdiccion?: string | null
+}
+
+export interface MapSelectorProps {
+  value?: MapSelectorValue | null
+  onChange?: (value: MapSelectorValue) => void
+}
+
+interface ClickHandlerProps {
+  onLocationSelect: (position: Coordinates, address: string) => void
+  validarJurisdiccion?: (latitude: number, longitude: number) => DetectedJurisdiction | null
+}
+
 const icon = L.icon({
   iconUrl: '/leaflet/marker-icon.png',
   iconRetinaUrl: '/leaflet/marker-icon-2x.png',
@@ -18,18 +47,18 @@ const icon = L.icon({
 })
 
 // Función helper para formatear direccion
-const getFormattedAddress = (addr) => {
+const getFormattedAddress = (addr: NominatimAddress): string | null => {
   if (!addr) return null
 
   // Helper para buscar el primer valor existente
-  const get = (keys) => keys.map(k => addr[k]).find(Boolean)
+  const get = (keys: string[]): string | undefined => keys.map(k => addr[k]).find(Boolean)
 
   const placeName = get(['amenity', 'shop', 'building', 'office', 'tourism', 'historic', 'leisure'])
 
   const streetName = get(['road', 'pedestrian', 'construction', 'residential', 'hamlet'])
   const streetPart = [streetName, addr.house_number].filter(Boolean).join(' ')
 
-  const rawParts = [
+  const rawParts: string[] = [
     placeName,
     streetPart,
     get(['neighbourhood', 'suburb', 'quarter', 'city_block']),
@@ -38,7 +67,7 @@ const getFormattedAddress = (addr) => {
     get(['state', 'region']),
     addr.country,
     addr.postcode
-  ].filter(Boolean)
+  ].filter((part): part is string => Boolean(part))
 
   // Quitar valores repetidos
   let uniqueParts = [...new Set(rawParts)]
@@ -52,10 +81,10 @@ const getFormattedAddress = (addr) => {
   return uniqueParts.join(', ')
 }
 
-function ClickHandler({ onLocationSelect, validarJurisdiccion }) {
+function ClickHandler({ onLocationSelect, validarJurisdiccion }: ClickHandlerProps) {
   useMapEvents({
     async click(e) {
-      const newPos = [e.latlng.lat, e.latlng.lng]
+      const newPos: Coordinates = [e.latlng.lat, e.latlng.lng]
 
       // 1. Validar si está dentro de una jurisdicción permitida
       if (validarJurisdiccion) {
@@ -81,7 +110,7 @@ function ClickHandler({ onLocationSelect, validarJurisdiccion }) {
         )
         clearTimeout(timeoutId)
 
-        const data = await response.json()
+        const data: NominatimReverseResponse | null = await response.json()
 
         const newAddress = (data && data.address)
           ? (getFormattedAddress(data.address) || 'Dirección no encontrada')
@@ -90,7 +119,7 @@ function ClickHandler({ onLocationSelect, validarJurisdiccion }) {
         // 4. Actualizar con la dirección real cuando llegue
         onLocationSelect(newPos, newAddress)
       } catch (error) {
-        if (error.name === 'AbortError') {
+        if ((error as { name?: string }).name === 'AbortError') {
           onLocationSelect(newPos, 'Timeout - Dirección no disponible')
         } else {
           onLocationSelect(newPos, 'Error al obtener dirección')
@@ -101,10 +130,10 @@ function ClickHandler({ onLocationSelect, validarJurisdiccion }) {
   return null
 }
 
-export default function MapSelector({ value, onChange }) {
-  const [position, setPosition] = useState(value?.coordinates || null)
-  const [address, setAddress] = useState(value?.address || '')
-  const [jurisdiccionDetectada, setJurisdiccionDetectada] = useState(null)
+export default function MapSelector({ value, onChange }: MapSelectorProps) {
+  const [position, setPosition] = useState<Coordinates | null>(value?.coordinates || null)
+  const [address, setAddress] = useState<string>(value?.address || '')
+  const [jurisdiccionDetectada, setJurisdiccionDetectada] = useState<DetectedJurisdiction | null>(null)
 
   // Hook para detección de jurisdicción
   const { detectarJurisdiccion, jurisdicciones } = useJurisdiccionDetection()
@@ -116,12 +145,12 @@ export default function MapSelector({ value, onChange }) {
     }
   }, [value])
 
-  function handleLocationSelect(newPos, newAddress) {
+  function handleLocationSelect(newPos: Coordinates, newAddress: string) {
     setPosition(newPos)
     setAddress(newAddress)
 
     // Detectar jurisdicción automáticamente
-    let jurisdiccion = null
+    let jurisdiccion: DetectedJurisdiction | null = null
     if (jurisdicciones && jurisdicciones.length > 0) {
       jurisdiccion = detectarJurisdiccion(newPos[0], newPos[1])
       if (jurisdiccion) {
@@ -158,9 +187,9 @@ export default function MapSelector({ value, onChange }) {
           {jurisdicciones && jurisdicciones.map(jurisdiccion => {
             if (!jurisdiccion.geometry || !jurisdiccion.geometry.coordinates) return null;
 
-            let positions = []
+            let positions: Coordinates[][] = []
             try {
-              positions = jurisdiccion.geometry.coordinates.map(ring => ring.map(card => [card[1], card[0]]))
+              positions = jurisdiccion.geometry.coordinates.map(ring => ring.map((card): Coordinates => [card[1], card[0]]))
             } catch (error) {
               console.error('Error al procesar jurisdicción:', error)
               return null

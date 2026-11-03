@@ -2,17 +2,26 @@ import React, { useEffect, useState } from 'react'
 import { FaUser, FaBriefcase } from 'react-icons/fa'
 import { getJobs } from '../api/job'
 import { toast } from '../utils/toast'
+import type { CreateLeadDto, Job, Lead } from '@/types'
 
-const defaultState = {
+export interface ModalLeadProps {
+  initial?: Lead | null
+  onClose: () => void
+  onSave: (data: CreateLeadDto) => void | Promise<void>
+}
+
+type LeadFormErrors = Partial<Record<keyof CreateLeadDto, string>>
+
+const defaultState: CreateLeadDto = {
   name: '',
   lastname: '',
   job_id: ''
 }
 
-export default function ModalLead({ initial, onClose, onSave }) {
-  const [form, setForm] = useState(defaultState)
-  const [errors, setErrors] = useState({})
-  const [jobs, setJobs] = useState([])
+export default function ModalLead({ initial, onClose, onSave }: ModalLeadProps) {
+  const [form, setForm] = useState<CreateLeadDto>(defaultState)
+  const [errors, setErrors] = useState<LeadFormErrors>({})
+  const [jobs, setJobs] = useState<Job[]>([])
   const [loadingJobs, setLoadingJobs] = useState(false)
 
   // Cargar cargos disponibles
@@ -23,7 +32,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
         const response = await getJobs(1, 1000) // Obtener todos los cargos
 
         // Extraer los datos correctamente según la estructura de la API
-        const jobsData = response.data?.data || response.data || []
+        const jobsData: Job[] = response.data?.data || (response.data as unknown as Job[]) || []
 
         // Filtrar solo los cargos habilitados (sin deleted_at)
         const activeJobs = jobsData.filter(job => !job.deleted_at)
@@ -49,7 +58,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
     }
   }, [initial])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof CreateLeadDto, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
@@ -58,7 +67,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
   }
 
   function validate() {
-    const newErrors = {}
+    const newErrors: LeadFormErrors = {}
 
     if (!form.name.trim()) {
       newErrors.name = 'El nombre es requerido'
@@ -76,7 +85,7 @@ export default function ModalLead({ initial, onClose, onSave }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validate()) {

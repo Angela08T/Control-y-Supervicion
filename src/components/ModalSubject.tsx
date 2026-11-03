@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { FaClipboardList } from 'react-icons/fa'
+import type { CreateSubjectDto, Subject } from '@/types'
 
-const defaultState = {
+export interface ModalSubjectProps {
+  initial?: Subject | null
+  onClose: () => void
+  onSave: (data: CreateSubjectDto) => void | Promise<void>
+}
+
+interface SubjectForm {
+  name: string
+}
+
+type SubjectFormErrors = Partial<Record<keyof SubjectForm, string>>
+
+const defaultState: SubjectForm = {
   name: ''
 }
 
-export default function ModalSubject({ initial, onClose, onSave }) {
-  const [form, setForm] = useState(defaultState)
-  const [errors, setErrors] = useState({})
+export default function ModalSubject({ initial, onClose, onSave }: ModalSubjectProps) {
+  const [form, setForm] = useState<SubjectForm>(defaultState)
+  const [errors, setErrors] = useState<SubjectFormErrors>({})
 
   useEffect(() => {
     if (initial) {
@@ -17,7 +30,7 @@ export default function ModalSubject({ initial, onClose, onSave }) {
     }
   }, [initial])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof SubjectForm, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
@@ -26,7 +39,7 @@ export default function ModalSubject({ initial, onClose, onSave }) {
   }
 
   function validate() {
-    const newErrors = {}
+    const newErrors: SubjectFormErrors = {}
 
     if (!form.name.trim()) {
       newErrors.name = 'El nombre del asunto es requerido'
@@ -40,7 +53,7 @@ export default function ModalSubject({ initial, onClose, onSave }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validate()) {

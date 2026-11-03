@@ -1,14 +1,28 @@
 import React, { useEffect, useState } from 'react'
 import { FaVideo, FaBarcode } from 'react-icons/fa'
+import type { BodycamView, CreateBodycamDto } from '@/types'
 
-const defaultState = {
+export interface ModalBodycamProps {
+  initial?: Pick<BodycamView, 'name' | 'serie'> | null
+  onClose: () => void
+  onSave: (data: Pick<CreateBodycamDto, 'name' | 'serie'>) => void | Promise<void>
+}
+
+interface BodycamForm {
+  name: string
+  serie: string
+}
+
+type BodycamFormErrors = Partial<Record<keyof BodycamForm, string>>
+
+const defaultState: BodycamForm = {
   name: '',
   serie: ''
 }
 
-export default function ModalBodycam({ initial, onClose, onSave }) {
-  const [form, setForm] = useState(defaultState)
-  const [errors, setErrors] = useState({})
+export default function ModalBodycam({ initial, onClose, onSave }: ModalBodycamProps) {
+  const [form, setForm] = useState<BodycamForm>(defaultState)
+  const [errors, setErrors] = useState<BodycamFormErrors>({})
 
   useEffect(() => {
     if (initial) {
@@ -19,7 +33,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
     }
   }, [initial])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof BodycamForm, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
@@ -28,7 +42,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
   }
 
   function validate() {
-    const newErrors = {}
+    const newErrors: BodycamFormErrors = {}
 
     if (!form.name.trim()) {
       newErrors.name = 'El nombre es requerido'
@@ -42,7 +56,7 @@ export default function ModalBodycam({ initial, onClose, onSave }) {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!validate()) {
