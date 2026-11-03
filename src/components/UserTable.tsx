@@ -1,6 +1,11 @@
 import React from 'react'
 import type { ID, User } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaTimes, FaDesktop } from 'react-icons/fa'
+import { actionBtn, actions, cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes'
+
+/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
+const headerCell = `${incTableTh} border-x-0 border-t-0`
+const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`
 
 /** User row; `role` and `sessions` are read by the table but not part of GET /user (buildSelectUser). */
 export type UserRow = User & { role?: string; sessions?: string[] };
@@ -31,25 +36,25 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactiv
     })
   }
   return (
-    <div className="table-card">
-      <div className="table-scroll-container">
-        <table className="inc-table">
+    <div className={tableCard}>
+      <div className={tableScroll}>
+        <table className={incTable}>
           <thead>
             <tr>
-              <th>#</th>
-              {showActions && <th>Acciones</th>}
-              <th>Nombre</th>
-              <th>Apellido</th>
-              <th>Usuario</th>
-              <th>Rol</th>
-              <th>Sesiones Activas</th>
-              <th>Estado</th>
+              <th className={headerCell}>#</th>
+              {showActions && <th className={headerCell}>Acciones</th>}
+              <th className={headerCell}>Nombre</th>
+              <th className={headerCell}>Apellido</th>
+              <th className={headerCell}>Usuario</th>
+              <th className={headerCell}>Rol</th>
+              <th className={headerCell}>Sesiones Activas</th>
+              <th className={headerCell}>Estado</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
-              <tr>
-                <td colSpan={showActions ? 8 : 7} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+              <tr className={bodyRow}>
+                <td colSpan={showActions ? 8 : 7} className={cn(incTableTd, 'text-center text-content! p-10!')}>
                   No hay usuarios registrados
                 </td>
               </tr>
@@ -72,14 +77,14 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactiv
               const roleInfo = roleConfig[userRole] || { label: 'Desconocido', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' }
 
               return (
-                <tr key={item.id}>
-                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px' }}>
+                <tr key={item.id} className={bodyRow}>
+                  <td className={cn(incTableTd, 'w-10 text-center font-bold text-muted!')}>
                     {startIndex + index + 1}
                   </td>
                   {showActions && (
-                    <td className="actions">
+                    <td className={cn(incTableTd, actions)}>
                       {canEdit && (
-                        <button title="Editar" onClick={() => onEdit(item)}>
+                        <button title="Editar" onClick={() => onEdit(item)} className={actionBtn}>
                           <FaEdit />
                         </button>
                       )}
@@ -87,111 +92,68 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactiv
                         <button
                           title={isEnabled ? "Deshabilitar" : "Habilitar"}
                           onClick={() => onToggleStatus(item)}
-                          style={{
-                            color: isEnabled ? '#ef4444' : '#22c55e'
-                          }}
+                          className={actionBtn}
                         >
                           {isEnabled ? <FaBan /> : <FaCheckCircle />}
                         </button>
                       )}
                       {!canEdit && !canDelete && (
-                        <span style={{
-                          color: 'var(--text-muted)',
-                          fontSize: '0.85rem',
-                          fontStyle: 'italic'
-                        }}>
+                        <span className="text-muted text-[0.85rem] italic">
                           Solo lectura
                         </span>
                       )}
                     </td>
                   )}
-                  <td style={{ fontWeight: '600', color: 'var(--text)' }}>{item.name}</td>
-                  <td style={{ fontWeight: '600', color: 'var(--text)' }}>{item.lastname}</td>
-                  <td>{item.username}</td>
-                  <td>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      fontSize: '0.85rem',
-                      fontWeight: '500',
-                      backgroundColor: roleInfo.bg,
-                      color: roleInfo.color
-                    }}>
+                  <td className={cn(incTableTd, 'font-semibold text-content!')}>{item.name}</td>
+                  <td className={cn(incTableTd, 'font-semibold text-content!')}>{item.lastname}</td>
+                  <td className={incTableTd}>{item.username}</td>
+                  <td className={incTableTd}>
+                    <span
+                      className="rounded-[12px] px-3 py-1 text-[0.85rem] font-medium"
+                      style={{ backgroundColor: roleInfo.bg, color: roleInfo.color }}
+                    >
                       {roleInfo.label}
                     </span>
                   </td>
-                  <td>
+                  <td className={incTableTd}>
                     {item.sessions && item.sessions.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div className="flex flex-col gap-1">
                         {item.sessions.map((ip, idx) => (
                           <div
                             key={idx}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '3px 8px',
-                              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                              borderRadius: '6px',
-                              fontSize: '0.8rem'
-                            }}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-[rgba(34,197,94,0.1)] px-2 py-[3px] text-[0.8rem]"
                           >
-                            <FaDesktop style={{ color: '#22c55e', fontSize: '10px' }} />
-                            <span style={{ color: 'var(--text)', fontFamily: 'monospace' }}>{ip}</span>
+                            <FaDesktop className="text-[10px] text-[#22c55e]" />
+                            <span className="[font-family:monospace]">{ip}</span>
                             {onDeactivateSession && (
                               <button
                                 onClick={() => onDeactivateSession?.(item.id, ip)}
                                 title={`Cerrar sesión en ${ip}`}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '2px',
-                                  cursor: 'pointer',
-                                  color: '#ef4444',
-                                  display: 'flex',
-                                  alignItems: 'center'
-                                }}
+                                className="flex cursor-pointer items-center border-none bg-transparent p-0.5 text-[#ef4444]"
                               >
-                                <FaTimes style={{ fontSize: '10px' }} />
+                                <FaTimes className="text-[10px]" />
                               </button>
                             )}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                      <span className="text-muted text-[0.85rem] italic">
                         Sin sesiones
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td className={incTableTd}>
                     {isEnabled ? (
-                      <span style={{
-                        color: '#22c55e',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
+                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#22c55e]">
                         <FaCheckCircle /> Habilitado
                       </span>
                     ) : (
-                      <span style={{
-                        color: '#ef4444',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
+                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#ef4444]">
                         <FaBan /> Deshabilitado
                         <span
                           title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}
-                          style={{
-                            cursor: 'help',
-                            color: 'var(--text-muted)',
-                            fontSize: '14px',
-                            marginLeft: '3px'
-                          }}
+                          className="cursor-help text-muted text-[14px] ml-[3px]"
                         >
                           <FaInfoCircle />
                         </span>

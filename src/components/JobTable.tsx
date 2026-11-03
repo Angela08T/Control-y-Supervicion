@@ -1,6 +1,11 @@
 import React from 'react'
 import type { Job } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
+import { actionBtn, actions, cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes'
+
+/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
+const headerCell = `${incTableTh} border-x-0 border-t-0`
+const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`
 
 export interface JobTableProps {
   data?: Job[];
@@ -27,21 +32,21 @@ export default function JobTable({ data = [], onToggleStatus, onEdit, startIndex
   }
 
   return (
-    <div className="table-card">
-      <div className="table-scroll-container">
-        <table className="inc-table">
+    <div className={tableCard}>
+      <div className={tableScroll}>
+        <table className={incTable}>
           <thead>
             <tr>
-              <th>#</th>
-              {showActions && <th>Acciones</th>}
-              <th>Nombre del Cargo</th>
-              <th>Estado</th>
+              <th className={headerCell}>#</th>
+              {showActions && <th className={headerCell}>Acciones</th>}
+              <th className={headerCell}>Nombre del Cargo</th>
+              <th className={headerCell}>Estado</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
-              <tr>
-                <td colSpan={showActions ? 4 : 3} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+              <tr className={bodyRow}>
+                <td colSpan={showActions ? 4 : 3} className={cn(incTableTd, 'text-center text-content! p-10!')}>
                   No hay cargos registrados
                 </td>
               </tr>
@@ -49,14 +54,14 @@ export default function JobTable({ data = [], onToggleStatus, onEdit, startIndex
             {data.map((item, index) => {
               const isEnabled = !item.deleted_at
               return (
-                <tr key={item.id}>
-                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px' }}>
+                <tr key={item.id} className={bodyRow}>
+                  <td className={cn(incTableTd, 'w-10 text-center font-bold text-muted!')}>
                     {startIndex + index + 1}
                   </td>
                   {showActions && (
-                    <td className="actions">
+                    <td className={cn(incTableTd, actions)}>
                       {canEdit && (
-                        <button title="Editar" onClick={() => onEdit(item)}>
+                        <button title="Editar" onClick={() => onEdit(item)} className={actionBtn}>
                           <FaEdit />
                         </button>
                       )}
@@ -64,53 +69,30 @@ export default function JobTable({ data = [], onToggleStatus, onEdit, startIndex
                         <button
                           title={isEnabled ? "Deshabilitar" : "Habilitar"}
                           onClick={() => onToggleStatus(item)}
-                          style={{
-                            color: isEnabled ? '#ef4444' : '#22c55e'
-                          }}
+                          className={actionBtn}
                         >
                           {isEnabled ? <FaBan /> : <FaCheckCircle />}
                         </button>
                       )}
                       {!canEdit && !canDelete && (
-                        <span style={{
-                          color: 'var(--text-muted)',
-                          fontSize: '0.85rem',
-                          fontStyle: 'italic'
-                        }}>
+                        <span className="text-muted text-[0.85rem] italic">
                           Solo lectura
                         </span>
                       )}
                     </td>
                   )}
-                  <td style={{ fontWeight: '600', color: 'var(--text)' }}>{item.name}</td>
-                  <td>
+                  <td className={cn(incTableTd, 'font-semibold text-content!')}>{item.name}</td>
+                  <td className={incTableTd}>
                     {isEnabled ? (
-                      <span style={{
-                        color: '#22c55e',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
+                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#22c55e]">
                         <FaCheckCircle /> Habilitado
                       </span>
                     ) : (
-                      <span style={{
-                        color: '#ef4444',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
+                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#ef4444]">
                         <FaBan /> Deshabilitado
                         <span
                           title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}
-                          style={{
-                            cursor: 'help',
-                            color: 'var(--text-muted)',
-                            fontSize: '14px',
-                            marginLeft: '3px'
-                          }}
+                          className="cursor-help text-muted text-[14px] ml-[3px]"
                         >
                           <FaInfoCircle />
                         </span>

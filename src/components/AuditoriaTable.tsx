@@ -1,5 +1,10 @@
 import React from 'react';
 import type { Action, Audit, Status } from '@/types';
+import { cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes';
+
+/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
+const headerCell = `${incTableTh} border-x-0 border-t-0`;
+const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`;
 
 // Función para formatear fecha
 function formatDate(iso: string | null | undefined): string {
@@ -8,17 +13,31 @@ function formatDate(iso: string | null | undefined): string {
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 }
 
+/** Badges (antes .badge + .badge-*) */
+const badgeBase =
+  'inline-block rounded-[12px] border px-3 py-1 text-[11px] font-semibold uppercase leading-[1.5] tracking-[0.5px]';
+
+const badgeVariant = {
+  success: 'border-[rgba(16,185,129,0.3)] bg-[rgba(16,185,129,0.15)] text-success',
+  danger: 'border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.15)] text-danger',
+  warning: 'border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.15)] text-warning',
+  info: 'border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.15)] text-secondary',
+  primary: 'border-[rgba(30,58,138,0.3)] bg-[rgba(30,58,138,0.15)] text-primary',
+  secondary: 'border-[rgba(100,116,139,0.3)] bg-[rgba(100,116,139,0.15)] text-muted',
+  default: 'border-[rgba(148,163,184,0.3)] bg-[rgba(148,163,184,0.15)] text-content-2',
+};
+
 // Función para obtener badge de estado
 function getStatusBadge(status: Status): React.ReactElement {
   const statusColors: Record<string, string> = {
-    SUCCESS: 'badge-success',
-    BLOCKED: 'badge-danger',
-    ERROR: 'badge-warning',
-    FAILED: 'badge-danger'
+    SUCCESS: badgeVariant.success,
+    BLOCKED: badgeVariant.danger,
+    ERROR: badgeVariant.warning,
+    FAILED: badgeVariant.danger
   };
 
   return (
-    <span className={`badge ${statusColors[status] || 'badge-default'}`}>
+    <span className={cn(badgeBase, statusColors[status] || badgeVariant.default)}>
       {status}
     </span>
   );
@@ -27,21 +46,25 @@ function getStatusBadge(status: Status): React.ReactElement {
 // Función para obtener badge de acción
 function getActionBadge(action: Action): React.ReactElement {
   const actionColors: Partial<Record<Action, string>> = {
-    LOGIN: 'badge-info',
-    LOGOUT: 'badge-secondary',
-    CREATE: 'badge-success',
-    UPDATE: 'badge-warning',
-    DELETE: 'badge-danger',
-    GET_ALL: 'badge-primary',
-    GET_ONE: 'badge-primary'
+    LOGIN: badgeVariant.info,
+    LOGOUT: badgeVariant.secondary,
+    CREATE: badgeVariant.success,
+    UPDATE: badgeVariant.warning,
+    DELETE: badgeVariant.danger,
+    GET_ALL: badgeVariant.primary,
+    GET_ONE: badgeVariant.primary
   };
 
   return (
-    <span className={`badge ${actionColors[action] || 'badge-default'}`}>
+    <span className={cn(badgeBase, actionColors[action] || badgeVariant.default)}>
       {action}
     </span>
   );
 }
+
+/** Bloque <pre> de contenido JSON (antes inline) */
+const preClass =
+  'text-[0.75em] [background:var(--bg)] p-2 rounded mt-1 overflow-auto max-h-[150px] border border-line';
 
 export interface AuditoriaTableProps {
   data?: Audit[];
@@ -51,65 +74,56 @@ export interface AuditoriaTableProps {
 
 export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPage = 10 }: AuditoriaTableProps) {
   return (
-    <div className="table-card">
-      <div className="table-scroll-container">
-        <table className="inc-table">
+    <div className={tableCard}>
+      <div className={tableScroll}>
+        <table className={incTable}>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Usuario</th>
-              <th>IP</th>
-              <th>Acción</th>
-              <th>Modelo</th>
-              <th>Estado</th>
-              <th>Descripción</th>
+              <th className={headerCell}>#</th>
+              <th className={headerCell}>Usuario</th>
+              <th className={headerCell}>IP</th>
+              <th className={headerCell}>Acción</th>
+              <th className={headerCell}>Modelo</th>
+              <th className={headerCell}>Estado</th>
+              <th className={headerCell}>Descripción</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
-              <tr>
-                <td colSpan={7} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+              <tr className={bodyRow}>
+                <td colSpan={7} className={cn(incTableTd, 'text-center text-content! p-10!')}>
                   No hay registros de auditoría disponibles
                 </td>
               </tr>
             )}
             {data.map((item, index) => (
-              <tr key={item.id}>
-                <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
+              <tr key={item.id} className={bodyRow}>
+                <td className={cn(incTableTd, 'w-10 text-center font-bold text-muted!')}>
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
-                <td>
+                <td className={incTableTd}>
                   <strong>{item.user?.username || 'N/A'}</strong>
                   <br />
-                  <small style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>
+                  <small className="text-muted text-[0.85em]">
                     ID: {item.user?.id?.substring(0, 8) || 'N/A'}...
                   </small>
                 </td>
-                <td>{item.ip}</td>
-                <td>{getActionBadge(item.action)}</td>
-                <td>
-                  <span className="badge badge-default">{item.model}</span>
+                <td className={incTableTd}>{item.ip}</td>
+                <td className={incTableTd}>{getActionBadge(item.action)}</td>
+                <td className={incTableTd}>
+                  <span className={cn(badgeBase, badgeVariant.default)}>{item.model}</span>
                 </td>
-                <td>{getStatusBadge(item.status)}</td>
-                <td>
+                <td className={incTableTd}>{getStatusBadge(item.status)}</td>
+                <td className={incTableTd}>
                   {item.description}
                   {(item.preview_content || item.new_content) && (
-                    <div style={{ marginTop: '8px' }}>
+                    <div className="mt-2">
                       {item.preview_content && (
                         <details>
-                          <summary style={{ cursor: 'pointer', color: 'var(--primary)', fontSize: '0.85em' }}>
+                          <summary className="cursor-pointer text-primary text-[0.85em]">
                             📄 Contenido anterior
                           </summary>
-                          <pre style={{
-                            fontSize: '0.75em',
-                            background: 'var(--bg)',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            marginTop: '4px',
-                            overflow: 'auto',
-                            maxHeight: '150px',
-                            border: '1px solid var(--border)'
-                          }}>
+                          <pre className={preClass}>
                           {(() => {
                             try {
                               return JSON.stringify(JSON.parse(item.preview_content ?? ''), null, 2);
@@ -121,20 +135,11 @@ export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPag
                         </details>
                       )}
                       {item.new_content && (
-                        <details style={{ marginTop: '4px' }}>
-                          <summary style={{ cursor: 'pointer', color: 'var(--success)', fontSize: '0.85em' }}>
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-success text-[0.85em]">
                             ✅ Contenido nuevo
                           </summary>
-                          <pre style={{
-                            fontSize: '0.75em',
-                            background: 'var(--bg)',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            marginTop: '4px',
-                            overflow: 'auto',
-                            maxHeight: '150px',
-                            border: '1px solid var(--border)'
-                          }}>
+                          <pre className={preClass}>
                             {(() => {
                             try {
                               return JSON.stringify(JSON.parse(item.new_content ?? ''), null, 2);
@@ -148,22 +153,17 @@ export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPag
                     </div>
                   )}
                   {item.register_id && (
-                    <div style={{ marginTop: '4px' }}>
-                      <small style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>
-                        Registro: <code style={{
-                          fontSize: '0.85em',
-                          background: 'var(--bg)',
-                          padding: '2px 6px',
-                          borderRadius: '4px'
-                        }}>
+                    <div className="mt-1">
+                      <small className="text-muted text-[0.85em]">
+                        Registro: <code className="text-[0.85em] [background:var(--bg)] px-1.5 py-0.5 rounded">
                           {item.register_id.substring(0, 8)}...
                         </code>
                       </small>
                     </div>
                   )}
                   {item.field && (
-                    <div style={{ marginTop: '4px' }}>
-                      <small style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>
+                    <div className="mt-1">
+                      <small className="text-muted text-[0.85em]">
                         Campo: <strong>{item.field}</strong>
                       </small>
                     </div>

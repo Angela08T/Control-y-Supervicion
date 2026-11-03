@@ -2,6 +2,11 @@ import React from 'react'
 import type { ID, Incidencia, IncidenciaStatus } from '@/types'
 import { FaFilePdf, FaBan, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaUndo } from 'react-icons/fa'
 import { MdBlock } from 'react-icons/md'
+import { actionBtn, actions, cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes'
+
+/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
+const headerCell = `${incTableTh} border-x-0 border-t-0`
+const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`
 
 function formatDeletedDate(isoDate: string | null | undefined): string {
   if (!isoDate) return ''
@@ -23,12 +28,7 @@ interface EstadoIncidenciaProps {
 function EstadoIncidencia({ status, disabled }: EstadoIncidenciaProps) {
   if (disabled) {
     return (
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: '5px',
-        padding: '4px 10px', borderRadius: '12px', fontSize: '0.82rem',
-        fontWeight: '700', backgroundColor: 'rgba(239,68,68,0.12)',
-        color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)'
-      }}>
+      <span className="inline-flex items-center gap-[5px] rounded-[12px] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.12)] px-2.5 py-1 text-[0.82rem] font-bold text-[#ef4444]">
         <MdBlock size={13} /> Deshabilitado
       </span>
     )
@@ -44,11 +44,10 @@ function EstadoIncidencia({ status, disabled }: EstadoIncidenciaProps) {
   const estado = estados[statusLower] || estados.draft
 
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '5px',
-      padding: '4px 12px', borderRadius: '12px', fontSize: '0.85rem',
-      fontWeight: '600', backgroundColor: `${estado.color}20`, color: estado.color
-    }}>
+    <span
+      className="inline-flex items-center gap-[5px] rounded-[12px] px-3 py-1 text-[0.85rem] font-semibold"
+      style={{ backgroundColor: `${estado.color}20`, color: estado.color }}
+    >
       {estado.icon} {estado.label}
     </span>
   )
@@ -80,35 +79,35 @@ export default function IncidenciasTable({
   canValidate = false
 }: IncidenciasTableProps) {
   return (
-    <div className="table-card">
-      <div className="table-scroll-container">
-        <table className="inc-table">
+    <div className={tableCard}>
+      <div className={tableScroll}>
+        <table className={incTable}>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Acciones</th>
-              <th>Estado</th>
-              <th>DNI</th>
-              <th>Asunto</th>
-              <th>Falta</th>
-              <th>Medio</th>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Turno</th>
-              <th>Subgerencia</th>
-              <th>Cargo</th>
-              <th>Reg. Lab</th>
-              <th>Jurisdicción</th>
-              <th>Bodycam Asignada</th>
-              <th>Dirigido a</th>
-              <th>Destinatario</th>
-              <th>Registrado Por</th>
+              <th className={headerCell}>#</th>
+              <th className={headerCell}>Acciones</th>
+              <th className={headerCell}>Estado</th>
+              <th className={headerCell}>DNI</th>
+              <th className={headerCell}>Asunto</th>
+              <th className={headerCell}>Falta</th>
+              <th className={headerCell}>Medio</th>
+              <th className={headerCell}>Fecha</th>
+              <th className={headerCell}>Hora</th>
+              <th className={headerCell}>Turno</th>
+              <th className={headerCell}>Subgerencia</th>
+              <th className={headerCell}>Cargo</th>
+              <th className={headerCell}>Reg. Lab</th>
+              <th className={headerCell}>Jurisdicción</th>
+              <th className={headerCell}>Bodycam Asignada</th>
+              <th className={headerCell}>Dirigido a</th>
+              <th className={headerCell}>Destinatario</th>
+              <th className={headerCell}>Registrado Por</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
-              <tr>
-                <td colSpan={18} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+              <tr className={bodyRow}>
+                <td colSpan={18} className={cn(incTableTd, 'text-center text-content! p-10!')}>
                   No hay incidencias registradas
                 </td>
               </tr>
@@ -120,44 +119,38 @@ export default function IncidenciasTable({
               const canSendToValidator  = !isDisabled && canSend     && item.evidences?.length > 0 && itemStatus === 'draft'
               const canValidateReport   = !isDisabled && canValidate && itemStatus === 'pending'
 
-              // Estilos de fila según estado habilitado/deshabilitado
-              const rowStyle: React.CSSProperties = isDisabled ? {
-                backgroundColor: 'rgba(239, 68, 68, 0.06)',
-                opacity: 0.72,
-              } : {}
+              // Estilo de fila según estado habilitado/deshabilitado (! porque el estilo inline anterior ganaba al hover)
+              const rowTone = isDisabled && 'bg-[rgba(239,68,68,0.06)]! opacity-[0.72]'
 
               // Estilo de texto en celdas de una fila deshabilitada
-              const cellTextStyle: React.CSSProperties = isDisabled ? {
-                textDecoration: 'line-through',
-                color: 'var(--text-muted)',
-              } : {}
+              const cellTone = isDisabled && 'line-through text-muted!'
 
               return (
-                <tr key={item.id} style={rowStyle}>
+                <tr key={item.id} className={cn(bodyRow, rowTone)}>
 
                   {/* Número */}
-                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px' }}>
+                  <td className={cn(incTableTd, 'w-10 text-center font-bold text-muted!')}>
                     {startIndex + index + 1}
                   </td>
 
                   {/* Acciones */}
-                  <td className="actions">
-                    <button title="Ver/Generar PDF" onClick={() => onEdit(item)}>
+                  <td className={cn(incTableTd, actions)}>
+                    <button title="Ver/Generar PDF" onClick={() => onEdit(item)} className={actionBtn}>
                       <FaFilePdf />
                     </button>
 
                     {canSendToValidator && (
-                      <button title="Enviar a validador" onClick={() => onSend(item.id)} style={{ color: '#3b82f6' }}>
+                      <button title="Enviar a validador" onClick={() => onSend(item.id)} className={actionBtn}>
                         <FaPaperPlane />
                       </button>
                     )}
 
                     {canValidateReport && (
                       <>
-                        <button title="Aprobar" onClick={() => onApprove(item.id)} style={{ color: '#22c55e' }}>
+                        <button title="Aprobar" onClick={() => onApprove(item.id)} className={actionBtn}>
                           <FaCheck />
                         </button>
-                        <button title="Rechazar" onClick={() => onReject(item.id)} style={{ color: '#ef4444' }}>
+                        <button title="Rechazar" onClick={() => onReject(item.id)} className={actionBtn}>
                           <FaTimes />
                         </button>
                       </>
@@ -168,7 +161,7 @@ export default function IncidenciasTable({
                         <button
                           title="Habilitar incidencia"
                           onClick={() => onDelete(item.id, item.status)}
-                          style={{ color: '#22c55e' }}
+                          className={actionBtn}
                         >
                           <FaUndo />
                         </button>
@@ -176,7 +169,7 @@ export default function IncidenciasTable({
                         <button
                           title="Deshabilitar incidencia"
                           onClick={() => onDelete(item.id, item.status)}
-                          style={{ color: '#ef4444' }}
+                          className={actionBtn}
                         >
                           <FaBan />
                         </button>
@@ -185,13 +178,11 @@ export default function IncidenciasTable({
                   </td>
 
                   {/* Estado — muestra "Deshabilitado" si está eliminada */}
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                  <td className={incTableTd}>
+                    <div className="flex flex-col items-start gap-1">
                       <EstadoIncidencia status={item.status} disabled={isDisabled} />
                       {isDisabled && (
-                        <span title={formatDeletedDate(item.deletedAt)} style={{
-                          fontSize: '0.7rem', color: '#94a3b8', cursor: 'help', whiteSpace: 'nowrap'
-                        }}>
+                        <span title={formatDeletedDate(item.deletedAt)} className="cursor-help whitespace-nowrap text-[0.7rem] text-[#94a3b8]">
                           {formatDeletedDate(item.deletedAt)}
                         </span>
                       )}
@@ -199,25 +190,25 @@ export default function IncidenciasTable({
                   </td>
 
                   {/* Resto de celdas con tachado si está deshabilitada */}
-                  <td style={cellTextStyle}>{isAbsence ? '-' : (item.dni || '-')}</td>
-                  <td style={cellTextStyle}>{item.asunto}</td>
-                  <td style={cellTextStyle}>{item.falta}</td>
-                  <td style={cellTextStyle}>
+                  <td className={cn(incTableTd, cellTone)}>{isAbsence ? '-' : (item.dni || '-')}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.asunto}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.falta}</td>
+                  <td className={cn(incTableTd, cellTone)}>
                     {isAbsence ? 'Reporte' : (item.medio + (item.bodycamNumber ? ` (${item.bodycamNumber})` : ''))}
                   </td>
-                  <td style={cellTextStyle}>{isAbsence ? formatAbsenceDates(item) : item.fechaIncidente}</td>
-                  <td style={cellTextStyle}>
+                  <td className={cn(incTableTd, cellTone)}>{isAbsence ? formatAbsenceDates(item) : item.fechaIncidente}</td>
+                  <td className={cn(incTableTd, cellTone)}>
                     {isAbsence ? (item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada') : item.horaIncidente}
                   </td>
-                  <td style={cellTextStyle}>{isAbsence ? '-' : item.turno}</td>
-                  <td style={cellTextStyle}>{item.subgerencia || '-'}</td>
-                  <td style={cellTextStyle}>{item.cargo || '-'}</td>
-                  <td style={cellTextStyle}>{item.regLab || '-'}</td>
-                  <td style={cellTextStyle}>{item.jurisdiccion || '-'}</td>
-                  <td style={cellTextStyle}>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
-                  <td style={cellTextStyle}>{item.dirigidoA || '-'}</td>
-                  <td style={cellTextStyle}>{item.destinatario || '-'}</td>
-                  <td style={cellTextStyle}>{item.registradoPor || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{isAbsence ? '-' : item.turno}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.subgerencia || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.cargo || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.regLab || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.jurisdiccion || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{isAbsence ? '-' : (item.bodycamAsignadaA || '-')}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.dirigidoA || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.destinatario || '-'}</td>
+                  <td className={cn(incTableTd, cellTone)}>{item.registradoPor || '-'}</td>
                 </tr>
               )
             })}

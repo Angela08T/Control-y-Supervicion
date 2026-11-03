@@ -2,6 +2,11 @@ import React, { useState } from 'react'
 import type { Lack } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaFolder, FaFileAlt, FaEye } from 'react-icons/fa'
 import ModalViewContent from './ModalViewContent'
+import { actionBtn, actions, cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes'
+
+/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
+const headerCell = `${incTableTh} border-x-0 border-t-0`
+const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`
 
 export interface LackTableProps {
   data?: Lack[];
@@ -37,25 +42,25 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
   }
 
   return (
-    <div className="table-card">
-      <div className="table-scroll-container">
-        <table className="inc-table">
+    <div className={tableCard}>
+      <div className={tableScroll}>
+        <table className={incTable}>
           <thead>
             <tr>
-              <th style={{ width: '50px', minWidth: '50px' }}>#</th>
-              {showActions && <th style={{ width: '120px', minWidth: '120px' }}>Acciones</th>}
-              <th style={{ width: '280px', minWidth: '280px' }}>Nombre de la Falta</th>
-              <th style={{ width: '280px', minWidth: '280px' }}>Asunto</th>
-              <th style={{ width: '100px', minWidth: '90px', textAlign: 'center' }}>Artículo</th>
-              <th style={{ width: '200px', minWidth: '180px' }}>Descripción</th>
-              <th style={{ width: '320px', minWidth: '300px' }}>Contenido</th>
-              <th style={{ width: '150px', minWidth: '150px' }}>Estado</th>
+              <th className={cn(headerCell, 'w-[50px] min-w-[50px]')}>#</th>
+              {showActions && <th className={cn(headerCell, 'w-[120px] min-w-[120px]')}>Acciones</th>}
+              <th className={cn(headerCell, 'w-[280px] min-w-[280px]')}>Nombre de la Falta</th>
+              <th className={cn(headerCell, 'w-[280px] min-w-[280px]')}>Asunto</th>
+              <th className={cn(headerCell, 'w-[100px] min-w-[90px] text-center!')}>Artículo</th>
+              <th className={cn(headerCell, 'w-[200px] min-w-[180px]')}>Descripción</th>
+              <th className={cn(headerCell, 'w-[320px] min-w-[300px]')}>Contenido</th>
+              <th className={cn(headerCell, 'w-[150px] min-w-[150px]')}>Estado</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
-              <tr>
-                <td colSpan={showActions ? 8 : 7} style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+              <tr className={bodyRow}>
+                <td colSpan={showActions ? 8 : 7} className={cn(incTableTd, 'text-center text-content! p-10!')}>
                   No hay faltas registradas
                 </td>
               </tr>
@@ -63,14 +68,14 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
             {data.map((item, index) => {
               const isEnabled = !item.deleted_at
               return (
-                <tr key={item.id}>
-                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '50px' }}>
+                <tr key={item.id} className={bodyRow}>
+                  <td className={cn(incTableTd, 'w-[50px] text-center font-bold text-muted!')}>
                     {startIndex + index + 1}
                   </td>
                   {showActions && (
-                    <td className="actions" style={{ width: '120px' }}>
+                    <td className={cn(incTableTd, actions, 'w-[120px]')}>
                       {canEdit && (
-                        <button title="Editar" onClick={() => onEdit(item)}>
+                        <button title="Editar" onClick={() => onEdit(item)} className={actionBtn}>
                           <FaEdit />
                         </button>
                       )}
@@ -78,204 +83,78 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
                         <button
                           title={isEnabled ? "Deshabilitar" : "Habilitar"}
                           onClick={() => onToggleStatus(item)}
-                          style={{
-                            color: isEnabled ? '#ef4444' : '#22c55e'
-                          }}
+                          className={actionBtn}
                         >
                           {isEnabled ? <FaBan /> : <FaCheckCircle />}
                         </button>
                       )}
                       {!canEdit && !canDelete && (
-                        <span style={{
-                          color: 'var(--text-muted)',
-                          fontSize: '0.85rem',
-                          fontStyle: 'italic'
-                        }}>
+                        <span className="text-muted text-[0.85rem] italic">
                           Solo lectura
                         </span>
                       )}
                     </td>
                   )}
-                  <td style={{
-                    fontWeight: '600',
-                    color: 'var(--text)',
-                    width: '280px',
-                    minWidth: '280px',
-                    maxWidth: '280px',
-                    paddingRight: '20px',
-                    verticalAlign: 'top'
-                  }}>
+                  <td className={cn(incTableTd, 'font-semibold text-content! w-[280px] min-w-[280px] max-w-[280px] pr-5! align-top')}>
                     <div
                       title={item.name}
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.4',
-                        wordBreak: 'break-word',
-                        maxWidth: '260px',
-                        cursor: 'help'
-                      }}
+                      className="line-clamp-3 text-ellipsis leading-[1.4] [word-break:break-word] max-w-[260px] cursor-help"
                     >
                       {item.name}
                     </div>
                   </td>
-                  <td style={{
-                    width: '280px',
-                    minWidth: '280px',
-                    maxWidth: '280px',
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                    verticalAlign: 'top'
-                  }}>
+                  <td className={cn(incTableTd, 'w-[280px] min-w-[280px] max-w-[280px] px-5! align-top')}>
                     {item.subject ? (
-                      <div style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.4',
-                        wordBreak: 'break-word',
-                        maxWidth: '240px'
-                      }}>
+                      <div className="line-clamp-3 text-ellipsis leading-[1.4] [word-break:break-word] max-w-[240px]">
                         <span
-                          style={{
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: '500',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            color: '#3b82f6',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            maxWidth: '100%'
-                          }}
+                          className="inline-flex max-w-full items-center gap-[5px] rounded-[12px] bg-[rgba(59,130,246,0.1)] px-3 py-1 text-[0.85rem] font-medium text-secondary"
                           title={item.subject.name}
                         >
-                          <FaFolder style={{ fontSize: '0.7rem', flexShrink: 0 }} />
-                          <span style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
+                          <FaFolder className="shrink-0 text-[0.7rem]" />
+                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                             {item.subject.name}
                           </span>
                         </span>
                       </div>
                     ) : (
-                      <span style={{
-                        color: 'var(--text-muted)',
-                        fontSize: '0.85rem',
-                        fontStyle: 'italic'
-                      }}>
+                      <span className="text-muted text-[0.85rem] italic">
                         Sin asunto
                       </span>
                     )}
                   </td>
-                  <td style={{
-                    textAlign: 'center',
-                    width: '100px',
-                    minWidth: '90px',
-                    verticalAlign: 'top',
-                    paddingTop: '12px'
-                  }}>
+                  <td className={cn(incTableTd, 'w-[100px] min-w-[90px] pt-3! text-center align-top')}>
                     {item.article ? (
-                      <span style={{
-                        padding: '3px 10px',
-                        borderRadius: '8px',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        backgroundColor: 'rgba(234, 179, 8, 0.1)',
-                        color: '#eab308',
-                        border: '1px solid rgba(234, 179, 8, 0.2)'
-                      }}>
+                      <span className="rounded-lg border border-[rgba(234,179,8,0.2)] bg-[rgba(234,179,8,0.1)] px-2.5 py-[3px] text-[0.8rem] font-semibold text-[#eab308]">
                         Art. {item.article}
                       </span>
                     ) : (
-                      <span style={{
-                        color: 'var(--text-muted)',
-                        fontSize: '0.8rem',
-                        fontStyle: 'italic'
-                      }}>
+                      <span className="text-muted text-[0.8rem] italic">
                         -
                       </span>
                     )}
                   </td>
-                  <td style={{
-                    width: '200px',
-                    minWidth: '180px',
-                    maxWidth: '200px',
-                    fontSize: '0.85rem',
-                    color: 'var(--text-secondary)',
-                    paddingRight: '15px',
-                    verticalAlign: 'top'
-                  }}>
+                  <td className={cn(incTableTd, 'w-[200px] min-w-[180px] max-w-[200px] pr-[15px]! text-[0.85rem] align-top')}>
                     {item.description ? (
-                      <div style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.4'
-                      }}>
+                      <div className="line-clamp-2 text-ellipsis leading-[1.4]">
                         {item.description}
                       </div>
                     ) : (
-                      <span style={{
-                        color: 'var(--text-muted)',
-                        fontStyle: 'italic'
-                      }}>
+                      <span className="text-muted italic">
                         Sin descripción
                       </span>
                     )}
                   </td>
-                  <td style={{
-                    width: '320px',
-                    minWidth: '300px',
-                    maxWidth: '320px',
-                    fontSize: '0.85rem',
-                    color: 'var(--text-secondary)',
-                    verticalAlign: 'top'
-                  }}>
+                  <td className={cn(incTableTd, 'w-[320px] min-w-[300px] max-w-[320px] text-[0.85rem] align-top')}>
                     {item.content ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div
-                          style={{
-                            flex: 1,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            lineHeight: '1.4'
-                          }}
-                        >
-                          <FaFileAlt style={{ marginRight: '5px', fontSize: '0.7rem', color: 'var(--primary)' }} />
+                      <div className="flex items-center gap-2.5">
+                        <div className="line-clamp-3 text-ellipsis leading-[1.4] flex-1">
+                          <FaFileAlt className="mr-[5px] text-[0.7rem] text-primary" />
                           {item.content}
                         </div>
                         <button
                           onClick={() => setViewingContent(item)}
                           title="Ver contenido completo"
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: '1px solid var(--primary)',
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            color: 'var(--primary)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500',
-                            transition: 'all 0.2s',
-                            whiteSpace: 'nowrap'
-                          }}
+                          className="flex cursor-pointer items-center gap-[5px] whitespace-nowrap rounded-md border border-primary bg-[rgba(59,130,246,0.1)] px-3 py-1.5 text-[0.8rem] font-medium text-primary transition-all duration-200 ease-[ease]"
                           onMouseOver={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.background = 'var(--primary)'
                             e.currentTarget.style.color = 'white'
@@ -290,42 +169,22 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
                         </button>
                       </div>
                     ) : (
-                      <span style={{
-                        color: 'var(--text-muted)',
-                        fontStyle: 'italic'
-                      }}>
+                      <span className="text-muted italic">
                         Sin contenido
                       </span>
                     )}
                   </td>
-                  <td style={{ width: '150px', minWidth: '150px' }}>
+                  <td className={cn(incTableTd, 'w-[150px] min-w-[150px]')}>
                     {isEnabled ? (
-                      <span style={{
-                        color: '#22c55e',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
+                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#22c55e]">
                         <FaCheckCircle /> Habilitado
                       </span>
                     ) : (
-                      <span style={{
-                        color: '#ef4444',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
+                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#ef4444]">
                         <FaBan /> Deshabilitado
                         <span
                           title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}
-                          style={{
-                            cursor: 'help',
-                            color: 'var(--text-muted)',
-                            fontSize: '14px',
-                            marginLeft: '3px'
-                          }}
+                          className="cursor-help text-muted text-[14px] ml-[3px]"
                         >
                           <FaInfoCircle />
                         </span>
