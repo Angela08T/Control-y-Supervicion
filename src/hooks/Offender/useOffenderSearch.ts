@@ -1,15 +1,46 @@
 import { useState, useEffect, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { getOffenderByDni, getOffenders } from '../../api/offender';
+import type { OffenderDniLookup } from '@/types';
 
-const useOffenderSearch = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+/** Cuerpo de la respuesta de búsqueda por DNI: registro, lista o envoltorio `data` */
+type DniSearchBody = OffenderDniLookup | OffenderDniLookup[] | { data?: OffenderDniLookup | OffenderDniLookup[] };
+
+/** Respuesta de búsqueda por DNI envuelta en `data` */
+interface DniSearchEnvelope {
+  data?: DniSearchBody;
+}
+
+/** Forma mínima de un error de axios usada para leer estado y mensaje del backend */
+interface OffenderApiError {
+  response?: { status?: number; data?: { message?: string } };
+}
+
+/** Indica si el valor es un registro de infractor (objeto con DNI) */
+const esRegistroDni = (valor: unknown): valor is OffenderDniLookup =>
+  typeof valor === 'object' && valor !== null && Boolean((valor as Partial<OffenderDniLookup>).dni);
+
+export interface UseOffenderSearchResult {
+  searchTerm: string;
+  setSearchTerm: Dispatch<SetStateAction<string>>;
+  results: OffenderDniLookup[];
+  loading: boolean;
+  error: string | null;
+  showSuggestions: boolean;
+  setShowSuggestions: Dispatch<SetStateAction<boolean>>;
+  selectOffender: <T>(offender: T) => T;
+  clearSearch: () => void;
+}
+
+const useOffenderSearch = (): UseOffenderSearchResult => {
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [results, setResults] = useState<OffenderDniLookup[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
   // Ref para manejar el debouncing
-  const debounceTimeout = useRef(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Limpiar timeout anterior
@@ -31,11 +62,11 @@ const useOffenderSearch = () => {
 
       try {
         const isNumeric = /^\d+$/.test(searchTerm);
-        let offenders = [];
+        let offenders: OffenderDniLookup[] = [];
 
         if (isNumeric) {
           // Búsqueda por DNI
-          const response = await getOffenderByDni(searchTerm);
+          const response: DniSearchEnvelope | OffenderDniLookup[] = await getOffenderByDni(searchTerm);
 
           // Lógica de parsers para DNI
           if (Array.isArray(response)) {
@@ -43,12 +74,12 @@ const useOffenderSearch = () => {
           } else if (response.data) {
             if (Array.isArray(response.data)) {
               offenders = response.data;
-            } else if (typeof response.data === 'object' && response.data.dni) {
+            } else if (esRegistroDni(response.data)) {
               offenders = [response.data];
             } else if (response.data.data) {
               if (Array.isArray(response.data.data)) {
                 offenders = response.data.data;
-              } else if (typeof response.data.data === 'object' && response.data.data.dni) {
+              } else if (esRegistroDni(response.data.data)) {
                 offenders = [response.data.data];
               }
             }
@@ -64,12 +95,13 @@ const useOffenderSearch = () => {
         setResults(offenders);
         setShowSuggestions(offenders.length > 0);
       } catch (err) {
+        const apiError = err as OffenderApiError;
         // Ignorar error 404 si es búsqueda por DNI (simplemente no encontrado)
         // Para búsqueda por nombre, también podría ser vacío
         setResults([]);
         setShowSuggestions(false);
-        if (err.response && err.response.status !== 404) {
-          setError(err.response?.data?.message || 'Error al buscar');
+        if (apiError.response && apiError.response.status !== 404) {
+          setError(apiError.response?.data?.message || 'Error al buscar');
         }
       } finally {
         setLoading(false);
@@ -84,7 +116,7 @@ const useOffenderSearch = () => {
     };
   }, [searchTerm]);
 
-  const selectOffender = (offender) => {
+  const selectOffender = <T,>(offender: T): T => {
     setShowSuggestions(false);
     return offender;
   };

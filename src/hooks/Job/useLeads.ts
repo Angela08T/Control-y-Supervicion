@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 import { getLeadsByJob } from '../../api/job';
+import type { ID, Lead } from '@/types';
 
-const useLeads = (jobId) => {
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+/** Forma de la respuesta: lista directa o envuelta en `data` (o `data.data`) */
+type LeadListPayload = Lead[] | { data: Lead[] | { data: Lead[] } };
+
+/** Forma mínima de un error de axios usada para leer el mensaje del backend */
+interface LeadsApiError {
+  response?: { data?: { message?: string } };
+}
+
+export interface UseLeadsResult {
+  leads: Lead[];
+  loading: boolean;
+  error: string | null;
+}
+
+const useLeads = (jobId: ID | null | undefined): UseLeadsResult => {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Si no hay jobId, resetear
@@ -20,10 +35,10 @@ const useLeads = (jobId) => {
       setError(null);
 
       try {
-        const response = await getLeadsByJob(jobId);
+        const response: LeadListPayload = await getLeadsByJob(jobId);
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
-        let leadList = [];
+        let leadList: Lead[] = [];
 
         if (Array.isArray(response)) {
           leadList = response;
@@ -36,7 +51,8 @@ const useLeads = (jobId) => {
 
         setLeads(leadList);
       } catch (err) {
-        setError(err.response?.data?.message || 'Error al cargar personas');
+        const apiError = err as LeadsApiError;
+        setError(apiError.response?.data?.message || 'Error al cargar personas');
         setLeads([]);
       } finally {
         setLoading(false);

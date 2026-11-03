@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 import { getAllLeads } from '../../api/job';
+import type { Lead } from '@/types';
 
-const useAllLeads = () => {
-  const [allLeads, setAllLeads] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+/** Forma de la respuesta: lista directa o envuelta en `data` (o `data.data`) */
+type LeadListPayload = Lead[] | { data: Lead[] | { data: Lead[] } };
+
+/** Forma mínima de un error de axios usada para leer el mensaje del backend */
+interface AllLeadsApiError {
+  response?: { data?: { message?: string } };
+}
+
+export interface UseAllLeadsResult {
+  allLeads: Lead[];
+  loading: boolean;
+  error: string | null;
+}
+
+const useAllLeads = (): UseAllLeadsResult => {
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAllLeads = async () => {
@@ -12,10 +27,10 @@ const useAllLeads = () => {
       setError(null);
 
       try {
-        const response = await getAllLeads();
+        const response: LeadListPayload = await getAllLeads();
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
-        let leadList = [];
+        let leadList: Lead[] = [];
 
         if (Array.isArray(response)) {
           leadList = response;
@@ -28,7 +43,8 @@ const useAllLeads = () => {
 
         setAllLeads(leadList);
       } catch (err) {
-        setError(err.response?.data?.message || 'Error al cargar lista de personas');
+        const apiError = err as AllLeadsApiError;
+        setError(apiError.response?.data?.message || 'Error al cargar lista de personas');
         setAllLeads([]);
       } finally {
         setLoading(false);

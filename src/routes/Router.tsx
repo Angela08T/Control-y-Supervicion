@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
 import { logout as logoutAction } from "../store/slices/authSlice";
 import { clearToken, setSessionExpiredCallback } from "../api/config";
+import { useAppDispatch } from "@/store/hooks";
 
 // LAYOUTS
 import DashboardLayoutAdmin from "../layouts/DashboardLayoutAdmin";
@@ -35,8 +35,8 @@ import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
 
 export default function Router() {
-  const dispatch = useDispatch();
-  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+  const dispatch = useAppDispatch();
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState<boolean>(false);
 
   useEffect(() => {
     // Configurar el callback para mostrar el modal cuando la sesión expire

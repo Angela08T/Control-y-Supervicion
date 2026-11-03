@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 import { getJobs } from '../../api/job';
+import type { Job } from '@/types';
 
-const useJobs = () => {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+/** Forma de la respuesta: lista directa o envuelta en `data` (o `data.data`) */
+type JobListPayload = Job[] | { data: Job[] | { data: Job[] } };
+
+/** Forma mínima de un error de axios usada para leer el mensaje del backend */
+interface JobsApiError {
+  response?: { data?: { message?: string } };
+}
+
+export interface UseJobsResult {
+  jobs: Job[];
+  loading: boolean;
+  error: string | null;
+}
+
+const useJobs = (): UseJobsResult => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -12,10 +27,10 @@ const useJobs = () => {
       setError(null);
 
       try {
-        const response = await getJobs();
+        const response: JobListPayload = await getJobs();
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
-        let jobList = [];
+        let jobList: Job[] = [];
 
         if (Array.isArray(response)) {
           jobList = response;
@@ -28,7 +43,8 @@ const useJobs = () => {
 
         setJobs(jobList);
       } catch (err) {
-        setError(err.response?.data?.message || 'Error al cargar cargos');
+        const apiError = err as JobsApiError;
+        setError(apiError.response?.data?.message || 'Error al cargar cargos');
         setJobs([]);
       } finally {
         setLoading(false);

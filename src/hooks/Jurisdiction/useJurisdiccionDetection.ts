@@ -1,10 +1,24 @@
 import { useState, useEffect } from 'react';
 import * as turf from '@turf/turf';
+import type {
+  CurrentJurisdictionResult,
+  DetectedJurisdiction,
+  JurisdictionGeo,
+  JurisdictionGeoFile,
+} from '@/types';
 
-const useJurisdiccionDetection = () => {
-  const [jurisdicciones, setJurisdicciones] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+export interface UseJurisdiccionDetectionResult {
+  jurisdicciones: JurisdictionGeo[];
+  detectarJurisdiccion: (latitude: number, longitude: number) => DetectedJurisdiction | null;
+  obtenerJurisdiccionActual: () => Promise<CurrentJurisdictionResult>;
+  loading: boolean;
+  error: string | null;
+}
+
+const useJurisdiccionDetection = (): UseJurisdiccionDetectionResult => {
+  const [jurisdicciones, setJurisdicciones] = useState<JurisdictionGeo[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Cargar las jurisdicciones desde el archivo GeoJSON
   useEffect(() => {
@@ -16,7 +30,7 @@ const useJurisdiccionDetection = () => {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data: JurisdictionGeoFile = await response.json();
 
         if (data.status && data.data) {
           setJurisdicciones(data.data);
@@ -24,7 +38,8 @@ const useJurisdiccionDetection = () => {
           throw new Error('Formato de datos inválido en el archivo GeoJSON');
         }
       } catch (err) {
-        setError('Error al cargar las jurisdicciones: ' + err.message);
+        const message = err instanceof Error ? err.message : String(err);
+        setError('Error al cargar las jurisdicciones: ' + message);
       }
     };
 
@@ -32,7 +47,7 @@ const useJurisdiccionDetection = () => {
   }, []);
 
   // Función para detectar la jurisdicción basada en coordenadas
-  const detectarJurisdiccion = (latitude, longitude) => {
+  const detectarJurisdiccion = (latitude: number, longitude: number): DetectedJurisdiction | null => {
     if (!jurisdicciones.length) {
       return null;
     }
@@ -71,7 +86,7 @@ const useJurisdiccionDetection = () => {
 
   // Función para obtener coordenadas GPS y detectar jurisdicción automáticamente
   const obtenerJurisdiccionActual = () => {
-    return new Promise((resolve, reject) => {
+    return new Promise<CurrentJurisdictionResult>((resolve, reject) => {
       if (!navigator.geolocation) {
         reject(new Error('Geolocalización no soportada'));
         return;

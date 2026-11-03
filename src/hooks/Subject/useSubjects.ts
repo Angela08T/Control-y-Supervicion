@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 import { getSubjects } from '../../api/subject';
+import type { Subject } from '@/types';
 
-const useSubjects = () => {
-  const [subjects, setSubjects] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+/** Forma de la respuesta: lista directa o envuelta en `data` (o `data.data`) */
+type SubjectListPayload = Subject[] | { data: Subject[] | { data: Subject[] } };
+
+/** Forma mínima de un error de axios usada para leer el mensaje del backend */
+interface SubjectsApiError {
+  response?: { data?: { message?: string } };
+}
+
+export interface UseSubjectsResult {
+  subjects: Subject[];
+  loading: boolean;
+  error: string | null;
+}
+
+const useSubjects = (): UseSubjectsResult => {
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -12,10 +27,10 @@ const useSubjects = () => {
       setError(null);
 
       try {
-        const response = await getSubjects();
+        const response: SubjectListPayload = await getSubjects();
 
         // Estructura del API: { message: "...", data: { data: [...], currentPage, totalCount, ... } }
-        let subjectList = [];
+        let subjectList: Subject[] = [];
 
         if (Array.isArray(response)) {
           subjectList = response;
@@ -28,7 +43,8 @@ const useSubjects = () => {
 
         setSubjects(subjectList);
       } catch (err) {
-        setError(err.response?.data?.message || 'Error al cargar asuntos');
+        const apiError = err as SubjectsApiError;
+        setError(apiError.response?.data?.message || 'Error al cargar asuntos');
         setSubjects([]);
       } finally {
         setLoading(false);
