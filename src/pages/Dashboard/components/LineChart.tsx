@@ -10,16 +10,16 @@ const chartTitle = 'mb-1 text-[16px] font-semibold leading-[1.3] text-content'
 const chartSubtitle = 'text-[11px] leading-[1.4] text-content-2'
 const timeRangeControls = 'flex flex-wrap items-center gap-3'
 const timeRangeButtons = 'flex gap-2 rounded-lg border border-line bg-surface p-1'
-const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]!'
+const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]'
 const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-[rgba(59,130,246,0.1)] hover:text-primary'
 const timeBtnActive = 'bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_100%)] text-white shadow-[0_2px_8px_rgba(7,89,133,0.3)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_100%)] dark:shadow-[0_2px_8px_rgba(37,99,235,0.4)]'
-const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease]! hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
+const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease] hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
 const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-card p-3 shadow-[0_4px_12px_var(--shadow)]'
 // Botones de filtro: `.filter-button.active` y `[data-theme=dark] .filter-button` (que va después en styles.css) se resuelven con dark: después de la base
-const filterBtnBase = 'flex cursor-pointer items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-[11px] font-semibold [transition:all_0.3s_ease]! hover:-translate-y-0.5 dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)]'
+const filterBtnBase = 'flex cursor-pointer items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-[11px] font-semibold [transition:all_0.3s_ease] hover:-translate-y-0.5 dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)]'
 const filterBtnIdle = 'bg-surface border-transparent text-content-2 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:[border-color:var(--filter-color)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]'
 const filterBtnActive = 'text-white [background:var(--filter-color)] [border-color:var(--filter-color)] shadow-[0_4px_12px_rgba(0,0,0,0.15)]'
-const filterDot = 'size-2.5 rounded-full [transition:all_0.3s_ease]!'
+const filterDot = 'size-2.5 rounded-full [transition:all_0.3s_ease]'
 const filterDotActive = 'bg-white! shadow-[0_2px_4px_rgba(0,0,0,0.2)]'
 
 /** Incidencias por día/mes: { [fecha]: { [asunto]: cantidad } } */
@@ -363,7 +363,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="[transition:stroke-width_0.3s_ease,opacity_0.3s_ease]! [will-change:stroke-dashoffset] animate-[drawLine_2.5s_ease-in-out_forwards]"
+                className="[transition:stroke-width_0.3s_ease,opacity_0.3s_ease] [will-change:stroke-dashoffset] animate-[drawLine_2.5s_ease-in-out_forwards]"
                 style={{
                   strokeDasharray: pathLength,
                   strokeDashoffset: pathLength,
@@ -390,7 +390,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                       fill="white"
                       stroke={color}
                       strokeWidth="2.5"
-                      className="cursor-pointer [pointer-events:all] [transition:all_0.2s_ease]! group-hover/point:[r:5] group-hover/point:[stroke-width:3]"
+                      className="cursor-pointer [pointer-events:all] [transition:all_0.2s_ease] group-hover/point:[r:5] group-hover/point:[stroke-width:3]"
                       onMouseEnter={() => setHoveredPoint({ asunto, dia: meses[i], value, topFaltas, x: getX(i), y: getY(value) })}
                       onMouseLeave={() => setHoveredPoint(null)}
                     />
@@ -399,7 +399,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                       cy={getY(value)}
                       r="2.5"
                       fill={color}
-                      className="pointer-events-none [transition:all_0.2s_ease]! group-hover/point:[r:2.5]"
+                      className="pointer-events-none [transition:all_0.2s_ease] group-hover/point:[r:2.5]"
                     />
                   </g>
                 )

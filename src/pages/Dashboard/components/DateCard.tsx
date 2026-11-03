@@ -21,7 +21,7 @@ export default function DateCard() {
   const { diaSemana, fecha } = obtenerFechaFormateada()
 
   return (
-    <div className="rounded-[16px] border border-[rgba(255,255,255,0.2)] bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_50%,#0369a1_100%)] px-6 py-7 shadow-[0_4px_20px_rgba(7,89,133,0.3)] [backdrop-filter:blur(10px)] [transition:transform_0.3s_ease,box-shadow_0.3s_ease]! flex items-center hover:[transform:translateY(-4px)] hover:shadow-[0_8px_30px_rgba(7,89,133,0.4)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_50%,#3b82f6_100%)] dark:shadow-[0_4px_20px_rgba(37,99,235,0.4)] dark:hover:shadow-[0_8px_30px_rgba(37,99,235,0.5)]">
+    <div className="rounded-[16px] border border-[rgba(255,255,255,0.2)] bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_50%,#0369a1_100%)] px-6 py-7 shadow-[0_4px_20px_rgba(7,89,133,0.3)] [backdrop-filter:blur(10px)] [transition:transform_0.3s_ease,box-shadow_0.3s_ease] flex items-center hover:[transform:translateY(-4px)] hover:shadow-[0_8px_30px_rgba(7,89,133,0.4)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_50%,#3b82f6_100%)] dark:shadow-[0_4px_20px_rgba(37,99,235,0.4)] dark:hover:shadow-[0_8px_30px_rgba(37,99,235,0.5)]">
       <div className="flex w-full items-center gap-5">
         <div className="flex size-15 items-center justify-center rounded-[12px] bg-[rgba(255,255,255,0.2)] text-[28px] text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] [backdrop-filter:blur(10px)]">
           <FaCalendarDay />

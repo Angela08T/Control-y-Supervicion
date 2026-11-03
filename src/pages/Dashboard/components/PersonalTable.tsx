@@ -148,7 +148,7 @@ export default function PersonalTable() {
               const estado = esSuTurno ? 'En turno' : 'Fuera de turno'
 
               return (
-                <tr key={index} className="border-b border-line [transition:background_0.2s_ease]! hover:bg-[rgba(30,58,138,0.05)]">
+                <tr key={index} className="border-b border-line [transition:background_0.2s_ease] hover:bg-[rgba(30,58,138,0.05)]">
                   <td className="w-[40px] px-3 py-4 text-center text-[14px] font-bold text-content! dark:text-[#f8fafc]!">
                     {index + 1}
                   </td>

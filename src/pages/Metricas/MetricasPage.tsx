@@ -303,7 +303,7 @@ function TabInfractores({ start, end }: TabInfractoresProps) {
                               : <span className="font-semibold text-muted">{i + 1}</span>}
                     </td>
                     <td className={`${TD_TXT} text-center`}>
-                      <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[0.88rem] [font-family:monospace]!">
+                      <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[0.88rem] [font-family:monospace]">
                         <FaIdCard className="opacity-50 text-[0.7rem]" />
                         {o.dni || '—'}
                       </span>

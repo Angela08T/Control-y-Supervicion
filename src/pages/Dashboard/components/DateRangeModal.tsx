@@ -35,7 +35,7 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
             </h3>
             <p className="m-0 mt-1.5 text-[13px] text-muted">Selecciona el periodo a analizar</p>
           </div>
-          <button className="flex cursor-pointer items-center justify-center rounded-[8px] border-none bg-transparent p-2 text-[20px] text-muted [transition:all_0.3s_ease]! hover:bg-[rgba(239,68,68,0.1)] hover:text-danger hover:[transform:rotate(90deg)]" onClick={onClose}>
+          <button className="flex cursor-pointer items-center justify-center rounded-[8px] border-none bg-transparent p-2 text-[20px] text-muted [transition:all_0.3s_ease] hover:bg-[rgba(239,68,68,0.1)] hover:text-danger hover:[transform:rotate(90deg)]" onClick={onClose}>
             <FaTimes />
           </button>
         </div>
@@ -47,7 +47,7 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
               type="date"
               value={startDate}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
-              className="w-full cursor-pointer rounded-[10px] border-2 border-line bg-surface px-4 py-3 text-[14px] text-content [font-family:inherit]! [transition:all_0.3s_ease]! hover:border-secondary focus:border-primary focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:var(--calendar-icon-filter,none)] [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:[transition:opacity_0.3s_ease] [&::-webkit-calendar-picker-indicator:hover]:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:[filter:invert(1)]"
+              className="w-full cursor-pointer rounded-[10px] border-2 border-line bg-surface px-4 py-3 text-[14px] text-content [font-family:inherit] [transition:all_0.3s_ease] hover:border-secondary focus:border-primary focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:var(--calendar-icon-filter,none)] [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:[transition:opacity_0.3s_ease] [&::-webkit-calendar-picker-indicator:hover]:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:[filter:invert(1)]"
             />
           </div>
 
@@ -58,7 +58,7 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
               value={endDate}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
               min={startDate}
-              className="w-full cursor-pointer rounded-[10px] border-2 border-line bg-surface px-4 py-3 text-[14px] text-content [font-family:inherit]! [transition:all_0.3s_ease]! hover:border-secondary focus:border-primary focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:var(--calendar-icon-filter,none)] [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:[transition:opacity_0.3s_ease] [&::-webkit-calendar-picker-indicator:hover]:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:[filter:invert(1)]"
+              className="w-full cursor-pointer rounded-[10px] border-2 border-line bg-surface px-4 py-3 text-[14px] text-content [font-family:inherit] [transition:all_0.3s_ease] hover:border-secondary focus:border-primary focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:var(--calendar-icon-filter,none)] [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:[transition:opacity_0.3s_ease] [&::-webkit-calendar-picker-indicator:hover]:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:[filter:invert(1)]"
             />
           </div>
 
@@ -73,7 +73,7 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
                   setStartDate(start.toISOString().split('T')[0])
                   setEndDate(end.toISOString().split('T')[0])
                 }}
-                className="cursor-pointer rounded-[8px] border border-line bg-surface px-3.5 py-2 text-[12px] font-medium text-content-2 [transition:all_0.3s_ease]! hover:border-primary hover:bg-primary hover:text-white hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:text-center"
+                className="cursor-pointer rounded-[8px] border border-line bg-surface px-3.5 py-2 text-[12px] font-medium text-content-2 [transition:all_0.3s_ease] hover:border-primary hover:bg-primary hover:text-white hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:text-center"
               >
                 Últimos 7 días
               </button>
@@ -86,7 +86,7 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
                   setStartDate(start.toISOString().split('T')[0])
                   setEndDate(end.toISOString().split('T')[0])
                 }}
-                className="cursor-pointer rounded-[8px] border border-line bg-surface px-3.5 py-2 text-[12px] font-medium text-content-2 [transition:all_0.3s_ease]! hover:border-primary hover:bg-primary hover:text-white hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:text-center"
+                className="cursor-pointer rounded-[8px] border border-line bg-surface px-3.5 py-2 text-[12px] font-medium text-content-2 [transition:all_0.3s_ease] hover:border-primary hover:bg-primary hover:text-white hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:text-center"
               >
                 Últimos 30 días
               </button>
@@ -99,7 +99,7 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
                   setStartDate(start.toISOString().split('T')[0])
                   setEndDate(end.toISOString().split('T')[0])
                 }}
-                className="cursor-pointer rounded-[8px] border border-line bg-surface px-3.5 py-2 text-[12px] font-medium text-content-2 [transition:all_0.3s_ease]! hover:border-primary hover:bg-primary hover:text-white hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:text-center"
+                className="cursor-pointer rounded-[8px] border border-line bg-surface px-3.5 py-2 text-[12px] font-medium text-content-2 [transition:all_0.3s_ease] hover:border-primary hover:bg-primary hover:text-white hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:text-center"
               >
                 Este mes
               </button>
@@ -108,10 +108,10 @@ export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps
         </div>
 
         <div className="flex justify-end gap-3 border-t border-line bg-surface px-6 py-4 max-[480px]:flex-col max-[480px]:px-5">
-          <button onClick={handleClear} className="cursor-pointer rounded-[10px] border-2 border-line bg-surface px-5 py-2.5 text-[14px] font-semibold text-content-2 [transition:all_0.3s_ease]! hover:border-muted hover:bg-card hover:text-content hover:[transform:translateY(-2px)] max-[480px]:w-full max-[480px]:justify-center">
+          <button onClick={handleClear} className="cursor-pointer rounded-[10px] border-2 border-line bg-surface px-5 py-2.5 text-[14px] font-semibold text-content-2 [transition:all_0.3s_ease] hover:border-muted hover:bg-card hover:text-content hover:[transform:translateY(-2px)] max-[480px]:w-full max-[480px]:justify-center">
             Limpiar Filtro
           </button>
-          <button onClick={handleApply} className="relative cursor-pointer overflow-hidden rounded-[10px] border-none bg-[linear-gradient(135deg,var(--primary)_0%,var(--secondary)_100%)] px-5 py-2.5 text-[14px] font-semibold text-btn! shadow-[0_4px_15px_var(--shadow)] [transition:all_0.3s_ease]! hover:shadow-[0_6px_20px_rgba(30,58,138,0.4)] hover:[transform:translateY(-2px)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:justify-center">
+          <button onClick={handleApply} className="relative cursor-pointer overflow-hidden rounded-[10px] border-none bg-[linear-gradient(135deg,var(--primary)_0%,var(--secondary)_100%)] px-5 py-2.5 text-[14px] font-semibold text-btn! shadow-[0_4px_15px_var(--shadow)] [transition:all_0.3s_ease] hover:shadow-[0_6px_20px_rgba(30,58,138,0.4)] hover:[transform:translateY(-2px)] active:[transform:translateY(0)] max-[480px]:w-full max-[480px]:justify-center">
             Aplicar Filtro
           </button>
         </div>

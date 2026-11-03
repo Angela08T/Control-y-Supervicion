@@ -62,7 +62,7 @@ export default function CircularProgress({ title, percentage, subtitle }: Circul
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             transform="rotate(-90 80 80)"
-            className="[transition:stroke-dashoffset_1s_ease,stroke_0.5s_ease]!"
+            className="[transition:stroke-dashoffset_1s_ease,stroke_0.5s_ease]"
           />
         </svg>
 

@@ -22,7 +22,7 @@ export default function WelcomeCard({ message }: WelcomeCardProps) {
           <img
             src={loboImage}
             alt="Lobo Centinela"
-            className="h-full w-full object-contain [filter:drop-shadow(0_4px_20px_rgba(0,0,0,0.2))] [transition:all_0.3s_ease]! hover:[transform:scale(1.05)] dark:[filter:brightness(1.2)_saturate(1.1)_drop-shadow(0_4px_20px_rgba(0,0,0,0.5))_contrast(1.15)]"
+            className="h-full w-full object-contain [filter:drop-shadow(0_4px_20px_rgba(0,0,0,0.2))] [transition:all_0.3s_ease] hover:[transform:scale(1.05)] dark:[filter:brightness(1.2)_saturate(1.1)_drop-shadow(0_4px_20px_rgba(0,0,0,0.5))_contrast(1.15)]"
           />
         </div>
       </div>

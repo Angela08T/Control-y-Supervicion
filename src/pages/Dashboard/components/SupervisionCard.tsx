@@ -65,7 +65,7 @@ export default function SupervisionCard({ serenosEnCampo, serenosSinConexion, ni
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
               transform="rotate(-90 70 70)"
-              className="[stroke:var(--secondary)] [transition:stroke-dashoffset_1s_ease]!"
+              className="[stroke:var(--secondary)] [transition:stroke-dashoffset_1s_ease]"
             />
           </svg>
 

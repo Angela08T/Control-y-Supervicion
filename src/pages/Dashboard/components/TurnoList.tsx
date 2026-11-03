@@ -49,7 +49,7 @@ export default function TurnoList({ data }: TurnoListProps) {
           const porcentaje = total > 0 ? Math.round((turno.cantidad / total) * 100) : 0
 
           return (
-            <div key={index} className="flex items-center gap-4 rounded-[12px] border border-line bg-card p-4 [backdrop-filter:blur(5px)] [transition:all_0.3s_ease]! hover:bg-card-hover hover:[transform:translateX(4px)]">
+            <div key={index} className="flex items-center gap-4 rounded-[12px] border border-line bg-card p-4 [backdrop-filter:blur(5px)] [transition:all_0.3s_ease] hover:bg-card-hover hover:[transform:translateX(4px)]">
               <div className="flex size-[50px] items-center justify-center rounded-[12px] bg-[rgba(30,58,138,0.1)]" style={{ backgroundColor: `${turno.color}20` }}>
                 <div className="text-[22px] text-primary" style={{ color: turno.color }}>
                   {turno.icon}

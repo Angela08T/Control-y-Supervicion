@@ -9,7 +9,7 @@ export interface CalendarModalProps {
 
 /** Clases de una celda del calendario (equivale a .calendar-day con sus estados). */
 const dayClassName = (date: Date | null, selected: boolean, inRange: boolean): string => cn(
-  'flex aspect-square items-center justify-center rounded-[8px] text-[14px] font-semibold select-none [transition:all_0.2s_ease]!',
+  'flex aspect-square items-center justify-center rounded-[8px] text-[14px] font-semibold select-none [transition:all_0.2s_ease]',
   !date && 'cursor-default bg-transparent',
   date && 'cursor-pointer',
   date && !inRange && !selected && 'bg-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.3)]',
@@ -107,13 +107,13 @@ export default function CalendarModal({ onClose, onApply }: CalendarModalProps) 
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 [backdrop-filter:blur(4px)]">
       <div className="w-[90%] max-w-[400px] rounded-[16px] bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_50%,#0369a1_100%)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[slideUp_0.3s_ease] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_50%,#3b82f6_100%)]">
         <div className="mb-5 flex items-center justify-between">
-          <button className="flex size-8 cursor-pointer items-center justify-center rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] text-[20px] text-white [transition:all_0.3s_ease]! hover:bg-[rgba(255,255,255,0.3)] hover:[transform:scale(1.1)]" onClick={previousMonth}>
+          <button className="flex size-8 cursor-pointer items-center justify-center rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] text-[20px] text-white [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.3)] hover:[transform:scale(1.1)]" onClick={previousMonth}>
             ‹
           </button>
           <h3 className="m-0 text-[18px] font-bold text-white capitalize">
             {meses[currentMonth.getMonth()]} De {currentMonth.getFullYear()}
           </h3>
-          <button className="flex size-8 cursor-pointer items-center justify-center rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] text-[20px] text-white [transition:all_0.3s_ease]! hover:bg-[rgba(255,255,255,0.3)] hover:[transform:scale(1.1)]" onClick={nextMonth}>
+          <button className="flex size-8 cursor-pointer items-center justify-center rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] text-[20px] text-white [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.3)] hover:[transform:scale(1.1)]" onClick={nextMonth}>
             ›
           </button>
         </div>
@@ -137,11 +137,11 @@ export default function CalendarModal({ onClose, onApply }: CalendarModalProps) 
         </div>
 
         <div className="flex justify-end gap-3">
-          <button className="cursor-pointer rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] px-5 py-2.5 text-[14px] font-semibold text-white [transition:all_0.3s_ease]! hover:bg-[rgba(255,255,255,0.3)]" onClick={handleCancel}>
+          <button className="cursor-pointer rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] px-5 py-2.5 text-[14px] font-semibold text-white [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.3)]" onClick={handleCancel}>
             Cancelar
           </button>
           <button
-            className="cursor-pointer rounded-[8px] border-none bg-white px-5 py-2.5 text-[14px] font-semibold text-[#0c4a6e] [transition:all_0.3s_ease]! hover:bg-[rgba(255,255,255,0.95)] hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:[transform:none] disabled:hover:shadow-none"
+            className="cursor-pointer rounded-[8px] border-none bg-white px-5 py-2.5 text-[14px] font-semibold text-[#0c4a6e] [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.95)] hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:[transform:none] disabled:hover:shadow-none"
             onClick={handleApply}
             disabled={selectedDates.length !== 2}
           >

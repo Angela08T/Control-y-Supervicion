@@ -15,7 +15,7 @@ export default function StatCard({ title, value, subtitle, change, icon, color, 
   const isPositive = change?.startsWith('+')
 
   return (
-    <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)] [transition:transform_0.3s_ease,box-shadow_0.3s_ease]! hover:[transform:translateY(-4px)] hover:shadow-[0_8px_30px_var(--shadow-hover)]">
+    <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)] [transition:transform_0.3s_ease,box-shadow_0.3s_ease] hover:[transform:translateY(-4px)] hover:shadow-[0_8px_30px_var(--shadow-hover)]">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="mb-2 text-[15px] font-medium uppercase tracking-[0.5px] text-content-2!">{title}</p>
@@ -34,7 +34,7 @@ export default function StatCard({ title, value, subtitle, change, icon, color, 
         </div>
 
         <div
-          className="flex size-14 cursor-pointer items-center justify-center rounded-[12px] text-[24px] text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)] [transition:transform_0.2s_ease]! hover:[transform:scale(1.1)]"
+          className="flex size-14 cursor-pointer items-center justify-center rounded-[12px] text-[24px] text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)] [transition:transform_0.2s_ease] hover:[transform:scale(1.1)]"
           style={{ background: color }}
           onClick={onIconClick}
           role={onIconClick ? "button" : undefined}
