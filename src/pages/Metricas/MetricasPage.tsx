@@ -4,9 +4,10 @@ import {
   FaUsers, FaFileAlt, FaClock, FaCheckCircle, FaTimesCircle,
   FaEdit, FaMedal, FaSearch, FaChartBar, FaUserTimes, FaIdCard
 } from 'react-icons/fa'
+import type { DashboardOffenders, DashboardPerformance } from '@/types'
 import './MetricasPage.css'
 
-const ROL_LABEL = {
+const ROL_LABEL: Record<string, string> = {
   ADMINISTRATOR: 'Admin',
   SUPERVISOR: 'Supervisor',
   SENTINEL: 'Centinela',
@@ -19,9 +20,16 @@ const LACK_COLORS = [
   '#22c55e', '#ec4899', '#06b6d4', '#f97316',
 ]
 
-function StatCard({ icon, label, value, color }) {
+export interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+}
+
+function StatCard({ icon, label, value, color }: StatCardProps) {
   return (
-    <div className="met-stat-card" style={{ '--met-color': color }}>
+    <div className="met-stat-card" style={{ '--met-color': color } as React.CSSProperties}>
       <div className="met-stat-icon">{icon}</div>
       <div className="met-stat-body">
         <div className="met-stat-value">{value}</div>
@@ -31,9 +39,17 @@ function StatCard({ icon, label, value, color }) {
   )
 }
 
-function StatusBar({ approved, pending, draft, rejected, total }) {
+export interface StatusBarProps {
+  approved: number;
+  pending: number;
+  draft: number;
+  rejected: number;
+  total: number;
+}
+
+function StatusBar({ approved, pending, draft, rejected, total }: StatusBarProps) {
   if (total === 0) return <span className="met-bar-empty">—</span>
-  const pct = (n) => Math.round((n / total) * 100)
+  const pct = (n: number) => Math.round((n / total) * 100)
   const segments = [
     { val: approved, color: '#22c55e', label: 'Apr' },
     { val: pending,  color: '#f59e0b', label: 'Pen' },
@@ -61,10 +77,15 @@ function StatusBar({ approved, pending, draft, rejected, total }) {
 }
 
 // ── Tab de usuarios ──────────────────────────────────────────────────────────
-function TabUsuarios({ start, end }) {
+export interface TabUsuariosProps {
+  start: string;
+  end: string;
+}
+
+function TabUsuarios({ start, end }: TabUsuariosProps) {
   const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState(null)
-  const [data, setData]           = useState(null)
+  const [error, setError]         = useState<string | null>(null)
+  const [data, setData]           = useState<Partial<DashboardPerformance> | null>(null)
   const [search, setSearch]       = useState('')
 
   useEffect(() => { fetchData() }, [start, end])
@@ -74,7 +95,7 @@ function TabUsuarios({ start, end }) {
     setLoading(true); setError(null)
     try {
       const res = await getDashboardPerformance(start, end)
-      setData(res?.data || res)
+      setData((res?.data || res) as Partial<DashboardPerformance>)
     } catch { setError('No se pudieron cargar los datos.') }
     finally { setLoading(false) }
   }
@@ -169,10 +190,15 @@ function TabUsuarios({ start, end }) {
 }
 
 // ── Tab de infractores ───────────────────────────────────────────────────────
-function TabInfractores({ start, end }) {
+export interface TabInfractoresProps {
+  start: string;
+  end: string;
+}
+
+function TabInfractores({ start, end }: TabInfractoresProps) {
   const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState(null)
-  const [data, setData]       = useState(null)
+  const [error, setError]     = useState<string | null>(null)
+  const [data, setData]       = useState<Partial<DashboardOffenders> | null>(null)
   const [search, setSearch]   = useState('')
 
   useEffect(() => { fetchData() }, [start, end])
@@ -182,7 +208,7 @@ function TabInfractores({ start, end }) {
     setLoading(true); setError(null)
     try {
       const res = await getDashboardOffenders(start, end)
-      setData(res?.data || res)
+      setData((res?.data || res) as Partial<DashboardOffenders>)
     } catch { setError('No se pudieron cargar los datos de infractores.') }
     finally { setLoading(false) }
   }
@@ -198,7 +224,7 @@ function TabInfractores({ start, end }) {
   const allLacks = [...new Set(
     performance.flatMap(o => o.byLack.map(l => l.lack))
   )]
-  const lackColor = (lack) => LACK_COLORS[allLacks.indexOf(lack) % LACK_COLORS.length]
+  const lackColor = (lack: string) => LACK_COLORS[allLacks.indexOf(lack) % LACK_COLORS.length]
 
   return (
     <>
@@ -303,7 +329,7 @@ export default function MetricasPage() {
   const [start, setStart]   = useState(firstOfMonth)
   const [end, setEnd]       = useState(todayStr)
   const [applied, setApplied] = useState({ start: firstOfMonth, end: todayStr })
-  const [tab, setTab]       = useState('usuarios')
+  const [tab, setTab]       = useState<'usuarios' | 'infractores'>('usuarios')
 
   const handleApply = () => {
     if (!start || !end) return

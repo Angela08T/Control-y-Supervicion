@@ -1,25 +1,50 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../store/hooks'
 import SubjectTable from '../../components/SubjectTable'
 import ModalSubject from '../../components/ModalSubject'
 import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject, searchSubject } from '../../api/subject'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  CreateSubjectDto,
+  Subject,
+  TablePagination,
+} from '@/types'
+
+/** Respuesta de mutación: el código lee `message` en la raíz o dentro de `data`. */
+type SubjectMutationResponse = ApiResponse<Subject> & { data: Subject & { message?: string } }
+
+/** Respuesta de DELETE: el código lee `message` en la raíz o dentro de `data`. */
+type SubjectDeleteResponse = ApiMessageResponse & { data?: { message?: string } }
+
+/** Forma mínima del error de Axios que leen los catch de esta página. */
+interface RequestErrorLike {
+  message?: string
+  response?: { data?: { message?: string | string[] } }
+}
+
+/** Cuerpo de GET /subject/:id tal como lo lee esta página (`found` y `data` como lista). */
+interface SubjectByIdBody {
+  found?: boolean
+  data: Subject[]
+}
 
 export default function SubjectPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'asuntos')
 
-  const [subjects, setSubjects] = useState([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [editItem, setEditItem] = useState<Subject | null>(null)
   const [filters, setFilters] = useState({
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -29,7 +54,7 @@ export default function SubjectPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [searchResult, setSearchResult] = useState(null)
+  const [searchResult, setSearchResult] = useState<Subject[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
 
   // Cargar asuntos desde la API con paginación
@@ -74,7 +99,7 @@ export default function SubjectPage() {
   }, [currentPage, itemsPerPage, refreshTrigger])
 
   // Verificar si el término de búsqueda es un UUID
-  const isUUID = (str) => {
+  const isUUID = (str: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     return uuidRegex.test(str)
   }
@@ -94,7 +119,7 @@ export default function SubjectPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          const result = await getSubjectById(searchTerm)
+          const result = (await getSubjectById(searchTerm)) as unknown as SubjectByIdBody
 
           if (result.found && result.data.length > 0) {
             setSearchResult(result.data)
@@ -136,11 +161,11 @@ export default function SubjectPage() {
   }, [filters.search])
 
   // Crear o editar asunto
-  async function handleSave(data) {
+  async function handleSave(data: CreateSubjectDto) {
     if (editItem) {
       // Actualizar asunto existente
       try {
-        const response = await updateSubject(editItem.id, data)
+        const response = (await updateSubject(editItem.id, data)) as SubjectMutationResponse
 
         toast.success(response.data?.message || response.message || 'Asunto actualizado exitosamente')
 
@@ -148,14 +173,15 @@ export default function SubjectPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const err = error as RequestErrorLike
         let errorMessage = 'Error al actualizar el asunto'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación:\n' + err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         toast.error(errorMessage)
@@ -163,7 +189,7 @@ export default function SubjectPage() {
     } else {
       // Crear nuevo asunto
       try {
-        const response = await createSubject(data)
+        const response = (await createSubject(data)) as SubjectMutationResponse
 
         toast.success(response.data?.message || response.message || 'Asunto creado exitosamente')
 
@@ -171,14 +197,15 @@ export default function SubjectPage() {
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const err = error as RequestErrorLike
         let errorMessage = 'Error al crear el asunto'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación:\n' + err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         toast.error(errorMessage)
@@ -186,7 +213,7 @@ export default function SubjectPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: Subject) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -197,33 +224,34 @@ export default function SubjectPage() {
 
     try {
       // El endpoint DELETE hace toggle automáticamente
-      const response = await deleteSubject(item.id)
+      const response = (await deleteSubject(item.id)) as SubjectDeleteResponse
 
       toast.success(response.data?.message || response.message || `Asunto ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
+      const err = error as RequestErrorLike
       let errorMessage = `Error al ${action} el asunto`
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (err.response?.data?.message) {
+        errorMessage = Array.isArray(err.response.data.message)
+          ? err.response.data.message.join('\n')
+          : err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: Subject) {
     setEditItem(item)
     setShowModal(true)
   }
 
   // Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -238,7 +266,7 @@ export default function SubjectPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1)
   }
@@ -425,7 +453,7 @@ export default function SubjectPage() {
                     alignItems: 'center'
                   }}>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (pagination.totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {

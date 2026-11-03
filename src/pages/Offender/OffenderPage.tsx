@@ -1,28 +1,67 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../store/hooks'
 import OffenderTable from '../../components/OffenderTable'
+import type { OffenderRow } from '../../components/OffenderTable'
 import ModalOffender from '../../components/ModalOffender'
+import type { OffenderFormData } from '../../components/ModalOffender'
 import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { useNotification } from '../../context/NotificationContext'
 import ConfirmModal from '../../components/ConfirmModal'
 import { toast } from '../../utils/toast'
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  CreateOffenderDto,
+  Offender,
+  OffenderEntity,
+  TablePagination,
+} from '@/types'
+
+/** Respuesta de mutación: el código lee `message` en la raíz o dentro de `data`. */
+type OffenderMutationResponse = ApiResponse<OffenderEntity> & { data: OffenderEntity & { message?: string } }
+
+/** Respuesta de DELETE: el código lee `message` en la raíz o dentro de `data`. */
+type OffenderDeleteResponse = ApiMessageResponse & { data?: { message?: string } }
+
+/** Forma mínima del error de Axios que leen los catch de esta página. */
+interface RequestErrorLike {
+  message?: string
+  response?: { status?: number; data?: { message?: string | string[] } }
+}
+
+/** Respuesta de GET /offender/dni/:dni: el backend puede anidar `data` dentro de `data`. */
+interface OffenderDniBody {
+  data?: OffenderRow | OffenderRow[] | null
+}
+
+interface OffenderDniEnvelope {
+  data?: OffenderRow | OffenderRow[] | null
+}
+
+/** Estado del modal de confirmación de habilitar/deshabilitar. */
+interface ConfirmState {
+  isOpen: boolean
+  item: OffenderRow | null
+  message?: string
+  action?: string
+}
 
 export default function OffenderPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'offenders')
   const { showSuccess, showError } = useNotification()
 
-  const [offenders, setOffenders] = useState([])
+  const [offenders, setOffenders] = useState<OffenderRow[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [editItem, setEditItem] = useState<OffenderRow | null>(null)
   const [filters, setFilters] = useState({
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -32,9 +71,9 @@ export default function OffenderPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [searchResult, setSearchResult] = useState(null)
+  const [searchResult, setSearchResult] = useState<OffenderRow[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null })
+  const [confirmModal, setConfirmModal] = useState<ConfirmState>({ isOpen: false, item: null })
 
   // Cargar infractores desde la API con paginación
   useEffect(() => {
@@ -43,7 +82,7 @@ export default function OffenderPage() {
       try {
         const result = await getOffenders(currentPage, itemsPerPage)
 
-        const offendersData = result.data?.data || result.data || []
+        const offendersData = (result.data?.data || result.data || []) as Offender[]
         setOffenders(offendersData)
 
         // Manejar paginación si existe
@@ -78,7 +117,7 @@ export default function OffenderPage() {
   }, [currentPage, itemsPerPage, refreshTrigger])
 
   // Verificar si el término de búsqueda es un DNI válido (8 dígitos)
-  const isValidDNI = (str) => {
+  const isValidDNI = (str: string) => {
     return /^\d{8}$/.test(str)
   }
 
@@ -97,10 +136,10 @@ export default function OffenderPage() {
       const searchByDNI = async () => {
         setIsSearching(true)
         try {
-          const result = await getOffenderByDni(searchTerm)
+          const body = (await getOffenderByDni(searchTerm)) as unknown as OffenderDniBody
 
           // El backend puede devolver la data en diferentes estructuras
-          const resultData = result.data?.data || result.data || []
+          const resultData = (body.data as OffenderDniEnvelope | null | undefined)?.data || body.data || []
           const dataArray = Array.isArray(resultData) ? resultData : [resultData]
 
           if (dataArray.length > 0 && dataArray[0]) {
@@ -110,7 +149,7 @@ export default function OffenderPage() {
           }
         } catch (error) {
           // Si el error es 404, significa que no se encontró
-          if (error.response?.status === 404) {
+          if ((error as RequestErrorLike).response?.status === 404) {
             setSearchResult([])
           } else {
             setSearchResult(null)
@@ -125,11 +164,11 @@ export default function OffenderPage() {
   }, [filters.search])
 
   // Crear o editar infractor
-  async function handleSave(data) {
+  async function handleSave(data: OffenderFormData) {
     if (editItem) {
       // Actualizar infractor existente
       try {
-        const response = await updateOffender(editItem.id, data)
+        const response = (await updateOffender(editItem.id, data)) as OffenderMutationResponse
 
         showSuccess(response.data?.message || response.message || 'Infractor actualizado exitosamente')
 
@@ -138,14 +177,15 @@ export default function OffenderPage() {
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
 
+        const err = error as RequestErrorLike
         let errorMessage = 'Error al actualizar el infractor'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación: ' + error.response.data.message.join(', ')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación: ' + err.response.data.message.join(', ')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         showError(errorMessage)
@@ -153,7 +193,7 @@ export default function OffenderPage() {
     } else {
       // Crear nuevo infractor
       try {
-        const response = await createOffender(data)
+        const response = (await createOffender(data as CreateOffenderDto)) as OffenderMutationResponse
 
         showSuccess(response.data?.message || response.message || 'Infractor creado exitosamente')
 
@@ -162,14 +202,15 @@ export default function OffenderPage() {
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
 
+        const err = error as RequestErrorLike
         let errorMessage = 'Error al crear el infractor'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación: ' + error.response.data.message.join(', ')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación: ' + err.response.data.message.join(', ')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         showError(errorMessage)
@@ -177,7 +218,7 @@ export default function OffenderPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: OffenderRow) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -196,22 +237,24 @@ export default function OffenderPage() {
     const { item, action } = confirmModal
 
     try {
+      if (!item) throw new Error('No se seleccionó ningún infractor')
       // El endpoint DELETE hace toggle automáticamente
-      const response = await deleteOffender(item.id)
+      const response = (await deleteOffender(item.id)) as OffenderDeleteResponse
 
       showSuccess(response.data?.message || response.message || `Infractor ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
 
+      const err = error as RequestErrorLike
       let errorMessage = `Error al ${action} el infractor`
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join(', ')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (err.response?.data?.message) {
+        errorMessage = Array.isArray(err.response.data.message)
+          ? err.response.data.message.join(', ')
+          : err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
       }
 
       showError(errorMessage)
@@ -220,13 +263,13 @@ export default function OffenderPage() {
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: OffenderRow) {
     setEditItem(item)
     setShowModal(true)
   }
 
   // Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -241,7 +284,7 @@ export default function OffenderPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1)
   }
@@ -445,7 +488,7 @@ export default function OffenderPage() {
                     alignItems: 'center'
                   }}>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (pagination.totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {
@@ -527,7 +570,7 @@ export default function OffenderPage() {
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.action === 'habilitar' ? 'Confirmar Habilitación' : 'Confirmar Deshabilitación'}
-        message={confirmModal.message}
+        message={confirmModal.message ?? ''}
         type={confirmModal.action === 'habilitar' ? 'info' : 'warning'}
         onConfirm={confirmToggleStatus}
         onCancel={() => setConfirmModal({ isOpen: false, item: null })}

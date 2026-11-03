@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { useSelector } from 'react-redux'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
-import AlertModal from '../../components/AlertModal'
-import ConfirmModal from '../../components/ConfirmModal'
+import AlertModal, { type AlertModalType } from '../../components/AlertModal'
+import ConfirmModal, { type ConfirmModalType } from '../../components/ConfirmModal'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport, exportReportsExcel } from '../../api/report'
 import { getSubgerencias } from '../../api/offender'
@@ -13,18 +12,130 @@ import useSubjects from '../../hooks/Subject/useSubjects'
 import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
+import { useAppSelector } from '../../store/hooks'
 import { FaPlus, FaSearch, FaFileExcel } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
+import type {
+  ISODateString,
+  Evidence,
+  ID,
+  Incidencia,
+  IncidenciaForm,
+  IncidenciaStatus,
+  Lead,
+  NamedRef,
+  Offender,
+  PaginationMeta,
+  Process,
+  Report,
+  ReportFilters,
+  ReportHeader,
+  Shift,
+  StoredIncidencia,
+  TablePagination,
+} from '@/types'
+
+/** Forma mínima de un error (axios / NestJS) que lee esta página. */
+interface ApiErrorLike {
+  response?: { data?: { message?: string | string[] } };
+  message?: string;
+}
+
+/** Cuerpo de respuesta de acciones (ApiResponse o ApiMessageResponse): solo se leen `message`. */
+interface ActionResponse {
+  message?: string | null;
+  data?: { message?: string | null } | null;
+}
+
+/** Estado de los filtros. Los valores de los <select> llegan como string. */
+interface IncidenciasFilters {
+  turno: string;
+  search: string;
+  lackId: string;
+  subjectId: string;
+  jurisdictionId: string;
+  subgerencia: string;
+  showDeleted: 'all' | 'active' | 'deleted';
+  process: string;
+}
+
+interface AlertModalState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: AlertModalType;
+}
+
+interface ConfirmModalState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: ConfirmModalType;
+  confirmText?: string;
+  onConfirm: (() => void) | null;
+}
+
+/** Reporte tal como llega por WebSocket (campos parciales). */
+interface ReportSocketPayload {
+  id?: ID;
+  report_id?: ID;
+  reportId?: ID;
+  code?: string | null;
+  status?: string;
+  state?: string;
+  process?: string | null;
+  offender?: Partial<Offender> | null;
+  subject?: { name: string } | null;
+  lack?: { name: string } | null;
+  bodycam?: { name: string } | null;
+  bodycam_user?: string | null;
+  camera_number?: string | null;
+  date?: ISODateString;
+  shift?: string | null;
+  jurisdiction?: NamedRef | null;
+  user?: { name: string; lastname: string } | null;
+  header?: ReportHeader | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  evidences?: Evidence[];
+  message?: string | null;
+  link?: string | null;
+  created_at?: ISODateString;
+  updated_at?: ISODateString;
+  deleted_at?: ISODateString | null;
+}
+
+/** Reporte de búsqueda: el lack puede traer fechas de auditoría. */
+interface SearchReportRecord extends Report {
+  lack: NamedRef & { created_at?: ISODateString; updated_at?: ISODateString };
+}
+
+/** Convierte incidencias de la API al formato legado de localStorage (utils/storage.ts). */
+function toStoredList(list: Incidencia[]): StoredIncidencia[] {
+  return list as unknown as StoredIncidencia[];
+}
+
+/** Convierte el formato legado de localStorage a incidencias (campos faltantes se heredan tal cual). */
+function fromStoredList(list: StoredIncidencia[]): Incidencia[] {
+  return list as unknown as Incidencia[];
+}
+
+/** Mensaje de error para AlertModal: `response.data.message` (puede ser lista), luego `message`, luego fallback. */
+function errorMessageOf(error: unknown, fallback: string): string {
+  const err = error as ApiErrorLike;
+  return (err.response?.data?.message as string | undefined) || err.message || fallback;
+}
 
 export default function IncidenciasPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'incidencias')
 
-  const [incidencias, setIncidencias] = useState([])
+  const [incidencias, setIncidencias] = useState<Incidencia[]>([])
   const [showModal, setShowModal] = useState(false)
   const [showPDFModal, setShowPDFModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
-  const [filters, setFilters] = useState({
+  const [editItem, setEditItem] = useState<Incidencia | null>(null)
+  const [filters, setFilters] = useState<IncidenciasFilters>({
     turno: '', // Ahora usa letras: M=Mañana, T=Tarde, N=Noche, ''=Todos
     search: '',
     lackId: '', // Filtro por ID de falta
@@ -34,10 +145,10 @@ export default function IncidenciasPage() {
     showDeleted: permissions.canDelete ? 'all' : 'active', // 'all' = todos, 'active' = solo activos, 'deleted' = solo eliminados
     process: '' // '' = todos, 'PENDING', 'APPROVED', 'REJECTED', null=draft
   })
-  const [subgerencias, setSubgerencias] = useState([])
+  const [subgerencias, setSubgerencias] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -48,14 +159,14 @@ export default function IncidenciasPage() {
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger para forzar recarga
-  const [searchResult, setSearchResult] = useState(null) // Resultado de búsqueda por ID
+  const [searchResult, setSearchResult] = useState<Incidencia[] | null>(null) // Resultado de búsqueda por ID
   const [isSearching, setIsSearching] = useState(false) // Indica si está buscando
-  const [searchPagination, setSearchPagination] = useState(null) // Paginación de búsqueda
+  const [searchPagination, setSearchPagination] = useState<TablePagination | null>(null) // Paginación de búsqueda
   const [isSearchMode, setIsSearchMode] = useState(false) // Indica si está en modo búsqueda
 
   // Estados para modales personalizados
-  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'success' })
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null })
+  const [alertModal, setAlertModal] = useState<AlertModalState>({ isOpen: false, title: '', message: '', type: 'success' })
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null })
 
   const { subjects, loading: subjectsLoading } = useSubjects()
   const { lacks, loading: lacksLoading } = useLacks()
@@ -63,8 +174,8 @@ export default function IncidenciasPage() {
 
   useEffect(() => {
     getSubgerencias().then(data => {
-      const lista = Array.isArray(data) ? data : []
-      const seen = new Map()
+      const lista: string[] = Array.isArray(data) ? data : []
+      const seen = new Map<string, string>()
       lista.forEach(s => {
         const key = s.trim().toUpperCase()
         if (key && !seen.has(key)) seen.set(key, s.trim())
@@ -74,7 +185,7 @@ export default function IncidenciasPage() {
   }, [])
 
   // 🔹 Función para actualizar estado de un reporte específico
-  const updateReportStatus = useCallback(async (reportId, updates, fullData = null) => {
+  const updateReportStatus = useCallback(async (reportId: ID, updates: Partial<Incidencia>, fullData: ReportSocketPayload | null = null): Promise<void> => {
     // Actualizar en la lista principal
     setIncidencias(prev => {
       const found = prev.find(i => i.id === reportId)
@@ -124,7 +235,7 @@ export default function IncidenciasPage() {
           createdAt: fullData.created_at || fullData.date,
           updatedAt: fullData.updated_at || fullData.date,
           deletedAt: fullData.deleted_at || null
-        }
+        } as Incidencia
 
         // Agregar al inicio de la lista
         return [newReport, ...prev]
@@ -154,7 +265,7 @@ export default function IncidenciasPage() {
     initSocket()
 
     // Suscribirse al evento de cambio de estado
-    const unsubscribeStatusChanged = onReportStatusChanged((data) => {
+    const unsubscribeStatusChanged = onReportStatusChanged<ReportSocketPayload>((data) => {
       if (!data) return
 
       const reportId = data.id || data.report_id || data.reportId
@@ -164,8 +275,8 @@ export default function IncidenciasPage() {
         updateReportStatus(
           reportId,
           {
-            status: newStatus.toLowerCase(),
-            ...(data.code && { code: data.code })
+            status: newStatus.toLowerCase() as IncidenciaStatus,
+            ...(data.code ? { code: data.code } : {})
           },
           data
         )
@@ -173,17 +284,17 @@ export default function IncidenciasPage() {
     })
 
     // Suscribirse al evento de validación (APPROVED/REJECTED)
-    const unsubscribeStatusValidate = onReportStatusValidate((data) => {
+    const unsubscribeStatusValidate = onReportStatusValidate<ReportSocketPayload>((data) => {
       if (!data) return
 
       const reportId = data.id || data.report_id || data.reportId
       const newStatus = data.status || data.process || data.state
 
       if (reportId) {
-        const updates = {}
+        const updates: Partial<Incidencia> = {}
 
         if (newStatus) {
-          updates.status = newStatus.toLowerCase()
+          updates.status = newStatus.toLowerCase() as IncidenciaStatus
         }
         if (data.code) {
           updates.code = data.code
@@ -209,12 +320,12 @@ export default function IncidenciasPage() {
       setLoading(true)
       try {
         // Construir objeto de filtros solo con valores no vacíos
-        const apiFilters = {}
+        const apiFilters: ReportFilters = {}
         if (filters.lackId) apiFilters.lackId = filters.lackId
         if (filters.subjectId) apiFilters.subjectId = filters.subjectId
         if (filters.jurisdictionId) apiFilters.jurisdictionId = filters.jurisdictionId
-        if (filters.turno) apiFilters.shift = filters.turno
-        if (filters.process) apiFilters.process = filters.process
+        if (filters.turno) apiFilters.shift = filters.turno as Shift
+        if (filters.process) apiFilters.process = filters.process as Process
         if (filters.subgerencia) apiFilters.subgerencia = filters.subgerencia
 
         console.log('🔍 Filtros enviados al backend:', apiFilters)
@@ -222,10 +333,10 @@ export default function IncidenciasPage() {
         const result = await getReports(currentPage, itemsPerPage, apiFilters)
         setIncidencias(result.data)
         setPagination(result.pagination)
-        saveIncidencias(result.data) // opcional: respaldo local
+        saveIncidencias(toStoredList(result.data)) // opcional: respaldo local
       } catch (error) {
         const localData = loadIncidencias()
-        setIncidencias(localData)
+        setIncidencias(fromStoredList(localData))
       } finally {
         setLoading(false)
       }
@@ -236,15 +347,15 @@ export default function IncidenciasPage() {
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
-    saveIncidencias(incidencias)
+    saveIncidencias(toStoredList(incidencias))
   }, [incidencias])
 
   // 🔹 Crear o editar incidencia
-  async function handleCreate(data, allLeads = []) {
+  async function handleCreate(data: IncidenciaForm, allLeads: Lead[] = []): Promise<void> {
     if (editItem) {
       setIncidencias(prev =>
         prev.map(i =>
-          i.id === editItem.id ? { ...i, ...data, updatedAt: new Date().toISOString() } : i
+          i.id === editItem.id ? ({ ...i, ...data, updatedAt: new Date().toISOString() } as Incidencia) : i
         )
       )
       setEditItem(null)
@@ -268,19 +379,20 @@ export default function IncidenciasPage() {
         // Forzar recarga de datos
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const err = error as ApiErrorLike
 
         // Mostrar error más detallado
         let errorMessage = 'Error al crear la incidencia';
 
-        if (error.response?.data?.message) {
+        if (err.response?.data?.message) {
           // Si el mensaje es un array, convertirlo a string
-          if (Array.isArray(error.response.data.message)) {
-            errorMessage = 'Errores de validación:\n' + error.response.data.message.join('\n');
+          if (Array.isArray(err.response.data.message)) {
+            errorMessage = 'Errores de validación:\n' + err.response.data.message.join('\n');
           } else {
-            errorMessage = error.response.data.message;
+            errorMessage = err.response.data.message;
           }
-        } else if (error.message) {
-          errorMessage = error.message;
+        } else if (err.message) {
+          errorMessage = err.message;
         }
 
         setAlertModal({
@@ -293,11 +405,11 @@ export default function IncidenciasPage() {
     }
   }
 
-  async function handleDelete(id, status) {
+  async function handleDelete(id: ID, status: IncidenciaStatus): Promise<void> {
     // Función para ejecutar la eliminación
     const executeDelete = async () => {
       try {
-        const response = await deleteReport(id)
+        const response: ActionResponse = await deleteReport(id)
 
         setAlertModal({
           isOpen: true,
@@ -309,15 +421,16 @@ export default function IncidenciasPage() {
         // Recargar datos desde la API
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const err = error as ApiErrorLike
 
         let errorMessage = 'Error al deshabilitar la incidencia'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         setAlertModal({
@@ -368,7 +481,7 @@ export default function IncidenciasPage() {
     }
   }
 
-  async function handleSendToValidator(reportId) {
+  async function handleSendToValidator(reportId: ID): Promise<void> {
     setConfirmModal({
       isOpen: true,
       title: 'Enviar a validador',
@@ -378,7 +491,7 @@ export default function IncidenciasPage() {
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false })
         try {
-          const response = await sendToValidator(reportId)
+          const response: ActionResponse = await sendToValidator(reportId)
           setAlertModal({
             isOpen: true,
             title: '¡Éxito!',
@@ -390,7 +503,7 @@ export default function IncidenciasPage() {
           setAlertModal({
             isOpen: true,
             title: 'Error',
-            message: error.response?.data?.message || error.message || 'Error al enviar incidencia',
+            message: errorMessageOf(error, 'Error al enviar incidencia'),
             type: 'error'
           })
         }
@@ -398,7 +511,7 @@ export default function IncidenciasPage() {
     })
   }
 
-  async function handleApprove(reportId) {
+  async function handleApprove(reportId: ID): Promise<void> {
     setConfirmModal({
       isOpen: true,
       title: 'Aprobar incidencia',
@@ -408,7 +521,7 @@ export default function IncidenciasPage() {
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false })
         try {
-          const response = await validateReport(reportId, true)
+          const response: ActionResponse = await validateReport(reportId, true)
           setAlertModal({
             isOpen: true,
             title: '¡Éxito!',
@@ -420,7 +533,7 @@ export default function IncidenciasPage() {
           setAlertModal({
             isOpen: true,
             title: 'Error',
-            message: error.response?.data?.message || error.message || 'Error al aprobar incidencia',
+            message: errorMessageOf(error, 'Error al aprobar incidencia'),
             type: 'error'
           })
         }
@@ -428,7 +541,7 @@ export default function IncidenciasPage() {
     })
   }
 
-  async function handleReject(reportId) {
+  async function handleReject(reportId: ID): Promise<void> {
     setConfirmModal({
       isOpen: true,
       title: 'Rechazar incidencia',
@@ -438,7 +551,7 @@ export default function IncidenciasPage() {
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false })
         try {
-          const response = await validateReport(reportId, false)
+          const response: ActionResponse = await validateReport(reportId, false)
           setAlertModal({
             isOpen: true,
             title: 'Incidencia rechazada',
@@ -450,7 +563,7 @@ export default function IncidenciasPage() {
           setAlertModal({
             isOpen: true,
             title: 'Error',
-            message: error.response?.data?.message || error.message || 'Error al rechazar incidencia',
+            message: errorMessageOf(error, 'Error al rechazar incidencia'),
             type: 'error'
           })
         }
@@ -458,17 +571,17 @@ export default function IncidenciasPage() {
     })
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: Incidencia) {
     setEditItem(item)
     setShowPDFModal(true)
   }
 
-  function getInasistenciasPorDNI(dni) {
+  function getInasistenciasPorDNI(dni: string): Incidencia[] {
     return incidencias.filter(inc => inc.dni === dni && inc.falta && inc.falta.startsWith('Inasistencia'))
   }
 
   // 🔹 Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     // Usar searchPagination si está en modo búsqueda, sino usar pagination normal
     const paginationToUse = isSearchMode && searchPagination ? searchPagination : pagination
 
@@ -486,13 +599,13 @@ export default function IncidenciasPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1) // Volver a la primera página al cambiar items por página
   }
 
   // 🔹 Verificar si el término de búsqueda es un UUID
-  const isUUID = (str) => {
+  const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     return uuidRegex.test(str)
   }
@@ -551,8 +664,8 @@ export default function IncidenciasPage() {
           const response = await searchReport(searchTerm, currentPage, itemsPerPage)
 
           // La API devuelve los datos en response.data?.data?.data
-          const results = response?.data?.data || []
-          const paginationData = response?.data || {}
+          const results = (response?.data?.data || []) as SearchReportRecord[]
+          const paginationData: Partial<PaginationMeta> = response?.data || {}
 
           if (results.length > 0) {
             // Transformar los resultados al formato esperado
@@ -579,7 +692,7 @@ export default function IncidenciasPage() {
               evidences: r.evidences || [],
               createdAt: r.lack?.created_at || r.date,
               updatedAt: r.lack?.updated_at || r.date
-            }))
+            })) as Incidencia[]
 
             setSearchResult(transformed)
 
@@ -618,7 +731,8 @@ export default function IncidenciasPage() {
   async function handleExportExcel() {
     setExporting(true)
     try {
-      await exportReportsExcel(filters)
+      // Los filtros de tabla (turno/process) son strings de los <select>; la API los espera como ReportFilters
+      await exportReportsExcel(filters as unknown as ReportFilters)
     } catch (error) {
       setAlertModal({
         isOpen: true,
@@ -633,7 +747,7 @@ export default function IncidenciasPage() {
 
   // Todos los filtros se manejan en el backend, incluyendo turno y process
   // Filtrar por estado (activos/eliminados) en el frontend
-  const applyFrontendFilters = (data) => {
+  const applyFrontendFilters = (data: Incidencia[]): Incidencia[] => {
     let result = data
 
     // Filtrar por activos/eliminados
@@ -1005,7 +1119,7 @@ export default function IncidenciasPage() {
                       justifyContent: 'center'
                     }}>
                       {Array.from({ length: Math.min(5, paginationData.totalPages) }, (_, i) => {
-                        let pageNum;
+                        let pageNum: number;
                         if (paginationData.totalPages <= 5) {
                           pageNum = i + 1;
                         } else if (currentPage <= 3) {
@@ -1118,7 +1232,7 @@ export default function IncidenciasPage() {
         message={confirmModal.message}
         type={confirmModal.type}
         confirmText={confirmModal.confirmText}
-        onConfirm={confirmModal.onConfirm}
+        onConfirm={confirmModal.onConfirm ?? (() => {})}
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
     </div>
