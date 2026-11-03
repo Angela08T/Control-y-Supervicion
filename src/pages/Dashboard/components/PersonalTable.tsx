@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { FaCircle } from 'react-icons/fa'
 import api from '../../../api/config'
 import type { User } from '@/types'
+import { cn } from '../../../utils/classes'
 
 /** Fila de la tabla de personal. */
 interface PersonalRow {
@@ -87,23 +88,23 @@ export default function PersonalTable() {
       setLoading(false)
     }
   }
-  
+
   const turnoActual = () => {
     const hora = new Date().getHours()
     if (hora >= 6 && hora < 14) return 'Mañana'
     if (hora >= 14 && hora < 22) return 'Tarde'
     return 'Noche'
   }
-  
+
   const enTurno = turnoActual()
-  
+
   if (loading) {
     return (
-      <div className="personal-table-card">
-        <div className="personal-header">
-          <h3 className="personal-title">Centinelas</h3>
+      <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+        <div className="mb-5 flex items-start justify-between">
+          <h3 className="mb-1 text-[18px] font-semibold text-content! dark:text-[#f8fafc]!">Centinelas</h3>
         </div>
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div className="p-10 text-center text-muted">
           Cargando personal...
         </div>
       </div>
@@ -111,33 +112,33 @@ export default function PersonalTable() {
   }
 
   return (
-    <div className="personal-table-card">
-      <div className="personal-header">
+    <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+      <div className="mb-5 flex items-start justify-between">
         <div>
-          <h3 className="personal-title">Centinelas</h3>
-          <p className="personal-subtitle">
-            <FaCircle className="status-dot active" />
+          <h3 className="mb-1 text-[18px] font-semibold text-content! dark:text-[#f8fafc]!">Centinelas</h3>
+          <p className="flex items-center gap-1.5 text-[12px] text-content-2">
+            <FaCircle className="size-2 text-success" />
             {personal.filter(p => p.activo).length} en turno
           </p>
         </div>
-        <button className="personal-menu">⋮</button>
+        <button className="cursor-pointer border-none bg-transparent p-0 text-[20px] text-content-2">⋮</button>
       </div>
 
-      <div className="personal-table-container">
-        <table className="personal-table">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Personal</th>
-              <th>Rol</th>
-              <th>Turno</th>
-              <th>Estado</th>
+              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">#</th>
+              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Personal</th>
+              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Rol</th>
+              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Turno</th>
+              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Estado</th>
             </tr>
           </thead>
           <tbody>
             {personal.length === 0 && (
               <tr>
-                <td colSpan={5} style={{textAlign: 'center', padding: '20px', color: 'var(--text-muted)'}}>
+                <td colSpan={5} className="p-5 text-center text-[14px] text-content! dark:text-[#f8fafc]!">
                   No hay personal registrado
                 </td>
               </tr>
@@ -145,27 +146,27 @@ export default function PersonalTable() {
             {personal.map((persona, index) => {
               const esSuTurno = persona.turno === enTurno
               const estado = esSuTurno ? 'En turno' : 'Fuera de turno'
-              
+
               return (
-                <tr key={index}>
-                  <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--text-muted)', width: '40px'}}>
+                <tr key={index} className="border-b border-line [transition:background_0.2s_ease]! hover:bg-[rgba(30,58,138,0.05)]">
+                  <td className="w-[40px] px-3 py-4 text-center text-[14px] font-bold text-content! dark:text-[#f8fafc]!">
                     {index + 1}
                   </td>
-                  <td>
-                    <div className="personal-info">
-                      <div className="personal-avatar">{persona.avatar}</div>
+                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-[8px] bg-[linear-gradient(135deg,var(--primary),var(--secondary))] text-[12px] font-semibold text-white">{persona.avatar}</div>
                       <span>{persona.nombre}</span>
                     </div>
                   </td>
-                  <td>
-                    <span className="personal-rol">{persona.rol}</span>
+                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
+                    <span className="rounded-[6px] bg-[rgba(126,34,206,0.1)] px-3 py-1 text-[12px] font-semibold text-[#7e22ce] dark:bg-[rgba(192,132,252,0.2)] dark:text-[#c084fc]!">{persona.rol}</span>
                   </td>
-                  <td>
-                    <span className="personal-turno">{persona.turno}</span>
+                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
+                    <span className="rounded-[6px] bg-[rgba(30,58,138,0.1)] px-3 py-1 text-[12px] font-medium text-primary dark:bg-[rgba(59,130,246,0.2)] dark:text-[#60a5fa]!">{persona.turno}</span>
                   </td>
-                  <td>
-                    <span className={`personal-status ${esSuTurno ? 'active' : 'inactive'}`}>
-                      <FaCircle className="status-icon" />
+                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
+                    <span className={cn('flex items-center gap-1.5 text-[13px]', esSuTurno ? 'text-success' : 'text-content-2')}>
+                      <FaCircle className="text-[8px]" />
                       {estado}
                     </span>
                   </td>

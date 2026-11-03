@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
+import { cn } from '../../../utils/classes'
+
+// Estilos de controles compartidos por los gráficos (iguales en BarChart y LineChart).
+// `!` en transition: styles.css (sin capas) tiene `* { transition }` y ganaría a las utilidades.
+const chartHeader = 'mb-4 flex flex-wrap items-start justify-between gap-3'
+const chartTitle = 'mb-1 text-[16px] font-semibold leading-[1.3] text-content'
+const chartSubtitle = 'text-[11px] leading-[1.4] text-content-2'
+const timeRangeControls = 'flex flex-wrap items-center gap-3'
+const timeRangeButtons = 'flex gap-2 rounded-lg border border-line bg-surface p-1'
+const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]!'
+const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-[rgba(59,130,246,0.1)] hover:text-primary'
+const timeBtnActive = 'bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_100%)] text-white shadow-[0_2px_8px_rgba(7,89,133,0.3)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_100%)] dark:shadow-[0_2px_8px_rgba(37,99,235,0.4)]'
+const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease]! hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
+const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-card p-3 shadow-[0_4px_12px_var(--shadow)]'
 
 /** Incidencias por día/mes: { [fecha]: { [asunto]: cantidad } } */
 export type IncidenciasPorDia = Record<string, Record<string, number>>
@@ -176,36 +190,36 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   , { asunto: '', valor: 0 })
 
   return (
-    <div className="radar-chart-card">
-      <div className="chart-header">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-transparent! p-5 pb-[15px] shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+      <div className={chartHeader}>
         <div>
-          <h3 className="chart-title">{title}</h3>
-          <p className="chart-subtitle">{subtitle}</p>
+          <h3 className={chartTitle}>{title}</h3>
+          <p className={chartSubtitle}>{subtitle}</p>
         </div>
 
-        <div className="time-range-controls">
-          <div className="time-range-buttons">
+        <div className={timeRangeControls}>
+          <div className={timeRangeButtons}>
             <button
-              className={`time-btn ${rangoTiempo === '7D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('7D')}
             >
               7D
             </button>
             <button
-              className={`time-btn ${rangoTiempo === '15D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('15D')}
             >
               15D
             </button>
             <button
-              className={`time-btn ${rangoTiempo === '30D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('30D')}
             >
               30D
             </button>
           </div>
 
-          <button className="date-range-btn" onClick={() => setShowCalendar(true)}>
+          <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
             <FaCalendarAlt />
             <span>{formatDateRange()}</span>
           </button>
@@ -213,7 +227,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
       </div>
 
       {/* Gráfico de Radar */}
-      <svg className="radar-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+      <svg className="mb-0 block h-auto w-full max-w-full shrink-0 overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
         <defs>
           {/* Gradiente para el polígono */}
           <linearGradient id="radarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -296,7 +310,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
               key={`point-${index}`}
               onMouseEnter={() => setHoveredSegment({ asunto, valor, topFaltas: getTopFaltas(asunto), x: point.x, y: point.y })}
               onMouseLeave={() => setHoveredSegment(null)}
-              style={{ cursor: 'pointer' }}
+              className="cursor-pointer"
             >
               <circle
                 cx={point.x}
@@ -305,7 +319,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
                 fill={colores[asunto]}
                 stroke="#fff"
                 strokeWidth="2"
-                className="radar-point"
+                className="cursor-pointer [transition:all_0.3s_ease]! hover:[r:7] hover:[filter:brightness(1.2)]"
               />
             </g>
           )
@@ -335,7 +349,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
               fill="var(--text-primary)"
               fontSize="10"
               fontWeight="600"
-              className="radar-label"
+              className="fill-[var(--text-primary)] text-[10px] font-semibold"
             >
               {nombresCortos[asunto]}
             </text>
@@ -346,36 +360,25 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
       {/* Tooltip flotante */}
       {hoveredSegment && (
         <div
-          className="chart-tooltip"
+          className={cn(tooltip, '-translate-x-1/2 -translate-y-[120%]')}
           style={{
-            position: 'absolute',
             left: `${(hoveredSegment.x / width) * 100}%`,
-            top: `${(hoveredSegment.y / height) * 100}%`,
-            transform: 'translate(-50%, -120%)',
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '12px',
-            boxShadow: '0 4px 12px var(--shadow)',
-            zIndex: 1000,
-            pointerEvents: 'none',
-            minWidth: '200px',
-            maxWidth: '280px'
+            top: `${(hoveredSegment.y / height) * 100}%`
           }}
         >
-          <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
+          <div className="mb-2 text-[0.85rem] font-semibold text-content">
             {hoveredSegment.valor} incidencia{hoveredSegment.valor !== 1 ? 's' : ''}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+          <div className="mb-1.5 text-[0.75rem] text-muted">
             {hoveredSegment.asunto}
           </div>
           {hoveredSegment.topFaltas && hoveredSegment.topFaltas.length > 0 && (
-            <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
-              <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
+            <div className="mt-1.5 border-t border-line pt-1.5 text-[0.75rem]">
+              <div className="mb-1 font-semibold text-content-2">Top 3 faltas:</div>
               {hoveredSegment.topFaltas.map((falta, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-muted)', flex: 1, fontSize: '0.7rem' }}>{falta.falta}</span>
-                  <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
+                <div key={idx} className="mb-0.5 flex justify-between gap-2">
+                  <span className="flex-1 text-[0.7rem] text-muted">{falta.falta}</span>
+                  <span className="font-semibold text-primary">{falta.cantidad}</span>
                 </div>
               ))}
             </div>
@@ -384,14 +387,14 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
       )}
 
       {/* Tabla inferior con la lista de asuntos - Top 4 */}
-      <div className="radar-table">
+      <div className="mt-auto flex flex-wrap justify-center gap-6 border-t border-line px-[15px] py-5">
         {Object.entries(totalesPorAsunto)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 4)
           .map(([asunto, valor]) => (
             <div
               key={asunto}
-              className="radar-table-row"
+              className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line px-3 py-2 text-[15px] text-content-2 [transition:all_0.2s_ease]! hover:-translate-y-0.5 hover:opacity-80 hover:shadow-[0_4px_12px_var(--shadow)]"
               onMouseEnter={() => {
                 const index = nuevosAsuntos.indexOf(asunto)
                 const point = radarPoints[index]
@@ -399,12 +402,12 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
               }}
               onMouseLeave={() => setHoveredSegment(null)}
             >
-              <div className="radar-table-col">
-                <span className="radar-table-dot" style={{ backgroundColor: colores[asunto] }}></span>
-                <span className="radar-table-label">{nombresCortos[asunto]}</span>
+              <div className="flex items-center gap-2">
+                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: colores[asunto] }}></span>
+                <span className="text-[14px] font-semibold text-content">{nombresCortos[asunto]}</span>
               </div>
-              <div className="radar-table-col-count">
-                <span className="radar-table-value">{valor}</span>
+              <div className="flex items-center justify-end">
+                <span className="ml-2 text-[16px] font-bold text-primary">{valor}</span>
               </div>
             </div>
           ))}

@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
+import { cn } from '../../../utils/classes'
+
+// Estilos de controles compartidos por los gráficos (iguales en LineChart y RadarChart).
+// `!` en transition: styles.css (sin capas) tiene `* { transition }` y ganaría a las utilidades.
+const chartHeader = 'mb-4 flex flex-wrap items-start justify-between gap-3'
+const chartTitle = 'mb-1 text-[16px] font-semibold leading-[1.3] text-content'
+const chartSubtitle = 'text-[11px] leading-[1.4] text-content-2'
+const timeRangeControls = 'flex flex-wrap items-center gap-3'
+const timeRangeButtons = 'flex gap-2 rounded-lg border border-line bg-surface p-1'
+const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]!'
+const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-[rgba(59,130,246,0.1)] hover:text-primary'
+const timeBtnActive = 'bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_100%)] text-white shadow-[0_2px_8px_rgba(7,89,133,0.3)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_100%)] dark:shadow-[0_2px_8px_rgba(37,99,235,0.4)]'
+const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease]! hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
+const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-card p-3 shadow-[0_4px_12px_var(--shadow)]'
 
 /** Incidencias por día: { [fecha]: { [asunto]: cantidad } } */
 export type IncidenciasPorDia = Record<string, Record<string, number>>
@@ -138,43 +152,43 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   const yAxisValues = [0, 1, 2, 3, 4].map(i => Math.round((maxValor / 4) * i))
 
   return (
-    <div className="bar-chart-card">
-      <div className="chart-header">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-transparent! p-5 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+      <div className={chartHeader}>
         <div>
-          <h3 className="chart-title">{title}</h3>
-          <p className="chart-subtitle">{subtitle}</p>
+          <h3 className={chartTitle}>{title}</h3>
+          <p className={chartSubtitle}>{subtitle}</p>
         </div>
 
-        <div className="time-range-controls">
-          <div className="time-range-buttons">
+        <div className={timeRangeControls}>
+          <div className={timeRangeButtons}>
             <button
-              className={`time-btn ${rangoTiempo === '7D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('7D')}
             >
               7D
             </button>
             <button
-              className={`time-btn ${rangoTiempo === '15D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('15D')}
             >
               15D
             </button>
             <button
-              className={`time-btn ${rangoTiempo === '30D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('30D')}
             >
               30D
             </button>
           </div>
 
-          <button className="date-range-btn" onClick={() => setShowCalendar(true)}>
+          <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
             <FaCalendarAlt />
             <span>{formatDateRange()}</span>
           </button>
         </div>
       </div>
 
-      <svg className="bar-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+      <svg className="mb-4 block h-auto w-full max-w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
         {/* Definir área de clipping para que nada se dibuje fuera del gráfico */}
         <defs>
           <clipPath id="bar-chart-clip">
@@ -287,9 +301,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
                       height={barHeight}
                       fill={colores[asunto]}
                       rx="3"
-                      className="bar-rect"
+                      className="cursor-pointer [transition:all_0.3s_ease]! hover:[filter:brightness(1.1)]"
                       style={{
-                        transition: 'all 0.3s ease',
                         opacity: hoveredBar && hoveredBar.asunto === asunto && hoveredBar.dia === dia ? 0.8 : 1
                       }}
                     />
@@ -351,36 +364,26 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
       {/* Tooltip flotante con prevención de overflow */}
       {hoveredBar && (
         <div
-          className="chart-tooltip"
+          className={tooltip}
           style={{
-            position: 'absolute',
             left: `${Math.min(Math.max((hoveredBar.x / width) * 100, 15), 85)}%`,
             top: `${(hoveredBar.y / height) * 100}%`,
-            transform: hoveredBar.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))',
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '12px',
-            boxShadow: '0 4px 12px var(--shadow)',
-            zIndex: 1000,
-            pointerEvents: 'none',
-            minWidth: '200px',
-            maxWidth: '280px'
+            transform: hoveredBar.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))'
           }}
         >
-          <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
+          <div className="mb-2 text-[0.85rem] font-semibold text-content">
             {hoveredBar.dia} - {hoveredBar.valor} incidencia{hoveredBar.valor !== 1 ? 's' : ''}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+          <div className="mb-1.5 text-[0.75rem] text-muted">
             {hoveredBar.asunto}
           </div>
           {hoveredBar.topFaltas && hoveredBar.topFaltas.length > 0 && (
-            <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
-              <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
+            <div className="mt-1.5 border-t border-line pt-1.5 text-[0.75rem]">
+              <div className="mb-1 font-semibold text-content-2">Top 3 faltas:</div>
               {hoveredBar.topFaltas.map((falta, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-muted)', flex: 1, fontSize: '0.7rem' }}>{falta.falta}</span>
-                  <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
+                <div key={idx} className="mb-0.5 flex justify-between gap-2">
+                  <span className="flex-1 text-[0.7rem] text-muted">{falta.falta}</span>
+                  <span className="font-semibold text-primary">{falta.cantidad}</span>
                 </div>
               ))}
             </div>
@@ -389,7 +392,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
       )}
 
       {/* Leyenda con nombres abreviados */}
-      <div className="bar-legend">
+      <div className="mt-4 flex flex-wrap justify-center gap-4 border-t border-line pt-4">
         {nuevosAsuntos.map((asunto, index) => {
           const nombresCortos = [
             'Horario y Asistencia',
@@ -401,9 +404,9 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
           ]
 
           return (
-            <div key={asunto} className="legend-item" title={asunto}>
-              <span className="legend-dot" style={{ backgroundColor: colores[asunto] }}></span>
-              <span className="legend-label">{nombresCortos[index]}</span>
+            <div key={asunto} className="flex items-center gap-1.5 text-[11px] text-content-2" title={asunto}>
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colores[asunto] }}></span>
+              <span className="text-[11px] leading-[1.3]">{nombresCortos[index]}</span>
             </div>
           )
         })}

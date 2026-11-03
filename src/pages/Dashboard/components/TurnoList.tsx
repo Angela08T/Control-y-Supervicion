@@ -30,41 +30,41 @@ export default function TurnoList({ data }: TurnoListProps) {
       descripcion: 'Incidencias registradas'
     }
   ]
-  
+
   const total = Object.values(data).reduce((a, b) => a + b, 0)
-  
+
   return (
-    <div className="turno-list-card">
-      <div className="turno-header">
+    <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+      <div className="mb-6">
         <div>
-          <h3 className="turno-title">Incidencias por Turno</h3>
-          <p className="turno-subtitle">
-            <span className="turno-indicator">+30%</span> este mes
+          <h3 className="mb-1 text-[18px] font-semibold text-content! dark:text-[#f8fafc]!">Incidencias por Turno</h3>
+          <p className="flex items-center gap-1.5 text-[12px] text-content-2">
+            <span className="font-semibold text-success">+30%</span> este mes
           </p>
         </div>
       </div>
-      
-      <div className="turno-list">
+
+      <div className="flex flex-col gap-4">
         {turnos.map((turno, index) => {
           const porcentaje = total > 0 ? Math.round((turno.cantidad / total) * 100) : 0
-          
+
           return (
-            <div key={index} className="turno-item">
-              <div className="turno-icon-container" style={{ backgroundColor: `${turno.color}20` }}>
-                <div className="turno-icon" style={{ color: turno.color }}>
+            <div key={index} className="flex items-center gap-4 rounded-[12px] border border-line bg-card p-4 [backdrop-filter:blur(5px)] [transition:all_0.3s_ease]! hover:bg-card-hover hover:[transform:translateX(4px)]">
+              <div className="flex size-[50px] items-center justify-center rounded-[12px] bg-[rgba(30,58,138,0.1)]" style={{ backgroundColor: `${turno.color}20` }}>
+                <div className="text-[22px] text-primary" style={{ color: turno.color }}>
                   {turno.icon}
                 </div>
               </div>
-              
-              <div className="turno-content">
-                <div className="turno-info">
-                  <h4 className="turno-name">{turno.nombre}</h4>
-                  <p className="turno-desc">{turno.descripcion}</p>
+
+              <div className="flex flex-1 items-center justify-between">
+                <div className="flex-1">
+                  <h4 className="m-0 mb-1 text-[15px] font-semibold text-content! dark:text-[#f8fafc]!">{turno.nombre}</h4>
+                  <p className="m-0 text-[12px] text-content-2! dark:text-[#e2e8f0]!">{turno.descripcion}</p>
                 </div>
-                
-                <div className="turno-stats">
-                  <h3 className="turno-cantidad">{turno.cantidad}</h3>
-                  <span className="turno-porcentaje">{porcentaje}%</span>
+
+                <div className="text-right">
+                  <h3 className="m-0 text-[24px] font-bold text-content! dark:text-[#f8fafc]!">{turno.cantidad}</h3>
+                  <span className="text-[12px] font-medium text-content-2! dark:text-[#e2e8f0]!">{porcentaje}%</span>
                 </div>
               </div>
             </div>

@@ -394,9 +394,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="dashboard-page">
+    <div className="max-w-full bg-transparent!">
       {/* Cards superiores */}
-      <div className="stats-grid">
+      <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-5">
         <DateCard />
 
         <StatCard
@@ -427,7 +427,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Segunda fila: Welcome, Cumplimiento y Turnos */}
-      <div className="middle-grid">
+      <div className="mb-5 grid grid-cols-[2fr_1fr_1fr] gap-5 max-[1200px]:grid-cols-[1fr]">
         <WelcomeCard
           message="Revisa el control de las incidencias y el desempeño del equipo"
         />
@@ -444,7 +444,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tercera fila: Evolución de Incidencias e Incidencias (50/50) */}
-      <div className="charts-grid-half">
+      <div className="mb-5 grid grid-cols-[1fr_1fr] items-stretch gap-5 max-[1200px]:grid-cols-[1fr]">
         <LineChart
           title="Evolución de Incidencias"
           subtitle="Últimos días registrados"
@@ -471,7 +471,7 @@ export default function DashboardPage() {
 
       {/* Última fila: Tabla de Centinelas (solo para ADMIN) */}
       {isAdmin && (
-        <div className="bottom-grid-full">
+        <div className="grid grid-cols-[1fr] gap-5">
           <PersonalTable />
         </div>
       )}

@@ -1,6 +1,26 @@
 import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
+import { cn } from '../../../utils/classes'
+
+// Estilos de controles compartidos por los gráficos (iguales en BarChart y RadarChart).
+// `!` en transition: styles.css (sin capas) tiene `* { transition }` y ganaría a las utilidades.
+const chartHeader = 'mb-4 flex flex-wrap items-start justify-between gap-3'
+const chartTitle = 'mb-1 text-[16px] font-semibold leading-[1.3] text-content'
+const chartSubtitle = 'text-[11px] leading-[1.4] text-content-2'
+const timeRangeControls = 'flex flex-wrap items-center gap-3'
+const timeRangeButtons = 'flex gap-2 rounded-lg border border-line bg-surface p-1'
+const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]!'
+const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-[rgba(59,130,246,0.1)] hover:text-primary'
+const timeBtnActive = 'bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_100%)] text-white shadow-[0_2px_8px_rgba(7,89,133,0.3)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_100%)] dark:shadow-[0_2px_8px_rgba(37,99,235,0.4)]'
+const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease]! hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
+const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-card p-3 shadow-[0_4px_12px_var(--shadow)]'
+// Botones de filtro: `.filter-button.active` y `[data-theme=dark] .filter-button` (que va después en styles.css) se resuelven con dark: después de la base
+const filterBtnBase = 'flex cursor-pointer items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-[11px] font-semibold [transition:all_0.3s_ease]! hover:-translate-y-0.5 dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)]'
+const filterBtnIdle = 'bg-surface border-transparent text-content-2 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:[border-color:var(--filter-color)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]'
+const filterBtnActive = 'text-white [background:var(--filter-color)] [border-color:var(--filter-color)] shadow-[0_4px_12px_rgba(0,0,0,0.15)]'
+const filterDot = 'size-2.5 rounded-full [transition:all_0.3s_ease]!'
+const filterDotActive = 'bg-white! shadow-[0_2px_4px_rgba(0,0,0,0.2)]'
 
 /** Incidencias por día/mes: { [fecha]: { [asunto]: cantidad } } */
 export type IncidenciasPorDia = Record<string, Record<string, number>>
@@ -233,43 +253,43 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }
   
   return (
-    <div className="line-chart-card">
-      <div className="chart-header">
+    <div className="relative box-border w-full min-w-0 max-w-full overflow-visible rounded-2xl border border-line bg-transparent! p-5 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+      <div className={chartHeader}>
         <div>
-          <h3 className="chart-title">{title}</h3>
-          <p className="chart-subtitle">{subtitle}</p>
+          <h3 className={chartTitle}>{title}</h3>
+          <p className={chartSubtitle}>{subtitle}</p>
         </div>
 
-        <div className="time-range-controls">
-          <div className="time-range-buttons">
+        <div className={timeRangeControls}>
+          <div className={timeRangeButtons}>
             <button
-              className={`time-btn ${rangoTiempo === '7D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('7D')}
             >
               7D
             </button>
             <button
-              className={`time-btn ${rangoTiempo === '15D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('15D')}
             >
               15D
             </button>
             <button
-              className={`time-btn ${rangoTiempo === '30D' ? 'active' : ''}`}
+              className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
               onClick={() => handlePeriodChange('30D')}
             >
               30D
             </button>
           </div>
 
-          <button className="date-range-btn" onClick={() => setShowCalendar(true)}>
+          <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
             <FaCalendarAlt />
             <span>{formatDateRange()}</span>
           </button>
         </div>
       </div>
       
-      <svg className="line-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+      <svg className="mb-4 block h-auto w-full max-w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
         {/* Definir área de clipping para que nada se dibuje fuera del gráfico */}
         <defs>
           <clipPath id="chart-clip">
@@ -330,7 +350,6 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
           const color = colores[asunto]
           const pathId = `path-${asunto.replace(/\s+/g, '-')}`
           const pathLength = getPathLength(values)
-          const animationDuration = 2.5 // segundos para que la línea se dibuje completamente
           const lineDelay = asuntoIndex * 0.2 // delay entre cada línea
 
           return (
@@ -344,11 +363,10 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="chart-line chart-line-animated"
+                className="[transition:stroke-width_0.3s_ease,opacity_0.3s_ease]! [will-change:stroke-dashoffset] animate-[drawLine_2.5s_ease-in-out_forwards]"
                 style={{
                   strokeDasharray: pathLength,
                   strokeDashoffset: pathLength,
-                  animation: `drawLine ${animationDuration}s ease-in-out forwards`,
                   animationDelay: `${lineDelay}s`
                 }}
               />
@@ -363,7 +381,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                 return (
                   <g
                     key={`${asunto}-${i}`}
-                    className="chart-point-group"
+                    className="group/point cursor-pointer [transform-origin:center]"
                   >
                     <circle
                       cx={getX(i)}
@@ -372,8 +390,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                       fill="white"
                       stroke={color}
                       strokeWidth="2.5"
-                      className="chart-point-outer"
-                      style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                      className="cursor-pointer [pointer-events:all] [transition:all_0.2s_ease]! group-hover/point:[r:5] group-hover/point:[stroke-width:3]"
                       onMouseEnter={() => setHoveredPoint({ asunto, dia: meses[i], value, topFaltas, x: getX(i), y: getY(value) })}
                       onMouseLeave={() => setHoveredPoint(null)}
                     />
@@ -382,8 +399,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
                       cy={getY(value)}
                       r="2.5"
                       fill={color}
-                      className="chart-point-inner"
-                      style={{ pointerEvents: 'none' }}
+                      className="pointer-events-none [transition:all_0.2s_ease]! group-hover/point:[r:2.5]"
                     />
                   </g>
                 )
@@ -416,7 +432,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
               fill="var(--text-muted)"
               fontSize="10"
               fontWeight="600"
-              className="chart-label"
+              className="opacity-80"
             >
               {mes}
             </text>
@@ -427,36 +443,26 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       {/* Tooltip flotante con prevención de overflow */}
       {hoveredPoint && (
         <div
-          className="chart-tooltip"
+          className={tooltip}
           style={{
-            position: 'absolute',
             left: `${Math.min(Math.max((hoveredPoint.x / width) * 100, 15), 85)}%`,
             top: `${(hoveredPoint.y / height) * 100}%`,
-            transform: hoveredPoint.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))',
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '12px',
-            boxShadow: '0 4px 12px var(--shadow)',
-            zIndex: 1000,
-            pointerEvents: 'none',
-            minWidth: '200px',
-            maxWidth: '280px'
+            transform: hoveredPoint.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))'
           }}
         >
-          <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-primary)' }}>
+          <div className="mb-2 text-[0.85rem] font-semibold text-content">
             {hoveredPoint.dia} - {hoveredPoint.value} incidencia{hoveredPoint.value !== 1 ? 's' : ''}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+          <div className="mb-1.5 text-[0.75rem] text-muted">
             {hoveredPoint.asunto}
           </div>
           {hoveredPoint.topFaltas && hoveredPoint.topFaltas.length > 0 && (
-            <div style={{ fontSize: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
-              <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-secondary)' }}>Top 3 faltas:</div>
+            <div className="mt-1.5 border-t border-line pt-1.5 text-[0.75rem]">
+              <div className="mb-1 font-semibold text-content-2">Top 3 faltas:</div>
               {hoveredPoint.topFaltas.map((falta, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-muted)', flex: 1, fontSize: '0.7rem' }}>{falta.falta}</span>
-                  <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{falta.cantidad}</span>
+                <div key={idx} className="mb-0.5 flex justify-between gap-2">
+                  <span className="flex-1 text-[0.7rem] text-muted">{falta.falta}</span>
+                  <span className="font-semibold text-primary">{falta.cantidad}</span>
                 </div>
               ))}
             </div>
@@ -465,7 +471,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       )}
 
       {/* Botones de filtro con nombres abreviados */}
-      <div className="chart-filters">
+      <div className="mt-4 flex flex-wrap justify-center gap-2.5 border-t border-line pt-4">
         {nuevosAsuntos.map((asunto, index) => {
           // Nombres cortos para los botones
           const nombresCortos = [
@@ -480,15 +486,15 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
           return (
             <button
               key={asunto}
-              className={`filter-button ${filtrosActivos[asunto] ? 'active' : ''}`}
+              className={cn(filterBtnBase, filtrosActivos[asunto] ? filterBtnActive : filterBtnIdle)}
               style={{
                 '--filter-color': colores[asunto]
               } as React.CSSProperties}
               onClick={() => toggleFiltro(asunto)}
               title={asunto} // Tooltip con el nombre completo
             >
-              <span className="filter-dot" style={{ backgroundColor: colores[asunto] }}></span>
-              <span className="filter-label">{nombresCortos[index]}</span>
+              <span className={cn(filterDot, filtrosActivos[asunto] && filterDotActive)} style={{ backgroundColor: colores[asunto] }}></span>
+              <span className="text-[13px] whitespace-nowrap">{nombresCortos[index]}</span>
             </button>
           )
         })}
