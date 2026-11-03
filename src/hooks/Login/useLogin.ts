@@ -1,9 +1,9 @@
 import { useDispatch } from 'react-redux';
 import { useState } from 'react';
-import { login as setAuth } from '../../store/slices/authSlice.js';
-import { login } from '../../api/auth.jsx';
-import { setToken } from '../../api/config.jsx';
-import { normalizeRole } from '../../utils/permissions.js';
+import { login as setAuth } from '../../store/slices/authSlice';
+import { login } from '../../api/auth';
+import { setToken } from '../../api/config';
+import { normalizeRole } from '../../utils/permissions';
 
 const useLogin = () => {
  const dispatch = useDispatch();
