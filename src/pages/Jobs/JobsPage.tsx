@@ -1,25 +1,56 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../store/hooks'
 import JobTable from '../../components/JobTable'
 import ModalJob from '../../components/ModalJob'
 import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from '../../api/job'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
+import type { CreateJobDto, Job, Paginated, TablePagination } from '@/types'
+
+/** Listado de cargos: `data` paginado (o array plano) y `pagination` opcional. */
+interface JobsListResult {
+  data?: Paginated<Job> | Job[];
+  pagination?: TablePagination;
+}
+
+/** Resultado de búsqueda por ID: `{ data, found }`. */
+interface JobLookupResult {
+  data: Job[];
+  found: boolean;
+}
+
+/** Cuerpo de respuesta de mutaciones (`message` y `data` opcionales). */
+interface MutationBody {
+  message?: string;
+  data?: unknown;
+}
+
+/** Forma mínima del error (Axios / Error) que se lee en los catch. */
+interface ApiErrorLike {
+  response?: { data?: { message?: string | string[] } };
+  message?: string;
+}
+
+/** Lee `message` de un valor desconocido (equivale a `value?.message`). */
+const messageOf = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  return (value as { message?: string }).message
+}
 
 export default function JobsPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'cargos')
 
-  const [jobs, setJobs] = useState([])
+  const [jobs, setJobs] = useState<Job[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [editItem, setEditItem] = useState<Job | null>(null)
   const [filters, setFilters] = useState({
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -29,7 +60,7 @@ export default function JobsPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [searchResult, setSearchResult] = useState(null)
+  const [searchResult, setSearchResult] = useState<Job[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
 
   // Cargar cargos desde la API con paginación
@@ -37,9 +68,9 @@ export default function JobsPage() {
     async function fetchJobs() {
       setLoading(true)
       try {
-        const result = await getJobs(currentPage, itemsPerPage)
+        const result: JobsListResult = await getJobs(currentPage, itemsPerPage)
 
-        const jobsData = result.data?.data || result.data || []
+        const jobsData: Job[] = Array.isArray(result.data) ? result.data : result.data?.data || []
         setJobs(jobsData)
 
         // Manejar paginación si existe, sino usar valores por defecto
@@ -67,7 +98,7 @@ export default function JobsPage() {
   }, [currentPage, itemsPerPage, refreshTrigger])
 
   // Verificar si el término de búsqueda es un UUID
-  const isUUID = (str) => {
+  const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     return uuidRegex.test(str)
   }
@@ -87,7 +118,9 @@ export default function JobsPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          const result = await getJobById(searchTerm)
+          // La API tipa esta respuesta como ApiResponse<Job>, pero el adaptador devuelve { data, found }
+          const lookup: unknown = await getJobById(searchTerm)
+          const result = lookup as JobLookupResult
 
           if (result.found && result.data.length > 0) {
             setSearchResult(result.data)
@@ -129,26 +162,27 @@ export default function JobsPage() {
   }, [filters.search])
 
   // Crear o editar cargo
-  async function handleSave(data) {
+  async function handleSave(data: CreateJobDto) {
     if (editItem) {
       // Actualizar cargo existente
       try {
-        const response = await updateJob(editItem.id, data)
+        const response: MutationBody = await updateJob(editItem.id, data)
 
-        toast.success(response.data?.message || response.message || 'Cargo actualizado exitosamente')
+        toast.success(messageOf(response.data) || response.message || 'Cargo actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         let errorMessage = 'Error al actualizar el cargo'
+        const err = error as ApiErrorLike
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación:\n' + err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         toast.error(errorMessage)
@@ -156,22 +190,23 @@ export default function JobsPage() {
     } else {
       // Crear nuevo cargo
       try {
-        const response = await createJob(data)
+        const response: MutationBody = await createJob(data)
 
-        toast.success(response.data?.message || response.message || 'Cargo creado exitosamente')
+        toast.success(messageOf(response.data) || response.message || 'Cargo creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         let errorMessage = 'Error al crear el cargo'
+        const err = error as ApiErrorLike
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación:\n' + err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         toast.error(errorMessage)
@@ -179,7 +214,7 @@ export default function JobsPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: Job) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -190,33 +225,34 @@ export default function JobsPage() {
 
     try {
       // El endpoint DELETE hace toggle automáticamente
-      const response = await deleteJob(item.id)
+      const response: MutationBody = await deleteJob(item.id)
 
-      toast.success(response.data?.message || response.message || `Cargo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(messageOf(response.data) || response.message || `Cargo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
       let errorMessage = `Error al ${action} el cargo`
+      const err = error as ApiErrorLike
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (err.response?.data?.message) {
+        errorMessage = Array.isArray(err.response.data.message)
+          ? err.response.data.message.join('\n')
+          : err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: Job) {
     setEditItem(item)
     setShowModal(true)
   }
 
   // Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -231,7 +267,7 @@ export default function JobsPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1)
   }
@@ -416,7 +452,7 @@ export default function JobsPage() {
                     alignItems: 'center'
                   }}>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (pagination.totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {

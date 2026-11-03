@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '@/store/hooks'
 import UserTable from '../../components/UserTable'
-import ModalUser from '../../components/ModalUser'
+import ModalUser, { type UserSavePayload } from '../../components/ModalUser'
 import {
   getUsers,
   searchUser,
@@ -12,19 +12,37 @@ import {
 } from '../../api/user'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
+import type { CreateUserDto, ID, Role, User } from '@/types'
+
+/** Filtro de rol: 'all' o un rol del backend */
+type RoleFilter = 'all' | Role
+
+/** Cuerpo de respuesta de mutaciones: el mensaje puede venir en la raiz o dentro de data */
+interface MutationBody {
+  message?: string
+  data?: { message?: string }
+}
+
+/** Forma minima de un error de axios usada para leer el mensaje del backend */
+interface MutationError {
+  message?: string
+  response?: { data?: { message?: string | string[] } }
+}
+
+const readMutationBody = (body: unknown): MutationBody => body as MutationBody
 
 export default function UsuariosPage() {
-  const { role: userRole } = useSelector((state) => state.auth) // Rol del usuario actual
-  const [users, setUsers] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
-  const [filters, setFilters] = useState({
+  const { role: userRole } = useAppSelector((state) => state.auth) // Rol del usuario actual
+  const [users, setUsers] = useState<User[]>([])
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [editItem, setEditItem] = useState<User | null>(null)
+  const [filters, setFilters] = useState<{ search: string; roleFilter: RoleFilter }>({
     search: '',
     roleFilter: 'all' // all, ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR
   })
-  const [loading, setLoading] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [isSearching, setIsSearching] = useState(false)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+  const [isSearching, setIsSearching] = useState<boolean>(false)
 
   // Permisos según rol
   const canCreateSupervisor = userRole === 'admin'
@@ -64,26 +82,28 @@ export default function UsuariosPage() {
   }, [filters.search, filters.roleFilter, refreshTrigger])
 
   // Crear o editar usuario
-  async function handleSave(data) {
+  async function handleSave(data: UserSavePayload) {
     if (editItem) {
       // Actualizar usuario existente
       try {
         const response = await updateUser(editItem.id, data)
 
-        toast.success(response.data?.message || response.message || 'Usuario actualizado exitosamente')
+        toast.success(readMutationBody(response).data?.message || response.message || 'Usuario actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const apiError = error as MutationError
+
         let errorMessage = 'Error al actualizar el usuario'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación: ' + error.response.data.message.join(', ')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (apiError.response?.data?.message) {
+          errorMessage = Array.isArray(apiError.response.data.message)
+            ? 'Errores de validación: ' + apiError.response.data.message.join(', ')
+            : apiError.response.data.message
+        } else if (apiError.message) {
+          errorMessage = apiError.message
         }
 
         toast.error(errorMessage)
@@ -112,21 +132,23 @@ export default function UsuariosPage() {
           return
         }
 
-        const response = await createUser(data)
+        const response = await createUser(data as CreateUserDto)
 
-        toast.success(response.data?.message || response.message || 'Usuario creado exitosamente')
+        toast.success(readMutationBody(response).data?.message || response.message || 'Usuario creado exitosamente')
 
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const apiError = error as MutationError
+
         let errorMessage = 'Error al crear el usuario'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación: ' + error.response.data.message.join(', ')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (apiError.response?.data?.message) {
+          errorMessage = Array.isArray(apiError.response.data.message)
+            ? 'Errores de validación: ' + apiError.response.data.message.join(', ')
+            : apiError.response.data.message
+        } else if (apiError.message) {
+          errorMessage = apiError.message
         }
 
         toast.error(errorMessage)
@@ -134,7 +156,7 @@ export default function UsuariosPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: User) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -147,45 +169,49 @@ export default function UsuariosPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteUser(item.id)
 
-      toast.success(response.data?.message || response.message || `Usuario ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(readMutationBody(response).data?.message || response.message || `Usuario ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
+      const apiError = error as MutationError
+
       let errorMessage = `Error al ${action} el usuario`
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join(', ')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (apiError.response?.data?.message) {
+        errorMessage = Array.isArray(apiError.response.data.message)
+          ? apiError.response.data.message.join(', ')
+          : apiError.response.data.message
+      } else if (apiError.message) {
+        errorMessage = apiError.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: User) {
     setEditItem(item)
     setShowModal(true)
   }
 
-  async function handleDeactivateSession(userId, ip) {
+  async function handleDeactivateSession(userId: ID, ip: string) {
     if (!confirm(`¿Estás seguro de cerrar la sesión en ${ip}?`)) return
 
     try {
       const response = await deactivateSession(userId, ip)
-      toast.success(response.data?.message || response.message || 'Sesión cerrada exitosamente')
+      toast.success(readMutationBody(response).data?.message || response.message || 'Sesión cerrada exitosamente')
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
+      const apiError = error as MutationError
+
       let errorMessage = 'Error al cerrar la sesión'
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join(', ')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (apiError.response?.data?.message) {
+        errorMessage = Array.isArray(apiError.response.data.message)
+          ? apiError.response.data.message.join(', ')
+          : apiError.response.data.message
+      } else if (apiError.message) {
+        errorMessage = apiError.message
       }
 
       toast.error(errorMessage)
@@ -204,7 +230,7 @@ export default function UsuariosPage() {
             {/* Filtro por rol */}
             <select
               value={filters.roleFilter}
-              onChange={e => setFilters(f => ({ ...f, roleFilter: e.target.value }))}
+              onChange={e => setFilters(f => ({ ...f, roleFilter: e.target.value as RoleFilter }))}
               style={{
                 padding: '8px 12px',
                 borderRadius: '8px',

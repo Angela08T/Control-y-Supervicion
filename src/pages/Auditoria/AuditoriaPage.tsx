@@ -1,6 +1,7 @@
 import React from 'react';
 import AuditoriaTable from '../../components/AuditoriaTable';
 import useAudit from '../../hooks/Audit/useAudit';
+import type { AuditFilterState } from '../../hooks/Audit/useAudit';
 import { FaSearch, FaRedo } from 'react-icons/fa';
 
 export default function AuditoriaPage() {
@@ -17,11 +18,11 @@ export default function AuditoriaPage() {
     resetFilters
   } = useAudit();
 
-  const handleFilterChange = (key, value) => {
-    updateFilters({ [key]: value });
+  const handleFilterChange = (key: keyof AuditFilterState, value: string) => {
+    updateFilters({ [key]: value } as Partial<AuditFilterState>);
   };
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       changePage(newPage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -36,7 +37,7 @@ export default function AuditoriaPage() {
     handlePageChange(pagination.currentPage + 1);
   };
 
-  const handleItemsPerPageChange = (newItemsPerPage) => {
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
     changeItemsPerPage(newItemsPerPage);
   };
 
@@ -214,7 +215,7 @@ export default function AuditoriaPage() {
                   alignItems: 'center'
                 }}>
                   {(() => {
-                    const pages = [];
+                    const pages: (number | '...')[] = [];
                     const totalPages = pagination.totalPages;
                     const currentPage = pagination.currentPage;
 

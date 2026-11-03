@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '@/store/hooks'
 import CalendarioInasistencias from '../../components/CalendarioInasistencias'
 import ModalInasistencia from '../../components/ModalInasistencia'
 import CalendarModal from '../Dashboard/components/CalendarModal'
@@ -10,22 +10,69 @@ import { FaPlus, FaCalendarAlt, FaFilePdf } from 'react-icons/fa'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import { toast } from '../../utils/toast'
+import type { AttendanceItemDto, ID, ISODateString, Lead } from '@/types'
+
+/** Fila de asistencia tal como la devuelve GET /attendance */
+type AttendanceRow = Awaited<ReturnType<typeof getAttendances>>['data'][number]
+
+/** Datos del formulario de inasistencia que consume mapFormDataToOffenderAPI */
+type AttendanceFormInput = Parameters<typeof mapFormDataToOffenderAPI>[0]
+
+/** Fila de la tabla de inasistencias (formato mapeado en el front) */
+interface InasistenciaRow {
+  id: ID | undefined
+  dni: string
+  nombreCompleto: string | null
+  turno: string | null
+  cargo: string | null
+  regLab: string | null
+  subgerencia: string | null
+  asunto: string
+  falta: string
+  fechaIncidente: null
+  createdAt: ISODateString
+  updatedAt: ISODateString
+}
+
+/** Rango de fechas seleccionado en el calendario */
+interface DateRange {
+  start: Date
+  end: Date
+}
+
+/** Marca de falta enviada desde CalendarioInasistencias */
+interface AttendanceMark {
+  dni: string
+  dia: number
+  mes: number
+  anio: number
+  tipo: string
+}
+
+/** Forma minima de un error de axios usada para leer el mensaje del backend */
+interface RequestError {
+  message?: string
+  response?: {
+    status?: number
+    data?: { message?: string | string[] }
+  }
+}
 
 export default function InasistenciasPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'incidencias')
 
-  const [inasistencias, setInasistencias] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [showCalendarModal, setShowCalendarModal] = useState(false)
-  const [showPDFModal, setShowPDFModal] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [savedAttendances, setSavedAttendances] = useState([]) // Inasistencias guardadas desde la API
-  const [currentMonth, setCurrentMonth] = useState(new Date()) // Mes actual del calendario
+  const [inasistencias, setInasistencias] = useState<InasistenciaRow[]>([])
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false)
+  const [showPDFModal, setShowPDFModal] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+  const [savedAttendances, setSavedAttendances] = useState<AttendanceRow[]>([]) // Inasistencias guardadas desde la API
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date()) // Mes actual del calendario
 
   // Estado para el rango de fechas (por defecto: mes actual)
-  const [dateRange, setDateRange] = useState(() => {
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
     const year = now.getFullYear()
     const month = now.getMonth()
@@ -63,7 +110,7 @@ export default function InasistenciasPage() {
         const attendancesData = result.data || []
 
         // Mapear los datos de attendances al formato esperado por la tabla
-        const inasistenciasData = attendancesData.map(person => ({
+        const inasistenciasData: InasistenciaRow[] = attendancesData.map(person => ({
           id: person.id || person.offender_id,
           dni: person.dni,
           nombreCompleto: person.name && person.lastname
@@ -85,18 +132,20 @@ export default function InasistenciasPage() {
         // También actualizar savedAttendances con los mismos datos
         setSavedAttendances(attendancesData)
       } catch (error) {
+        const apiError = error as RequestError
+
         // Mostrar mensaje de error más específico
         let errorMessage = 'No se pudieron cargar las inasistencias'
-        if (error.response?.status === 404) {
+        if (apiError.response?.status === 404) {
           errorMessage = 'No hay inasistencias registradas aún'
           setInasistencias([])
           setSavedAttendances([])
-        } else if (error.message) {
-          errorMessage += ': ' + error.message
+        } else if (apiError.message) {
+          errorMessage += ': ' + apiError.message
         }
 
         // No mostrar alert si es 404 (no hay datos)
-        if (error.response?.status !== 404) {
+        if (apiError.response?.status !== 404) {
           toast.error(errorMessage)
         }
       } finally {
@@ -108,21 +157,21 @@ export default function InasistenciasPage() {
   }, [refreshTrigger, dateRange])
 
   // Función para manejar la selección de rango de fechas desde el modal
-  function handleDateRangeSelect(start, end) {
+  function handleDateRangeSelect(start: Date, end: Date) {
     setDateRange({ start, end })
     setShowCalendarModal(false)
   }
 
   // Formatear rango de fechas para mostrar
-  function formatDateRange() {
-    const options = { day: '2-digit', month: 'short', year: 'numeric' }
+  function formatDateRange(): string {
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' }
     const startStr = dateRange.start.toLocaleDateString('es-PE', options)
     const endStr = dateRange.end.toLocaleDateString('es-PE', options)
     return `${startStr} - ${endStr}`
   }
 
   // Crear inasistencia
-  async function handleCreate(data, allLeads = []) {
+  async function handleCreate(data: AttendanceFormInput, allLeads: Lead[] = []) {
     try {
       // 🔹 NUEVO: Usar endpoint de offender para inasistencias
       const offenderData = mapFormDataToOffenderAPI(data)
@@ -139,24 +188,25 @@ export default function InasistenciasPage() {
         })
       }, 500)
     } catch (error) {
+      const apiError = error as RequestError
 
       let errorMessage = 'Error al crear la inasistencia'
 
-      if (error.response?.data?.message) {
-        if (Array.isArray(error.response.data.message)) {
-          errorMessage = 'Errores de validación:\n' + error.response.data.message.join('\n')
+      if (apiError.response?.data?.message) {
+        if (Array.isArray(apiError.response.data.message)) {
+          errorMessage = 'Errores de validación:\n' + apiError.response.data.message.join('\n')
         } else {
-          errorMessage = error.response.data.message
+          errorMessage = apiError.response.data.message
         }
-      } else if (error.message) {
-        errorMessage = error.message
+      } else if (apiError.message) {
+        errorMessage = apiError.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  async function handleSaveMarks(marks) {
+  async function handleSaveMarks(marks: AttendanceMark[]) {
     // Guardar las marcas de falta seleccionadas en la API usando /api/attendance
 
     if (!marks || marks.length === 0) {
@@ -166,7 +216,7 @@ export default function InasistenciasPage() {
 
     try {
       // Agrupar marcas por offender_id (DNI)
-      const groupedByOffender = {}
+      const groupedByOffender: Record<string, AttendanceItemDto[]> = {}
 
       for (const mark of marks) {
         // Buscar información del offender en las inasistencias
@@ -218,18 +268,21 @@ export default function InasistenciasPage() {
         toast.info('No se pudieron guardar las inasistencias. Verifica los datos.')
       }
     } catch (error) {
+      const apiError = error as RequestError
+
       let errorMessage = 'Error al guardar las inasistencias'
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (apiError.response?.data?.message) {
+        // El backend envía texto aquí; se conserva el valor tal cual (sin cambiar el comportamiento)
+        errorMessage = apiError.response.data.message as string
+      } else if (apiError.message) {
+        errorMessage = apiError.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  async function handleDelete(offenderId, nombre) {
+  async function handleDelete(offenderId?: ID | null, nombre?: string | null) {
     if (!offenderId) {
       toast.warning('No se pudo identificar a la persona')
       return
@@ -243,17 +296,18 @@ export default function InasistenciasPage() {
       toast.success('Persona eliminada correctamente')
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al eliminar la persona')
+      const apiError = error as RequestError
+      toast.error((apiError.response?.data?.message as string | undefined) || 'Error al eliminar la persona')
     }
   }
 
   // Manejar cambio de mes en el calendario
-  function handleMonthChange(newMonth) {
+  function handleMonthChange(newMonth: Date) {
     setCurrentMonth(newMonth)
   }
 
   // Eliminar marcas (attendances) en modo edición
-  async function handleDeleteMarks(marksToDelete) {
+  async function handleDeleteMarks(marksToDelete: ID[]) {
     if (!marksToDelete || marksToDelete.length === 0) {
       toast.info('No hay marcas para eliminar')
       return
@@ -268,12 +322,14 @@ export default function InasistenciasPage() {
       toast.info(`Se eliminaron ${marksToDelete.length} marca(s) exitosamente`)
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
+      const apiError = error as RequestError
 
       let errorMessage = 'Error al eliminar las marcas'
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (apiError.response?.data?.message) {
+        // El backend envía texto aquí; se conserva el valor tal cual (sin cambiar el comportamiento)
+        errorMessage = apiError.response.data.message as string
+      } else if (apiError.message) {
+        errorMessage = apiError.message
       }
 
       toast.error(errorMessage)

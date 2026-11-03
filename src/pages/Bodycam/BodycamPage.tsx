@@ -1,26 +1,50 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
-import BodycamTable from '../../components/BodycamTable'
+import { useAppSelector } from '@/store/hooks'
+import BodycamTable, { type BodycamTableRow } from '../../components/BodycamTable'
 import ModalBodycam from '../../components/ModalBodycam'
 import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '../../api/bodycam'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
+import type { BodycamView, CreateBodycamDto, TablePagination } from '@/types'
+
+/** Tipos de filtro de dispositivo del selector */
+type DeviceType = 'all' | 'camera' | 'sg' | 'fisca'
+
+/** Tipo de dispositivo detectado por nombre */
+type DeviceKind = 'unknown' | 'sg' | 'fisca' | 'camera' | 'other'
+
+/** Fila de resultado de busqueda (sin el campo cam) */
+type BodycamRow = Pick<BodycamView, 'id' | 'name' | 'serie' | 'deleted_at'>
+
+/** Cuerpo de respuesta de mutaciones: el mensaje puede venir en la raiz o dentro de data */
+interface MutationBody {
+  message?: string
+  data?: { message?: string }
+}
+
+/** Forma minima de un error de axios usada para leer el mensaje del backend */
+interface MutationError {
+  message?: string
+  response?: { data?: { message?: string | string[] } }
+}
+
+const readMutationBody = (body: unknown): MutationBody => body as MutationBody
 
 export default function BodycamPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'bodycam')
 
-  const [bodycams, setBodycams] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
-  const [filters, setFilters] = useState({
+  const [bodycams, setBodycams] = useState<BodycamView[]>([])
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [editItem, setEditItem] = useState<BodycamTableRow | null>(null)
+  const [filters, setFilters] = useState<{ search: string; deviceType: DeviceType }>({
     search: '',
     deviceType: 'all' // all, camera, sg, fisca
   })
 
   // Función para determinar el tipo de dispositivo basado en el nombre
-  const getDeviceType = (name) => {
+  const getDeviceType = (name: string): DeviceKind => {
     if (!name) return 'unknown'
     const upperName = name.toUpperCase()
     if (upperName.startsWith('SG')) return 'sg'
@@ -75,9 +99,9 @@ export default function BodycamPage() {
 
     searchByType()
   }, [filters.deviceType])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [pagination, setPagination] = useState({
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -85,10 +109,10 @@ export default function BodycamPage() {
     from: 0,
     to: 0
   })
-  const [loading, setLoading] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [searchResult, setSearchResult] = useState(null)
-  const [isSearching, setIsSearching] = useState(false)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+  const [searchResult, setSearchResult] = useState<BodycamRow[] | null>(null)
+  const [isSearching, setIsSearching] = useState<boolean>(false)
 
   // Cargar bodycams desde la API con paginación
   useEffect(() => {
@@ -109,7 +133,7 @@ export default function BodycamPage() {
   }, [currentPage, itemsPerPage, refreshTrigger])
 
   // Verificar si el término de búsqueda es un UUID
-  const isUUID = (str) => {
+  const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     return uuidRegex.test(str)
   }
@@ -178,27 +202,28 @@ export default function BodycamPage() {
   }, [filters.search])
 
   // Crear o editar dispositivo
-  async function handleSave(data) {
+  async function handleSave(data: Pick<CreateBodycamDto, 'name' | 'serie'>) {
     if (editItem) {
       // Actualizar dispositivo existente
       try {
         const response = await updateBodycam(editItem.id, data)
 
-        toast.success(response.data?.message || response.message || 'Dispositivo actualizado exitosamente')
+        toast.success(readMutationBody(response).data?.message || response.message || 'Dispositivo actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const apiError = error as MutationError
 
         let errorMessage = 'Error al actualizar el dispositivo'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (apiError.response?.data?.message) {
+          errorMessage = Array.isArray(apiError.response.data.message)
+            ? 'Errores de validación:\n' + apiError.response.data.message.join('\n')
+            : apiError.response.data.message
+        } else if (apiError.message) {
+          errorMessage = apiError.message
         }
 
         toast.error(errorMessage)
@@ -206,23 +231,24 @@ export default function BodycamPage() {
     } else {
       // Crear nuevo dispositivo
       try {
-        const response = await createBodycam(data)
+        const response = await createBodycam(data as CreateBodycamDto)
 
-        toast.success(response.data?.message || response.message || 'Dispositivo creado exitosamente')
+        toast.success(readMutationBody(response).data?.message || response.message || 'Dispositivo creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
+        const apiError = error as MutationError
 
         let errorMessage = 'Error al crear el dispositivo'
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (apiError.response?.data?.message) {
+          errorMessage = Array.isArray(apiError.response.data.message)
+            ? 'Errores de validación:\n' + apiError.response.data.message.join('\n')
+            : apiError.response.data.message
+        } else if (apiError.message) {
+          errorMessage = apiError.message
         }
 
         toast.error(errorMessage)
@@ -230,7 +256,7 @@ export default function BodycamPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: BodycamTableRow) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -243,32 +269,33 @@ export default function BodycamPage() {
       // El endpoint DELETE hace toggle automáticamente
       const response = await deleteBodycam(item.id)
 
-      toast.success(response.data?.message || response.message || `Dispositivo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(readMutationBody(response).data?.message || response.message || `Dispositivo ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
+      const apiError = error as MutationError
 
       let errorMessage = `Error al ${action} el dispositivo`
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (apiError.response?.data?.message) {
+        errorMessage = Array.isArray(apiError.response.data.message)
+          ? apiError.response.data.message.join('\n')
+          : apiError.response.data.message
+      } else if (apiError.message) {
+        errorMessage = apiError.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: BodycamTableRow) {
     setEditItem(item)
     setShowModal(true)
   }
 
   // Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -283,7 +310,7 @@ export default function BodycamPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1)
   }
@@ -300,7 +327,7 @@ export default function BodycamPage() {
             {/* Filtro por tipo de dispositivo */}
             <select
               value={filters.deviceType}
-              onChange={e => setFilters(f => ({ ...f, deviceType: e.target.value }))}
+              onChange={e => setFilters(f => ({ ...f, deviceType: e.target.value as DeviceType }))}
               style={{
                 padding: '8px 12px',
                 borderRadius: '8px',
@@ -519,7 +546,7 @@ export default function BodycamPage() {
                     alignItems: 'center'
                   }}>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (pagination.totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {

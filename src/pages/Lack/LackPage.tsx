@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../store/hooks'
 import LackTable from '../../components/LackTable'
 import ModalLack from '../../components/ModalLack'
 import SuccessModal from '../../components/SuccessModal'
@@ -8,21 +8,45 @@ import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import useNotification from '../../hooks/useNotification'
+import type { CreateLackDto, Lack, Paginated, TablePagination } from '@/types'
+
+/** Listado de faltas: `data` paginado (o array plano); la paginación va dentro de `data`. */
+interface LacksListResult {
+  data?: Paginated<Lack> | Lack[];
+}
+
+/** Cuerpo de respuesta de mutaciones (`message` y `data` opcionales). */
+interface MutationBody {
+  message?: string;
+  data?: unknown;
+}
+
+/** Forma mínima del error (Axios / Error) que se lee en los catch. */
+interface ApiErrorLike {
+  response?: { data?: { message?: string | string[] } };
+  message?: string;
+}
+
+/** Lee `message` de un valor desconocido (equivale a `value?.message`). */
+const messageOf = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  return (value as { message?: string }).message
+}
 
 export default function LackPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'faltas')
   const { successModal, errorModal, showSuccess, showError, closeSuccess, closeError } = useNotification()
 
-  const [lacks, setLacks] = useState([])
+  const [lacks, setLacks] = useState<Lack[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [editItem, setEditItem] = useState<Lack | null>(null)
   const [filters, setFilters] = useState({
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -40,24 +64,27 @@ export default function LackPage() {
       try {
         const searchTerm = filters.search.trim()
 
-        const result = await getLacks(
+        const result: LacksListResult = await getLacks(
           currentPage,
           itemsPerPage,
           searchTerm || null
         )
 
-        const lacksData = result.data?.data || result.data || []
+        const lacksData: Lack[] = Array.isArray(result.data) ? result.data : result.data?.data || []
         setLacks(lacksData)
 
+        // Metadatos de paginación (solo existen cuando data es el objeto paginado)
+        const meta = Array.isArray(result.data) ? undefined : result.data
+
         // Manejar paginación si existe
-        if (result.data?.totalPages) {
+        if (meta?.totalPages) {
           setPagination({
-            currentPage: result.data.currentPage || currentPage,
-            totalPages: result.data.totalPages || 1,
+            currentPage: meta.currentPage || currentPage,
+            totalPages: meta.totalPages || 1,
             perPage: itemsPerPage,
-            total: result.data.totalCount || lacksData.length,
+            total: meta.totalCount || lacksData.length,
             from: lacksData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
-            to: Math.min(currentPage * itemsPerPage, result.data.totalCount || lacksData.length)
+            to: Math.min(currentPage * itemsPerPage, meta.totalCount || lacksData.length)
           })
         } else {
           // Si no hay paginación, calcular valores básicos
@@ -82,26 +109,27 @@ export default function LackPage() {
 
 
   // Crear o editar falta
-  async function handleSave(data) {
+  async function handleSave(data: CreateLackDto) {
     if (editItem) {
       // Actualizar falta existente
       try {
-        const response = await updateLack(editItem.id, data)
+        const response: MutationBody = await updateLack(editItem.id, data)
 
-        showSuccess(response.data?.message || response.message || 'Falta actualizada exitosamente')
+        showSuccess(messageOf(response.data) || response.message || 'Falta actualizada exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         let errorMessage = 'Error al actualizar la falta'
+        const err = error as ApiErrorLike
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación: ' + error.response.data.message.join(', ')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación: ' + err.response.data.message.join(', ')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         showError(errorMessage)
@@ -109,22 +137,23 @@ export default function LackPage() {
     } else {
       // Crear nueva falta
       try {
-        const response = await createLack(data)
+        const response: MutationBody = await createLack(data)
 
-        showSuccess(response.data?.message || response.message || 'Falta creada exitosamente')
+        showSuccess(messageOf(response.data) || response.message || 'Falta creada exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         let errorMessage = 'Error al crear la falta'
+        const err = error as ApiErrorLike
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación: ' + error.response.data.message.join(', ')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación: ' + err.response.data.message.join(', ')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         showError(errorMessage)
@@ -132,7 +161,7 @@ export default function LackPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: Lack) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -143,33 +172,34 @@ export default function LackPage() {
 
     try {
       // El endpoint DELETE hace toggle automáticamente
-      const response = await deleteLack(item.id)
+      const response: MutationBody = await deleteLack(item.id)
 
-      showSuccess(response.data?.message || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
+      showSuccess(messageOf(response.data) || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
       let errorMessage = `Error al ${action} la falta`
+      const err = error as ApiErrorLike
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join(', ')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (err.response?.data?.message) {
+        errorMessage = Array.isArray(err.response.data.message)
+          ? err.response.data.message.join(', ')
+          : err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
       }
 
       showError(errorMessage)
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: Lack) {
     setEditItem(item)
     setShowModal(true)
   }
 
   // Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -184,7 +214,7 @@ export default function LackPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1)
   }
@@ -321,7 +351,7 @@ export default function LackPage() {
                     alignItems: 'center'
                   }}>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (pagination.totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {

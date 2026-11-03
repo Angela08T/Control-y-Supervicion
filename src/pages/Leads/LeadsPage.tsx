@@ -1,25 +1,56 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../store/hooks'
 import LeadTable from '../../components/LeadTable'
 import ModalLead from '../../components/ModalLead'
 import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
+import type { CreateLeadDto, Lead, Paginated, TablePagination } from '@/types'
+
+/** Listado de personal: `data` paginado (o array plano) y `pagination` opcional. */
+interface LeadsListResult {
+  data?: Paginated<Lead> | Lead[];
+  pagination?: TablePagination;
+}
+
+/** Resultado de búsqueda por ID: `{ data, found }`. */
+interface LeadLookupResult {
+  data: Lead[];
+  found: boolean;
+}
+
+/** Cuerpo de respuesta de mutaciones (`message` y `data` opcionales). */
+interface MutationBody {
+  message?: string;
+  data?: unknown;
+}
+
+/** Forma mínima del error (Axios / Error) que se lee en los catch. */
+interface ApiErrorLike {
+  response?: { data?: { message?: string | string[] } };
+  message?: string;
+}
+
+/** Lee `message` de un valor desconocido (equivale a `value?.message`). */
+const messageOf = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  return (value as { message?: string }).message
+}
 
 export default function LeadsPage() {
-  const { role: userRole } = useSelector((state) => state.auth)
+  const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'personal')
 
-  const [leads, setLeads] = useState([])
+  const [leads, setLeads] = useState<Lead[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [editItem, setEditItem] = useState<Lead | null>(null)
   const [filters, setFilters] = useState({
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
     perPage: 10,
@@ -29,7 +60,7 @@ export default function LeadsPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [searchResult, setSearchResult] = useState(null)
+  const [searchResult, setSearchResult] = useState<Lead[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
 
   // Cargar personal desde la API con paginación
@@ -37,9 +68,9 @@ export default function LeadsPage() {
     async function fetchLeads() {
       setLoading(true)
       try {
-        const result = await getLeads(currentPage, itemsPerPage)
+        const result: LeadsListResult = await getLeads(currentPage, itemsPerPage)
 
-        const leadsData = result.data?.data || result.data || []
+        const leadsData: Lead[] = Array.isArray(result.data) ? result.data : result.data?.data || []
         setLeads(leadsData)
 
         // Manejar paginación si existe, sino usar valores por defecto
@@ -67,7 +98,7 @@ export default function LeadsPage() {
   }, [currentPage, itemsPerPage, refreshTrigger])
 
   // Verificar si el término de búsqueda es un UUID
-  const isUUID = (str) => {
+  const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     return uuidRegex.test(str)
   }
@@ -87,7 +118,9 @@ export default function LeadsPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          const result = await getLeadById(searchTerm)
+          // La API tipa esta respuesta como ApiResponse<Lead>, pero el adaptador devuelve { data, found }
+          const lookup: unknown = await getLeadById(searchTerm)
+          const result = lookup as LeadLookupResult
 
           if (result.found && result.data.length > 0) {
             setSearchResult(result.data)
@@ -129,26 +162,27 @@ export default function LeadsPage() {
   }, [filters.search])
 
   // Crear o editar personal
-  async function handleSave(data) {
+  async function handleSave(data: CreateLeadDto) {
     if (editItem) {
       // Actualizar personal existente
       try {
-        const response = await updateLead(editItem.id, data)
+        const response: MutationBody = await updateLead(editItem.id, data)
 
-        toast.success(response.data?.message || response.message || 'Personal actualizado exitosamente')
+        toast.success(messageOf(response.data) || response.message || 'Personal actualizado exitosamente')
 
         setEditItem(null)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         let errorMessage = 'Error al actualizar el personal'
+        const err = error as ApiErrorLike
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación:\n' + err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         toast.error(errorMessage)
@@ -156,22 +190,23 @@ export default function LeadsPage() {
     } else {
       // Crear nuevo personal
       try {
-        const response = await createLead(data)
+        const response: MutationBody = await createLead(data)
 
-        toast.success(response.data?.message || response.message || 'Personal creado exitosamente')
+        toast.success(messageOf(response.data) || response.message || 'Personal creado exitosamente')
 
         setCurrentPage(1)
         setShowModal(false)
         setRefreshTrigger(prev => prev + 1)
       } catch (error) {
         let errorMessage = 'Error al crear el personal'
+        const err = error as ApiErrorLike
 
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores de validación:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
-        } else if (error.message) {
-          errorMessage = error.message
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación:\n' + err.response.data.message.join('\n')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
         }
 
         toast.error(errorMessage)
@@ -179,7 +214,7 @@ export default function LeadsPage() {
     }
   }
 
-  async function handleToggleStatus(item) {
+  async function handleToggleStatus(item: Lead) {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
@@ -190,33 +225,34 @@ export default function LeadsPage() {
 
     try {
       // El endpoint DELETE hace toggle automáticamente
-      const response = await deleteLead(item.id)
+      const response: MutationBody = await deleteLead(item.id)
 
-      toast.success(response.data?.message || response.message || `Personal ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
+      toast.success(messageOf(response.data) || response.message || `Personal ${action === 'habilitar' ? 'habilitado' : 'deshabilitado'} exitosamente`)
 
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {
       let errorMessage = `Error al ${action} el personal`
+      const err = error as ApiErrorLike
 
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join(', ')
-          : error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (err.response?.data?.message) {
+        errorMessage = Array.isArray(err.response.data.message)
+          ? err.response.data.message.join(', ')
+          : err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
       }
 
       toast.error(errorMessage)
     }
   }
 
-  function handleEdit(item) {
+  function handleEdit(item: Lead) {
     setEditItem(item)
     setShowModal(true)
   }
 
   // Funciones de paginación
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -231,7 +267,7 @@ export default function LeadsPage() {
     handlePageChange(currentPage + 1)
   }
 
-  function handleItemsPerPageChange(newItemsPerPage) {
+  function handleItemsPerPageChange(newItemsPerPage: number) {
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1)
   }
@@ -416,7 +452,7 @@ export default function LeadsPage() {
                     alignItems: 'center'
                   }}>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (pagination.totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {
