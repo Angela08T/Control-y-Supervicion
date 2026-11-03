@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useAppSelector } from '../../store/hooks'
+import { ROLES } from '../../utils/permissions'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
@@ -35,9 +36,8 @@ interface FieldSupervisionResponse {
 
 export default function DashboardPage() {
   // Obtener el rol del usuario desde Redux
-  // Se tipa como string porque AppRole usa minusculas y la comparacion con 'ADMIN' se mantiene igual
-  const userRole: string | null = useAppSelector(state => state.auth.role)
-  const isAdmin = userRole === 'ADMIN'
+  const userRole = useAppSelector(state => state.auth.role)
+  const isAdmin = userRole === ROLES.ADMIN
 
   const [incidencias, setIncidencias] = useState<IncidenciaItem[]>(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
