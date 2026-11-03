@@ -1,13 +1,14 @@
-import axios from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import type { AuthState } from '@/types';
 
 // Función para obtener el token desde localStorage (redux-persist)
-const getTokenFromStorage = () => {
+const getTokenFromStorage = (): AuthState['token'] => {
   try {
     const persistRoot = localStorage.getItem('persist:root');
     if (persistRoot) {
-      const parsed = JSON.parse(persistRoot);
+      const parsed: { auth?: string } = JSON.parse(persistRoot);
       if (parsed.auth) {
-        const authState = JSON.parse(parsed.auth);
+        const authState: Pick<AuthState, 'token'> = JSON.parse(parsed.auth);
         return authState.token;
       }
     }
@@ -18,15 +19,15 @@ const getTokenFromStorage = () => {
 };
 
 // Variable global para almacenar el token (mantener para compatibilidad)
-let globalToken = null;
+let globalToken: string | null = null;
 
 // Función para actualizar el token globalmente
-export const setToken = (token) => {
+export const setToken = (token: string | null): void => {
   globalToken = token;
 }
 
 // Función para limpiar el token al hacer logout
-export const clearToken = () => {
+export const clearToken = (): void => {
   globalToken = null;
 }
 
@@ -54,7 +55,7 @@ const offenderConfig = axios.create({
 });
 
 // Función especial para offender que intenta con y sin token
-const addAuthTokenOffender = (config) => {
+const addAuthTokenOffender = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
   const token = globalToken || getTokenFromStorage();
 
   if (token) {
@@ -71,7 +72,7 @@ const addAuthTokenOffender = (config) => {
 };
 
 
-const addAuthToken = (config) => {
+const addAuthToken = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
   // Intentar primero con globalToken, luego desde localStorage
   const token = globalToken || getTokenFromStorage();
   if (token) {
@@ -88,16 +89,16 @@ const addAuthToken = (config) => {
 };
 
 // Variable para controlar el modal de sesión expirada
-let sessionExpiredCallback = null;
+let sessionExpiredCallback: (() => void) | null = null;
 
 // Función para establecer el callback del modal de sesión expirada
-export const setSessionExpiredCallback = (callback) => {
+export const setSessionExpiredCallback = (callback: (() => void) | null): void => {
   sessionExpiredCallback = callback;
 };
 
 // Interceptor de respuesta para manejar errores 401
-const handleUnauthorizedError = (error) => {
-  if (error.response && error.response.status === 401) {
+const handleUnauthorizedError = (error: unknown): Promise<never> => {
+  if (error instanceof AxiosError && error.response && error.response.status === 401) {
     // Verificar si no estamos en la página de login
     if (!window.location.pathname.includes('/login')) {
       // Llamar al callback para mostrar el modal

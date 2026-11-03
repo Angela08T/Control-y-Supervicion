@@ -1,4 +1,18 @@
+import { AxiosError } from 'axios';
 import api from './config';
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  CreateUserDto,
+  FilterUserParams,
+  ID,
+  PaginatedResponse,
+  Role,
+  UpdateUserDto,
+  User,
+} from '@/types';
+
+const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /**
  * API unificada para gestión de usuarios (Supervisores y Sentinels)
@@ -18,17 +32,17 @@ import api from './config';
  * @param {string} userData.rol - Rol: "SUPERVISOR" o "SENTINEL"
  * @returns {Promise} - Respuesta con el usuario creado
  */
-export const createUser = async (userData) => {
+export const createUser = async (userData: CreateUserDto): Promise<ApiResponse<User>> => {
   try {
-    const response = await api.post('/user', userData);
+    const response = await api.post<ApiResponse<User>>('/user', userData);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al crear usuario: ' + error.message);
+      throw new Error('Error al crear usuario: ' + getErrorMessage(error));
     }
   }
 };
@@ -41,9 +55,9 @@ export const createUser = async (userData) => {
  * @param {string} search - Término de búsqueda (opcional)
  * @returns {Promise} - Respuesta con usuarios
  */
-export const getUsers = async (page = 1, limit = 10, rol = null, search = null) => {
+export const getUsers = async (page: number = 1, limit: number = 10, rol: Role | null = null, search: string | null = null): Promise<PaginatedResponse<User>> => {
   try {
-    const params = { page, limit };
+    const params: FilterUserParams = { page, limit };
 
     // Agregar filtro de rol si existe
     if (rol) {
@@ -55,7 +69,7 @@ export const getUsers = async (page = 1, limit = 10, rol = null, search = null) 
       params.search = search;
     }
 
-    const response = await api.get('/user', { params });
+    const response = await api.get<PaginatedResponse<User>>('/user', { params });
     return response.data;
   } catch (error) {
     throw error;
@@ -68,24 +82,24 @@ export const getUsers = async (page = 1, limit = 10, rol = null, search = null) 
  * @param {string} rol - Filtro por rol (opcional)
  * @returns {Promise} - Respuesta con usuarios encontrados
  */
-export const searchUser = async (searchTerm, rol = null) => {
+export const searchUser = async (searchTerm: string, rol: Role | null = null): Promise<PaginatedResponse<User>> => {
   try {
-    const params = { search: searchTerm };
+    const params: FilterUserParams = { search: searchTerm };
 
     // Agregar filtro de rol si existe
     if (rol) {
       params.rol = rol;
     }
 
-    const response = await api.get('/user', { params });
+    const response = await api.get<PaginatedResponse<User>>('/user', { params });
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al buscar usuarios: ' + error.message);
+      throw new Error('Error al buscar usuarios: ' + getErrorMessage(error));
     }
   }
 };
@@ -97,9 +111,9 @@ export const searchUser = async (searchTerm, rol = null) => {
  * @param {number} limit - Límite de registros por página
  * @returns {Promise} - Respuesta con usuarios filtrados
  */
-export const getUsersByRole = async (rol, page = 1, limit = 10) => {
+export const getUsersByRole = async (rol: Role, page: number = 1, limit: number = 10): Promise<PaginatedResponse<User>> => {
   try {
-    const response = await api.get('/user', {
+    const response = await api.get<PaginatedResponse<User>>('/user', {
       params: { rol, page, limit }
     });
     return response.data;
@@ -114,17 +128,17 @@ export const getUsersByRole = async (rol, page = 1, limit = 10) => {
  * @param {Object} userData - Datos a actualizar
  * @returns {Promise} - Respuesta con el usuario actualizado
  */
-export const updateUser = async (userId, userData) => {
+export const updateUser = async (userId: ID, userData: UpdateUserDto): Promise<ApiResponse<User>> => {
   try {
-    const response = await api.patch(`/user/${userId}`, userData);
+    const response = await api.patch<ApiResponse<User>>(`/user/${userId}`, userData);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al actualizar usuario: ' + error.message);
+      throw new Error('Error al actualizar usuario: ' + getErrorMessage(error));
     }
   }
 };
@@ -134,17 +148,17 @@ export const updateUser = async (userId, userData) => {
  * @param {string} userId - ID del usuario
  * @returns {Promise} - Respuesta de eliminación
  */
-export const deleteUser = async (userId) => {
+export const deleteUser = async (userId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.delete(`/user/${userId}`);
+    const response = await api.delete<ApiMessageResponse>(`/user/${userId}`);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al eliminar usuario: ' + error.message);
+      throw new Error('Error al eliminar usuario: ' + getErrorMessage(error));
     }
   }
 };
@@ -155,20 +169,20 @@ export const deleteUser = async (userId) => {
  * @param {string} ip - IP de la sesión a desactivar
  * @returns {Promise} - Respuesta de desactivación
  */
-export const deactivateSession = async (userId, ip) => {
+export const deactivateSession = async (userId: ID, ip: string): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.post('/session/deactivate', {
+    const response = await api.post<ApiMessageResponse>('/session/deactivate', {
       user_id: userId,
       ip: ip
     });
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al desactivar sesión: ' + error.message);
+      throw new Error('Error al desactivar sesión: ' + getErrorMessage(error));
     }
   }
 };
@@ -179,69 +193,69 @@ export const deactivateSession = async (userId, ip) => {
 /**
  * Crear un supervisor (compatibilidad)
  */
-export const createSupervisor = async (userData) => {
+export const createSupervisor = async (userData: Omit<CreateUserDto, 'rol'>): Promise<ApiResponse<User>> => {
   return createUser({ ...userData, rol: 'SUPERVISOR' });
 };
 
 /**
  * Crear un sentinel (compatibilidad)
  */
-export const createSentinel = async (userData) => {
+export const createSentinel = async (userData: Omit<CreateUserDto, 'rol'>): Promise<ApiResponse<User>> => {
   return createUser({ ...userData, rol: 'SENTINEL' });
 };
 
 /**
  * Buscar supervisores (compatibilidad)
  */
-export const searchSupervisor = async (searchTerm) => {
+export const searchSupervisor = async (searchTerm: string): Promise<PaginatedResponse<User>> => {
   return searchUser(searchTerm);
 };
 
 /**
  * Buscar sentinels (compatibilidad)
  */
-export const searchSentinel = async (searchTerm) => {
+export const searchSentinel = async (searchTerm: string): Promise<PaginatedResponse<User>> => {
   return searchUser(searchTerm);
 };
 
 /**
  * Obtener supervisores (compatibilidad)
  */
-export const getSupervisors = async (page = 1, limit = 10) => {
+export const getSupervisors = async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<User>> => {
   return getUsers(page, limit);
 };
 
 /**
  * Obtener sentinels (compatibilidad)
  */
-export const getSentinels = async (page = 1, limit = 10) => {
+export const getSentinels = async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<User>> => {
   return getUsers(page, limit);
 };
 
 /**
  * Actualizar supervisor (compatibilidad)
  */
-export const updateSupervisor = async (supervisorId, userData) => {
+export const updateSupervisor = async (supervisorId: ID, userData: UpdateUserDto): Promise<ApiResponse<User>> => {
   return updateUser(supervisorId, userData);
 };
 
 /**
  * Actualizar sentinel (compatibilidad)
  */
-export const updateSentinel = async (sentinelId, userData) => {
+export const updateSentinel = async (sentinelId: ID, userData: UpdateUserDto): Promise<ApiResponse<User>> => {
   return updateUser(sentinelId, userData);
 };
 
 /**
  * Eliminar supervisor (compatibilidad)
  */
-export const deleteSupervisor = async (supervisorId) => {
+export const deleteSupervisor = async (supervisorId: ID): Promise<ApiMessageResponse> => {
   return deleteUser(supervisorId);
 };
 
 /**
  * Eliminar sentinel (compatibilidad)
  */
-export const deleteSentinel = async (sentinelId) => {
+export const deleteSentinel = async (sentinelId: ID): Promise<ApiMessageResponse> => {
   return deleteUser(sentinelId);
 };

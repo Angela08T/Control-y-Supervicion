@@ -1,6 +1,10 @@
+import { AxiosError } from 'axios';
 import api from './config';
+import type { Audit, AuditFilters, PaginatedResponse } from '@/types';
 
-export const getAllAudits = async (page = 1, limit = 10, filters = {}) => {
+const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+export const getAllAudits = async (page: number = 1, limit: number = 10, filters: AuditFilters = {}): Promise<PaginatedResponse<Audit>> => {
     try {
         // Construir query params manualmente
         let queryParams = `?page=${page}&limit=${limit}`;
@@ -11,16 +15,16 @@ export const getAllAudits = async (page = 1, limit = 10, filters = {}) => {
         if (filters.status) queryParams += `&status=${filters.status}`;
         if (filters.search) queryParams += `&search=${encodeURIComponent(filters.search)}`;
 
-        const response = await api.get(`/audit${queryParams}`);
+        const response = await api.get<PaginatedResponse<Audit>>(`/audit${queryParams}`);
 
         return response.data;
     } catch (error) {
-        if (error.response) {
+        if (error instanceof AxiosError && error.response) {
             throw error;
-        } else if (error.request) {
+        } else if (error instanceof AxiosError && error.request) {
             throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
         } else {
-            throw new Error('Error al obtener registros de auditoría: ' + error.message);
+            throw new Error('Error al obtener registros de auditoría: ' + getErrorMessage(error));
         }
     }
 };

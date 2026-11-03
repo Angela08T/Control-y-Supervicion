@@ -1,4 +1,39 @@
+import { AxiosError } from 'axios';
 import api from './config';
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  FilterReportParams,
+  FoundResult,
+  ID,
+  ISODateString,
+  Incidencia,
+  IncidenciaForm,
+  IncidenciaStatus,
+  Lead,
+  NamedRef,
+  PaginatedResponse,
+  PaginationMeta,
+  Report,
+  ReportFilters,
+  ReportFormPayload,
+  ReportWithEvidences,
+  EvidenceView,
+  Evidence,
+  TableResult,
+} from '@/types';
+
+/**
+ * Reporte tal como llega del backend. Incluye campos que el front lee y que
+ * no están declarados en Report (camera_number, bodycamUser, supervisor, etc.).
+ */
+interface ReportRecord extends Report {
+  lack: NamedRef & { created_at?: ISODateString; updated_at?: ISODateString };
+  camera_number?: string | null;
+  bodycamUser?: string | null;
+  bodycamSupervisor?: string;
+  supervisor?: string;
+}
 
 /**
  * Buscar reportes por término (DNI, nombre, etc.)
@@ -7,20 +42,20 @@ import api from './config';
  * @param {number} limit - Cantidad de items por página (default: 10)
  * @returns {Promise} - Respuesta con datos de reportes
  */
-export const searchReport = async (searchTerm, page = 1, limit = 10) => {
+export const searchReport = async (searchTerm: string, page = 1, limit = 10): Promise<PaginatedResponse<Report>> => {
   try {
-    const response = await api.get(`/report`, {
+    const response = await api.get<PaginatedResponse<Report>>(`/report`, {
       params: { search: searchTerm, page, limit }
     });
 
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al buscar reporte: ' + error.message);
+      throw new Error('Error al buscar reporte: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -32,7 +67,7 @@ export const searchReport = async (searchTerm, page = 1, limit = 10) => {
  * @returns {Object} - Datos formateados para la API
  * @returns {Promise<Array>} - Lista de incidencias mapeadas al formato de tabla
  */
-export function mapFormDataToAPI(form, allLeads) {
+export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): ReportFormPayload {
   // Leaflet usa [latitude, longitude] - el orden ya es correcto
   const coords = form.ubicacion?.coordinates || [null, null];
 
@@ -69,11 +104,11 @@ export function mapFormDataToAPI(form, allLeads) {
   )).toISOString();
 
   // Construir el payload base
-  const payload = {
+  const payload: ReportFormPayload = {
     header: { to, cc },
     address: form.ubicacion?.address || '',
-    latitude: coords[0] !== null ? parseFloat(coords[0]) : null,  // coords[0] es latitude
-    longitude: coords[1] !== null ? parseFloat(coords[1]) : null, // coords[1] es longitude
+    latitude: coords[0] !== null ? parseFloat(String(coords[0])) : null,  // coords[0] es latitude
+    longitude: coords[1] !== null ? parseFloat(String(coords[1])) : null, // coords[1] es longitude
     date,
     offender_dni: form.dni || '',
     lack_id: form.lackId || null,
@@ -102,10 +137,10 @@ export function mapFormDataToAPI(form, allLeads) {
  * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId, shift, process }
  * @returns {Promise<Object>} - Objeto con data (reportes) y pagination (metadata)
  */
-export const getReports = async (page = 1, limit = 10, filters = {}) => {
+export const getReports = async (page = 1, limit = 10, filters: ReportFilters = {}): Promise<TableResult<Incidencia>> => {
   try {
     // Construir parámetros de consulta
-    const params = { page, limit }
+    const params: FilterReportParams = { page, limit }
 
     // Agregar filtros si existen
     if (filters.lackId) params.lack = filters.lackId
@@ -115,13 +150,13 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
     if (filters.process) params.process = filters.process
     if (filters.subgerencia) params.subgerencia = filters.subgerencia
 
-    const response = await api.get('/report', { params })
+    const response = await api.get<PaginatedResponse<ReportRecord>>('/report', { params })
 
     const reports = response.data?.data?.data || []
-    const paginationData = response.data?.data || {}
+    const paginationData: Partial<PaginationMeta> = response.data?.data || {}
 
     // Transformar al formato plano para la tabla
-    const transformedReports = reports.map(r => {
+    const transformedReports = reports.map((r): Incidencia => {
       // Intentar obtener el encargado de bodycam de múltiples posibles campos
       const encargadoBodycam =
         r.bodycam_supervisor ||
@@ -169,7 +204,7 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
           coordinates: [r.latitude || null, r.longitude || null]
         },
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
-        status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
+        status: r.process ? (r.process.toLowerCase() as IncidenciaStatus) : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
         message: r.message || '', // Mensaje/descripción adicional del reporte
         link: r.link || '', // Links del reporte (separados por \n)
@@ -218,17 +253,17 @@ export const getReports = async (page = 1, limit = 10, filters = {}) => {
  * @param {Object} reportData - Datos del reporte a crear (ya formateados)
  * @returns {Promise} - Respuesta con el reporte creado
  */
-export const createReport = async (reportData) => {
+export const createReport = async (reportData: ReportFormPayload): Promise<ApiResponse<Report>> => {
   try {
-    const response = await api.post('/report', reportData);
+    const response = await api.post<ApiResponse<Report>>('/report', reportData);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al crear reporte: ' + error.message);
+      throw new Error('Error al crear reporte: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -238,9 +273,9 @@ export const createReport = async (reportData) => {
  * @param {string} reportId - ID del reporte (UUID)
  * @returns {Promise<Object>} - Objeto con el reporte encontrado
  */
-export const getReportById = async (reportId) => {
+export const getReportById = async (reportId: ID): Promise<FoundResult<Incidencia>> => {
   try {
-    const response = await api.get(`/report/${reportId}`)
+    const response = await api.get<ApiResponse<ReportRecord>>(`/report/${reportId}`)
 
     if (response.data?.data) {
       // Transformar al formato de la tabla
@@ -254,7 +289,7 @@ export const getReportById = async (reportId) => {
       const isAbsenceReport = r.absences && r.absences.length > 0
       const absenceData = isAbsenceReport ? r.absences[0] : null
 
-      const transformed = {
+      const transformed: Incidencia = {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
         dni: r.offender?.dni || '',
@@ -286,7 +321,7 @@ export const getReportById = async (reportId) => {
           coordinates: [r.latitude || null, r.longitude || null]
         },
         nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
-        status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
+        status: r.process ? (r.process.toLowerCase() as IncidenciaStatus) : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
         message: r.message || '', // Mensaje/descripción adicional del reporte
         link: r.link || '', // Links del reporte (separados por \n)
@@ -309,10 +344,10 @@ export const getReportById = async (reportId) => {
 
     return { data: [], found: false }
   } catch (error) {
-    if (error.response?.status === 404) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
       return { data: [], found: false }
     }
-    throw new Error('Error al buscar reporte: ' + error.message)
+    throw new Error('Error al buscar reporte: ' + (error instanceof Error ? error.message : ''))
   }
 };
 
@@ -321,17 +356,17 @@ export const getReportById = async (reportId) => {
  * @param {string} reportId - ID del reporte (UUID)
  * @returns {Promise<Object>} - Objeto con el mensaje de confirmación
  */
-export const deleteReport = async (reportId) => {
+export const deleteReport = async (reportId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.delete(`/report/${reportId}`)
+    const response = await api.delete<ApiMessageResponse>(`/report/${reportId}`)
     return response.data
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
     } else {
-      throw new Error('Error al eliminar reporte: ' + error.message)
+      throw new Error('Error al eliminar reporte: ' + (error instanceof Error ? error.message : ''))
     }
   }
 };
@@ -345,7 +380,13 @@ export const deleteReport = async (reportId) => {
  * @param {string} link - Links del reporte (separados por \n)
  * @returns {Promise<Object>} - Objeto con el reporte actualizado
  */
-export const updateReportWithEvidences = async (reportId, files = [], descriptions = [], message = '', link = '') => {
+export const updateReportWithEvidences = async (
+  reportId: ID,
+  files: File[] = [],
+  descriptions: string[] = [],
+  message = '',
+  link = ''
+): Promise<ApiResponse<Report>> => {
   try {
     const formData = new FormData()
 
@@ -369,7 +410,7 @@ export const updateReportWithEvidences = async (reportId, files = [], descriptio
       formData.append('link', link)
     }
 
-    const response = await api.patch(`/report/${reportId}`, formData, {
+    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -377,12 +418,12 @@ export const updateReportWithEvidences = async (reportId, files = [], descriptio
 
     return response.data
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
     } else {
-      throw new Error('Error al actualizar reporte: ' + error.message)
+      throw new Error('Error al actualizar reporte: ' + (error instanceof Error ? error.message : ''))
     }
   }
 };
@@ -392,7 +433,7 @@ export const updateReportWithEvidences = async (reportId, files = [], descriptio
  * @param {string} evidencePath - Path de la evidencia (ej: evidence/2025-11-07/7d25c20e-5b8f-4318-885f-087442b2925a.jpeg)
  * @returns {string} - URL completa para acceder a la imagen
  */
-export const getEvidenceImageUrl = (evidencePath) => {
+export const getEvidenceImageUrl = (evidencePath: string): string => {
   const baseURL = api.defaults.baseURL
   if (!baseURL) return ''
 
@@ -407,15 +448,15 @@ export const getEvidenceImageUrl = (evidencePath) => {
  * @param {string} reportId - ID del reporte (UUID)
  * @returns {Promise<Object>} - Objeto con el reporte completo incluyendo evidencias
  */
-export const getReportWithEvidences = async (reportId) => {
+export const getReportWithEvidences = async (reportId: ID): Promise<ReportWithEvidences | null> => {
   try {
-    const response = await api.get(`/report/${reportId}`)
+    const response = await api.get<ApiResponse<ReportRecord>>(`/report/${reportId}`)
 
     if (response.data?.data) {
       const report = response.data.data
 
       // Mapear las evidencias a un formato más manejable
-      const evidences = (report.evidences || []).map(ev => ({
+      const evidences: EvidenceView[] = (report.evidences || []).map((ev: Evidence) => ({
         id: ev.id,
         description: ev.description,
         path: ev.path,
@@ -434,10 +475,10 @@ export const getReportWithEvidences = async (reportId) => {
 
     return null
   } catch (error) {
-    if (error.response?.status === 404) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
       return null
     }
-    throw new Error('Error al obtener reporte: ' + error.message)
+    throw new Error('Error al obtener reporte: ' + (error instanceof Error ? error.message : ''))
   }
 };
 
@@ -445,8 +486,8 @@ export const getReportWithEvidences = async (reportId) => {
  * Exportar incidencias a Excel con los filtros actuales
  * @param {Object} filters - Filtros activos (lackId, subjectId, jurisdictionId, shift, process, search)
  */
-export const exportReportsExcel = async (filters = {}) => {
-  const params = {};
+export const exportReportsExcel = async (filters: ReportFilters = {}): Promise<void> => {
+  const params: FilterReportParams = {};
   if (filters.lackId) params.lack = filters.lackId;
   if (filters.subjectId) params.subject = filters.subjectId;
   if (filters.jurisdictionId) params.jurisdiction = filters.jurisdictionId;
@@ -455,7 +496,7 @@ export const exportReportsExcel = async (filters = {}) => {
   if (filters.search) params.search = filters.search;
   if (filters.subgerencia) params.subgerencia = filters.subgerencia;
 
-  const response = await api.get('/report/export', {
+  const response = await api.get<Blob>('/report/export', {
     params,
     responseType: 'blob',
   });
@@ -474,17 +515,17 @@ export const exportReportsExcel = async (filters = {}) => {
  * @param {string} evidenceId - ID de la evidencia (UUID)
  * @returns {Promise<Object>} - Objeto con el mensaje de confirmación
  */
-export const deleteEvidence = async (evidenceId) => {
+export const deleteEvidence = async (evidenceId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.delete(`/evidence/${evidenceId}`)
+    const response = await api.delete<ApiMessageResponse>(`/evidence/${evidenceId}`)
     return response.data
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
     } else {
-      throw new Error('Error al eliminar evidencia: ' + error.message)
+      throw new Error('Error al eliminar evidencia: ' + (error instanceof Error ? error.message : ''))
     }
   }
 }
@@ -494,17 +535,17 @@ export const deleteEvidence = async (evidenceId) => {
  * @param {string} reportId - ID de la incidencia
  * @returns {Promise<Object>} - Respuesta del servidor
  */
-export const sendToValidator = async (reportId) => {
+export const sendToValidator = async (reportId: ID): Promise<ApiResponse<Report>> => {
   try {
-    const response = await api.patch(`/report/${reportId}/send`)
+    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}/send`)
     return response.data
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
     } else {
-      throw new Error('Error al enviar incidencia: ' + error.message)
+      throw new Error('Error al enviar incidencia: ' + (error instanceof Error ? error.message : ''))
     }
   }
 }
@@ -515,17 +556,17 @@ export const sendToValidator = async (reportId) => {
  * @param {boolean} approved - true para aprobar, false para rechazar
  * @returns {Promise<Object>} - Respuesta del servidor
  */
-export const validateReport = async (reportId, approved) => {
+export const validateReport = async (reportId: ID, approved: boolean): Promise<ApiResponse<Report>> => {
   try {
-    const response = await api.patch(`/report/${reportId}/validate`, { approved })
+    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}/validate`, { approved })
     return response.data
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.')
     } else {
-      throw new Error('Error al validar incidencia: ' + error.message)
+      throw new Error('Error al validar incidencia: ' + (error instanceof Error ? error.message : ''))
     }
   }
 };

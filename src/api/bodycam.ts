@@ -1,4 +1,22 @@
+import { AxiosError } from 'axios';
 import api from './config';
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  Bodycam,
+  BodycamView,
+  Cam,
+  CreateBodycamDto,
+  FilterBodycamParams,
+  FoundResult,
+  ID,
+  PaginatedResponse,
+  PaginationMeta,
+  TableResult,
+  UpdateBodycamDto,
+} from '@/types';
+
+const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /**
  * Buscar bodycams por código
@@ -7,24 +25,24 @@ import api from './config';
  * @param {string} cam - Tipo de cámara: 'BODYCAM' o 'CAMERA' (opcional)
  * @returns {Promise} - Respuesta con datos de bodycam
  */
-export const searchBodycam = async (searchTerm, limit = 1000, cam = null) => {
+export const searchBodycam = async (searchTerm: string, limit: number = 1000, cam: Cam | null = null): Promise<PaginatedResponse<Bodycam>> => {
   try {
-    const params = { search: searchTerm, limit };
+    const params: FilterBodycamParams = { search: searchTerm, limit };
 
     // Agregar filtro por tipo de cámara si se especifica
     if (cam) {
       params.cam = cam;
     }
 
-    const response = await api.get(`/bodycam`, { params });
+    const response = await api.get<PaginatedResponse<Bodycam>>(`/bodycam`, { params });
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al buscar bodycam: ' + error.message);
+      throw new Error('Error al buscar bodycam: ' + getErrorMessage(error));
     }
   }
 };
@@ -35,12 +53,12 @@ export const searchBodycam = async (searchTerm, limit = 1000, cam = null) => {
  * @param {number} limit - Cantidad de items por página (default: 10)
  * @returns {Promise<Object>} - Objeto con data (bodycams) y pagination (metadata)
  */
-export const getBodycams = async (page = 1, limit = 10) => {
+export const getBodycams = async (page: number = 1, limit: number = 10): Promise<TableResult<BodycamView>> => {
   try {
-    const response = await api.get(`/bodycam?page=${page}&limit=${limit}`);
+    const response = await api.get<PaginatedResponse<Bodycam>>(`/bodycam?page=${page}&limit=${limit}`);
 
     const bodycams = response.data?.data?.data || [];
-    const paginationData = response.data?.data || {};
+    const paginationData: Partial<PaginationMeta> = response.data?.data || {};
 
     // Los datos ya vienen en el formato correcto
     const transformedBodycams = bodycams.map(b => ({
@@ -81,9 +99,9 @@ export const getBodycams = async (page = 1, limit = 10) => {
  * @param {string} bodycamId - ID de la bodycam (UUID)
  * @returns {Promise<Object>} - Objeto con la bodycam encontrada
  */
-export const getBodycamById = async (bodycamId) => {
+export const getBodycamById = async (bodycamId: ID): Promise<FoundResult<BodycamView>> => {
   try {
-    const response = await api.get(`/bodycam/${bodycamId}`);
+    const response = await api.get<ApiResponse<Bodycam>>(`/bodycam/${bodycamId}`);
 
     if (response.data?.data) {
       const b = response.data.data;
@@ -103,10 +121,10 @@ export const getBodycamById = async (bodycamId) => {
 
     return { data: [], found: false };
   } catch (error) {
-    if (error.response?.status === 404) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
       return { data: [], found: false };
     }
-    throw new Error('Error al buscar bodycam: ' + error.message);
+    throw new Error('Error al buscar bodycam: ' + getErrorMessage(error));
   }
 };
 
@@ -117,17 +135,17 @@ export const getBodycamById = async (bodycamId) => {
  * @param {string} bodycamData.serie - Serie de la bodycam
  * @returns {Promise} - Respuesta con la bodycam creada
  */
-export const createBodycam = async (bodycamData) => {
+export const createBodycam = async (bodycamData: CreateBodycamDto): Promise<ApiResponse<Bodycam>> => {
   try {
-    const response = await api.post('/bodycam', bodycamData);
+    const response = await api.post<ApiResponse<Bodycam>>('/bodycam', bodycamData);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al crear bodycam: ' + error.message);
+      throw new Error('Error al crear bodycam: ' + getErrorMessage(error));
     }
   }
 };
@@ -140,17 +158,17 @@ export const createBodycam = async (bodycamData) => {
  * @param {string} bodycamData.serie - Serie de la bodycam
  * @returns {Promise} - Respuesta con la bodycam actualizada
  */
-export const updateBodycam = async (bodycamId, bodycamData) => {
+export const updateBodycam = async (bodycamId: ID, bodycamData: UpdateBodycamDto): Promise<ApiResponse<Bodycam>> => {
   try {
-    const response = await api.patch(`/bodycam/${bodycamId}`, bodycamData);
+    const response = await api.patch<ApiResponse<Bodycam>>(`/bodycam/${bodycamId}`, bodycamData);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al actualizar bodycam: ' + error.message);
+      throw new Error('Error al actualizar bodycam: ' + getErrorMessage(error));
     }
   }
 };
@@ -160,17 +178,17 @@ export const updateBodycam = async (bodycamId, bodycamData) => {
  * @param {string} bodycamId - ID de la bodycam (UUID)
  * @returns {Promise<Object>} - Objeto con el mensaje de confirmación
  */
-export const deleteBodycam = async (bodycamId) => {
+export const deleteBodycam = async (bodycamId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.delete(`/bodycam/${bodycamId}`);
+    const response = await api.delete<ApiMessageResponse>(`/bodycam/${bodycamId}`);
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al cambiar estado de bodycam: ' + error.message);
+      throw new Error('Error al cambiar estado de bodycam: ' + getErrorMessage(error));
     }
   }
 };

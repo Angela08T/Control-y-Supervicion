@@ -1,16 +1,68 @@
 import api, { offenderApi } from './config';
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  Attendance,
+  CreateAbsenceDto,
+  CreateAttendanceDto,
+  CreateOffenderDto,
+  DateOnlyString,
+  FilterAttendanceParams,
+  FilterOffenderParams,
+  ID,
+  ISODateString,
+  Mode,
+  OffenderDniLookup,
+  OffenderEntity,
+  OffenderFormPayload,
+  PaginatedResponse,
+  Offender,
+  Report,
+  UpdateOffenderDto,
+} from '@/types';
+
+/**
+ * Formulario de inasistencias que consume mapFormDataToOffenderAPI
+ */
+interface AttendanceFormData {
+  turno: string;
+  nombreCompleto?: string;
+  dni?: string;
+  cargo?: string;
+  regLab?: string;
+}
+
+/**
+ * Offender con sus inasistencias del rango, tal como lo devuelve GET /attendance
+ */
+interface AttendanceOffenderRow {
+  id?: ID;
+  offender_id?: ID;
+  dni: string;
+  name: string;
+  lastname: string;
+  fullname?: string;
+  job: string;
+  regime: string;
+  shift: string;
+  subgerencia?: string;
+  jurisdiction?: string;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+  attendances: Attendance[];
+}
 
 /**
  * API para gestión de Infractores (Offenders)
  */
 
 // Obtener todos los infractores con paginación
-export const getOffenders = async (page = 1, limit = 10, search = '') => {
+export const getOffenders = async (page = 1, limit = 10, search = ''): Promise<PaginatedResponse<Offender>> => {
   try {
-    const params = { page, limit };
+    const params: FilterOffenderParams = { page, limit };
     if (search) params.search = search;
 
-    const response = await api.get('/offender', { params });
+    const response = await api.get<PaginatedResponse<Offender>>('/offender', { params });
     return response.data;
   } catch (error) {
     throw error;
@@ -18,15 +70,17 @@ export const getOffenders = async (page = 1, limit = 10, search = '') => {
 };
 
 // Obtener lista de subgerencias únicas
-export const getSubgerencias = async () => {
-  const response = await api.get('/offender/subgerencias');
-  return response.data?.data || response.data || [];
+export const getSubgerencias = async (): Promise<string[] | ApiResponse<string[]>> => {
+  const response = await api.get<ApiResponse<string[]> | string[]>('/offender/subgerencias');
+  const body = response.data;
+  if (Array.isArray(body)) return body;
+  return body?.data || body || [];
 };
 
 // Buscar infractor por DNI
-export const getOffenderByDni = async (dni) => {
+export const getOffenderByDni = async (dni: string): Promise<ApiResponse<OffenderDniLookup>> => {
   try {
-    const response = await api.get(`/offender/dni/${dni}`);
+    const response = await api.get<ApiResponse<OffenderDniLookup>>(`/offender/dni/${dni}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -34,9 +88,11 @@ export const getOffenderByDni = async (dni) => {
 };
 
 // Crear un nuevo infractor
-export const createOffender = async (offenderData) => {
+export const createOffender = async (
+  offenderData: CreateOffenderDto | OffenderFormPayload
+): Promise<ApiResponse<OffenderEntity>> => {
   try {
-    const response = await api.post('/offender', offenderData);
+    const response = await api.post<ApiResponse<OffenderEntity>>('/offender', offenderData);
     return response.data;
   } catch (error) {
     throw error;
@@ -44,9 +100,12 @@ export const createOffender = async (offenderData) => {
 };
 
 // Actualizar un infractor existente
-export const updateOffender = async (offenderId, offenderData) => {
+export const updateOffender = async (
+  offenderId: ID,
+  offenderData: UpdateOffenderDto
+): Promise<ApiResponse<OffenderEntity>> => {
   try {
-    const response = await api.patch(`/offender/${offenderId}`, offenderData);
+    const response = await api.patch<ApiResponse<OffenderEntity>>(`/offender/${offenderId}`, offenderData);
     return response.data;
   } catch (error) {
     throw error;
@@ -54,9 +113,9 @@ export const updateOffender = async (offenderId, offenderData) => {
 };
 
 // Eliminar/Toggle estado de un infractor (soft delete)
-export const deleteOffender = async (offenderId) => {
+export const deleteOffender = async (offenderId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.delete(`/offender/${offenderId}`);
+    const response = await api.delete<ApiMessageResponse>(`/offender/${offenderId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -68,7 +127,7 @@ export const deleteOffender = async (offenderId) => {
  * @param {Object} form - Datos del formulario de incidencia
  * @returns {Object} - Datos formateados para la API de offender
  */
-export function mapFormDataToOffenderAPI(form) {
+export function mapFormDataToOffenderAPI(form: AttendanceFormData): OffenderFormPayload {
   // Convertir el turno completo a la inicial si viene completo
   let shiftInitial = form.turno;
   if (form.turno === 'Mañana') {
@@ -85,7 +144,7 @@ export function mapFormDataToOffenderAPI(form) {
   const name = partes[0] || '';
   const lastname = partes.slice(1).join(' ') || '';
 
-  const payload = {
+  const payload: OffenderFormPayload = {
     name: name,
     lastname: lastname,
     dni: form.dni || '',
@@ -115,9 +174,11 @@ export function mapFormDataToOffenderAPI(form) {
  *   ]
  * }
  */
-export const createAttendances = async (attendanceData) => {
+export const createAttendances = async (
+  attendanceData: CreateAttendanceDto
+): Promise<ApiResponse<{ count: number }>> => {
   try {
-    const response = await offenderApi.post('/attendance', attendanceData);
+    const response = await offenderApi.post<ApiResponse<{ count: number }>>('/attendance', attendanceData);
     return response.data;
   } catch (error) {
     throw error;
@@ -131,13 +192,17 @@ export const createAttendances = async (attendanceData) => {
  * @param {string} mode - Modo opcional: "JUSTIFIED" o "UNJUSTIFIED"
  * @returns {Promise} - Respuesta con las inasistencias guardadas
  */
-export const getAttendances = async (start, end, mode = null) => {
+export const getAttendances = async (
+  start: DateOnlyString,
+  end: DateOnlyString,
+  mode: Mode | null = null
+): Promise<ApiResponse<AttendanceOffenderRow[]>> => {
   try {
-    const params = { start, end };
+    const params: FilterAttendanceParams = { start, end };
     if (mode) {
       params.mode = mode;
     }
-    const response = await offenderApi.get('/attendance', { params });
+    const response = await offenderApi.get<ApiResponse<AttendanceOffenderRow[]>>('/attendance', { params });
     return response.data;
   } catch (error) {
     throw error;
@@ -149,9 +214,9 @@ export const getAttendances = async (start, end, mode = null) => {
  * @param {string} attendanceId - ID de la inasistencia a eliminar
  * @returns {Promise} - Respuesta de la eliminación
  */
-export const deleteAttendance = async (attendanceId) => {
+export const deleteAttendance = async (attendanceId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await offenderApi.delete(`/attendance/${attendanceId}`);
+    const response = await offenderApi.delete<ApiMessageResponse>(`/attendance/${attendanceId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -171,9 +236,9 @@ export const deleteAttendance = async (attendanceId) => {
  * @param {string} reportData.end - Fecha de fin (YYYY-MM-DD)
  * @returns {Promise} - Respuesta con el reporte generado
  */
-export const createAbsenceReport = async (reportData) => {
+export const createAbsenceReport = async (reportData: CreateAbsenceDto): Promise<ApiResponse<Report>> => {
   try {
-    const response = await offenderApi.post('/absence', reportData);
+    const response = await offenderApi.post<ApiResponse<Report>>('/absence', reportData);
     return response.data;
   } catch (error) {
     throw error;

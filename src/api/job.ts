@@ -1,13 +1,26 @@
+import { AxiosError } from 'axios';
 import api from './config';
+import type {
+  ApiMessageResponse,
+  ApiResponse,
+  CreateJobDto,
+  ID,
+  Job,
+  Lead,
+  PaginatedResponse,
+  UpdateJobDto,
+} from '@/types';
+
+const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /**
  * API para gestión de Cargos (Jobs)
  */
 
 // Obtener todos los cargos con paginación
-export const getJobs = async (page = 1, limit = 10) => {
+export const getJobs = async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<Job>> => {
   try {
-    const response = await api.get('/job', {
+    const response = await api.get<PaginatedResponse<Job>>('/job', {
       params: { page, limit }
     });
     return response.data;
@@ -17,9 +30,9 @@ export const getJobs = async (page = 1, limit = 10) => {
 };
 
 // Obtener un cargo por ID
-export const getJobById = async (jobId) => {
+export const getJobById = async (jobId: ID): Promise<ApiResponse<Job>> => {
   try {
-    const response = await api.get(`/job/${jobId}`);
+    const response = await api.get<ApiResponse<Job>>(`/job/${jobId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -27,9 +40,9 @@ export const getJobById = async (jobId) => {
 };
 
 // Buscar cargos por nombre
-export const searchJob = async (searchTerm) => {
+export const searchJob = async (searchTerm: string): Promise<PaginatedResponse<Job>> => {
   try {
-    const response = await api.get('/job', {
+    const response = await api.get<PaginatedResponse<Job>>('/job', {
       params: { search: searchTerm }
     });
     return response.data;
@@ -39,9 +52,9 @@ export const searchJob = async (searchTerm) => {
 };
 
 // Crear un nuevo cargo
-export const createJob = async (jobData) => {
+export const createJob = async (jobData: CreateJobDto): Promise<ApiResponse<Job>> => {
   try {
-    const response = await api.post('/job', jobData);
+    const response = await api.post<ApiResponse<Job>>('/job', jobData);
     return response.data;
   } catch (error) {
     throw error;
@@ -49,9 +62,9 @@ export const createJob = async (jobData) => {
 };
 
 // Actualizar un cargo existente
-export const updateJob = async (jobId, jobData) => {
+export const updateJob = async (jobId: ID, jobData: UpdateJobDto): Promise<ApiResponse<Job>> => {
   try {
-    const response = await api.put(`/job/${jobId}`, jobData);
+    const response = await api.put<ApiResponse<Job>>(`/job/${jobId}`, jobData);
     return response.data;
   } catch (error) {
     throw error;
@@ -59,9 +72,9 @@ export const updateJob = async (jobId, jobData) => {
 };
 
 // Cambiar estado de un cargo (toggle: habilitar/deshabilitar)
-export const deleteJob = async (jobId) => {
+export const deleteJob = async (jobId: ID): Promise<ApiMessageResponse> => {
   try {
-    const response = await api.delete(`/job/${jobId}`);
+    const response = await api.delete<ApiMessageResponse>(`/job/${jobId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -73,35 +86,35 @@ export const deleteJob = async (jobId) => {
  */
 
 // Obtener lista de líderes/personas según el cargo (job)
-export const getLeadsByJob = async (jobId) => {
+export const getLeadsByJob = async (jobId: ID): Promise<PaginatedResponse<Lead>> => {
   try {
-    const response = await api.get('/lead', {
+    const response = await api.get<PaginatedResponse<Lead>>('/lead', {
       params: { job: jobId }
     });
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener personas: ' + error.message);
+      throw new Error('Error al obtener personas: ' + getErrorMessage(error));
     }
   }
 };
 
 // Obtener lista completa de líderes/personas (sin filtro)
-export const getAllLeads = async () => {
+export const getAllLeads = async (): Promise<PaginatedResponse<Lead>> => {
   try {
-    const response = await api.get('/lead');
+    const response = await api.get<PaginatedResponse<Lead>>('/lead');
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener lista de personas: ' + error.message);
+      throw new Error('Error al obtener lista de personas: ' + getErrorMessage(error));
     }
   }
 };

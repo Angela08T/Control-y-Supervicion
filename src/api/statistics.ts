@@ -1,20 +1,31 @@
+import { AxiosError } from 'axios';
 import api from './config';
+import type {
+  DashboardGeneralResponse,
+  DashboardOffendersResponse,
+  DashboardPerformanceResponse,
+  DashboardTrendsResponse,
+  DateOnlyString,
+  LegacyStatisticsResponse,
+  Offender,
+  PaginatedResponse,
+} from '@/types';
 
 /**
  * Obtener estadísticas generales del dashboard
  * @returns {Promise} - Respuesta con estadísticas generales
  */
-export const getDashboardStats = async () => {
+export const getDashboardStats = async (): Promise<LegacyStatisticsResponse> => {
   try {
-    const response = await api.get('/statistics/dashboard');
+    const response = await api.get<LegacyStatisticsResponse>('/statistics/dashboard');
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener estadísticas: ' + error.message);
+      throw new Error('Error al obtener estadísticas: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -23,17 +34,17 @@ export const getDashboardStats = async () => {
  * Obtener lista de personal/serenos activos
  * @returns {Promise} - Respuesta con lista de serenos
  */
-export const getActivePersonnel = async () => {
+export const getActivePersonnel = async (): Promise<LegacyStatisticsResponse> => {
   try {
-    const response = await api.get('/personnel/active');
+    const response = await api.get<LegacyStatisticsResponse>('/personnel/active');
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener personal: ' + error.message);
+      throw new Error('Error al obtener personal: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -42,17 +53,17 @@ export const getActivePersonnel = async () => {
  * Obtener estadísticas de supervisión de campo
  * @returns {Promise} - Respuesta con datos de supervisión
  */
-export const getFieldSupervisionStats = async () => {
+export const getFieldSupervisionStats = async (): Promise<LegacyStatisticsResponse> => {
   try {
-    const response = await api.get('/statistics/field-supervision');
+    const response = await api.get<LegacyStatisticsResponse>('/statistics/field-supervision');
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener supervisión de campo: ' + error.message);
+      throw new Error('Error al obtener supervisión de campo: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -62,18 +73,18 @@ export const getFieldSupervisionStats = async () => {
  * Utiliza el endpoint de offender existente
  * @returns {Promise} - Respuesta con lista de offenders
  */
-export const getAllOffenders = async () => {
+export const getAllOffenders = async (): Promise<PaginatedResponse<Offender>> => {
   try {
     // Este endpoint debería existir en el backend para obtener todos los offenders
-    const response = await api.get('/offender');
+    const response = await api.get<PaginatedResponse<Offender>>('/offender');
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener lista de offenders: ' + error.message);
+      throw new Error('Error al obtener lista de offenders: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -84,9 +95,9 @@ export const getAllOffenders = async () => {
  * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD
  * @returns {Promise} - Respuesta con datos de tendencias por día y asunto
  */
-export const getDashboardTrends = async (startDate, endDate) => {
+export const getDashboardTrends = async (startDate: DateOnlyString, endDate: DateOnlyString): Promise<DashboardTrendsResponse> => {
   try {
-    const response = await api.get('/dashboard/trends/', {
+    const response = await api.get<DashboardTrendsResponse>('/dashboard/trends/', {
       params: {
         start: startDate,
         end: endDate
@@ -94,12 +105,12 @@ export const getDashboardTrends = async (startDate, endDate) => {
     });
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener tendencias del dashboard: ' + error.message);
+      throw new Error('Error al obtener tendencias del dashboard: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
@@ -110,9 +121,9 @@ export const getDashboardTrends = async (startDate, endDate) => {
  * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD
  * @returns {Promise} - Respuesta con { general, performance }
  */
-export const getDashboardPerformance = async (startDate, endDate) => {
+export const getDashboardPerformance = async (startDate: DateOnlyString, endDate: DateOnlyString): Promise<DashboardPerformanceResponse> => {
   try {
-    const response = await api.get('/dashboard/performance', {
+    const response = await api.get<DashboardPerformanceResponse>('/dashboard/performance', {
       params: { start: startDate, end: endDate }
     });
     return response.data;
@@ -124,9 +135,9 @@ export const getDashboardPerformance = async (startDate, endDate) => {
 /**
  * Obtener métricas de infractores (offenders) con desglose por tipo de falta
  */
-export const getDashboardOffenders = async (startDate, endDate) => {
+export const getDashboardOffenders = async (startDate: DateOnlyString, endDate: DateOnlyString): Promise<DashboardOffendersResponse> => {
   try {
-    const response = await api.get('/dashboard/offenders', {
+    const response = await api.get<DashboardOffendersResponse>('/dashboard/offenders', {
       params: { start: startDate, end: endDate }
     });
     return response.data;
@@ -141,9 +152,9 @@ export const getDashboardOffenders = async (startDate, endDate) => {
  * @param {string} endDate - Fecha de fin en formato YYYY-MM-DD
  * @returns {Promise} - Respuesta con estadísticas generales
  */
-export const getDashboardGeneral = async (startDate, endDate) => {
+export const getDashboardGeneral = async (startDate: DateOnlyString, endDate: DateOnlyString): Promise<DashboardGeneralResponse> => {
   try {
-    const response = await api.get('/dashboard/general/', {
+    const response = await api.get<DashboardGeneralResponse>('/dashboard/general/', {
       params: {
         start: startDate,
         end: endDate
@@ -151,12 +162,12 @@ export const getDashboardGeneral = async (startDate, endDate) => {
     });
     return response.data;
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       throw error;
-    } else if (error.request) {
+    } else if (error instanceof AxiosError && error.request) {
       throw new Error('No se pudo conectar con el servidor. Verifique su conexión.');
     } else {
-      throw new Error('Error al obtener estadísticas generales: ' + error.message);
+      throw new Error('Error al obtener estadísticas generales: ' + (error instanceof Error ? error.message : ''));
     }
   }
 };
