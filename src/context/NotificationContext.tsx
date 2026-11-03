@@ -87,18 +87,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      <div style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        zIndex: 99999,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        maxWidth: '400px',
-        width: '100%',
-        pointerEvents: 'none'
-      }}>
+      <div className="pointer-events-none fixed right-5 top-5 z-[99999] flex w-full max-w-[400px] flex-col gap-3">
         {notifications.map(notification => (
           <Toast
             key={notification.id}

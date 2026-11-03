@@ -33,6 +33,7 @@ import SessionExpiredModal from "../components/SessionExpiredModal";
 
 import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
+import { mainArea } from "../utils/classes";
 
 export default function Router() {
   const dispatch = useAppDispatch();
@@ -81,12 +82,12 @@ export default function Router() {
           <Route path="faltas" element={<LackPage />} />
           <Route path="infractores" element={<OffenderPage />} />
           {/* Placeholder para futuras rutas */}
-          <Route path="supervisores" element={<div className="main-area"><h1>Supervisores</h1><p>Próximamente...</p></div>} />
-          <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
+          <Route path="supervisores" element={<div className={mainArea}><h1>Supervisores</h1><p>Próximamente...</p></div>} />
+          <Route path="alertas" element={<div className={mainArea}><h1>Alertas</h1><p>Próximamente...</p></div>} />
           <Route path="estadisticas" element={<MetricasPage />} />
-          <Route path="camaras" element={<div className="main-area"><h1>Cámaras</h1><p>Próximamente...</p></div>} />
-          <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
-          <Route path="configuracion" element={<div className="main-area"><h1>Configuración</h1><p>Próximamente...</p></div>} />
+          <Route path="camaras" element={<div className={mainArea}><h1>Cámaras</h1><p>Próximamente...</p></div>} />
+          <Route path="reportes" element={<div className={mainArea}><h1>Reportes</h1><p>Próximamente...</p></div>} />
+          <Route path="configuracion" element={<div className={mainArea}><h1>Configuración</h1><p>Próximamente...</p></div>} />
           <Route path="auditoria" element={<AuditoriaPage />} />
         </Route>
 
@@ -109,9 +110,9 @@ export default function Router() {
           <Route path="asuntos" element={<SubjectPage />} />
           <Route path="faltas" element={<LackPage />} />
           <Route path="infractores" element={<OffenderPage />} />
-          <Route path="alertas" element={<div className="main-area"><h1>Alertas</h1><p>Próximamente...</p></div>} />
+          <Route path="alertas" element={<div className={mainArea}><h1>Alertas</h1><p>Próximamente...</p></div>} />
           <Route path="estadisticas" element={<MetricasPage />} />
-          <Route path="reportes" element={<div className="main-area"><h1>Reportes</h1><p>Próximamente...</p></div>} />
+          <Route path="reportes" element={<div className={mainArea}><h1>Reportes</h1><p>Próximamente...</p></div>} />
         </Route>
 
         {/* Rutas protegidas - CENTINELA */}
