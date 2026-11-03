@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { pdf } from '@react-pdf/renderer'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../store/hooks'
 import logoSJL from '../assets/logo-sjl.png'
 import { getLeads } from '../api/lead'
 import { getSubjects } from '../api/subject'
@@ -8,15 +8,118 @@ import { getLacks } from '../api/lack'
 import { createAbsenceReport, getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
 import { toast } from '../utils/toast'
+import type { CreateAbsenceDto, ID, Mode } from '@/types'
+
+/** Texto o relación `{ name }`: el backend a veces devuelve un objeto y a veces un string. */
+type TextOrNamed = string | { name?: string | null } | null
+
+/** Personal (lead) tal como lo usa este modal; `title` y `job` no están en el tipo Lead del API. */
+interface FormLead {
+  id: ID
+  title?: string
+  name?: string
+  lastname?: string
+  job?: TextOrNamed
+}
+
+/** Asunto o falta para los selects: se lee `name` y, si no es string, `description`. */
+interface OptionItem {
+  id: ID
+  name?: string | null
+  description?: string | null
+}
+
+/** Fecha de inasistencia de una persona (campo `dates`). */
+interface AttendanceDateItem {
+  date: string | null
+  mode?: string
+  delete_at?: string | null
+}
+
+/** Persona con inasistencias, según lo que lee este modal. */
+interface AttendancePerson {
+  id?: ID
+  dni: string
+  name?: string
+  lastname?: string
+  fullname?: string
+  job?: TextOrNamed
+  regime?: TextOrNamed
+  shift?: TextOrNamed
+  jurisdiction?: TextOrNamed
+  dates?: AttendanceDateItem[]
+}
+
+/** Campos de la respuesta de createAbsenceReport que lee este modal. */
+interface AbsenceReportData {
+  report_id?: string
+}
+
+interface AbsenceReportResponse {
+  message?: string
+  code?: string | null
+  data?: AbsenceReportData
+}
+
+/** Forma del error que lee este modal al crear el reporte. */
+interface ApiErrorLike {
+  message?: string
+  response?: { data?: { message?: string } }
+}
+
+interface DateRangeValue {
+  start: Date
+  end: Date
+}
+
+interface CcLead {
+  name: string
+  job: string
+}
+
+interface ReportResult {
+  message: string
+  data?: AbsenceReportData
+  toLead: FormLead
+  ccLeads: CcLead[]
+}
+
+interface PersonaResumen {
+  dni: string
+  nombreCompleto: string
+  turno: TextOrNamed
+  cargo: TextOrNamed
+  regimen: TextOrNamed
+  fechasArray: string[]
+  justificadas: number
+  injustificadas: number
+  totalFaltas: number
+}
+
+interface PersonaConFechas extends PersonaResumen {
+  fechas: string
+}
+
+export interface ModalPDFInasistenciasProps {
+  onClose: () => void
+  inasistencias?: unknown
+  savedAttendances?: AttendancePerson[]
+  dateRange?: DateRangeValue
+  onReportCreated?: (data?: AbsenceReportData) => void
+  /** Props que IncidenciasPage envia hoy pero este componente no lee (se conservan por compatibilidad) */
+  incidencia?: unknown
+  inasistenciasHistoricas?: unknown
+  onSave?: () => void
+}
 
 // Función para formatear fechas
-function formatearFecha(fecha) {
+function formatearFecha(fecha: string | Date | null | undefined): string {
   if (!fecha) return 'Fecha no disponible'
 
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-  let d
+  let d: Date
 
   if (typeof fecha === 'string') {
     if (fecha.includes('/') || fecha.includes('-')) {
@@ -46,27 +149,27 @@ function formatearFecha(fecha) {
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
 
-export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange, onReportCreated }) {
-  const { username } = useSelector((state) => state.auth)
+export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange, onReportCreated }: ModalPDFInasistenciasProps) {
+  const { username } = useAppSelector((state) => state.auth)
   const [logoBase64, setLogoBase64] = useState('')
   const [generating, setGenerating] = useState(false)
 
   // Estados para el formulario del reporte
-  const [leads, setLeads] = useState([])
-  const [subjects, setSubjects] = useState([])
-  const [lacks, setLacks] = useState([])
+  const [leads, setLeads] = useState<FormLead[]>([])
+  const [subjects, setSubjects] = useState<OptionItem[]>([])
+  const [lacks, setLacks] = useState<OptionItem[]>([])
   const [loadingData, setLoadingData] = useState(true)
-  const [loadError, setLoadError] = useState(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Estados del formulario
   const [selectedTo, setSelectedTo] = useState('')
-  const [selectedCc, setSelectedCc] = useState([])
+  const [selectedCc, setSelectedCc] = useState<string[]>([])
   const [selectedSubject, setSelectedSubject] = useState('')
   const [selectedLack, setSelectedLack] = useState('')
-  const [selectedMode, setSelectedMode] = useState('UNJUSTIFIED')
+  const [selectedMode, setSelectedMode] = useState<Mode>('UNJUSTIFIED')
 
   // Estado para el rango de fechas (editable en el modal)
-  const [dateRange, setDateRange] = useState(() => {
+  const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
     if (initialDateRange?.start && initialDateRange?.end) {
       return initialDateRange
     }
@@ -81,10 +184,10 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
   })
 
   // Estado para mostrar resultado exitoso
-  const [reportResult, setReportResult] = useState(null)
+  const [reportResult, setReportResult] = useState<ReportResult | null>(null)
 
   // Estado para los datos de inasistencias filtrados
-  const [filteredAttendances, setFilteredAttendances] = useState([])
+  const [filteredAttendances, setFilteredAttendances] = useState<AttendancePerson[]>([])
   const [loadingAttendances, setLoadingAttendances] = useState(false)
 
   // Cargar datos para los selects
@@ -102,16 +205,16 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         ])
 
         // Extraer datos de las respuestas
-        const leadsData = leadsRes.data?.data || leadsRes.data || []
-        const subjectsData = subjectsRes.data?.data || subjectsRes.data || []
-        const lacksData = lacksRes.data?.data || lacksRes.data || []
+        const leadsData: unknown = leadsRes.data?.data || leadsRes.data || []
+        const subjectsData: unknown = subjectsRes.data?.data || subjectsRes.data || []
+        const lacksData: unknown = lacksRes.data?.data || lacksRes.data || []
 
-        setLeads(Array.isArray(leadsData) ? leadsData : [])
-        setSubjects(Array.isArray(subjectsData) ? subjectsData : [])
-        setLacks(Array.isArray(lacksData) ? lacksData : [])
+        setLeads(Array.isArray(leadsData) ? leadsData as FormLead[] : [])
+        setSubjects(Array.isArray(subjectsData) ? subjectsData as OptionItem[] : [])
+        setLacks(Array.isArray(lacksData) ? lacksData as OptionItem[] : [])
 
         // Buscar y preseleccionar el asunto de "conductas relacionadas con el cumplimiento del horario y asistencia"
-        const subjectsArray = Array.isArray(subjectsData) ? subjectsData : []
+        const subjectsArray: OptionItem[] = Array.isArray(subjectsData) ? subjectsData as OptionItem[] : []
         const defaultSubject = subjectsArray.find(s => {
           const name = typeof s.name === 'string' ? s.name.toLowerCase() : (s.description || '').toLowerCase()
           return name.includes('conductas') && name.includes('horario') && name.includes('asistencia')
@@ -121,7 +224,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         }
 
         // Buscar y preseleccionar la falta de "inasistencia"
-        const lacksArray = Array.isArray(lacksData) ? lacksData : []
+        const lacksArray: OptionItem[] = Array.isArray(lacksData) ? lacksData as OptionItem[] : []
         const defaultLack = lacksArray.find(l => {
           const name = typeof l.name === 'string' ? l.name.toLowerCase() : (l.description || '').toLowerCase()
           return name.includes('inasistencia')
@@ -147,7 +250,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         const blob = await response.blob()
         const reader = new FileReader()
         reader.onloadend = () => {
-          setLogoBase64(reader.result)
+          setLogoBase64(reader.result as string)
         }
         reader.readAsDataURL(blob)
       } catch (error) {
@@ -184,7 +287,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
   }, [dateRange, selectedMode])
 
   // Manejar cambio de destinatario principal
-  const handleToChange = (leadId) => {
+  const handleToChange = (leadId: string): void => {
     setSelectedTo(leadId)
     // Si el lead seleccionado estaba en CC, quitarlo
     if (selectedCc.includes(leadId)) {
@@ -193,7 +296,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
   }
 
   // Manejar selección de CC (múltiple)
-  const handleCcChange = (leadId) => {
+  const handleCcChange = (leadId: string): void => {
     setSelectedCc(prev => {
       if (prev.includes(leadId)) {
         return prev.filter(id => id !== leadId)
@@ -204,8 +307,8 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
   }
 
   // Procesar datos para el PDF
-  const pdfData = useMemo(() => {
-    const personasMap = {}
+  const pdfData = useMemo<PersonaConFechas[]>(() => {
+    const personasMap: Record<string, PersonaResumen> = {}
 
     // Verificar que savedAttendances sea un array válido
     if (!savedAttendances || !Array.isArray(savedAttendances)) {
@@ -235,7 +338,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       if (person.dates && Array.isArray(person.dates)) {
         person.dates.forEach(dateObj => {
           if (!dateObj.delete_at) {
-            const date = new Date(dateObj.date)
+            const date = new Date(dateObj.date as string)
             const dayStr = date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' })
             personasMap[dni].fechasArray.push(dayStr)
             personasMap[dni].totalFaltas++
@@ -260,7 +363,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       .sort((a, b) => b.totalFaltas - a.totalFaltas)
   }, [savedAttendances])
 
-  async function handleGeneratePDF() {
+  async function handleGeneratePDF(): Promise<void> {
     // Validar campos requeridos
     if (!selectedTo) {
       toast.warning('Debe seleccionar un destinatario principal')
@@ -284,7 +387,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       }
 
       // Obtener datos de los destinatarios en copia
-      const ccLeads = selectedCc.map(ccId => {
+      const ccLeads: CcLead[] = selectedCc.map((ccId): CcLead | null => {
         const lead = leads.find(l => l.id === ccId)
         if (!lead) return null
         // Asegurar que job sea string
@@ -293,7 +396,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
           name: `${lead.title || ''} ${lead.name || ''} ${lead.lastname || ''}`.trim(),
           job: jobValue
         }
-      }).filter(Boolean)
+      }).filter((c): c is CcLead => c !== null)
 
       // Formatear fechas para la API
       if (!dateRange?.start || !dateRange?.end) {
@@ -306,7 +409,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       const toLeadJobValue = typeof toLead.job === 'object' ? (toLead.job?.name || '') : (toLead.job || '')
 
       // Construir payload para la API
-      const reportData = {
+      const reportData: CreateAbsenceDto = {
         header: {
           to: {
             name: `${toLead.title || ''} ${toLead.name || ''} ${toLead.lastname || ''}`.trim(),
@@ -322,7 +425,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       }
 
       // Llamar a la API
-      const response = await createAbsenceReport(reportData)
+      const response = (await createAbsenceReport(reportData)) as unknown as AbsenceReportResponse
 
       // Obtener el code del reporte de la respuesta (ejemplo: "042-2025")
       // createAbsenceReport ya devuelve response.data, por lo que response.code es el correcto
@@ -412,11 +515,12 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
         onReportCreated(response.data)
       }
     } catch (error) {
+      const errorInfo = error as ApiErrorLike
       let errorMessage = 'Error al crear el reporte'
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      if (errorInfo.response?.data?.message) {
+        errorMessage = errorInfo.response.data.message
+      } else if (errorInfo.message) {
+        errorMessage = errorInfo.message
       }
 
       toast.error(errorMessage)
@@ -427,7 +531,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
 
   const formatDateRange = () => {
     if (!dateRange?.start || !dateRange?.end) return ''
-    const options = { day: '2-digit', month: 'short', year: 'numeric' }
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' }
     const startStr = dateRange.start.toLocaleDateString('es-PE', options)
     const endStr = dateRange.end.toLocaleDateString('es-PE', options)
     return `${startStr} - ${endStr}`
@@ -589,7 +693,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                         name="mode"
                         value="UNJUSTIFIED"
                         checked={selectedMode === 'UNJUSTIFIED'}
-                        onChange={(e) => setSelectedMode(e.target.value)}
+                        onChange={(e) => setSelectedMode(e.target.value as Mode)}
                       />
                       Injustificada
                     </label>
@@ -599,7 +703,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                         name="mode"
                         value="JUSTIFIED"
                         checked={selectedMode === 'JUSTIFIED'}
-                        onChange={(e) => setSelectedMode(e.target.value)}
+                        onChange={(e) => setSelectedMode(e.target.value as Mode)}
                       />
                       Justificada
                     </label>
@@ -903,7 +1007,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                           .map((person, index) => {
                           // Obtener las fechas de inasistencia
                           const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-                            const date = new Date(d.date)
+                            const date = new Date(d.date as string)
                             return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
                           }).join(', ') || '-'
 
@@ -979,7 +1083,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
               <button
                 className="btn-primary"
                 onClick={handleGeneratePDF}
-                disabled={generating || loadingData || loadError || !selectedTo || !selectedSubject || !selectedLack}
+                disabled={generating || loadingData || !!loadError || !selectedTo || !selectedSubject || !selectedLack}
               >
                 {generating ? 'Creando...' : 'Crear Reporte'}
               </button>

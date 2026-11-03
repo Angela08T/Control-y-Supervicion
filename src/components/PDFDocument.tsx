@@ -94,7 +94,8 @@ const styles = StyleSheet.create({
   },
   // Table
   table: {
-    display: 'table',
+    // react-pdf no tipa 'table' (se conserva el valor original)
+    display: 'table' as unknown as 'flex',
     width: '100%',
     marginVertical: 20,
     borderStyle: 'solid',
@@ -191,8 +192,93 @@ const styles = StyleSheet.create({
   }
 })
 
+/** Imagen de evidencia (base64) con su anexo opcional */
+interface ImagenInforme {
+  base64: string
+  anexo?: string | null
+}
+
+/** Datos del formulario del informe que el PDF lee */
+interface InformeFormData {
+  numeroInforme?: string | null
+  destinatarioNombre?: string | null
+  destinatarioCargo?: string | null
+  areaEmisora?: string | null
+  falta?: string | null
+  tipoInasistencia?: string | null
+  fecha?: string | null
+  descripcionAdicional?: string | null
+  nombreCompleto?: string | null
+  sereno?: string | null
+  supervisor?: string | null
+  imagenes?: ImagenInforme[] | null
+  links?: string | null
+}
+
+/** Incidencia que el PDF lee (solo los campos usados aqui) */
+interface IncidenciaInforme {
+  asunto: string
+  falta: string
+  cc?: string[] | null
+}
+
+/** Fila del historial de inasistencias incluida en el PDF */
+interface InasistenciaHistorica {
+  nombreCompleto?: string | null
+  sereno?: string | null
+  cargo?: string | null
+  regLab?: string | null
+  turno?: string | null
+  fechaFalta?: string | null
+  fechaIncidente?: string | null
+  tipoInasistencia?: string | null
+  jurisdiccion?: string | null
+}
+
+type FormatearFecha = (fecha: string) => string
+
+export interface PDFHeaderProps {
+  logoBase64?: string | null
+}
+
+export interface PDFInfoSectionProps {
+  formData: InformeFormData
+  incidencia: IncidenciaInforme
+}
+
+export interface PDFBodyProps {
+  formData: InformeFormData
+  incidencia: IncidenciaInforme
+}
+
+export interface PDFHistorialTableProps {
+  inasistenciasHistoricas?: InasistenciaHistorica[] | null
+  formatearFecha?: FormatearFecha
+}
+
+export interface PDFImagesProps {
+  imagenes?: ImagenInforme[] | null
+}
+
+export interface PDFLinksProps {
+  links?: string | null
+}
+
+export interface PDFSignatureProps {
+  nombre?: string | null
+}
+
+export interface InformePDFDocumentProps {
+  formData: InformeFormData
+  incidencia: IncidenciaInforme
+  inasistenciasHistoricas?: InasistenciaHistorica[]
+  logoBase64?: string | null
+  formatearFecha?: FormatearFecha
+  esInasistencia?: boolean | ''
+}
+
 // Componente para el header
-const PDFHeader = ({ logoBase64 }) => {
+const PDFHeader = ({ logoBase64 }: PDFHeaderProps) => {
   return (
     <View style={styles.header} fixed>
       {/* Logo */}
@@ -213,7 +299,7 @@ const PDFHeader = ({ logoBase64 }) => {
 }
 
 // Componente para la sección de info
-const PDFInfoSection = ({ formData, incidencia }) => (
+const PDFInfoSection = ({ formData, incidencia }: PDFInfoSectionProps) => (
   <View style={styles.infoSection}>
     {/* Solo mostrar INFORME N° si el informe está aprobado y tiene código */}
     {formData.numeroInforme && (
@@ -274,7 +360,7 @@ const PDFInfoSection = ({ formData, incidencia }) => (
 )
 
 // Componente para el cuerpo del informe
-const PDFBody = ({ formData, incidencia }) => {
+const PDFBody = ({ formData, incidencia }: PDFBodyProps) => {
   const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
     incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
@@ -300,7 +386,7 @@ const PDFBody = ({ formData, incidencia }) => {
 }
 
 // Componente para tabla de historial de inasistencias
-const PDFHistorialTable = ({ inasistenciasHistoricas, formatearFecha }) => {
+const PDFHistorialTable = ({ inasistenciasHistoricas, formatearFecha }: PDFHistorialTableProps) => {
   if (!inasistenciasHistoricas || inasistenciasHistoricas.length === 0) return null
 
   return (
@@ -377,11 +463,11 @@ const PDFHistorialTable = ({ inasistenciasHistoricas, formatearFecha }) => {
 }
 
 // Componente para imágenes (agrupa de 2 en 2 por página)
-const PDFImages = ({ imagenes }) => {
+const PDFImages = ({ imagenes }: PDFImagesProps) => {
   if (!imagenes || imagenes.length === 0) return null
 
   // Agrupar imágenes de 2 en 2
-  const imagePairs = []
+  const imagePairs: ImagenInforme[][] = []
   for (let i = 0; i < imagenes.length; i += 2) {
     imagePairs.push(imagenes.slice(i, i + 2))
   }
@@ -408,7 +494,7 @@ const PDFImages = ({ imagenes }) => {
 }
 
 // Componente para links
-const PDFLinks = ({ links }) => {
+const PDFLinks = ({ links }: PDFLinksProps) => {
   if (!links) return null
 
   return (
@@ -420,7 +506,7 @@ const PDFLinks = ({ links }) => {
 }
 
 // Componente para la firma
-const PDFSignature = ({ nombre }) => (
+const PDFSignature = ({ nombre }: PDFSignatureProps) => (
   <View style={styles.signatureSection}>
     <View style={styles.signatureLine} />
     <Text style={styles.signatureName}>{nombre || '[NOMBRE DEL FIRMANTE]'}</Text>
@@ -443,7 +529,7 @@ const InformePDFDocument = ({
   logoBase64,
   formatearFecha,
   esInasistencia // Recibir prop directa
-}) => {
+}: InformePDFDocumentProps) => {
   // Usar la prop o fallback a la lógica anterior si no se pasa (para retrocompatibilidad)
   const isAbsence = esInasistencia !== undefined
     ? esInasistencia

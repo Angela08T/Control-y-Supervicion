@@ -1,20 +1,116 @@
 import React, { useState, useEffect } from 'react'
 import { pdf } from '@react-pdf/renderer'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '@/store/hooks'
 import logoSJL from '../assets/logo-sjl.png'
 import { trackPDFDownload } from '../utils/storage'
 import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } from '../api/report'
 import { getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
 import { toast } from '../utils/toast'
+import type { ID, Incidencia, ReportWithEvidences } from '@/types'
 
-function formatearFecha(fecha) {
+/** Imagen de evidencia del formulario: existente en el backend o nueva (aun sin subir). */
+interface ImagenInforme {
+  id?: ID
+  name: string
+  url: string
+  base64: string
+  anexo: string
+  file?: File
+  isExisting: boolean
+}
+
+/** Campos del estado formData del modal. */
+interface InformeFormData {
+  numeroInforme: string
+  destinatarioCargo: string
+  destinatarioNombre: string
+  fecha: string
+  horaIncidente: string
+  fechaIncidente: string
+  ubicacion: string
+  jurisdiccion: string
+  sereno: string
+  dni: string
+  cargo: string
+  regLab: string
+  turno: string
+  nombreCompleto: string
+  falta: string
+  articulo: string
+  bodycam: string
+  bodycamAsignadaA: string
+  tipoMedio: string
+  numeroCamara: string
+  supervisor: string
+  descripcionAdicional: string
+  tipoInasistencia: string
+  fechaFalta: string
+  imagenes: ImagenInforme[]
+  links: string
+}
+
+/** Incidencia tal como la recibe el modal; `fechaFalta` se lee aunque Incidencia no lo declare. */
+type IncidenciaInforme = Incidencia & { fechaFalta?: string | null }
+
+/** Fila de inasistencia historica que consume PDFDocument. */
+interface InasistenciaHistorica {
+  nombreCompleto: string
+  cargo: string
+  regLab: string
+  turno: string
+  jurisdiccion: string
+  fechaFalta?: string | null
+  tipoInasistencia?: string | null
+}
+
+/** Valor que puede venir como texto o como objeto con `name` (campos de GET /attendance). */
+interface NamedValue {
+  name?: string | null
+}
+
+/** Fecha de inasistencia de una persona; `dates` no esta declarado en la API de attendance. */
+interface AttendanceDateRow {
+  date?: string | null
+  mode?: string | null
+  delete_at?: string | null
+}
+
+/** Persona de GET /attendance tal como la usa el componente. */
+interface AttendancePersonRow {
+  id?: ID
+  name?: string
+  lastname?: string
+  fullname?: string
+  job?: string | NamedValue | null
+  regime?: string | NamedValue | null
+  shift?: string | NamedValue | null
+  jurisdiction?: string | NamedValue | null
+  dates?: AttendanceDateRow[]
+}
+
+/** getReportWithEvidences devuelve `link`, que no esta declarado en Report. */
+type ReportWithEvidencesConLink = ReportWithEvidences & { link?: string | null }
+
+/** Forma minima del error de axios que lee el componente. */
+interface ApiErrorLike {
+  response?: { data?: { message?: string | string[] } }
+}
+
+export interface ModalPDFInformeProps {
+  incidencia: IncidenciaInforme
+  inasistenciasHistoricas?: InasistenciaHistorica[]
+  onClose: () => void
+  onSave?: () => void
+}
+
+function formatearFecha(fecha: string | number | Date | null | undefined): string {
   if (!fecha) return 'Fecha no disponible'
 
   const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-  let d
+  let d: Date
 
   // Intentar diferentes formatos de fecha
   // 1. Si es un string, verificar si es formato DD/MM/YYYY o DD-MM-YYYY
@@ -55,13 +151,13 @@ function formatearFecha(fecha) {
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
 
-function obtenerHoraFormateada(hora) {
+function obtenerHoraFormateada(hora: string | null | undefined): string {
   if (!hora) return ''
   const [h, m] = hora.split(':')
   return `${h}:${m}`
 }
 
-const articulosPorFalta = {
+const articulosPorFalta: Record<string, string> = {
   'Dormir en horario laboral': '68.12',
   'Comer en horario laboral': '68.15',
   'Jugar en horario laboral': '68.18',
@@ -72,16 +168,16 @@ const articulosPorFalta = {
   'Llegó fuera de horario': '72.06'
 }
 
-export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }) {
+export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }: ModalPDFInformeProps) {
   // Obtener usuario logueado de Redux
-  const { username, nombre, apellido } = useSelector((state) => state.auth)
+  const { username, nombre, apellido } = useAppSelector((state) => state.auth)
 
   const nombreFirmante = (nombre && apellido) ? `${nombre} ${apellido}`.toUpperCase() : (username ? username.toUpperCase() : 'SUPERVISOR')
 
   // Detectar si es un reporte de inasistencias
   const isAbsenceReport = incidencia?.isAbsenceReport || false
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InformeFormData>({
     numeroInforme: '',
     destinatarioCargo: '',
     destinatarioNombre: '',
@@ -112,9 +208,9 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
 
   const [loadingEvidences, setLoadingEvidences] = useState(false)
   const [savingReport, setSavingReport] = useState(false)
-  const [validationErrors, setValidationErrors] = useState([])
+  const [validationErrors, setValidationErrors] = useState<number[]>([])
   const [logoBase64, setLogoBase64] = useState('')
-  const [attendanceData, setAttendanceData] = useState([]) // Datos de attendance para reportes de inasistencias
+  const [attendanceData, setAttendanceData] = useState<AttendancePersonRow[]>([]) // Datos de attendance para reportes de inasistencias
   const [loadingAttendance, setLoadingAttendance] = useState(false)
 
   // Convertir logo a base64
@@ -125,7 +221,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         const blob = await response.blob()
         const reader = new FileReader()
         reader.onloadend = () => {
-          setLogoBase64(reader.result)
+          setLogoBase64(reader.result as string)
         }
         reader.readAsDataURL(blob)
       } catch (error) {
@@ -319,23 +415,23 @@ Se adjuntan las evidencias:`
 
       setLoadingEvidences(true)
       try {
-        const reportData = await getReportWithEvidences(incidencia.id)
+        const reportData = (await getReportWithEvidences(incidencia.id)) as ReportWithEvidencesConLink | null
 
         if (reportData && reportData.evidences && reportData.evidences.length > 0) {
 
           // Cargar las imágenes existentes y convertirlas a base64 para el PDF
           const imagenesExistentes = await Promise.all(
-            reportData.evidences.map(async (ev) => {
+            reportData.evidences.map(async (ev): Promise<ImagenInforme | null> => {
               try {
 
                 // Obtener el token de localStorage
-                const getToken = () => {
+                const getToken = (): string | null | undefined => {
                   try {
                     const persistRoot = localStorage.getItem('persist:root')
                     if (persistRoot) {
-                      const parsed = JSON.parse(persistRoot)
+                      const parsed = JSON.parse(persistRoot) as { auth?: string }
                       if (parsed.auth) {
-                        const authState = JSON.parse(parsed.auth)
+                        const authState = JSON.parse(parsed.auth) as { token?: string | null }
                         return authState.token
                       }
                     }
@@ -361,9 +457,9 @@ Se adjuntan las evidencias:`
                 const blob = await response.blob()
 
                 // Convertir blob a base64
-                const base64 = await new Promise((resolve) => {
+                const base64 = await new Promise<string>((resolve) => {
                   const reader = new FileReader()
-                  reader.onloadend = () => resolve(reader.result)
+                  reader.onloadend = () => resolve(reader.result as string)
                   reader.readAsDataURL(blob)
                 })
 
@@ -382,7 +478,7 @@ Se adjuntan las evidencias:`
           )
 
           // Filtrar imágenes que se cargaron exitosamente
-          const imagenesValidas = imagenesExistentes.filter(img => img !== null)
+          const imagenesValidas = imagenesExistentes.filter((img): img is ImagenInforme => img !== null)
 
           setFormData(prev => ({
             ...prev,
@@ -456,7 +552,7 @@ Se adjuntan las evidencias:`
     loadAttendanceData()
   }, [incidencia, isAbsenceReport])
 
-  function handleChange(field, value) {
+  function handleChange(field: keyof InformeFormData, value: string) {
     setFormData(prev => {
       const newData = { ...prev, [field]: value }
 
@@ -519,8 +615,8 @@ Se adjuntan las evidencias:`
     })
   }
 
-  function handleImageUpload(e) {
-    const files = Array.from(e.target.files)
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files: File[] = Array.from(e.target.files ?? [])
 
     files.forEach(file => {
       const reader = new FileReader()
@@ -530,7 +626,7 @@ Se adjuntan las evidencias:`
           imagenes: [...prev.imagenes, {
             name: file.name,
             url: URL.createObjectURL(file),
-            base64: event.target.result,
+            base64: event.target?.result as string,
             anexo: '',
             file: file, // Guardar el archivo File para poder subirlo
             isExisting: false // Marcar como imagen nueva
@@ -544,7 +640,7 @@ Se adjuntan las evidencias:`
     setValidationErrors([])
   }
 
-  function updateImageAnexo(index, anexo) {
+  function updateImageAnexo(index: number, anexo: string) {
     setFormData(prev => ({
       ...prev,
       imagenes: prev.imagenes.map((img, i) =>
@@ -558,7 +654,7 @@ Se adjuntan las evidencias:`
     }
   }
 
-  async function removeImage(index) {
+  async function removeImage(index: number) {
     const img = formData.imagenes[index]
 
     // Si es una imagen existente del backend, eliminarla mediante la API
@@ -585,7 +681,7 @@ Se adjuntan las evidencias:`
   // Función para guardar cambios sin descargar el PDF
   async function guardarCambios() {
     // Validar que todas las imágenes tengan descripción
-    const errores = []
+    const errores: number[] = []
     formData.imagenes.forEach((img, index) => {
       if (!img.anexo || !img.anexo.trim()) {
         errores.push(index)
@@ -602,7 +698,7 @@ Se adjuntan las evidencias:`
     try {
       // Obtener imágenes nuevas para subir
       const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
-      const files = nuevasImagenes.map(img => img.file).filter(Boolean)
+      const files = nuevasImagenes.map(img => img.file).filter((file): file is File => Boolean(file))
       const descriptions = nuevasImagenes.map(img => img.anexo)
 
       await updateReportWithEvidences(
@@ -623,11 +719,12 @@ Se adjuntan las evidencias:`
       // Cerrar el modal y volver a la pantalla principal
       onClose()
     } catch (error) {
+      const apiError = error as ApiErrorLike
       let errorMessage = 'Error al guardar los cambios'
-      if (error.response?.data?.message) {
-        errorMessage = Array.isArray(error.response.data.message)
-          ? 'Errores:\n' + error.response.data.message.join('\n')
-          : error.response.data.message
+      if (apiError.response?.data?.message) {
+        errorMessage = Array.isArray(apiError.response.data.message)
+          ? 'Errores:\n' + apiError.response.data.message.join('\n')
+          : apiError.response.data.message
       }
 
       toast.error(errorMessage)
@@ -638,7 +735,7 @@ Se adjuntan las evidencias:`
 
   async function generarPDF() {
     // Validar que todas las imágenes tengan descripción
-    const errores = []
+    const errores: number[] = []
     formData.imagenes.forEach((img, index) => {
       if (!img.anexo || !img.anexo.trim()) {
         errores.push(index)
@@ -657,7 +754,7 @@ Se adjuntan las evidencias:`
     if (nuevasImagenes.length > 0 || formData.descripcionAdicional) {
       setSavingReport(true)
       try {
-        const files = nuevasImagenes.map(img => img.file).filter(Boolean)
+        const files = nuevasImagenes.map(img => img.file).filter((file): file is File => Boolean(file))
         const descriptions = nuevasImagenes.map(img => img.anexo)
 
         await updateReportWithEvidences(
@@ -670,11 +767,12 @@ Se adjuntan las evidencias:`
 
       } catch (error) {
 
+        const apiError = error as ApiErrorLike
         let errorMessage = 'Error al guardar las evidencias en el servidor'
-        if (error.response?.data?.message) {
-          errorMessage = Array.isArray(error.response.data.message)
-            ? 'Errores:\n' + error.response.data.message.join('\n')
-            : error.response.data.message
+        if (apiError.response?.data?.message) {
+          errorMessage = Array.isArray(apiError.response.data.message)
+            ? 'Errores:\n' + apiError.response.data.message.join('\n')
+            : apiError.response.data.message
         }
 
         toast.error(errorMessage)
@@ -688,7 +786,7 @@ Se adjuntan las evidencias:`
     // Generar el PDF usando @react-pdf/renderer
     try {
       // Si es un reporte de inasistencias, transformar attendanceData a formato de inasistenciasHistoricas
-      let inasistenciasParaPDF = inasistenciasHistoricas
+      let inasistenciasParaPDF: InasistenciaHistorica[] = inasistenciasHistoricas
 
       if (isAbsenceReport && attendanceData.length > 0) {
         // Transformar attendanceData al formato esperado por PDFHistorialTable
@@ -1018,7 +1116,7 @@ Se adjuntan las evidencias:`
                             .map((person, index) => {
                               // Obtener las fechas de inasistencia
                               const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-                                const date = new Date(d.date)
+                                const date = new Date(d.date as string)
                                 return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
                               }).join(', ') || '-'
 

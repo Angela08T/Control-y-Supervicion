@@ -1,6 +1,98 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { FaFilePdf, FaTrash } from 'react-icons/fa'
 import { toast } from '../utils/toast'
+import type { ID } from '@/types'
+
+/** Persona con inasistencias tal como llega desde la pagina de inasistencias */
+interface InasistenciaItem {
+  id?: ID
+  dni: string
+  nombreCompleto?: string | null
+  apellidos?: string | null
+  nombres?: string | null
+  turno?: string | null
+  cargo?: string | null
+  regLab?: string | null
+  regimen?: string | null
+  subgerencia?: string | null
+  /** "DD/MM/YYYY" o ISO */
+  fechaIncidente?: string | null
+  falta?: string | null
+}
+
+/** Fecha de asistencia guardada en la API (GET /attendance) */
+interface SavedAttendanceDate {
+  id: ID
+  date: string
+  mode?: string | null
+  delete_at?: string | null
+}
+
+/** Fila de asistencias guardadas: solo se leen dni y dates */
+interface SavedAttendance {
+  dni: string
+  dates?: SavedAttendanceDate[]
+}
+
+/** Rango de fechas seleccionado en el padre */
+interface DateRangeValue {
+  start: Date
+  end: Date
+}
+
+/** Marca de falta enviada a onSave */
+interface MarcaFalta {
+  dni: string
+  dia: number
+  mes: number
+  anio: number
+  tipo: string
+}
+
+/** Marca temporal (aun no guardada) */
+interface TempMark {
+  tipo: string
+  id: ID | null
+}
+
+/** Marca guardada (proviene de la API) */
+interface SavedMark {
+  tipo: 'J' | 'I'
+  id: ID
+}
+
+/** Dia del calendario */
+interface DiaCalendario {
+  numero: number
+  diaSemana: string
+  fecha: Date
+  mes: number
+  anio: number
+}
+
+/** Fila de persona en la tabla */
+interface PersonaRow {
+  id: ID | undefined
+  dni: string
+  nombreCompleto: string
+  turno: string
+  cargo: string
+  regimen: string
+  subgerencia: string
+  faltas: Record<number, 'J' | 'I'>
+}
+
+export interface CalendarioInasistenciasProps {
+  inasistencias?: InasistenciaItem[]
+  savedAttendances?: SavedAttendance[]
+  onDelete?: (id?: ID, nombreCompleto?: string) => void
+  onSave?: (marks: MarcaFalta[]) => void
+  onDeleteMarks?: (ids: ID[]) => void
+  onMonthChange?: (date: Date) => void
+  dateRange?: DateRangeValue | null
+  isReadOnly?: boolean
+  canDelete?: boolean
+}
 
 export default function CalendarioInasistencias({
   inasistencias = [],
@@ -12,19 +104,19 @@ export default function CalendarioInasistencias({
   dateRange,
   isReadOnly = false,
   canDelete = false
-}) {
+}: CalendarioInasistenciasProps) {
   // Usar la fecha de inicio del rango si está disponible
-  const [selectedDate, setSelectedDate] = useState(() => {
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
     if (dateRange?.start) {
       return new Date(dateRange.start)
     }
     return new Date()
   })
-  const [markMode, setMarkMode] = useState(null) // Modo de marcado: 'I' (injustificado), 'J' (justificado) o null
+  const [markMode, setMarkMode] = useState<'I' | 'J' | null>(null) // Modo de marcado: 'I' (injustificado), 'J' (justificado) o null
   const [editMode, setEditMode] = useState(false) // Modo de edición para quitar marcas
-  const [selectedCells, setSelectedCells] = useState({}) // Celdas seleccionadas: { "dni-dia": true }
-  const [tempMarks, setTempMarks] = useState({}) // Marcas temporales: { "dni-dia": { tipo: "I"/"J", id: null } }
-  const [marksToDelete, setMarksToDelete] = useState([]) // IDs de marcas a eliminar
+  const [selectedCells, setSelectedCells] = useState<Record<string, boolean>>({}) // Celdas seleccionadas: { "dni-dia": true }
+  const [tempMarks, setTempMarks] = useState<Record<string, TempMark>>({}) // Marcas temporales: { "dni-dia": { tipo: "I"/"J", id: null } }
+  const [marksToDelete, setMarksToDelete] = useState<ID[]>([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
   const itemsPerPage = 12 // Límite de personas por página
 
@@ -51,7 +143,7 @@ export default function CalendarioInasistencias({
 
   // Procesar savedAttendances para obtener las marcas guardadas: { "dni-dia": { tipo: "J"/"I", id: "uuid" } }
   const savedMarks = useMemo(() => {
-    const marks = {}
+    const marks: Record<string, SavedMark> = {}
 
     savedAttendances.forEach(person => {
       const dni = person.dni
@@ -78,7 +170,7 @@ export default function CalendarioInasistencias({
 
   // Calcular días según el rango seleccionado
   const diasDelMes = useMemo(() => {
-    const dias = []
+    const dias: DiaCalendario[] = []
 
     if (dateRange?.start && dateRange?.end) {
       // Usar el rango de fechas seleccionado
@@ -127,10 +219,10 @@ export default function CalendarioInasistencias({
     return inasistencias.filter(item => {
       if (!item.fechaIncidente) return false
       // Parsear fecha en formato DD/MM/YYYY o ISO
-      let fecha
+      let fecha: Date
       if (item.fechaIncidente.includes('/')) {
         const [dia, mes, anio] = item.fechaIncidente.split('/')
-        fecha = new Date(anio, mes - 1, dia)
+        fecha = new Date(Number(anio), Number(mes) - 1, Number(dia))
       } else {
         fecha = new Date(item.fechaIncidente)
       }
@@ -140,7 +232,7 @@ export default function CalendarioInasistencias({
 
   // Agrupar TODAS las personas (offenders), no solo las que tienen inasistencias este mes
   const personasConInasistencias = useMemo(() => {
-    const personas = {}
+    const personas: Record<string, PersonaRow> = {}
 
     // 🔹 CAMBIO: Primero agregar TODOS los offenders (de inasistencias, sin filtrar por mes)
     inasistencias.forEach(item => {
@@ -164,7 +256,7 @@ export default function CalendarioInasistencias({
       const key = item.dni
 
       // Marcar el día de la falta
-      let diaFalta
+      let diaFalta: number | undefined
       if (item.fechaIncidente && item.fechaIncidente.includes('/')) {
         const [dia] = item.fechaIncidente.split('/')
         diaFalta = parseInt(dia)
@@ -180,7 +272,7 @@ export default function CalendarioInasistencias({
     return Object.values(personas)
   }, [inasistencias, inasistenciasDelMes])
 
-  function handleMonthChange(e) {
+  function handleMonthChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newDate = new Date(selectedDate)
     newDate.setMonth(parseInt(e.target.value))
     setSelectedDate(newDate)
@@ -198,7 +290,7 @@ export default function CalendarioInasistencias({
     }
   }
 
-  function handleYearChange(e) {
+  function handleYearChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newDate = new Date(selectedDate)
     newDate.setFullYear(parseInt(e.target.value))
     setSelectedDate(newDate)
@@ -219,7 +311,7 @@ export default function CalendarioInasistencias({
   function handleDownloadPDF() {
   }
 
-  function handleToggleMark(tipo) {
+  function handleToggleMark(tipo: 'I' | 'J') {
     // Si ya está activo este modo, desactivarlo
     if (markMode === tipo) {
       setMarkMode(null)
@@ -250,7 +342,7 @@ export default function CalendarioInasistencias({
     }
   }
 
-  function handleCellClick(dni, dia, mes, anio) {
+  function handleCellClick(dni: string, dia: number, mes: number, anio: number) {
     // Key simple para savedMarks (compatibilidad con el formato actual)
     const savedKey = `${dni}-${dia}`
     // Key completa para tempMarks (incluye mes y año para evitar conflictos)
@@ -392,7 +484,7 @@ export default function CalendarioInasistencias({
   }
 
   // Generar años disponibles
-  const years = []
+  const years: number[] = []
   const currentYear = new Date().getFullYear()
   for (let i = currentYear - 5; i <= currentYear + 1; i++) {
     years.push(i)
@@ -406,7 +498,7 @@ export default function CalendarioInasistencias({
   const personasPaginadas = personasConInasistencias.slice(startIndex, endIndex)
 
   // Funciones de navegación de página
-  function handlePageChange(newPage) {
+  function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage)
     }
@@ -556,7 +648,7 @@ export default function CalendarioInasistencias({
                         const savedMark = savedMarks[savedKey]
 
                         // Mostrar marca temporal o marca guardada, o guion si no hay nada
-                        let content
+                        let content: React.ReactNode
                         let cellClass = 'col-dia'
 
                         if (tempMark) {
@@ -643,7 +735,7 @@ export default function CalendarioInasistencias({
 
           <div className="pagination-numbers">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum
+              let pageNum: number
               if (totalPages <= 5) {
                 pageNum = i + 1
               } else if (currentPage <= 3) {
