@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, Tooltip } from 
 import L from 'leaflet'
 import useJurisdiccionDetection from '../hooks/Jurisdiction/useJurisdiccionDetection'
 import type { DetectedJurisdiction } from '@/types'
+import { cn } from '@/utils/classes'
 
 // Importar CSS de Leaflet
 import 'leaflet/dist/leaflet.css'
@@ -45,6 +46,10 @@ const icon = L.icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
 })
+
+/** Caja de coordenadas, direccion y jurisdiccion bajo el mapa (los colores de fondo/borde se añaden por elemento) */
+const mapCoords =
+  "mt-2 rounded-lg border border-line px-3 py-2.5 text-[13px] font-medium text-left [font-family:'Courier_New',monospace] [backdrop-filter:blur(5px)]"
 
 // Función helper para formatear direccion
 const getFormattedAddress = (addr: NominatimAddress): string | null => {
@@ -170,12 +175,12 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
   }
 
   return (
-    <div style={{ marginTop: '8px' }}>
-      <div style={{ height: '250px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: '1px solid #21343d' }}>
+    <div className="mt-2">
+      <div className="h-[250px] w-full rounded-[6px] overflow-hidden border border-[#21343d]">
         <MapContainer
           center={[-11.9833, -77.0075]}
           zoom={13}
-          style={{ height: '100%', width: '100%' }}
+          className="h-full w-full"
           scrollWheelZoom={true}
         >
           <TileLayer
@@ -221,36 +226,34 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
           {position && <Marker position={position} icon={icon} />}
         </MapContainer>
       </div>
-      <div className="map-hint">Haz clic en el mapa para seleccionar ubicación</div>
+      <div className="mt-2 text-center text-[12px] italic text-muted">Haz clic en el mapa para seleccionar ubicación</div>
       {position && (
-        <div style={{ marginTop: '10px' }}>
-          <div className="map-coords" style={{ marginBottom: '8px' }}>
+        <div className="mt-2.5">
+          <div className={cn(mapCoords, 'mb-2 text-content bg-[rgba(30,58,138,0.08)] dark:bg-[rgba(59,130,246,0.15)]')}>
             📍 Coordenadas: Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
           </div>
-          <div className="map-coords" style={{
-            background: address === 'Cargando dirección...' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(74, 155, 142, 0.1)',
-            fontStyle: address === 'Cargando dirección...' ? 'italic' : 'normal',
-            marginBottom: '8px'
-          }}>
+          <div className={cn(
+            mapCoords,
+            'mb-2 text-content',
+            address === 'Cargando dirección...'
+              ? 'bg-[rgba(245,158,11,0.1)] italic'
+              : 'bg-[rgba(74,155,142,0.1)] not-italic'
+          )}>
             🏠 {address || 'Sin dirección'}
           </div>
           {jurisdiccionDetectada && (
-            <div className="map-coords" style={{
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              color: '#3b82f6',
-              fontWeight: '500'
-            }}>
+            <div className={cn(
+              mapCoords,
+              'bg-[rgba(59,130,246,0.1)] border-[rgba(59,130,246,0.3)] text-[#3b82f6]'
+            )}>
               🏛️ Jurisdicción: {jurisdiccionDetectada.name}
             </div>
           )}
           {!jurisdiccionDetectada && jurisdicciones.length > 0 && (
-            <div className="map-coords" style={{
-              background: 'rgba(251, 191, 36, 0.1)',
-              border: '1px solid rgba(251, 191, 36, 0.3)',
-              color: '#f59e0b',
-              fontStyle: 'italic'
-            }}>
+            <div className={cn(
+              mapCoords,
+              'bg-[rgba(251,191,36,0.1)] border-[rgba(251,191,36,0.3)] text-[#f59e0b] italic'
+            )}>
               ⚠️ No se detectó jurisdicción para esta ubicación
             </div>
           )}

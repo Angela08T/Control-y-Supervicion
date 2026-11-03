@@ -2,6 +2,21 @@ import React, { useEffect, useState } from 'react'
 import { FaUser, FaEnvelope, FaLock, FaUserTag, FaIdCard, FaSearch } from 'react-icons/fa'
 import { useAppSelector } from '@/store/hooks'
 import type { AppRole, OffenderDniLookup, Role, User } from '@/types'
+import {
+  btnPrimary,
+  btnSecondary,
+  cn,
+  formGroup,
+  formLabel,
+  modalActions,
+  modalBackdrop,
+  modalBody,
+  modalCard,
+  modalClose,
+  modalHeader,
+  modalInput,
+  modalTitle
+} from '@/utils/classes'
 
 /** Estado del formulario de usuario */
 interface UserFormState {
@@ -43,6 +58,12 @@ export interface ModalUserProps {
   onSave: (data: UserSavePayload) => void
   userRole?: AppRole | null
 }
+
+/** Etiqueta de campo: formLabel + margen superior del label dentro del modal */
+const labelClass = cn(formLabel, 'mt-1.5')
+
+/** Texto de ayuda debajo de un campo */
+const helpText = 'block mt-1 text-[0.85rem] text-muted'
 
 const defaultState: UserFormState = {
   dni: '',
@@ -232,22 +253,22 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
   }
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card">
-        <div className="modal-header">
-          <h3>{initial ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
-          <button className="close" onClick={onClose}>×</button>
+    <div className={modalBackdrop}>
+      <div className={cn(modalCard, 'max-[900px]:mx-auto max-[900px]:my-2.5 max-[900px]:max-h-[90vh] max-[900px]:w-[95%] max-[900px]:overflow-y-auto')}>
+        <div className={modalHeader}>
+          <h3 className={modalTitle}>{initial ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
+          <button className={modalClose} onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body">
+        <form onSubmit={handleSubmit} className={cn(modalBody, 'max-[900px]:max-h-[calc(90vh-120px)] max-[900px]:overflow-y-auto')}>
           {/* DNI con búsqueda */}
           {!initial && (
-            <div className="form-group">
-              <label>
-                <FaIdCard style={{ marginRight: '8px' }} />
+            <div className={formGroup}>
+              <label className={labelClass}>
+                <FaIdCard className="mr-2" />
                 DNI
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Ingrese DNI (8 dígitos)"
@@ -257,38 +278,33 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
                     handleChange('dni', value)
                     setDniError('')
                   }}
-                  style={{ flex: 1 }}
+                  className={cn(modalInput, 'flex-1')}
                   maxLength={8}
                 />
                 <button
                   type="button"
                   onClick={searchByDni}
                   disabled={searchingDni || form.dni.length !== 8}
-                  className="btn-primary"
-                  style={{
-                    padding: '8px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    minWidth: '100px',
-                    justifyContent: 'center'
-                  }}
+                  className={cn(
+                    btnPrimary,
+                    'flex items-center justify-center gap-1.5 min-w-[100px] px-4! py-2!'
+                  )}
                 >
                   <FaSearch />
                   {searchingDni ? 'Buscando...' : 'Buscar'}
                 </button>
               </div>
               {dniError && <span className="error-message">{dniError}</span>}
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              <span className="block mt-1 text-[0.8rem] text-muted">
                 Ingrese el DNI para autocompletar los datos del personal
               </span>
             </div>
           )}
 
           {/* Nombre */}
-          <div className="form-group">
-            <label>
-              <FaUser style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={labelClass}>
+              <FaUser className="mr-2" />
               Nombre *
             </label>
             <input
@@ -296,15 +312,15 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
               placeholder="Ej: Juan"
               value={form.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className={errors.name ? 'input-error' : ''}
+              className={cn(modalInput, errors.name && 'input-error')}
             />
             {errors.name && <span className="error-message">{errors.name}</span>}
           </div>
 
           {/* Apellido */}
-          <div className="form-group">
-            <label>
-              <FaUser style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={labelClass}>
+              <FaUser className="mr-2" />
               Apellido *
             </label>
             <input
@@ -312,15 +328,15 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
               placeholder="Ej: Perez"
               value={form.lastname}
               onChange={(e) => handleChange('lastname', e.target.value)}
-              className={errors.lastname ? 'input-error' : ''}
+              className={cn(modalInput, errors.lastname && 'input-error')}
             />
             {errors.lastname && <span className="error-message">{errors.lastname}</span>}
           </div>
 
           {/* Usuario */}
-          <div className="form-group">
-            <label>
-              <FaUserTag style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={labelClass}>
+              <FaUserTag className="mr-2" />
               Usuario *
             </label>
             <input
@@ -328,15 +344,15 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
               placeholder="Ej: juanperez"
               value={form.username}
               onChange={(e) => handleChange('username', e.target.value)}
-              className={errors.username ? 'input-error' : ''}
+              className={cn(modalInput, errors.username && 'input-error')}
             />
             {errors.username && <span className="error-message">{errors.username}</span>}
           </div>
 
           {/* Email */}
-          <div className="form-group">
-            <label>
-              <FaEnvelope style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={labelClass}>
+              <FaEnvelope className="mr-2" />
               Email *
             </label>
             <input
@@ -344,15 +360,15 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
               placeholder="Ej: juan@example.com"
               value={form.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              className={errors.email ? 'input-error' : ''}
+              className={cn(modalInput, errors.email && 'input-error')}
             />
             {errors.email && <span className="error-message">{errors.email}</span>}
           </div>
 
           {/* Contraseña */}
-          <div className="form-group">
-            <label>
-              <FaLock style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={labelClass}>
+              <FaLock className="mr-2" />
               Contraseña {!initial && '*'}
             </label>
             <input
@@ -360,21 +376,21 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
               placeholder={initial ? 'Dejar vacío para no cambiar' : 'Mínimo 8 caracteres'}
               value={form.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={errors.password ? 'input-error' : ''}
+              className={cn(modalInput, errors.password && 'input-error')}
             />
             {errors.password && <span className="error-message">{errors.password}</span>}
           </div>
 
           {/* Rol */}
-          <div className="form-group">
-            <label>
-              <FaUserTag style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={labelClass}>
+              <FaUserTag className="mr-2" />
               Rol *
             </label>
             <select
               value={form.rol}
               onChange={(e) => handleChange('rol', e.target.value as Role)}
-              className={errors.rol ? 'input-error' : ''}
+              className={cn(modalInput, errors.rol && 'input-error')}
               disabled={!!initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR')}
             >
               <option value="SENTINEL">Sentinel</option>
@@ -385,36 +401,28 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
             </select>
             {errors.rol && <span className="error-message">{errors.rol}</span>}
             {initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR') && (
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              <span className={helpText}>
                 No se puede cambiar el rol de un administrador
               </span>
             )}
             {!canCreateSupervisor && !initial && (
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              <span className={helpText}>
                 Solo puedes crear Sentinels
               </span>
             )}
           </div>
 
           {/* Nota informativa */}
-          <div style={{
-            padding: '12px',
-            background: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '6px',
-            fontSize: '0.9rem',
-            color: 'var(--text-secondary)',
-            marginTop: '10px'
-          }}>
+          <div className="mt-2.5 rounded-[6px] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.1)] p-3 text-[0.9rem] text-content-2">
             <strong>Nota:</strong> Los campos marcados con (*) son requeridos.
           </div>
 
           {/* Botones de acción */}
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
+          <div className={modalActions}>
+            <button type="button" className={btnSecondary} onClick={onClose}>
               CANCELAR
             </button>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className={btnPrimary}>
               {initial ? 'ACTUALIZAR USUARIO' : 'CREAR USUARIO'}
             </button>
           </div>

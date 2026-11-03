@@ -3,7 +3,28 @@ import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import AlertModal from './AlertModal'
-import './Autocomplete.css'
+import {
+  autocompleteContainer,
+  autocompleteError,
+  autocompleteItem,
+  autocompleteItemCode,
+  autocompleteItemDetails,
+  autocompleteLoading,
+  autocompleteNoResults,
+  autocompleteSuggestions,
+  btnPrimary,
+  btnSecondary,
+  cn,
+  modalActions,
+  modalBackdrop,
+  modalBody,
+  modalCard,
+  modalClose,
+  modalHeader,
+  modalInput,
+  modalLabel,
+  modalTitle
+} from '@/utils/classes'
 import {
   FaIdCard,
   FaClipboardList,
@@ -50,6 +71,9 @@ export interface ModalInasistenciaProps {
   onClose: () => void
   onSave?: (form: InasistenciaForm, leads: Lead[]) => void
 }
+
+/** Input de solo lectura (rellenado automáticamente con el DNI) */
+const readOnlyInput = cn(modalInput, 'cursor-not-allowed')
 
 const defaultState: InasistenciaForm = {
   dni: '',
@@ -289,19 +313,20 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
   }
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card">
-        <div className="modal-header">
-          <h3>Nueva Inasistencia</h3>
-          <button className="close" onClick={onClose}>×</button>
+    <div className={modalBackdrop}>
+      <div className={cn(modalCard, 'max-[900px]:mx-auto max-[900px]:my-2.5 max-[900px]:max-h-[90vh] max-[900px]:w-[95%] max-[900px]:overflow-y-auto')}>
+        <div className={modalHeader}>
+          <h3 className={modalTitle}>Nueva Inasistencia</h3>
+          <button className={modalClose} onClick={onClose}>×</button>
         </div>
-        <form className="modal-body" onSubmit={handleSubmit}>
-          <label>
-            <FaIdCard style={{ marginRight: '8px' }} />
+        <form className={cn(modalBody, 'max-[900px]:max-h-[calc(90vh-120px)] max-[900px]:overflow-y-auto')} onSubmit={handleSubmit}>
+          <label className={modalLabel}>
+            <FaIdCard className="mr-2" />
             DNI * (8 dígitos)
           </label>
-          <div className="autocomplete-container" ref={dniAutocompleteRef}>
+          <div className={autocompleteContainer} ref={dniAutocompleteRef}>
             <input
+              className={modalInput}
               value={dniSearchTerm}
               onChange={handleDNIChange}
               onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
@@ -311,23 +336,23 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
               autoComplete="off"
             />
             {offenderLoading && (
-              <div className="autocomplete-loading">Buscando...</div>
+              <div className={autocompleteLoading}>Buscando...</div>
             )}
             {offenderError && (
-              <div className="autocomplete-error">{offenderError}</div>
+              <div className={autocompleteError}>{offenderError}</div>
             )}
             {showOffenderSuggestions && offendersHabilitados.length > 0 && (
-              <div className="autocomplete-suggestions">
+              <div className={autocompleteSuggestions}>
                 {offendersHabilitados.map((offender, index) => (
                   <div
                     key={offender.gestionate_id || offender.id || index}
-                    className="autocomplete-item"
+                    className={autocompleteItem}
                     onClick={() => handleOffenderSelect(offender)}
                   >
-                    <div className="autocomplete-item-code">
+                    <div className={autocompleteItemCode}>
                       DNI: {offender.dni} - {offender.name} {offender.lastname}
                     </div>
-                    <div className="autocomplete-item-details">
+                    <div className={autocompleteItemDetails}>
                       {offender.job} | {offender.shift} | {offender.regime}
                     </div>
                   </div>
@@ -335,69 +360,70 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
               </div>
             )}
             {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
-              <div className="autocomplete-no-results">
+              <div className={autocompleteNoResults}>
                 No se encontraron registros
               </div>
             )}
           </div>
 
-          <label>
-            <FaClipboardList style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaClipboardList className="mr-2" />
             Asunto
           </label>
           <input
+            className={readOnlyInput}
             value={form.asunto}
             readOnly
-            style={{ cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)' }}
           />
 
-          <label>
-            <FaClock style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaClock className="mr-2" />
             Turno *
           </label>
           <input
+            className={readOnlyInput}
             value={form.turno}
             readOnly
             placeholder="Se llenará automáticamente con el DNI"
-            style={{ cursor: 'not-allowed' }}
           />
 
-          <label>
-            <FaUserTie style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaUserTie className="mr-2" />
             Cargo *
           </label>
           <input
+            className={readOnlyInput}
             value={form.cargo}
             readOnly
             placeholder="Se llenará automáticamente con el DNI"
-            style={{ cursor: 'not-allowed' }}
           />
 
-          <label>
-            <FaIdBadge style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaIdBadge className="mr-2" />
             Reg. Lab *
           </label>
           <input
+            className={readOnlyInput}
             value={form.regLab}
             readOnly
             placeholder="Se llenará automáticamente con el DNI"
-            style={{ cursor: 'not-allowed' }}
           />
 
-          <label>
-            <FaBalanceScale style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaBalanceScale className="mr-2" />
             Jurisdicción *
           </label>
           {jurisdictionsLoading ? (
-            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+            <div className="p-3 text-center text-muted">
               Cargando jurisdicciones...
             </div>
           ) : jurisdictionsError ? (
-            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+            <div className="p-3 text-center text-danger">
               {jurisdictionsError}
             </div>
           ) : (
             <select
+              className={modalInput}
               value={form.jurisdiccion}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
@@ -425,9 +451,9 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
             </select>
           )}
 
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn-secondary">CANCELAR</button>
-            <button type="submit" className="btn-primary">CREAR INCIDENCIA</button>
+          <div className={modalActions}>
+            <button type="button" onClick={onClose} className={btnSecondary}>CANCELAR</button>
+            <button type="submit" className={btnPrimary}>CREAR INCIDENCIA</button>
           </div>
         </form>
       </div>

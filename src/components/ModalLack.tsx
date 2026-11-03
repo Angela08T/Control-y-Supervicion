@@ -3,6 +3,31 @@ import { FaClipboardList, FaFolder, FaFileAlt, FaBook, FaInfoCircle } from 'reac
 import { getSubjects } from '../api/subject'
 import { toast } from '../utils/toast'
 import type { CreateLackDto, Lack, Subject } from '@/types'
+import {
+  btnPrimary,
+  btnSecondary,
+  cn,
+  formGroup,
+  formLabel,
+  modalActions,
+  modalBackdrop,
+  modalBody,
+  modalCard,
+  modalClose,
+  modalHeader,
+  modalInput,
+  modalLabel,
+  modalTextarea,
+  modalTitle
+} from '../utils/classes'
+
+// Ajustes responsive (@media max-width: 900px) de .modal-card y .modal-body
+const cardClass = cn(modalCard, 'max-[900px]:w-[95%] max-[900px]:max-h-[90vh] max-[900px]:overflow-y-auto max-[900px]:m-[10px_auto]')
+const bodyClass = cn(modalBody, 'max-[900px]:max-h-[calc(90vh-120px)] max-[900px]:overflow-y-auto')
+
+// Textareas con estilos propios (antes inline): padding 10px, radio 4px, fondo var(--bg)
+const textareaBase =
+  'w-full rounded-[4px] border p-2.5 [background:var(--bg)] text-content! outline-none transition-all duration-300 [backdrop-filter:blur(5px)] placeholder:text-muted! focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]! dark:placeholder:text-[#94a3b8]!'
 
 export interface ModalLackProps {
   initial?: Lack | null
@@ -128,18 +153,18 @@ export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) 
   }
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card" style={{ maxWidth: '800px' }}>
-        <div className="modal-header">
-          <h3>{initial ? 'Editar Falta' : 'Nueva Falta'}</h3>
-          <button className="close" onClick={onClose}>×</button>
+    <div className={modalBackdrop}>
+      <div className={cn(cardClass, 'max-w-[800px]')}>
+        <div className={modalHeader}>
+          <h3 className={modalTitle}>{initial ? 'Editar Falta' : 'Nueva Falta'}</h3>
+          <button className={modalClose} onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body">
+        <form onSubmit={handleSubmit} className={bodyClass}>
           {/* Nombre de la Falta */}
-          <div className="form-group">
-            <label>
-              <FaClipboardList style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={cn(modalLabel, formLabel)}>
+              <FaClipboardList className="mr-2" />
               Nombre de la Falta *
             </label>
             <input
@@ -147,33 +172,27 @@ export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) 
               placeholder="Ej: Tardanza Reiterada"
               value={form.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className={errors.name ? 'input-error' : ''}
+              className={cn(modalInput, errors.name && 'input-error')}
               autoFocus
             />
             {errors.name && <span className="error-message">{errors.name}</span>}
           </div>
 
           {/* Asunto */}
-          <div className="form-group">
-            <label>
-              <FaFolder style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={cn(modalLabel, formLabel)}>
+              <FaFolder className="mr-2" />
               Asunto *
             </label>
             {loadingSubjects ? (
-              <div style={{
-                padding: '10px',
-                textAlign: 'center',
-                color: 'var(--text-muted)',
-                border: '1px solid var(--border)',
-                borderRadius: '4px'
-              }}>
+              <div className="p-2.5 text-center text-muted border border-line rounded-[4px]">
                 Cargando asuntos...
               </div>
             ) : (
               <select
                 value={form.subject_id}
                 onChange={(e) => handleChange('subject_id', e.target.value)}
-                className={errors.subject_id ? 'input-error' : ''}
+                className={cn(modalInput, errors.subject_id && 'input-error')}
               >
                 <option value="">Seleccione un asunto</option>
                 {subjects.map((subject) => (
@@ -187,9 +206,9 @@ export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) 
           </div>
 
           {/* Artículo (Opcional) */}
-          <div className="form-group">
-            <label>
-              <FaBook style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={cn(modalLabel, formLabel)}>
+              <FaBook className="mr-2" />
               Artículo (Opcional)
             </label>
             <input
@@ -197,16 +216,17 @@ export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) 
               placeholder="Ej: 68.12"
               value={form.article}
               onChange={(e) => handleChange('article', e.target.value)}
+              className={modalInput}
             />
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+            <span className="block mt-1 text-[0.85rem] text-muted">
               Número de artículo o normativa aplicable
             </span>
           </div>
 
           {/* Descripción (Opcional) */}
-          <div className="form-group">
-            <label>
-              <FaInfoCircle style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={cn(modalLabel, formLabel)}>
+              <FaInfoCircle className="mr-2" />
               Descripción (Opcional)
             </label>
             <textarea
@@ -214,59 +234,35 @@ export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) 
               value={form.description}
               onChange={(e) => handleChange('description', e.target.value)}
               rows={3}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '4px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text)',
-                fontSize: '0.95rem',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
+              className={cn(modalTextarea, textareaBase, 'border-line text-[0.95rem] [font-family:inherit]')}
             />
           </div>
 
           {/* Contenido del Informe */}
-          <div className="form-group">
-            <label>
-              <FaFileAlt style={{ marginRight: '8px' }} />
+          <div className={formGroup}>
+            <label className={cn(modalLabel, formLabel)}>
+              <FaFileAlt className="mr-2" />
               Contenido del Informe *
             </label>
             <textarea
               placeholder="Contenido completo del informe con placeholders como {{offender.name}}, {{bodycam.name}}, etc..."
               value={form.content}
               onChange={(e) => handleChange('content', e.target.value)}
-              className={errors.content ? 'input-error' : ''}
+              className={cn(
+                modalTextarea,
+                textareaBase,
+                errors.content ? 'border-danger' : 'border-line',
+                'text-[0.9rem] leading-[1.6] [font-family:monospace]',
+                errors.content && 'input-error'
+              )}
               rows={12}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '4px',
-                border: errors.content ? '1px solid #ef4444' : '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text)',
-                fontSize: '0.9rem',
-                fontFamily: 'monospace',
-                resize: 'vertical',
-                lineHeight: '1.6'
-              }}
             />
             {errors.content && <span className="error-message">{errors.content}</span>}
 
             {/* Ayuda sobre placeholders */}
-            <div style={{
-              marginTop: '8px',
-              padding: '10px',
-              background: 'rgba(59, 130, 246, 0.05)',
-              border: '1px solid rgba(59, 130, 246, 0.2)',
-              borderRadius: '6px',
-              fontSize: '0.85rem',
-              color: 'var(--text-secondary)'
-            }}>
+            <div className="mt-2 rounded-[6px] border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.05)] p-2.5 text-[0.85rem] text-content-2">
               <strong>Placeholders disponibles:</strong>
-              <div style={{ marginTop: '6px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '4px' }}>
+              <div className="mt-1.5 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-1">
                 <span>• {`{{offender.name}}`}</span>
                 <span>• {`{{offender.lastname}}`}</span>
                 <span>• {`{{offender.regime}}`}</span>
@@ -282,24 +278,16 @@ export default function ModalLack({ initial, onClose, onSave }: ModalLackProps) 
           </div>
 
           {/* Nota informativa */}
-          <div style={{
-            padding: '12px',
-            background: 'rgba(234, 179, 8, 0.1)',
-            border: '1px solid rgba(234, 179, 8, 0.3)',
-            borderRadius: '6px',
-            fontSize: '0.9rem',
-            color: 'var(--text-secondary)',
-            marginTop: '10px'
-          }}>
+          <div className="mt-2.5 rounded-[6px] border border-[rgba(234,179,8,0.3)] bg-[rgba(234,179,8,0.1)] p-3 text-[0.9rem] text-content-2">
             <strong>Nota:</strong> Los campos marcados con (*) son requeridos. El contenido del informe debe incluir placeholders que serán reemplazados automáticamente al generar el documento.
           </div>
 
           {/* Botones de acción */}
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
+          <div className={modalActions}>
+            <button type="button" className={btnSecondary} onClick={onClose}>
               CANCELAR
             </button>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className={btnPrimary}>
               {initial ? 'ACTUALIZAR FALTA' : 'CREAR FALTA'}
             </button>
           </div>
