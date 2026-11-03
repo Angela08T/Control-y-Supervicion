@@ -1,11 +1,24 @@
 import React from 'react'
+import type { ISODateString, Offender } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
 
-export default function OffenderTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+/** Offender row; `deleted_at` is read by the table but not selected by GET /offender. */
+export type OffenderRow = Offender & { deleted_at?: ISODateString | null };
+
+export interface OffenderTableProps {
+  data?: OffenderRow[];
+  onToggleStatus: (item: OffenderRow) => void;
+  onEdit: (item: OffenderRow) => void;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function OffenderTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: OffenderTableProps) {
   const showActions = canEdit || canDelete
 
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {
@@ -18,7 +31,7 @@ export default function OffenderTable({ data = [], onToggleStatus, onEdit, start
   }
 
   // Configuración de colores para turnos
-  const shiftConfig = {
+  const shiftConfig: Record<string, { color: string; bg: string }> = {
     'Mañana': { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
     'Tarde': { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
     'Noche': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' }

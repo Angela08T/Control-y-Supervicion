@@ -1,10 +1,20 @@
 import React from 'react'
+import type { Job } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
 
-export default function JobTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+export interface JobTableProps {
+  data?: Job[];
+  onToggleStatus: (item: Job) => void;
+  onEdit: (item: Job) => void;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function JobTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: JobTableProps) {
   const showActions = canEdit || canDelete
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {

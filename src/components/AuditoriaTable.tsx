@@ -1,15 +1,16 @@
 import React from 'react';
+import type { Action, Audit, Status } from '@/types';
 
 // Función para formatear fecha
-function formatDate(iso) {
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return '-';
   const d = new Date(iso);
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 }
 
 // Función para obtener badge de estado
-function getStatusBadge(status) {
-  const statusColors = {
+function getStatusBadge(status: Status): React.ReactElement {
+  const statusColors: Record<string, string> = {
     SUCCESS: 'badge-success',
     BLOCKED: 'badge-danger',
     ERROR: 'badge-warning',
@@ -24,8 +25,8 @@ function getStatusBadge(status) {
 }
 
 // Función para obtener badge de acción
-function getActionBadge(action) {
-  const actionColors = {
+function getActionBadge(action: Action): React.ReactElement {
+  const actionColors: Partial<Record<Action, string>> = {
     LOGIN: 'badge-info',
     LOGOUT: 'badge-secondary',
     CREATE: 'badge-success',
@@ -42,7 +43,13 @@ function getActionBadge(action) {
   );
 }
 
-export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPage = 10 }) {
+export interface AuditoriaTableProps {
+  data?: Audit[];
+  currentPage?: number;
+  itemsPerPage?: number;
+}
+
+export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPage = 10 }: AuditoriaTableProps) {
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -105,7 +112,7 @@ export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPag
                           }}>
                           {(() => {
                             try {
-                              return JSON.stringify(JSON.parse(item.preview_content), null, 2);
+                              return JSON.stringify(JSON.parse(item.preview_content ?? ''), null, 2);
                             } catch {
                               return item.preview_content;
                             }
@@ -130,7 +137,7 @@ export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPag
                           }}>
                             {(() => {
                             try {
-                              return JSON.stringify(JSON.parse(item.new_content), null, 2);
+                              return JSON.stringify(JSON.parse(item.new_content ?? ''), null, 2);
                             } catch {
                               return item.new_content;
                             }

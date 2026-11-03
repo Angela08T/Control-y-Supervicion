@@ -1,10 +1,20 @@
 import React from 'react'
+import type { Subject } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaList } from 'react-icons/fa'
 
-export default function SubjectTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+export interface SubjectTableProps {
+  data?: Subject[];
+  onToggleStatus: (item: Subject) => void;
+  onEdit: (item: Subject) => void;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function SubjectTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: SubjectTableProps) {
   const showActions = canEdit || canDelete
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {

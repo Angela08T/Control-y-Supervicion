@@ -1,10 +1,20 @@
 import React from 'react'
+import type { Lead } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
 
-export default function LeadTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+export interface LeadTableProps {
+  data?: Lead[];
+  onToggleStatus: (item: Lead) => void;
+  onEdit: (item: Lead) => void;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function LeadTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: LeadTableProps) {
   const showActions = canEdit || canDelete
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {

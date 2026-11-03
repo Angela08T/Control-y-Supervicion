@@ -1,11 +1,24 @@
 import React from 'react'
+import type { BodycamView } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
 
-export default function BodycamTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+/** Fila que la tabla necesita (los resultados de busqueda no traen `cam`) */
+export type BodycamTableRow = Pick<BodycamView, 'id' | 'name' | 'serie' | 'deleted_at'>;
+
+export interface BodycamTableProps {
+  data?: BodycamTableRow[];
+  onToggleStatus: (item: BodycamTableRow) => void;
+  onEdit: (item: BodycamTableRow) => void;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function BodycamTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: BodycamTableProps) {
   const showActions = canEdit || canDelete
 
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {

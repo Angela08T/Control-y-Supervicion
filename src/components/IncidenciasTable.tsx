@@ -1,20 +1,26 @@
 import React from 'react'
+import type { ID, Incidencia, IncidenciaStatus } from '@/types'
 import { FaFilePdf, FaBan, FaPaperPlane, FaCheck, FaTimes, FaClock, FaCheckCircle, FaTimesCircle, FaUndo } from 'react-icons/fa'
 import { MdBlock } from 'react-icons/md'
 
-function formatDeletedDate(isoDate) {
+function formatDeletedDate(isoDate: string | null | undefined): string {
   if (!isoDate) return ''
   const d = new Date(isoDate)
   return `Deshabilitado el ${d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })} a las ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-function formatAbsenceDates(item) {
+function formatAbsenceDates(item: Incidencia): string {
   if (!item.absenceStart || !item.absenceEnd) return '-'
-  const fmt = (d) => new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const fmt = (d: string): string => new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
   return `${fmt(item.absenceStart)} - ${fmt(item.absenceEnd)}`
 }
 
-function EstadoIncidencia({ status, disabled }) {
+interface EstadoIncidenciaProps {
+  status: string | null | undefined;
+  disabled: boolean;
+}
+
+function EstadoIncidencia({ status, disabled }: EstadoIncidenciaProps) {
   if (disabled) {
     return (
       <span style={{
@@ -28,7 +34,7 @@ function EstadoIncidencia({ status, disabled }) {
     )
   }
 
-  const estados = {
+  const estados: Record<string, { label: string; icon: React.ReactElement; color: string }> = {
     pending:  { label: 'Pendiente',  icon: <FaClock />,       color: '#f59e0b' },
     approved: { label: 'Aprobado',   icon: <FaCheckCircle />, color: '#22c55e' },
     rejected: { label: 'Rechazado',  icon: <FaTimesCircle />, color: '#ef4444' },
@@ -48,6 +54,19 @@ function EstadoIncidencia({ status, disabled }) {
   )
 }
 
+export interface IncidenciasTableProps {
+  data?: Incidencia[];
+  onDelete: (id: ID, status: IncidenciaStatus) => void;
+  onEdit: (item: Incidencia) => void;
+  onSend: (id: ID) => void;
+  onApprove: (id: ID) => void;
+  onReject: (id: ID) => void;
+  startIndex?: number;
+  canDelete?: boolean;
+  canSend?: boolean;
+  canValidate?: boolean;
+}
+
 export default function IncidenciasTable({
   data = [],
   onDelete,
@@ -59,7 +78,7 @@ export default function IncidenciasTable({
   canDelete = true,
   canSend = false,
   canValidate = false
-}) {
+}: IncidenciasTableProps) {
   return (
     <div className="table-card">
       <div className="table-scroll-container">
@@ -102,13 +121,13 @@ export default function IncidenciasTable({
               const canValidateReport   = !isDisabled && canValidate && itemStatus === 'pending'
 
               // Estilos de fila según estado habilitado/deshabilitado
-              const rowStyle = isDisabled ? {
+              const rowStyle: React.CSSProperties = isDisabled ? {
                 backgroundColor: 'rgba(239, 68, 68, 0.06)',
                 opacity: 0.72,
               } : {}
 
               // Estilo de texto en celdas de una fila deshabilitada
-              const cellTextStyle = isDisabled ? {
+              const cellTextStyle: React.CSSProperties = isDisabled ? {
                 textDecoration: 'line-through',
                 color: 'var(--text-muted)',
               } : {}

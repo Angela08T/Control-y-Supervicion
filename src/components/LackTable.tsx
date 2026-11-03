@@ -1,13 +1,23 @@
 import React, { useState } from 'react'
+import type { Lack } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaFolder, FaFileAlt, FaEye } from 'react-icons/fa'
 import ModalViewContent from './ModalViewContent'
 
-export default function LackTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }) {
+export interface LackTableProps {
+  data?: Lack[];
+  onToggleStatus: (item: Lack) => void;
+  onEdit: (item: Lack) => void;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function LackTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: LackTableProps) {
   const showActions = canEdit || canDelete
-  const [viewingContent, setViewingContent] = useState(null)
+  const [viewingContent, setViewingContent] = useState<Lack | null>(null)
 
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {
@@ -20,7 +30,7 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
   }
 
   // Función para truncar texto largo
-  const truncateText = (text, maxLength = 100) => {
+  const truncateText = (text: string | null | undefined, maxLength = 100): string => {
     if (!text) return 'Sin contenido'
     if (text.length <= maxLength) return text
     return text.substring(0, maxLength) + '...'
@@ -266,11 +276,11 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
                             transition: 'all 0.2s',
                             whiteSpace: 'nowrap'
                           }}
-                          onMouseOver={(e) => {
+                          onMouseOver={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.background = 'var(--primary)'
                             e.currentTarget.style.color = 'white'
                           }}
-                          onMouseOut={(e) => {
+                          onMouseOut={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'
                             e.currentTarget.style.color = 'var(--primary)'
                           }}

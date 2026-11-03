@@ -1,10 +1,25 @@
 import React from 'react'
+import type { ID, User } from '@/types'
 import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaTimes, FaDesktop } from 'react-icons/fa'
 
-export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactivateSession, startIndex = 0, canEdit = true, canDelete = true }) {
+/** User row; `role` and `sessions` are read by the table but not part of GET /user (buildSelectUser). */
+export type UserRow = User & { role?: string; sessions?: string[] };
+
+export interface UserTableProps {
+  data?: UserRow[];
+  onToggleStatus: (item: UserRow) => void;
+  onEdit: (item: UserRow) => void;
+  /** Passed as null when the current user is not an admin. */
+  onDeactivateSession?: ((userId: ID, ip: string) => void) | null;
+  startIndex?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactivateSession, startIndex = 0, canEdit = true, canDelete = true }: UserTableProps) {
   const showActions = canEdit || canDelete
   // Función para formatear la fecha de deshabilitación
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleString('es-PE', {
@@ -45,7 +60,7 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactiv
               const userRole = (item.rol || item.role || '').toUpperCase()
 
               // Configuración de estilos por rol
-              const roleConfig = {
+              const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
                 ADMIN: { label: 'Admin', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
                 ADMINISTRATOR: { label: 'Admin', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
                 SUPERVISOR: { label: 'Supervisor', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
@@ -125,7 +140,7 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactiv
                             <span style={{ color: 'var(--text)', fontFamily: 'monospace' }}>{ip}</span>
                             {onDeactivateSession && (
                               <button
-                                onClick={() => onDeactivateSession(item.id, ip)}
+                                onClick={() => onDeactivateSession?.(item.id, ip)}
                                 title={`Cerrar sesión en ${ip}`}
                                 style={{
                                   background: 'none',
