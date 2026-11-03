@@ -2,6 +2,7 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import type { AppRole } from '@/types'
 import { useAppSelector } from '@/store/hooks'
+import { cn } from '@/utils/classes'
 
 interface MenuItem {
   path: string
@@ -393,24 +394,37 @@ const menuItems: Record<AppRole, MenuItem[]> = {
   ]
 }
 
+/* Enlace del menu: el hover del enlace muestra la etiqueta (group-hover) */
+const navLinkBase =
+  'group relative flex w-full cursor-pointer flex-col items-center justify-center border-l-4 py-[18px] text-[24px] no-underline transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:translate-x-1 [&_svg]:size-7 [&_svg]:stroke-2'
+
+const navLinkIdle =
+  'border-l-transparent text-content-2 hover:border-l-primary hover:bg-[rgba(30,58,138,0.05)] hover:text-primary'
+
+const navLinkActive =
+  'border-l-primary bg-[rgba(30,58,138,0.1)] text-primary shadow-[0_4px_15px_var(--shadow-hover)] hover:bg-[rgba(30,58,138,0.1)]'
+
+const navLabel =
+  "absolute left-[90px] z-[1000] hidden pointer-events-none whitespace-nowrap rounded-lg border border-line bg-surface px-4 py-2 text-[14px] font-medium text-content shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)] before:content-[''] before:absolute before:top-1/2 before:left-[-6px] before:h-0 before:w-0 before:-translate-y-1/2 before:border-solid before:border-y-[6px] before:border-r-[6px] before:border-l-0 before:border-t-transparent before:border-b-transparent before:border-l-transparent before:border-r-surface group-hover:block group-hover:animate-[fadeInRight_0.2s_ease-out]"
+
 export default function Sidebar() {
   const { role } = useAppSelector((state) => state.auth)
   const items: MenuItem[] = (role && menuItems[role]) || []
 
   return (
-    <aside className="sidebar">
-      <nav>
-        <ul>
+    <aside className="fixed top-[65px] left-0 z-[100] flex h-[calc(100vh-65px)] w-20 flex-col items-center border-r border-line bg-surface py-5 text-content shadow-[4px_0_20px_var(--shadow)] animate-[slideInLeft_0.5s_ease-out] [backdrop-filter:blur(10px)] max-[600px]:z-[1000] max-[600px]:w-[60px]">
+      <nav className="w-full">
+        <ul className="m-0 w-full list-none p-0">
           {items.map((item) => (
-            <li key={item.path}>
+            <li key={item.path} className="relative w-full">
               <NavLink
                 to={item.path}
                 end={item.path === `/dashboard/${role}`}
-                className={({ isActive }) => isActive ? 'active' : ''}
+                className={({ isActive }) => cn(navLinkBase, isActive ? navLinkActive : navLinkIdle)}
                 title={item.label}
               >
                 {item.svg}
-                <span className="nav-label">{item.label}</span>
+                <span className={navLabel}>{item.label}</span>
               </NavLink>
             </li>
           ))}
