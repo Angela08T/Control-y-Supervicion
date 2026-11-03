@@ -30,8 +30,8 @@ interface InasistenciaRow {
   asunto: string
   falta: string
   fechaIncidente: null
-  createdAt: ISODateString
-  updatedAt: ISODateString
+  createdAt?: ISODateString
+  updatedAt?: ISODateString
 }
 
 /** Rango de fechas seleccionado en el calendario */
@@ -119,7 +119,7 @@ export default function InasistenciasPage() {
           turno: person.shift || null,
           cargo: person.job || null,
           regLab: person.regime || null,
-          subgerencia: person.subgerencia || person.jurisdiction || null,
+          subgerencia: person.subgerencia || (typeof person.jurisdiction === 'object' ? person.jurisdiction?.name : person.jurisdiction) || null,
           asunto: 'Inasistencia',
           falta: 'Inasistencia',
           fechaIncidente: null,

@@ -23,7 +23,7 @@ interface InasistenciaItem {
 /** Fecha de asistencia guardada en la API (GET /attendance) */
 interface SavedAttendanceDate {
   id: ID
-  date: string
+  date: string | null
   mode?: string | null
   delete_at?: string | null
 }
@@ -151,7 +151,7 @@ export default function CalendarioInasistencias({
       if (person.dates && Array.isArray(person.dates)) {
         person.dates.forEach(dateObj => {
           // Solo procesar si no está eliminado (delete_at es null)
-          if (!dateObj.delete_at) {
+          if (!dateObj.delete_at && dateObj.date) {
             const date = new Date(dateObj.date)
             const day = date.getDate()
             const key = `${dni}-${day}`

@@ -35,7 +35,15 @@ interface AttendanceFormData {
 /**
  * Offender con sus inasistencias del rango, tal como lo devuelve GET /attendance
  */
-interface AttendanceOffenderRow {
+/** Fecha de inasistencia tal como la devuelve GET /attendance (campo `dates`) */
+export interface AttendanceDateRow {
+  id: ID;
+  date: string | null;
+  mode: Mode | null;
+  delete_at: ISODateString | null;
+}
+
+export interface AttendanceOffenderRow {
   id?: ID;
   offender_id?: ID;
   dni: string;
@@ -46,10 +54,10 @@ interface AttendanceOffenderRow {
   regime: string;
   shift: string;
   subgerencia?: string;
-  jurisdiction?: string;
-  created_at: ISODateString;
-  updated_at: ISODateString;
-  attendances: Attendance[];
+  jurisdiction?: { id: ID; name: string } | string | null;
+  created_at?: ISODateString;
+  updated_at?: ISODateString;
+  dates: AttendanceDateRow[];
 }
 
 /**

@@ -32,7 +32,7 @@ interface OptionItem {
 /** Fecha de inasistencia de una persona (campo `dates`). */
 interface AttendanceDateItem {
   date: string | null
-  mode?: string
+  mode?: string | null
   delete_at?: string | null
 }
 
