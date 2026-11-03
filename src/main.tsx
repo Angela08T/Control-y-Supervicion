@@ -5,6 +5,7 @@ import { PersistGate } from 'redux-persist/integration/react'
 import { store, persistor } from './store'
 import App from './App'
 import './styles.css'
+import './index.css'
 import { Buffer } from 'buffer'
 
 declare global {

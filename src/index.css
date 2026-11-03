@@ -1,0 +1,330 @@
+/* Tailwind v4 sin preflight: se conservan los estilos por defecto del navegador */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* El tema oscuro de la app usa <html data-theme="dark"> */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ===== Variables de tema (claro / oscuro) ===== */
+:root {
+
+  /* Colores Principales */
+  --primary: #1e3a8a;
+  --secondary: #3b82f6;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+
+  /* Colores de Fondo y Texto */
+  --bg: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%);
+  --bg-secondary: rgba(255, 255, 255, 0.95);
+  --card: rgba(255, 255, 255, 0.90);
+  --card-hover: rgba(255, 255, 255, 0.95);
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  /* Bordes y Sombras */
+  --border: rgba(59, 130, 246, 0.2);
+  --shadow: rgba(30, 58, 138, 0.1);
+  --shadow-hover: rgba(30, 58, 138, 0.2);
+
+  /* Topbar */
+  --topbar-bg: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+
+  /* Estados específicos */
+  --accent: #2563eb;
+  --accent-light: #60a5fa;
+  --primary-hover: #1d4ed8;
+
+  /* Textos en botones */
+  --button-text: #ffffff;
+
+  /* Gráficos */
+  --grid-line-color: rgba(100, 116, 139, 0.15);
+}
+
+[data-theme="dark"] {
+  /* Modo Oscuro */
+  --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  --bg-secondary: rgba(15, 23, 42, 0.95);
+  --card: rgba(15, 23, 42, 0.90);
+  --card-hover: rgba(15, 23, 42, 0.95);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+
+  --border: rgba(59, 130, 246, 0.3);
+  --shadow: rgba(30, 58, 138, 0.3);
+  --shadow-hover: rgba(30, 58, 138, 0.4);
+
+  --topbar-bg: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+
+  /* Textos en botones para modo oscuro */
+  --button-text: #ffffff;
+
+  /* Gráficos */
+  --grid-line-color: rgba(148, 163, 184, 0.2);
+}
+
+/* ===== Tokens de Tailwind enlazados a las variables de tema ===== */
+@theme inline {
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-primary-hover: var(--primary-hover);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-surface: var(--bg-secondary);
+  --color-line: var(--border);
+  --color-content: var(--text-primary);
+  --color-content-2: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-btn: var(--button-text);
+}
+
+/* ===== Animaciones ===== */
+@keyframes gradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawLine {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeInPoint {
+  0% {
+    opacity: 0;
+    transform: scale(0) translateY(-10px);
+  }
+  50% {
+    transform: scale(1.2) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeInPointSmooth {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 0.8;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInPointInstant {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ===== Estilos base globales ===== */
+@layer base {
+  * {
+    box-sizing: border-box;
+    font-family: 'Inter', system-ui, -apple-system, Arial;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  [data-theme="dark"] input[type="date"]::-webkit-datetime-edit,
+  [data-theme="dark"] input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  [data-theme="dark"] input[type="date"]::-webkit-datetime-edit-text,
+  [data-theme="dark"] input[type="date"]::-webkit-datetime-edit-month-field,
+  [data-theme="dark"] input[type="date"]::-webkit-datetime-edit-day-field,
+  [data-theme="dark"] input[type="date"]::-webkit-datetime-edit-year-field,
+  [data-theme="dark"] input[type="time"]::-webkit-datetime-edit,
+  [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-text,
+  [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-hour-field,
+  [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-minute-field,
+  [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-ampm-field {
+    color: #f8fafc !important;
+    background: transparent;
+  }
+
+  [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+    background-color: transparent;
+    color: #f8fafc;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
+  }
+
+  ::selection {
+    background: var(--primary);
+    color: white;
+  }
+
+  ::-moz-selection {
+    background: var(--primary);
+    color: white;
+  }
+}
