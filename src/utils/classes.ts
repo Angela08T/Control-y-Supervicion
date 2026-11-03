@@ -27,7 +27,7 @@ export const modalBackdrop =
   'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/85 p-10 [backdrop-filter:blur(8px)] animate-[fadeIn_0.3s_ease-out]'
 
 export const modalCard =
-  'm-auto w-[450px] overflow-hidden rounded-[20px] border border-line bg-surface shadow-[0_20px_60px_var(--shadow-hover)] [backdrop-filter:blur(20px)] animate-[modalSlideIn_0.4s_cubic-bezier(0.68,-0.55,0.265,1.55)]'
+  'm-auto w-[450px] overflow-hidden rounded-[20px] border border-line bg-surface shadow-[0_20px_60px_var(--shadow-hover)] [backdrop-filter:blur(20px)] animate-[modalSlideIn_0.4s_cubic-bezier(0.68,-0.55,0.265,1.55)] max-[900px]:mx-auto max-[900px]:my-2.5 max-[900px]:max-h-[90vh] max-[900px]:w-[95%] max-[900px]:overflow-y-auto'
 
 export const modalHeader =
   'flex items-center justify-between border-b border-line bg-[linear-gradient(135deg,rgba(30,58,138,0.1)_0%,rgba(59,130,246,0.1)_100%)] px-6 pb-0 pt-5'
@@ -42,7 +42,7 @@ export const modalClose =
 export const modalActions = 'mt-3 flex justify-end gap-3 border-t border-line pt-5'
 
 export const modalBody =
-  'flex max-h-[calc(100vh-200px)] flex-col gap-3 overflow-y-auto p-6 [background:var(--bg)]'
+  'flex max-h-[calc(100vh-200px)] flex-col gap-3 overflow-y-auto p-6 [background:var(--bg)] max-[900px]:max-h-[calc(90vh-120px)]'
 
 /** <label> dentro del cuerpo del modal */
 export const modalLabel =
@@ -61,7 +61,7 @@ export const modalInputDateTime =
 // ==================== Encabezado de pagina ====================
 
 export const pageHeader =
-  'mb-[25px] box-border flex w-full items-center justify-between border-b border-line pb-[15px]'
+  'mb-[25px] box-border flex w-full items-center justify-between border-b border-line pb-[15px] max-[900px]:flex-col max-[900px]:items-start max-[900px]:gap-[15px]'
 
 /** Variante del encabezado dentro de .incidencias-page */
 export const pageHeaderIncidencias =
@@ -74,10 +74,10 @@ export const pageTitle =
 // ==================== Controles (buscador / filtros) ====================
 
 export const controlsBar =
-  'flex items-center gap-3 animate-[slideInRight_0.5s_ease-out] max-[600px]:w-full'
+  'flex items-center gap-3 animate-[slideInRight_0.5s_ease-out] max-[900px]:flex-wrap max-[900px]:justify-between max-[900px]:gap-2 max-[600px]:w-full'
 
 const controlsField =
-  'rounded-[10px] border border-line bg-surface px-3.5 py-2.5 text-[14px] text-content! outline-none transition-all duration-300 ease-[ease] [backdrop-filter:blur(5px)] hover:border-primary hover:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]!'
+  'rounded-[10px] border border-line bg-surface px-3.5 py-2.5 text-[14px] text-content! outline-none transition-all duration-300 ease-[ease] [backdrop-filter:blur(5px)] hover:border-primary hover:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]! max-[900px]:min-w-0 max-[900px]:flex-[1_1_100%]'
 
 export const controlsSelect = `${controlsField} max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap`
 
@@ -129,7 +129,7 @@ export const appRoot = 'flex min-h-screen flex-col'
 export const appContent = 'mt-[65px] flex flex-1'
 
 export const mainArea =
-  'ml-20 box-border h-[calc(100vh-65px)] w-[calc(100vw-80px)] flex-1 overflow-x-hidden overflow-y-auto p-[30px] [background:var(--bg)]! [background-attachment:fixed]! animate-[fadeInUp_0.6s_ease-out] max-[600px]:ml-[60px] max-[600px]:w-[calc(100%-60px)] max-[600px]:p-2.5'
+  'ml-20 box-border h-[calc(100vh-65px)] w-[calc(100vw-80px)] flex-1 overflow-x-hidden overflow-y-auto p-[30px] [background:var(--bg)]! [background-attachment:fixed]! animate-[fadeInUp_0.6s_ease-out] max-[600px]:ml-[60px] max-[600px]:w-[calc(100%-60px)] max-[600px]:p-2.5 max-[900px]:w-[calc(100%-80px)] max-[900px]:p-[15px]'
 
 export const incidenciasPage = 'flex h-full w-full flex-col overflow-y-auto'
 
