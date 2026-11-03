@@ -26,12 +26,6 @@ interface RequestErrorLike {
   response?: { data?: { message?: string | string[] } }
 }
 
-/** Cuerpo de GET /subject/:id tal como lo lee esta página (`found` y `data` como lista). */
-interface SubjectByIdBody {
-  found?: boolean
-  data: Subject[]
-}
-
 export default function SubjectPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'asuntos')
@@ -119,15 +113,17 @@ export default function SubjectPage() {
       const searchById = async () => {
         setIsSearching(true)
         try {
-          const result = (await getSubjectById(searchTerm)) as unknown as SubjectByIdBody
+          // GET /subject/:id devuelve un solo asunto en `data`
+          const result = await getSubjectById(searchTerm)
 
-          if (result.found && result.data.length > 0) {
-            setSearchResult(result.data)
+          if (result.data) {
+            setSearchResult([result.data])
           } else {
             setSearchResult([])
           }
         } catch (error) {
-          setSearchResult(null)
+          // El backend responde 400 cuando el asunto no existe
+          setSearchResult([])
         } finally {
           setIsSearching(false)
         }
