@@ -34,6 +34,7 @@ import type {
   StoredIncidencia,
   TablePagination,
 } from '@/types'
+import { btnPrimary, btnSecondary, cn, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
 
 /** Forma mínima de un error (axios / NestJS) que lee esta página. */
 interface ApiErrorLike {
@@ -126,6 +127,47 @@ function errorMessageOf(error: unknown, fallback: string): string {
   const err = error as ApiErrorLike;
   return (err.response?.data?.message as string | undefined) || err.message || fallback;
 }
+
+/** Fila superior de la cabecera (antes .header-top); en tablet/movil apila y estira los botones */
+const headerTop =
+  'flex w-full items-center justify-between max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-[15px] max-[768px]:[&_button]:w-full max-[768px]:[&_button]:justify-center'
+
+/** Barra de filtros (antes .header-filters) */
+const headerFilters =
+  'flex w-full flex-wrap items-center gap-3 rounded-[12px] border border-line bg-[rgba(255,255,255,0.4)] p-4 [backdrop-filter:blur(5px)] shadow-[0_4px_15px_rgba(0,0,0,0.03)] dark:bg-[rgba(30,41,59,0.4)] max-[768px]:flex-col max-[768px]:items-stretch'
+
+/** Select de filtro de la cabecera (antes .filter-select). La flecha es un SVG embebido; las clases van completas porque Tailwind no detecta clases armadas por interpolacion */
+const filterSelect = cn(
+  'flex-[1_1_180px] min-w-[160px] appearance-none cursor-pointer rounded-[8px] border border-line bg-surface py-2.5 pl-3.5 pr-10 text-[0.9rem] text-content outline-none transition-all duration-200 ease-[ease]',
+  '[background-image:url(data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2024%2024%27%20fill=%27none%27%20stroke=%27currentColor%27%20stroke-width=%272%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27%3e%3cpolyline%20points=%276%209%2012%2015%2018%209%27%3e%3c/polyline%3e%3c/svg%3e)] bg-no-repeat [background-position:right_10px_center] [background-size:16px]',
+  'hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]',
+  'dark:text-[#f8fafc] dark:[background-image:url(data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2024%2024%27%20fill=%27none%27%20stroke=%27%23f8fafc%27%20stroke-width=%272%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27%3e%3cpolyline%20points=%276%209%2012%2015%2018%209%27%3e%3c/polyline%3e%3c/svg%3e)]',
+  'max-[768px]:w-full max-[768px]:flex-none'
+)
+
+/** Contenedor del buscador (antes .search-container) */
+const searchContainer =
+  'relative flex-[2_1_300px] min-w-[250px] max-[768px]:order-[-1] max-[768px]:mb-2.5 max-[768px]:w-full max-[768px]:flex-none'
+
+/** Icono de lupa dentro del buscador (antes .search-icon) */
+const searchIcon = 'pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[1.1rem] text-muted'
+
+/** Input del buscador (antes .search-input) */
+const searchInput =
+  'w-full rounded-[8px] border border-line bg-surface py-3 pl-[45px] pr-3.5 text-[0.95rem] text-content outline-none transition-all duration-300 ease-[ease] focus:border-primary focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15)] dark:text-[#f8fafc]'
+
+/** Indicador de "buscando" dentro del buscador (antes .search-spinner; su animacion `spin` no existe, se omite) */
+const searchSpinner = 'absolute right-3.5 top-1/2 -translate-y-1/2 text-[1rem]'
+
+/** Botones anterior / siguiente: .btn-secondary con padding y flex en linea */
+const navButton = cn(btnSecondary, 'flex items-center gap-[5px] px-4! py-2! disabled:cursor-not-allowed disabled:opacity-50')
+
+/** Boton de pagina numerica (activo / inactivo) */
+const pageButton = (active: boolean) =>
+  cn(
+    'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2',
+    active ? 'border-primary bg-primary font-bold text-white' : 'border-line bg-transparent font-normal [color:inherit]'
+  )
 
 export default function IncidenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
@@ -765,52 +807,45 @@ export default function IncidenciasPage() {
     : applyFrontendFilters(incidencias) // Aplicar filtros a incidencias
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div className="header-top">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <h2>CONTROL Y SUPERVISIÓN</h2>
-            <div style={{ 
-              backgroundColor: 'var(--primary)', 
-              color: 'white', 
-              padding: '2px 10px', 
-              borderRadius: '12px', 
-              fontSize: '0.8rem', 
-              fontWeight: '600' 
-            }}>
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className={headerTop}>
+          <div className="flex items-center gap-[15px]">
+            <h2 className={pageTitle}>CONTROL Y SUPERVISIÓN</h2>
+            <div className="rounded-[12px] bg-primary px-2.5 py-0.5 text-[0.8rem] font-semibold text-white">
               {pagination.total} Reg.
             </div>
           </div>
-          
-          <div style={{ display: 'flex', gap: '10px' }}>
+
+          <div className="flex gap-2.5">
             <button
-              className="btn-secondary"
+              className={btnSecondary}
               onClick={handleExportExcel}
               disabled={exporting}
               title="Exportar lista a Excel con los filtros actuales"
             >
-              <FaFileExcel style={{ marginRight: '8px' }} />
+              <FaFileExcel className="mr-2" />
               {exporting ? 'Exportando...' : 'Exportar Excel'}
             </button>
 
             {permissions.canCreate && (
-              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus style={{ marginRight: '8px' }} />
+              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus className="mr-2" />
                 Agregar Nueva Incidencia
               </button>
             )}
           </div>
         </div>
 
-        <div className="header-filters">
+        <div className={headerFilters}>
             {/* Filtro por Asunto (Subject) - Usando datos de la API */}
             {subjectsLoading ? (
-              <select disabled className="filter-select">
+              <select disabled className={filterSelect}>
                 <option>Cargando asuntos...</option>
               </select>
             ) : (
               <select
-                className="filter-select"
+                className={filterSelect}
                 value={filters.subjectId}
                 onChange={e => {
                   const selectedSubjectId = e.target.value
@@ -835,12 +870,12 @@ export default function IncidenciasPage() {
 
             {/* Filtro por Falta (Lack) - Usando lacks anidadas del subject seleccionado */}
             {subjectsLoading ? (
-              <select disabled className="filter-select">
+              <select disabled className={filterSelect}>
                 <option>Cargando faltas...</option>
               </select>
             ) : (
               <select
-                className="filter-select"
+                className={filterSelect}
                 value={filters.lackId || ''}
                 onChange={e => {
                   const selectedLackId = e.target.value
@@ -880,12 +915,12 @@ export default function IncidenciasPage() {
 
             {/* Filtro por Jurisdicción - Envía ID al backend */}
             {jurisdictionsLoading ? (
-              <select disabled className="filter-select">
+              <select disabled className={filterSelect}>
                 <option>Cargando jurisdicciones...</option>
               </select>
             ) : (
               <select
-                className="filter-select"
+                className={filterSelect}
                 value={filters.jurisdictionId}
                 onChange={e => {
                   setFilters(f => ({ ...f, jurisdictionId: e.target.value }))
@@ -905,7 +940,7 @@ export default function IncidenciasPage() {
 
             {/* Filtro por Subgerencia */}
             <select
-              className="filter-select"
+              className={filterSelect}
               value={filters.subgerencia}
               onChange={e => {
                 setFilters(f => ({ ...f, subgerencia: e.target.value }))
@@ -919,7 +954,7 @@ export default function IncidenciasPage() {
             </select>
 
             <select
-              className="filter-select"
+              className={filterSelect}
               value={filters.turno}
               onChange={e => setFilters(f => ({ ...f, turno: e.target.value }))}
             >
@@ -931,7 +966,7 @@ export default function IncidenciasPage() {
 
             {/* Filtro de estado de proceso */}
             <select
-              className="filter-select"
+              className={filterSelect}
               value={filters.process}
               onChange={e => {
                 setFilters(f => ({ ...f, process: e.target.value }))
@@ -945,16 +980,16 @@ export default function IncidenciasPage() {
               <option value="REJECTED">Rechazado</option>
             </select>
 
-            <div className="search-container">
-              <FaSearch className="search-icon" />
+            <div className={searchContainer}>
+              <FaSearch className={searchIcon} />
               <input
-                className="search-input"
+                className={searchInput}
                 placeholder="Buscar (DNI, Nombre, ID...)"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
               />
               {isSearching && (
-                <div className="search-spinner">
+                <div className={searchSpinner}>
                   ⏳
                 </div>
               )}
@@ -964,45 +999,26 @@ export default function IncidenciasPage() {
 
       {/* Mensaje informativo para CENTINELA */}
       {!permissions.canDelete && permissions.canCreate && (
-        <div style={{
-          textAlign: 'center',
-          padding: '12px',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          borderRadius: '8px',
-          margin: '20px',
-          border: '1px solid rgba(59, 130, 246, 0.3)'
-        }}>
-          <p style={{ fontSize: '0.9rem', color: '#3b82f6', margin: '0' }}>
+        <div className="m-5 rounded-[8px] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.1)] p-3 text-center">
+          <p className="m-0 text-[0.9rem] text-[#3b82f6]">
             ℹ️ Solo puedes crear incidencias. No puedes eliminar incidencias existentes.
           </p>
         </div>
       )}
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className="p-10 text-center text-[1.1rem] text-muted">
           Cargando incidencias...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableWrapper}>
           {/* Mensaje cuando se busca pero no se encuentra */}
           {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div style={{
-              textAlign: 'center',
-              padding: '30px',
-              backgroundColor: 'var(--card)',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              border: '2px dashed var(--border)'
-            }}>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
+            <div className="mb-5 rounded-[8px] border-2 border-dashed border-line bg-card p-[30px] text-center">
+              <p className="m-0 text-[1.1rem] text-content-2">
                 🔍 No se encontró ninguna incidencia con: <strong>{filters.search}</strong>
               </p>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              <p className="mt-2 text-[0.9rem] text-muted">
                 Verifica que el DNI, nombre o ID sea correcto.
               </p>
             </div>
@@ -1010,15 +1026,8 @@ export default function IncidenciasPage() {
 
           {/* Mensaje cuando se encuentra incidencia(s) */}
           {searchResult !== null && searchResult.length > 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(74, 222, 128, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(74, 222, 128, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
+            <div className="mb-[15px] rounded-[8px] border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.1)] p-3 text-center">
+              <p className="m-0 text-[0.95rem] font-medium text-success">
                 ✅ {searchResult.length} incidencia(s) encontrada(s)
               </p>
             </div>
@@ -1042,46 +1051,24 @@ export default function IncidenciasPage() {
             // Usar searchPagination si está en modo búsqueda, sino usar pagination normal
             const paginationData = isSearchMode && searchPagination ? searchPagination : pagination
 
+            // Controles de paginacion: el contenedor usa flex-wrap en movil
             return (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '20px',
-                marginTop: '20px',
-                background: 'var(--card-bg)',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                flexWrap: 'wrap',  /* Permite que los elementos se envuelvan en móvil */
-                gap: '15px'
-              }}>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-[8px] border border-line p-5">
                 {/* Lado izquierdo: Contador y selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{
-                    color: 'var(--text)',
-                    fontSize: '0.95rem',
-                    fontWeight: '500'
-                  }}>
+                <div className="flex flex-wrap items-center gap-5">
+                  <div className="text-[0.95rem] font-medium">
                     {paginationData.from}-{paginationData.to} de {paginationData.total}
                   </div>
 
                   {/* Selector de items por página */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[0.9rem] text-muted">
                       Mostrar:
                     </label>
                     <select
                       value={itemsPerPage}
                       onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg)',
-                        color: 'var(--text)',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem'
-                      }}
+                      className="cursor-pointer rounded-[4px] border border-line px-3 py-1.5 text-[0.9rem] [background:var(--bg)] [color:inherit]"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -1092,32 +1079,18 @@ export default function IncidenciasPage() {
                 </div>
 
                 {/* Lado derecho: Botones de navegación */}
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <div className="flex flex-wrap items-center justify-center gap-2.5">
                   <button
                     onClick={handlePreviousPage}
                     disabled={currentPage === 1}
-                    className="btn-secondary"
-                    style={{
-                      padding: '8px 16px',
-                      opacity: currentPage === 1 ? 0.5 : 1,
-                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}
+                    className={navButton}
                   >
                     ← Anterior
                   </button>
 
                   {/* Números de página - solo si hay más de 1 página */}
                   {paginationData.totalPages > 1 && (
-                    <div style={{
-                      display: 'flex',
-                      gap: '5px',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      justifyContent: 'center'
-                    }}>
+                    <div className="flex flex-wrap items-center justify-center gap-[5px]">
                       {Array.from({ length: Math.min(5, paginationData.totalPages) }, (_, i) => {
                         let pageNum: number;
                         if (paginationData.totalPages <= 5) {
@@ -1134,16 +1107,7 @@ export default function IncidenciasPage() {
                           <button
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
-                            style={{
-                              padding: '8px 12px',
-                              background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                              color: currentPage === pageNum ? 'white' : 'var(--text)',
-                              border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                              minWidth: '40px'
-                            }}
+                            className={pageButton(currentPage === pageNum)}
                           >
                             {pageNum}
                           </button>
@@ -1154,16 +1118,7 @@ export default function IncidenciasPage() {
 
                   {/* Indicador de página actual si solo hay 1 página */}
                   {paginationData.totalPages === 1 && (
-                    <div style={{
-                      padding: '8px 12px',
-                      background: 'var(--primary)',
-                      color: 'white',
-                      border: '1px solid var(--primary)',
-                      borderRadius: '4px',
-                      fontWeight: 'bold',
-                      minWidth: '40px',
-                      textAlign: 'center'
-                    }}>
+                    <div className="min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white">
                       1
                     </div>
                   )}
@@ -1171,15 +1126,7 @@ export default function IncidenciasPage() {
                   <button
                     onClick={handleNextPage}
                     disabled={currentPage === paginationData.totalPages}
-                    className="btn-secondary"
-                    style={{
-                      padding: '8px 16px',
-                      opacity: currentPage === paginationData.totalPages ? 0.5 : 1,
-                      cursor: currentPage === paginationData.totalPages ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}
+                    className={navButton}
                   >
                     Siguiente →
                   </button>
