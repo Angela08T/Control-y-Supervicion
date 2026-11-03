@@ -1,0 +1,172 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { logout as logoutAction } from "../store/slices/authSlice";
+import { clearToken, setSessionExpiredCallback } from "../api/config";
+import { useAppDispatch } from "@/store/hooks";
+
+// LAYOUTS
+import DashboardLayoutAdmin from "../layouts/DashboardLayoutAdmin";
+import DashboardLayoutSupervisor from "../layouts/DashboardLayoutSupervisor";
+import DashboardLayoutCentinela from "../layouts/DashboardLayoutCentinela";
+import DashboardLayoutValidator from "../layouts/DashboardLayoutValidator";
+import DashboardLayoutSubgerente from "../layouts/DashboardLayoutSubgerente";
+
+// PAGES
+import LoginPage from "../pages/LoginPage";
+import UnauthorizedPage from "../pages/UnauthorizedPage";
+import NotFoundPage from "../pages/NotFoundPage";
+import DashboardPage from "../pages/Dashboard/DashboardPage";
+import IncidenciasPage from "../pages/Incidencias/IncidenciasPage";
+import InasistenciasPage from "../pages/Inasistencias/InasistenciasPage";
+import AuditoriaPage from "../pages/Auditoria/AuditoriaPage";
+import BodycamPage from "../pages/Bodycam/BodycamPage";
+import UsuariosPage from "../pages/Usuarios/UsuariosPage";
+import JobsPage from "../pages/Jobs/JobsPage";
+import LeadsPage from "../pages/Leads/LeadsPage";
+import SubjectPage from "../pages/Subject/SubjectPage";
+import LackPage from "../pages/Lack/LackPage";
+import OffenderPage from "../pages/Offender/OffenderPage";
+import MetricasPage from "../pages/Metricas/MetricasPage";
+
+// COMPONENTS
+import SessionExpiredModal from "../components/SessionExpiredModal";
+
+import PrivateRoute from "./PrivateRoute";
+import PublicRouter from "./PublicRoute";
+import { mainArea } from "../utils/classes";
+
+export default function Router() {
+  const dispatch = useAppDispatch();
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Configurar el callback para mostrar el modal cuando la sesión expire
+    setSessionExpiredCallback(() => {
+      setShowSessionExpiredModal(true);
+    });
+  }, []);
+
+  const handleSessionExpiredAccept = () => {
+    // Limpiar el token y el estado de autenticación
+    clearToken();
+    dispatch(logoutAction());
+    setShowSessionExpiredModal(false);
+    // El componente SessionExpiredModal redirige automáticamente a /login
+  };
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Rutas Públicas */}
+        <Route path="/login" element={<PublicRouter element={<LoginPage />} />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/" element={<Navigate to="/login" />} />
+
+        {/* Rutas protegidas - ADMIN */}
+        <Route
+          path="/dashboard/admin"
+          element={
+            <PrivateRoute requiredRole="admin">
+              <DashboardLayoutAdmin />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
+          <Route path="bodycam" element={<BodycamPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="cargos" element={<JobsPage />} />
+          <Route path="personal" element={<LeadsPage />} />
+          <Route path="asuntos" element={<SubjectPage />} />
+          <Route path="faltas" element={<LackPage />} />
+          <Route path="infractores" element={<OffenderPage />} />
+          {/* Placeholder para futuras rutas */}
+          <Route path="supervisores" element={<div className={mainArea}><h1>Supervisores</h1><p>Próximamente...</p></div>} />
+          <Route path="alertas" element={<div className={mainArea}><h1>Alertas</h1><p>Próximamente...</p></div>} />
+          <Route path="estadisticas" element={<MetricasPage />} />
+          <Route path="camaras" element={<div className={mainArea}><h1>Cámaras</h1><p>Próximamente...</p></div>} />
+          <Route path="reportes" element={<div className={mainArea}><h1>Reportes</h1><p>Próximamente...</p></div>} />
+          <Route path="configuracion" element={<div className={mainArea}><h1>Configuración</h1><p>Próximamente...</p></div>} />
+          <Route path="auditoria" element={<AuditoriaPage />} />
+        </Route>
+
+        {/* Rutas protegidas - SUPERVISOR */}
+        <Route
+          path="/dashboard/supervisor"
+          element={
+            <PrivateRoute requiredRole="supervisor">
+              <DashboardLayoutSupervisor />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
+          <Route path="bodycam" element={<BodycamPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="cargos" element={<JobsPage />} />
+          <Route path="personal" element={<LeadsPage />} />
+          <Route path="asuntos" element={<SubjectPage />} />
+          <Route path="faltas" element={<LackPage />} />
+          <Route path="infractores" element={<OffenderPage />} />
+          <Route path="alertas" element={<div className={mainArea}><h1>Alertas</h1><p>Próximamente...</p></div>} />
+          <Route path="estadisticas" element={<MetricasPage />} />
+          <Route path="reportes" element={<div className={mainArea}><h1>Reportes</h1><p>Próximamente...</p></div>} />
+        </Route>
+
+        {/* Rutas protegidas - CENTINELA */}
+        <Route
+          path="/dashboard/centinela"
+          element={
+            <PrivateRoute requiredRole="centinela">
+              <DashboardLayoutCentinela />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
+          <Route path="bodycam" element={<BodycamPage />} />
+        </Route>
+
+        {/* Rutas protegidas - VALIDATOR */}
+        <Route
+          path="/dashboard/validator"
+          element={
+            <PrivateRoute requiredRole="validator">
+              <DashboardLayoutValidator />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<Navigate to="incidencias" replace />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="inasistencias" element={<InasistenciasPage />} />
+        </Route>
+
+        {/* Rutas protegidas - SUBGERENTE */}
+        <Route
+          path="/dashboard/subgerente"
+          element={
+            <PrivateRoute requiredRole="subgerente">
+              <DashboardLayoutSubgerente />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="incidencias" element={<IncidenciasPage />} />
+          <Route path="estadisticas" element={<MetricasPage />} />
+        </Route>
+
+        {/* Página 404 */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+
+      {/* Modal de sesión expirada */}
+      <SessionExpiredModal
+        show={showSessionExpiredModal}
+        onAccept={handleSessionExpiredAccept}
+      />
+    </BrowserRouter>
+  );
+}

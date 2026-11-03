@@ -1,0 +1,391 @@
+import React, { useEffect, useState } from 'react'
+import { useAppSelector } from '../../store/hooks'
+import LackTable from '../../components/LackTable'
+import ModalLack from '../../components/ModalLack'
+import SuccessModal from '../../components/SuccessModal'
+import ErrorModal from '../../components/ErrorModal'
+import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
+import { getModulePermissions } from '../../utils/permissions'
+import { FaPlus, FaSearch } from 'react-icons/fa'
+import useNotification from '../../hooks/useNotification'
+import { btnPrimary, cn, controlsBar, controlsInput, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
+import type { CreateLackDto, Lack, Paginated, TablePagination } from '@/types'
+
+/** Listado de faltas: `data` paginado (o array plano); la paginación va dentro de `data`. */
+interface LacksListResult {
+  data?: Paginated<Lack> | Lack[];
+}
+
+/** Cuerpo de respuesta de mutaciones (`message` y `data` opcionales). */
+interface MutationBody {
+  message?: string;
+  data?: unknown;
+}
+
+/** Forma mínima del error (Axios / Error) que se lee en los catch. */
+interface ApiErrorLike {
+  response?: { data?: { message?: string | string[] } };
+  message?: string;
+}
+
+/** Lee `message` de un valor desconocido (equivale a `value?.message`). */
+const messageOf = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  return (value as { message?: string }).message
+}
+
+// Clases propias de esta vista (buscador, mensajes, paginación)
+const headerLeft = 'flex flex-1 items-center gap-5'
+const searchWrapper = 'relative'
+const searchIcon = 'absolute top-1/2 left-3 -translate-y-1/2'
+const searchInput = 'pl-[35px]! max-[900px]:flex-[1_1_100%] min-[601px]:max-[900px]:min-w-0'
+const tableContainer = cn(tableWrapper, '[&::-webkit-scrollbar-thumb]:[border:2px_solid_var(--bg)]')
+const loadingText = 'p-10 text-center text-[1.1rem] text-muted'
+const paginationBar = 'mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-lg border border-line bg-transparent p-5'
+const paginationLeft = 'flex flex-wrap items-center gap-5'
+const rowCount = 'text-[0.95rem] font-medium'
+const perPageWrap = 'flex items-center gap-2'
+const perPageLabel = 'text-[0.9rem] text-muted'
+const perPageSelect = 'cursor-pointer rounded-[4px] border border-line [background:var(--bg)] px-3 py-1.5 text-[0.9rem] [color:inherit]'
+const pagesRight = 'flex items-center gap-2.5'
+const navButton = 'flex items-center gap-[5px] rounded-[10px] border-2 border-[#6b7280] bg-[#f3f4f6] px-4 py-2 text-[14px] font-semibold text-[#374151] [transition:all_0.3s_ease] hover:-translate-y-[2px] hover:border-[#1e3a8a] hover:bg-[#e5e7eb] hover:text-[#1e3a8a]'
+const pageNumber = 'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2'
+const pageNumberActive = 'border-primary bg-primary font-bold text-white'
+const pageNumberIdle = 'border-line bg-transparent font-normal [color:inherit]'
+const onlyPage = 'min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white'
+
+export default function LackPage() {
+  const { role: userRole } = useAppSelector((state) => state.auth)
+  const permissions = getModulePermissions(userRole, 'faltas')
+  const { successModal, errorModal, showSuccess, showError, closeSuccess, closeError } = useNotification()
+
+  const [lacks, setLacks] = useState<Lack[]>([])
+  const [showModal, setShowModal] = useState(false)
+  const [editItem, setEditItem] = useState<Lack | null>(null)
+  const [filters, setFilters] = useState({
+    search: ''
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [pagination, setPagination] = useState<TablePagination>({
+    currentPage: 1,
+    totalPages: 1,
+    perPage: 10,
+    total: 0,
+    from: 0,
+    to: 0
+  })
+  const [loading, setLoading] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  // Cargar faltas desde la API con paginación y búsqueda
+  useEffect(() => {
+    async function fetchLacks() {
+      setLoading(true)
+      try {
+        const searchTerm = filters.search.trim()
+
+        const result: LacksListResult = await getLacks(
+          currentPage,
+          itemsPerPage,
+          searchTerm || null
+        )
+
+        const lacksData: Lack[] = Array.isArray(result.data) ? result.data : result.data?.data || []
+        setLacks(lacksData)
+
+        // Metadatos de paginación (solo existen cuando data es el objeto paginado)
+        const meta = Array.isArray(result.data) ? undefined : result.data
+
+        // Manejar paginación si existe
+        if (meta?.totalPages) {
+          setPagination({
+            currentPage: meta.currentPage || currentPage,
+            totalPages: meta.totalPages || 1,
+            perPage: itemsPerPage,
+            total: meta.totalCount || lacksData.length,
+            from: lacksData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
+            to: Math.min(currentPage * itemsPerPage, meta.totalCount || lacksData.length)
+          })
+        } else {
+          // Si no hay paginación, calcular valores básicos
+          setPagination({
+            currentPage: currentPage,
+            totalPages: Math.ceil(lacksData.length / itemsPerPage),
+            perPage: itemsPerPage,
+            total: lacksData.length,
+            from: lacksData.length > 0 ? 1 : 0,
+            to: lacksData.length
+          })
+        }
+      } catch (error) {
+        showError('No se pudo cargar las faltas')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLacks()
+  }, [filters.search, currentPage, itemsPerPage, refreshTrigger])
+
+
+  // Crear o editar falta
+  async function handleSave(data: CreateLackDto) {
+    if (editItem) {
+      // Actualizar falta existente
+      try {
+        const response: MutationBody = await updateLack(editItem.id, data)
+
+        showSuccess(messageOf(response.data) || response.message || 'Falta actualizada exitosamente')
+
+        setEditItem(null)
+        setShowModal(false)
+        setRefreshTrigger(prev => prev + 1)
+      } catch (error) {
+        let errorMessage = 'Error al actualizar la falta'
+        const err = error as ApiErrorLike
+
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación: ' + err.response.data.message.join(', ')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+
+        showError(errorMessage)
+      }
+    } else {
+      // Crear nueva falta
+      try {
+        const response: MutationBody = await createLack(data)
+
+        showSuccess(messageOf(response.data) || response.message || 'Falta creada exitosamente')
+
+        setCurrentPage(1)
+        setShowModal(false)
+        setRefreshTrigger(prev => prev + 1)
+      } catch (error) {
+        let errorMessage = 'Error al crear la falta'
+        const err = error as ApiErrorLike
+
+        if (err.response?.data?.message) {
+          errorMessage = Array.isArray(err.response.data.message)
+            ? 'Errores de validación: ' + err.response.data.message.join(', ')
+            : err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+
+        showError(errorMessage)
+      }
+    }
+  }
+
+  async function handleToggleStatus(item: Lack) {
+    const isEnabled = !item.deleted_at
+    const action = isEnabled ? 'deshabilitar' : 'habilitar'
+    const confirmMessage = isEnabled
+      ? '¿Estás seguro de deshabilitar esta falta? Ya no estará disponible para asignación.'
+      : '¿Estás seguro de habilitar esta falta? Volverá a estar disponible para asignación.'
+
+    if (!confirm(confirmMessage)) return
+
+    try {
+      // El endpoint DELETE hace toggle automáticamente
+      const response: MutationBody = await deleteLack(item.id)
+
+      showSuccess(messageOf(response.data) || response.message || `Falta ${action === 'habilitar' ? 'habilitada' : 'deshabilitada'} exitosamente`)
+
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      let errorMessage = `Error al ${action} la falta`
+      const err = error as ApiErrorLike
+
+      if (err.response?.data?.message) {
+        errorMessage = Array.isArray(err.response.data.message)
+          ? err.response.data.message.join(', ')
+          : err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+
+      showError(errorMessage)
+    }
+  }
+
+  function handleEdit(item: Lack) {
+    setEditItem(item)
+    setShowModal(true)
+  }
+
+  // Funciones de paginación
+  function handlePageChange(newPage: number) {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setCurrentPage(newPage)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  function handlePreviousPage() {
+    handlePageChange(currentPage - 1)
+  }
+
+  function handleNextPage() {
+    handlePageChange(currentPage + 1)
+  }
+
+  function handleItemsPerPageChange(newItemsPerPage: number) {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+  }
+
+  // Los datos ya vienen filtrados desde la API
+  const filteredData = lacks
+
+  return (
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className={headerLeft}>
+          <h2 className={pageTitle}>GESTIÓN DE FALTAS</h2>
+          <div className={controlsBar}>
+            <div className={searchWrapper}>
+              <FaSearch className={searchIcon} />
+              <input
+                placeholder="Buscar por nombre de la falta"
+                value={filters.search}
+                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+                className={cn(controlsInput, searchInput)}
+              />
+            </div>
+
+            {permissions.canCreate && (
+              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus className="mr-2" />
+                Agregar Falta
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {loading ? (
+        <div className={loadingText}>
+          Cargando faltas...
+        </div>
+      ) : (
+        <div className={tableContainer}>
+          <LackTable
+            data={filteredData}
+            onToggleStatus={handleToggleStatus}
+            onEdit={handleEdit}
+            startIndex={pagination.from - 1}
+            canEdit={permissions.canEdit}
+            canDelete={permissions.canDelete}
+          />
+
+          {/* Controles de paginación */}
+          <div className={paginationBar}>
+              {/* Lado izquierdo: Contador y selector */}
+              <div className={paginationLeft}>
+                <div className={rowCount}>
+                  {pagination.from}-{pagination.to} de {pagination.total}
+                </div>
+
+                {/* Selector de items por página */}
+                <div className={perPageWrap}>
+                  <label className={perPageLabel}>
+                    Mostrar:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                    className={perPageSelect}
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Lado derecho: Botones de navegación */}
+              <div className={pagesRight}>
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className={cn(navButton, currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
+                >
+                  ← Anterior
+                </button>
+
+                {/* Números de página */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex items-center gap-[5px]">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={cn(pageNumber, currentPage === pageNum ? pageNumberActive : pageNumberIdle)}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Indicador de página actual si solo hay 1 página */}
+                {pagination.totalPages === 1 && (
+                  <div className={onlyPage}>
+                    1
+                  </div>
+                )}
+
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === pagination.totalPages}
+                  className={cn(navButton, currentPage === pagination.totalPages ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+        </div>
+      )}
+
+      {showModal && (
+        <ModalLack
+          initial={editItem}
+          onClose={() => { setShowModal(false); setEditItem(null) }}
+          onSave={handleSave}
+        />
+      )}
+
+      {/* Modales de notificación */}
+      <SuccessModal
+        show={successModal.show}
+        message={successModal.message}
+        onClose={closeSuccess}
+      />
+      <ErrorModal
+        show={errorModal.show}
+        message={errorModal.message}
+        onClose={closeError}
+      />
+    </div>
+  )
+}
