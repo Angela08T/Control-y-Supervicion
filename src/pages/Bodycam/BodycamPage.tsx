@@ -231,7 +231,7 @@ export default function BodycamPage() {
     } else {
       // Crear nuevo dispositivo
       try {
-        const response = await createBodycam(data as CreateBodycamDto)
+        const response = await createBodycam({ ...data, cam: 'BODYCAM' })
 
         toast.success(readMutationBody(response).data?.message || response.message || 'Dispositivo creado exitosamente')
 
