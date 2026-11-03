@@ -132,3 +132,26 @@ export const mainArea =
   'ml-20 box-border h-[calc(100vh-65px)] w-[calc(100vw-80px)] flex-1 overflow-x-hidden overflow-y-auto p-[30px] [background:var(--bg)]! [background-attachment:fixed]! animate-[fadeInUp_0.6s_ease-out] max-[600px]:ml-[60px] max-[600px]:w-[calc(100%-60px)] max-[600px]:p-2.5'
 
 export const incidenciasPage = 'flex h-full w-full flex-col overflow-y-auto'
+
+// ==================== Autocompletado (bodycam, DNI) ====================
+
+export const autocompleteContainer = 'relative w-full [&_input]:w-full'
+
+const autocompleteBox =
+  'absolute inset-x-0 top-full z-[1000] mt-1 rounded-lg border border-solid px-3 py-2 text-[13px] shadow-[0_4px_12px_var(--shadow)]'
+
+export const autocompleteLoading = `${autocompleteBox} border-line bg-card italic text-content-2`
+
+export const autocompleteError = `${autocompleteBox} border-danger bg-[rgba(239,68,68,0.1)] text-danger`
+
+export const autocompleteNoResults = `${autocompleteBox} border-line bg-card text-muted`
+
+export const autocompleteSuggestions =
+  'absolute inset-x-0 top-full z-[1000] mt-1 max-h-[250px] overflow-y-auto rounded-lg border border-solid border-line bg-card shadow-[0_4px_12px_var(--shadow)] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-lg [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-line [&::-webkit-scrollbar-thumb:hover]:bg-primary'
+
+export const autocompleteItem =
+  'cursor-pointer border-b border-solid border-line px-4 py-3 transition-[background-color] duration-200 ease-[ease] last:border-b-0 hover:bg-card-hover'
+
+export const autocompleteItemCode = 'mb-1 text-[14px] font-semibold text-primary'
+
+export const autocompleteItemDetails = 'text-[12px] text-content-2'
