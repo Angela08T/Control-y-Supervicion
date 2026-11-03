@@ -9,6 +9,7 @@ import { createAbsenceReport, getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
 import { toast } from '../utils/toast'
 import type { CreateAbsenceDto, ID, Mode } from '@/types'
+import { btnPrimary, btnSecondary, modalActions, modalBackdrop, modalClose, modalHeader } from '../utils/classes'
 
 /** Texto o relación `{ name }`: el backend a veces devuelve un objeto y a veces un string. */
 type TextOrNamed = string | { name?: string | null } | null
@@ -148,6 +149,16 @@ function formatearFecha(fecha: string | Date | null | undefined): string {
 
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
+
+/** Etiqueta de cada campo del encabezado de configuración */
+const topbarLabel = 'block mb-1 text-[0.75rem] font-bold text-muted'
+
+/** Celdas de la tabla de datos del informe (CC, DE, ASUNTO) */
+const informeLabelCell = 'py-2 pr-2.5 pl-0 font-bold align-top border-b border-[#eee]'
+const informeValueCell = 'py-2 px-0 border-b border-[#eee]'
+
+/** Celda con borde de la tabla de inasistencias */
+const tablaCell = 'border border-black p-1'
 
 export default function ModalPDFInasistencias({ onClose, inasistencias, savedAttendances, dateRange: initialDateRange, onReportCreated }: ModalPDFInasistenciasProps) {
   const { username } = useAppSelector((state) => state.auth)
@@ -556,51 +567,35 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
     : ''
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-pdf" style={{ maxWidth: '750px' }}>
-        <div className="modal-header">
-          <h3>Crear Reporte de Inasistencias</h3>
-          <button className="close" onClick={onClose}>×</button>
+    <div className={modalBackdrop}>
+      <div className="w-[750px] max-w-[750px] max-h-[90vh] max-[900px]:w-[95%] flex flex-col rounded-[20px] border border-[#e2e8f0] bg-white! shadow-[0_20px_60px_rgba(0,0,0,0.1)] animate-[modalSlideIn_0.4s_cubic-bezier(0.68,-0.55,0.265,1.55)]">
+        <div className={modalHeader}>
+          <h3 className="m-[18px] text-[20px] font-bold text-primary! [text-shadow:none]!">Crear Reporte de Inasistencias</h3>
+          <button className={modalClose} onClick={onClose}>×</button>
         </div>
 
-        <div className="pdf-preview" style={{ padding: '20px', maxHeight: '75vh', overflowY: 'auto' }}>
+        <div className="flex-1 overflow-y-auto p-5 max-h-[75vh] bg-white! text-black!">
           {loadingData ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+            <div className="text-center p-10 text-muted">
               Cargando datos...
             </div>
           ) : loadError ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#dc2626' }}>
+            <div className="text-center p-10 text-[#dc2626]">
               {loadError}
             </div>
           ) : (
             <>
               {/* Topbar de configuración */}
-              <div style={{
-                background: 'var(--bg-secondary)',
-                padding: '15px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '10px'
-              }}>
+              <div className="mb-5 grid grid-cols-[1fr_1fr] gap-2.5 rounded-lg bg-surface p-[15px]">
                 {/* Fila 1: Dirigido a y Con copia */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                  <label className={topbarLabel}>
                     Dirigido a:
                   </label>
                   <select
                     value={selectedTo}
                     onChange={(e) => handleToChange(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '6px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-primary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.8rem'
-                    }}
+                    className="w-full rounded py-1.5 px-2 border-none bg-transparent text-content text-[0.8rem]"
                   >
                     <option value="">Seleccione...</option>
                     {leads.map(lead => {
@@ -613,27 +608,19 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                  <label className={topbarLabel}>
                     Con copia a:
                   </label>
-                  <div style={{
-                    maxHeight: '60px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    background: 'var(--bg-primary)',
-                    fontSize: '0.75rem'
-                  }}>
+                  <div className="max-h-[60px] overflow-y-auto rounded py-1 px-2 text-[0.75rem]">
                     {leads.filter(l => l.id !== selectedTo).map(lead => {
                       const leadName = `${lead.title || ''} ${lead.name || ''} ${lead.lastname || ''}`.trim()
                       return (
-                        <label key={lead.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <label key={lead.id} className="flex items-center gap-1 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={selectedCc.includes(lead.id)}
                             onChange={() => handleCcChange(lead.id)}
-                            style={{ width: '12px', height: '12px' }}
+                            className="size-3"
                           />
                           {leadName}
                         </label>
@@ -644,50 +631,30 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
 
                 {/* Fila 2: Asunto y Falta (valores fijos) */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                  <label className={topbarLabel}>
                     Asunto:
                   </label>
-                  <div
-                    style={{
-                      width: '100%',
-                      padding: '6px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-tertiary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.75rem'
-                    }}
-                  >
+                  <div className="w-full rounded py-1.5 px-2 text-content text-[0.75rem]">
                     Conductas relacionadas con el cumplimiento del horario y asistencia
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                  <label className={topbarLabel}>
                     Falta:
                   </label>
-                  <div
-                    style={{
-                      width: '100%',
-                      padding: '6px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-tertiary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.8rem'
-                    }}
-                  >
+                  <div className="w-full rounded py-1.5 px-2 text-content text-[0.8rem]">
                     Inasistencia
                   </div>
                 </div>
 
                 {/* Fila 3: Tipo de inasistencia y Rango de fechas */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                  <label className={topbarLabel}>
                     Tipo:
                   </label>
-                  <div style={{ display: 'flex', gap: '15px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                  <div className="flex gap-[15px]">
+                    <label className="flex items-center gap-1 cursor-pointer text-[0.8rem]">
                       <input
                         type="radio"
                         name="mode"
@@ -697,7 +664,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                       />
                       Injustificada
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                    <label className="flex items-center gap-1 cursor-pointer text-[0.8rem]">
                       <input
                         type="radio"
                         name="mode"
@@ -711,10 +678,10 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                  <label className={topbarLabel}>
                     Rango de fechas:
                   </label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div className="flex items-center gap-2">
                     <input
                       type="date"
                       value={dateRange?.start ? `${dateRange.start.getFullYear()}-${String(dateRange.start.getMonth() + 1).padStart(2, '0')}-${String(dateRange.start.getDate()).padStart(2, '0')}` : ''}
@@ -722,17 +689,9 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                         const newDate = new Date(e.target.value + 'T00:00:00')
                         setDateRange(prev => ({ ...prev, start: newDate }))
                       }}
-                      style={{
-                        padding: '4px 6px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.75rem',
-                        width: '120px'
-                      }}
+                      className="w-[120px] rounded py-1 px-1.5 border-none bg-transparent text-content text-[0.75rem]"
                     />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>a</span>
+                    <span className="text-[0.75rem] text-muted">a</span>
                     <input
                       type="date"
                       value={dateRange?.end ? `${dateRange.end.getFullYear()}-${String(dateRange.end.getMonth() + 1).padStart(2, '0')}-${String(dateRange.end.getDate()).padStart(2, '0')}` : ''}
@@ -740,182 +699,106 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                         const newDate = new Date(e.target.value + 'T00:00:00')
                         setDateRange(prev => ({ ...prev, end: newDate }))
                       }}
-                      style={{
-                        padding: '4px 6px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.75rem',
-                        width: '120px'
-                      }}
+                      className="w-[120px] rounded py-1 px-1.5 border-none bg-transparent text-content text-[0.75rem]"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Plantilla del informe */}
-              <div style={{
-                background: 'white',
-                color: '#000',
-                padding: '30px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                fontFamily: 'Times New Roman, serif'
-              }}>
+              <div className="bg-white p-[30px] rounded-lg border border-[#ddd] text-black [font-family:Times_New_Roman,serif]">
                 {/* Encabezado con logo */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginBottom: '20px',
-                  borderBottom: '2px solid #1e3a5f',
-                  paddingBottom: '15px'
-                }}>
+                <div className="flex items-center mb-5 border-b-2 border-[#1e3a5f] pb-[15px]">
                   {logoBase64 && (
                     <img
                       src={logoBase64}
                       alt="Logo SJL"
-                      style={{ width: '60px', height: '60px', marginRight: '15px' }}
+                      className="size-15 mr-[15px]"
                     />
                   )}
-                  <div style={{ flex: 1, textAlign: 'center' }}>
-                    <h3 style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', color: '#1e3a5f' }}>
+                  <div className="flex-1 text-center">
+                    <h3 className="m-0 text-[14px] font-bold text-[#1e3a5f]">
                       SAN JUAN DE LURIGANCHO
                     </h3>
-                    <p style={{ margin: '2px 0', fontSize: '10px', fontStyle: 'italic', color: '#666' }}>
+                    <p className="m-[2px_0] text-[10px] italic text-[#666]">
                       es momento de crecer
                     </p>
                   </div>
                 </div>
 
                 {/* Año */}
-                <p style={{
-                  textAlign: 'center',
-                  fontSize: '10px',
-                  fontStyle: 'italic',
-                  margin: '0 0 20px 0',
-                  color: '#333'
-                }}>
+                <p className="m-0 mb-5 text-center text-[10px] italic text-[#333]">
                   "Año de la recuperación y consolidación de la economía peruana"
                 </p>
 
                 {/* Número de informe */}
-                <div style={{
-                  textAlign: 'center',
-                  marginBottom: '20px',
-                  padding: '10px',
-                  background: '#f8fafc',
-                  borderRadius: '4px'
-                }}>
-                  <p style={{ margin: '0', fontSize: '12px', fontWeight: 'bold' }}>
+                <div className="mb-5 p-2.5 text-center bg-[#f8fafc] rounded">
+                  <p className="m-0 text-[12px] font-bold">
                     INFORME N°
                   </p>
-                  <p style={{ margin: '5px 0 0 0', fontSize: '11px', color: '#666' }}>
+                  <p className="m-[5px_0_0_0] text-[11px] text-[#666]">
                     {reportResult?.data?.report_id || '---'}
                   </p>
                 </div>
 
                 {/* Datos del informe */}
-                <table style={{
-                  width: '100%',
-                  fontSize: '11px',
-                  borderCollapse: 'collapse',
-                  marginBottom: '15px'
-                }}>
+                <table className="w-full mb-[15px] text-[11px] border-collapse">
                   <tbody>
                     <tr>
-                      <td style={{
-                        width: '80px',
-                        fontWeight: 'bold',
-                        padding: '8px 10px 8px 0',
-                        verticalAlign: 'top',
-                        borderBottom: '1px solid #eee'
-                      }}>
+                      <td className={`w-20 ${informeLabelCell}`}>
                         A :
                       </td>
-                      <td style={{
-                        padding: '8px 0',
-                        borderBottom: '1px solid #eee'
-                      }}>
+                      <td className={informeValueCell}>
                         {selectedLeadData ? (
                           <>
                             <strong>
                               {`${selectedLeadData.title || ''} ${selectedLeadData.name || ''} ${selectedLeadData.lastname || ''}`.trim()}
                             </strong>
                             <br />
-                            <span style={{ fontSize: '10px', color: '#666' }}>
+                            <span className="text-[10px] text-[#666]">
                               {typeof selectedLeadData.job === 'string' ? selectedLeadData.job : ''}
                             </span>
                           </>
                         ) : (
-                          <span style={{ color: '#999', fontStyle: 'italic' }}>Seleccione un destinatario</span>
+                          <span className="text-[#999] italic">Seleccione un destinatario</span>
                         )}
                       </td>
                     </tr>
 
                     {selectedCcData.length > 0 && (
                       <tr>
-                        <td style={{
-                          fontWeight: 'bold',
-                          padding: '8px 10px 8px 0',
-                          verticalAlign: 'top',
-                          borderBottom: '1px solid #eee'
-                        }}>
+                        <td className={informeLabelCell}>
                           CC :
                         </td>
-                        <td style={{
-                          padding: '8px 0',
-                          borderBottom: '1px solid #eee'
-                        }}>
+                        <td className={informeValueCell}>
                           {selectedCcData.join(', ')}
                         </td>
                       </tr>
                     )}
 
                     <tr>
-                      <td style={{
-                        fontWeight: 'bold',
-                        padding: '8px 10px 8px 0',
-                        verticalAlign: 'top',
-                        borderBottom: '1px solid #eee'
-                      }}>
+                      <td className={informeLabelCell}>
                         DE :
                       </td>
-                      <td style={{
-                        padding: '8px 0',
-                        borderBottom: '1px solid #eee',
-                        fontWeight: 'bold'
-                      }}>
+                      <td className={`${informeValueCell} font-bold`}>
                         CONTROL Y SUPERVISIÓN
                       </td>
                     </tr>
 
                     <tr>
-                      <td style={{
-                        fontWeight: 'bold',
-                        padding: '8px 10px 8px 0',
-                        verticalAlign: 'top',
-                        borderBottom: '1px solid #eee'
-                      }}>
+                      <td className={informeLabelCell}>
                         ASUNTO :
                       </td>
-                      <td style={{
-                        padding: '8px 0',
-                        borderBottom: '1px solid #eee'
-                      }}>
-                        {subjectName || <span style={{ color: '#999', fontStyle: 'italic' }}>Seleccione un asunto</span>}
+                      <td className={informeValueCell}>
+                        {subjectName || <span className="text-[#999] italic">Seleccione un asunto</span>}
                       </td>
                     </tr>
 
                     <tr>
-                      <td style={{
-                        fontWeight: 'bold',
-                        padding: '8px 10px 8px 0',
-                        verticalAlign: 'top'
-                      }}>
+                      <td className="py-2 pr-2.5 pl-0 font-bold align-top">
                         FECHA :
                       </td>
-                      <td style={{ padding: '8px 0' }}>
+                      <td className="py-2 px-0">
                         {new Date().toLocaleDateString('es-PE', {
                           day: 'numeric',
                           month: 'long',
@@ -927,13 +810,8 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                 </table>
 
                 {/* Párrafo descriptivo */}
-                <div style={{
-                  fontSize: '10px',
-                  lineHeight: '1.6',
-                  marginTop: '15px',
-                  textAlign: 'justify'
-                }}>
-                  <p style={{ margin: '0 0 10px 0', textIndent: '40px' }}>
+                <div className="mt-[15px] text-justify text-[10px] leading-[1.6]">
+                  <p className="m-0 mb-2.5 indent-[40px]">
                     Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez
                     informarle sobre el reporte de inasistencias al centro de labores del personal
                     de la Subgerencia de Serenazgo, correspondiente del turno{' '}
@@ -961,40 +839,26 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
 
                 {/* Tabla de inasistencias */}
                 {loadingAttendances ? (
-                  <div style={{ textAlign: 'center', padding: '20px', color: '#666', fontSize: '10px' }}>
+                  <div className="p-5 text-center text-[10px] text-[#666]">
                     Cargando inasistencias...
                   </div>
                 ) : filteredAttendances.length === 0 ? (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '20px',
-                    color: '#666',
-                    fontSize: '10px',
-                    fontStyle: 'italic',
-                    background: '#f8fafc',
-                    borderRadius: '4px',
-                    marginTop: '10px'
-                  }}>
+                  <div className="mt-2.5 p-5 text-center text-[10px] italic text-[#666] bg-[#f8fafc] rounded">
                     No hay inasistencias registradas en el período seleccionado
                   </div>
                 ) : (
-                  <div style={{ marginTop: '10px', overflowX: 'auto' }}>
-                    <table style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontSize: '8px',
-                      border: '1px solid #000'
-                    }}>
+                  <div className="mt-2.5 overflow-x-auto">
+                    <table className="w-full border-collapse text-[8px] border border-black">
                       <thead>
-                        <tr style={{ background: '#f0f0f0' }}>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>N°</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'left' }}>APELLIDOS Y NOMBRES</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>CARGO</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>REG. LAB.</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>TURNO</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>FECHA</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>TIPO DE INASISTENCIA</th>
-                          <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>JURISDICCION</th>
+                        <tr className="bg-[#f0f0f0]">
+                          <th className={`${tablaCell} text-center`}>N°</th>
+                          <th className={`${tablaCell} text-left`}>APELLIDOS Y NOMBRES</th>
+                          <th className={`${tablaCell} text-center`}>CARGO</th>
+                          <th className={`${tablaCell} text-center`}>REG. LAB.</th>
+                          <th className={`${tablaCell} text-center`}>TURNO</th>
+                          <th className={`${tablaCell} text-center`}>FECHA</th>
+                          <th className={`${tablaCell} text-center`}>TIPO DE INASISTENCIA</th>
+                          <th className={`${tablaCell} text-center`}>JURISDICCION</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1019,28 +883,28 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
 
                           return (
                             <tr key={person.id || index}>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
-                              <td style={{ border: '1px solid #000', padding: '4px' }}>
+                              <td className={`${tablaCell} text-center`}>{index + 1}</td>
+                              <td className={tablaCell}>
                                 {person.name && person.lastname
                                   ? `${person.lastname} ${person.name}`.toUpperCase()
                                   : person.fullname?.toUpperCase() || '-'}
                               </td>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                              <td className={`${tablaCell} text-center`}>
                                 {jobValue}
                               </td>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                              <td className={`${tablaCell} text-center`}>
                                 {regimeValue}
                               </td>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                              <td className={`${tablaCell} text-center`}>
                                 {shiftValue}
                               </td>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', fontSize: '7px' }}>
+                              <td className={`${tablaCell} text-center text-[7px]`}>
                                 {fechas}
                               </td>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                              <td className={`${tablaCell} text-center`}>
                                 {selectedMode === 'UNJUSTIFIED' ? 'INJUSTIFICADA' : 'JUSTIFICADA'}
                               </td>
-                              <td style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }}>
+                              <td className={`${tablaCell} text-center`}>
                                 {jurisdictionValue}
                               </td>
                             </tr>
@@ -1053,15 +917,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
 
                 {/* Mensaje de éxito si existe */}
                 {reportResult && (
-                  <div style={{
-                    marginTop: '15px',
-                    padding: '10px',
-                    background: '#d1fae5',
-                    borderRadius: '4px',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    color: '#059669'
-                  }}>
+                  <div className="mt-[15px] p-2.5 bg-[#d1fae5] rounded text-center text-[11px] text-[#059669]">
                     ✓ {reportResult.message}
                   </div>
                 )}
@@ -1070,18 +926,18 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
           )}
         </div>
 
-        <div className="modal-actions">
+        <div className={modalActions}>
           {reportResult ? (
-            <button className="btn-primary" onClick={onClose}>
+            <button className={btnPrimary} onClick={onClose}>
               Cerrar
             </button>
           ) : (
             <>
-              <button className="btn-secondary" onClick={onClose} disabled={generating}>
+              <button className={btnSecondary} onClick={onClose} disabled={generating}>
                 Cancelar
               </button>
               <button
-                className="btn-primary"
+                className={btnPrimary}
                 onClick={handleGeneratePDF}
                 disabled={generating || loadingData || !!loadError || !selectedTo || !selectedSubject || !selectedLack}
               >

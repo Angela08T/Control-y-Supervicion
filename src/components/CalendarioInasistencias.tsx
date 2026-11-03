@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { FaFilePdf, FaTrash } from 'react-icons/fa'
 import { toast } from '../utils/toast'
 import type { ID } from '@/types'
+import { cn } from '@/utils/classes'
 
 /** Persona con inasistencias tal como llega desde la pagina de inasistencias */
 interface InasistenciaItem {
@@ -93,6 +94,56 @@ export interface CalendarioInasistenciasProps {
   isReadOnly?: boolean
   canDelete?: boolean
 }
+
+/** Celda de la tabla (equivale a `.calendario-table th, .calendario-table td`) */
+const cellBase = 'border border-line p-2 text-center text-[0.85rem] whitespace-nowrap'
+
+/** Encabezado de la tabla (equivale a `.calendario-table th`) */
+const headerCell = `${cellBase} sticky top-0 z-10 bg-surface font-semibold text-content`
+
+/** Fila del cuerpo: franjas pares y hover (equivale a `.calendario-table tbody tr`) */
+const bodyRow = 'even:bg-[rgba(59,130,246,0.03)] hover:bg-[rgba(59,130,246,0.08)]'
+
+/** Celda de dia clicable en modo marcado o edicion (equivale a `.col-dia.clickable`) */
+const clickableDay = 'cursor-pointer transition-all duration-200 ease-[ease]'
+
+/** Hover de celda clicable que no es editable (equivale a `.col-dia.clickable:hover`) */
+const clickableDayHover = 'hover:bg-[rgba(59,130,246,0.15)]!'
+
+/** Celda con marca guardada en modo edicion (equivale a `.col-dia.editable:hover`) */
+const editableDay = 'cursor-pointer hover:bg-[rgba(245,158,11,0.15)]!'
+
+/** Celda seleccionada (equivale a `.col-dia.selected`) */
+const selectedDay = 'border-2! border-primary! bg-[rgba(59,130,246,0.25)]!'
+
+/** Texto vacio de la tabla (equivale a `.empty-message`) */
+const emptyMessage = 'border border-line p-[30px]! text-center! text-[0.85rem] whitespace-nowrap italic text-muted'
+
+/** Marca de falta base (equivale a `.marca-falta`) */
+const marcaFalta = 'inline-block rounded-[4px] px-1.5 py-0.5 text-[0.75rem]'
+
+/** Boton I / J de modo de marcado (equivale a `.btn-fl`) */
+const btnFl = 'cursor-pointer rounded-[6px] border px-4 py-2 text-[0.9rem] font-semibold text-white transition-all duration-200 ease-[ease] hover:-translate-y-px'
+
+/** Boton I / J sin activar (`.btn-fl.btn-injustificado` y `.btn-fl.btn-justificado`) */
+const btnFlIdle = 'border-[#ef4444] bg-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626]'
+
+/** Boton I / J activo (`.btn-fl.active` + `.btn-*.active`) */
+const btnFlActive = 'border-[#dc2626] bg-[#dc2626] shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+
+/** Boton Anterior / Siguiente (equivale a `.calendario-pagination .btn-secondary`) */
+const paginationBtn = 'flex cursor-pointer items-center gap-[5px] rounded-[6px] border border-line bg-surface px-4 py-2 text-[0.9rem] font-medium text-content transition-all duration-200 ease-[ease] hover:-translate-y-0.5 enabled:hover:border-primary enabled:hover:bg-primary enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-50'
+
+/** Numero de pagina (equivale a `.page-number`) */
+const pageNumberBase = 'cursor-pointer rounded-[4px] border px-3 py-2 min-w-[40px] transition-all duration-200 ease-[ease]'
+const pageNumberIdle = 'border-line bg-transparent font-medium text-content hover:bg-surface'
+const pageNumberActive = 'border-primary bg-primary font-bold text-white'
+
+/** Boton Cancelar del pie (equivale a `.calendario-footer .btn-secondary`) */
+const footerSecondary = 'cursor-pointer rounded-[6px] border border-line bg-surface px-[30px] py-2.5 text-[0.95rem] font-semibold text-content transition-all duration-200 ease-[ease] hover:-translate-y-0.5 hover:bg-line max-[768px]:w-full'
+
+/** Boton Guardar del pie (equivale a `.calendario-footer .btn-primary`) */
+const footerPrimary = 'relative cursor-pointer overflow-hidden rounded-[6px] border border-primary bg-primary px-[30px] py-2.5 text-[0.95rem] font-semibold text-btn! shadow-[0_4px_15px_var(--shadow)] transition-all duration-200 ease-[ease] hover:-translate-y-px hover:bg-primary-hover hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:-translate-y-px [&:active:not(:hover)]:scale-[1.02] max-[768px]:w-full'
 
 export default function CalendarioInasistencias({
   inasistencias = [],
@@ -513,36 +564,36 @@ export default function CalendarioInasistencias({
   }
 
   return (
-    <div className="calendario-inasistencias">
+    <div className="rounded-[12px] border border-line bg-card p-5 shadow-[0_4px_12px_var(--shadow)]">
       {/* Botones de acción - Solo mostrar si no es modo solo lectura */}
       {!isReadOnly && (
-        <div className="calendario-actions">
+        <div className="mb-5 flex items-center gap-[10px]">
           <button
-            className={`btn-fl btn-injustificado ${markMode === 'I' ? 'active' : ''}`}
+            className={cn(btnFl, markMode === 'I' ? btnFlActive : btnFlIdle)}
             onClick={() => handleToggleMark('I')}
             title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
           >
             I
           </button>
           <button
-            className={`btn-fl btn-justificado ${markMode === 'J' ? 'active' : ''}`}
+            className={cn(btnFl, markMode === 'J' ? btnFlActive : btnFlIdle)}
             onClick={() => handleToggleMark('J')}
             title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
           >
             J
           </button>
           {markMode === 'I' && (
-            <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+            <span className="ml-2.5 text-[0.9rem] font-medium text-danger">
               Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
             </span>
           )}
           {markMode === 'J' && (
-            <span style={{ marginLeft: '10px', color: '#ef4444', fontWeight: '500', fontSize: '0.9rem' }}>
+            <span className="ml-2.5 text-[0.9rem] font-medium text-danger">
               Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
             </span>
           )}
           {editMode && (
-            <span style={{ marginLeft: '10px', color: '#f59e0b', fontWeight: '500', fontSize: '0.9rem' }}>
+            <span className="ml-2.5 text-[0.9rem] font-medium text-warning">
               Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
             </span>
           )}
@@ -550,8 +601,8 @@ export default function CalendarioInasistencias({
       )}
 
       {/* Tabla calendario */}
-      <div className="calendario-table-container">
-        <div className="calendario-header">
+      <div className="overflow-hidden rounded-lg border border-line">
+        <div className="bg-primary px-5 py-3 text-center text-[1rem] font-semibold tracking-[0.5px] text-white">
           {dateRange?.start && dateRange?.end ? (
             <>
               INASISTENCIAS DE SERVICIO - {
@@ -565,31 +616,31 @@ export default function CalendarioInasistencias({
           )}
         </div>
 
-        <div className="calendario-grid">
-          <table className="calendario-table">
+        <div className="overflow-x-auto bg-surface">
+          <table className="w-full min-w-[1200px] border-collapse">
             <thead>
               <tr>
-                <th className="col-numero">#</th>
-                {canDelete && <th className="col-accion"></th>}
-                <th className="col-nombre">APELLIDOS Y NOMBRES</th>
-                <th className="col-turno">TURNO</th>
-                <th className="col-cargo">CARGO</th>
-                <th className="col-regimen">RÉGIMEN</th>
+                <th className={cn(headerCell, 'w-10')}>#</th>
+                {canDelete && <th className={headerCell}></th>}
+                <th className={cn(headerCell, 'min-w-[200px] text-left!')}>APELLIDOS Y NOMBRES</th>
+                <th className={cn(headerCell, 'min-w-[80px]')}>TURNO</th>
+                <th className={cn(headerCell, 'min-w-[120px]')}>CARGO</th>
+                <th className={cn(headerCell, 'min-w-[100px]')}>RÉGIMEN</th>
                 {diasDelMes.map(dia => (
-                  <th key={dia.numero} className="col-dia">
-                    <div className="dia-header">
-                      <span className="dia-semana">{dia.diaSemana}</span>
-                      <span className="dia-numero">{dia.numero.toString().padStart(2, '0')}</span>
+                  <th key={dia.numero} className={cn(headerCell, 'w-[35px] min-w-[35px]')}>
+                    <div className="flex flex-col items-center gap-[2px]">
+                      <span className="text-[0.75rem] font-semibold text-content-2">{dia.diaSemana}</span>
+                      <span className="text-[0.8rem] font-medium text-content">{dia.numero.toString().padStart(2, '0')}</span>
                     </div>
                   </th>
                 ))}
-                <th className="col-total">TOTAL</th>
+                <th className={cn(headerCell, 'min-w-[60px]')}>TOTAL</th>
               </tr>
             </thead>
             <tbody>
               {totalPersonas === 0 ? (
-                <tr>
-                  <td colSpan={6 + diasDelMes.length} className="empty-message">
+                <tr className={bodyRow}>
+                  <td colSpan={6 + diasDelMes.length} className={emptyMessage}>
                     No hay inasistencias registradas en este mes
                   </td>
                 </tr>
@@ -614,27 +665,23 @@ export default function CalendarioInasistencias({
                   const numeroFila = startIndex + index + 1
 
                   return (
-                    <tr key={persona.dni}>
-                      <td className="col-numero">{numeroFila}</td>
+                    <tr key={persona.dni} className={bodyRow}>
+                      <td className={cn(cellBase, 'w-10 font-semibold text-muted')}>{numeroFila}</td>
                       {canDelete && (
-                        <td className="col-accion">
+                        <td className={cellBase}>
                           <button
                             title="Eliminar persona"
                             onClick={() => onDelete && onDelete(persona.id, persona.nombreCompleto)}
-                            style={{
-                              background: 'none', border: 'none', cursor: 'pointer',
-                              color: '#ef4444', padding: '4px', borderRadius: '4px',
-                              display: 'flex', alignItems: 'center'
-                            }}
+                            className="flex cursor-pointer items-center rounded-[4px] border-none bg-transparent p-1 text-danger"
                           >
                             <FaTrash size={13} />
                           </button>
                         </td>
                       )}
-                      <td className="col-nombre">{persona.nombreCompleto}</td>
-                      <td className="col-turno">{persona.turno}</td>
-                      <td className="col-cargo">{persona.cargo}</td>
-                      <td className="col-regimen">{persona.regimen}</td>
+                      <td className={cn(cellBase, 'min-w-[200px] text-left! font-medium')}>{persona.nombreCompleto}</td>
+                      <td className={cn(cellBase, 'min-w-[80px]')}>{persona.turno}</td>
+                      <td className={cn(cellBase, 'min-w-[120px]')}>{persona.cargo}</td>
+                      <td className={cn(cellBase, 'min-w-[100px]')}>{persona.regimen}</td>
                       {diasDelMes.map(dia => {
                         // Key para savedMarks (simple)
                         const savedKey = `${persona.dni}-${dia.numero}`
@@ -649,33 +696,31 @@ export default function CalendarioInasistencias({
 
                         // Mostrar marca temporal o marca guardada, o guion si no hay nada
                         let content: React.ReactNode
-                        let cellClass = 'col-dia'
 
                         if (tempMark) {
                           // Marca temporal (nueva, aún no guardada)
                           const displayText = tempMark.tipo === 'justificada' ? 'J' : 'I'
-                          content = <span className={`marca-falta temp ${tempMark.tipo === 'justificada' ? 'justificada' : 'injustificada'}`}>{displayText}</span>
-                          cellClass += ' temp-mark'
+                          content = <span className={cn(marcaFalta, 'animate-[pulse_1s_infinite] border border-danger bg-[rgba(239,68,68,0.2)] font-semibold text-danger')}>{displayText}</span>
                         } else if (savedMark) {
                           // Marca guardada desde la API
                           const displayText = savedMark.tipo // "J" o "I"
-                          content = <span className="marca-falta saved">{displayText}</span>
-                          cellClass += ' saved-mark'
+                          content = <span className={cn(marcaFalta, 'border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.15)] font-bold text-[#dc2626]')}>{displayText}</span>
                         } else {
                           // Sin marca
-                          content = <span className="sin-falta">-</span>
+                          content = <span className="text-[0.8rem] text-muted">-</span>
                         }
 
-                        // Agregar clases para interacción
-                        if (markMode || editMode) {
-                          cellClass += ' clickable'
-                        }
-                        if (isSelected) {
-                          cellClass += ' selected'
-                        }
-                        if (editMode && savedMark) {
-                          cellClass += ' editable'
-                        }
+                        // Interaccion: celdas clicables, seleccionadas y editables
+                        const clickable = !!(markMode || editMode)
+                        const editable = editMode && !!savedMark
+                        const cellClass = cn(
+                          cellBase,
+                          'w-[35px] min-w-[35px]',
+                          clickable && clickableDay,
+                          clickable && !editable && clickableDayHover,
+                          editable && editableDay,
+                          isSelected && selectedDay
+                        )
 
                         return (
                           <td
@@ -687,8 +732,8 @@ export default function CalendarioInasistencias({
                           </td>
                         )
                       })}
-                      <td className="col-total">
-                        <span className="total-count">{totalInasistencias}</span>
+                      <td className={cn(cellBase, 'min-w-[60px] bg-primary font-bold text-white')}>
+                        <span className="text-[1rem] font-bold">{totalInasistencias}</span>
                       </td>
                     </tr>
                   )
@@ -696,20 +741,20 @@ export default function CalendarioInasistencias({
               )}
               {/* Filas vacías para completar hasta 12 */}
               {Array.from({ length: Math.max(0, itemsPerPage - personasPaginadas.length) }).map((_, index) => (
-                <tr key={`empty-${index}`}>
-                  <td className="col-numero">{startIndex + personasPaginadas.length + index + 1}</td>
-                  {canDelete && <td className="col-accion"></td>}
-                  <td className="col-nombre"></td>
-                  <td className="col-turno"></td>
-                  <td className="col-cargo"></td>
-                  <td className="col-regimen"></td>
+                <tr key={`empty-${index}`} className={bodyRow}>
+                  <td className={cn(cellBase, 'w-10 font-semibold text-muted')}>{startIndex + personasPaginadas.length + index + 1}</td>
+                  {canDelete && <td className={cellBase}></td>}
+                  <td className={cn(cellBase, 'min-w-[200px] text-left! font-medium')}></td>
+                  <td className={cn(cellBase, 'min-w-[80px]')}></td>
+                  <td className={cn(cellBase, 'min-w-[120px]')}></td>
+                  <td className={cn(cellBase, 'min-w-[100px]')}></td>
                   {diasDelMes.map(dia => (
-                    <td key={dia.numero} className={`col-dia ${markMode ? 'clickable' : ''}`}>
-                      <span className="sin-falta">-</span>
+                    <td key={dia.numero} className={cn(cellBase, 'w-[35px] min-w-[35px]', markMode && clickableDay, markMode && clickableDayHover)}>
+                      <span className="text-[0.8rem] text-muted">-</span>
                     </td>
                   ))}
-                  <td className="col-total">
-                    <span className="total-count">0</span>
+                  <td className={cn(cellBase, 'min-w-[60px] bg-primary font-bold text-white')}>
+                    <span className="text-[1rem] font-bold">0</span>
                   </td>
                 </tr>
               ))}
@@ -720,20 +765,16 @@ export default function CalendarioInasistencias({
 
       {/* Controles de paginación */}
       {totalPages > 1 && (
-        <div className="calendario-pagination">
+        <div className="mt-5 flex items-center justify-center gap-2.5 rounded-lg border border-line p-[15px] max-[768px]:flex-wrap">
           <button
             onClick={handlePreviousPage}
             disabled={currentPage === 1}
-            className="btn-secondary"
-            style={{
-              opacity: currentPage === 1 ? 0.5 : 1,
-              cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-            }}
+            className={paginationBtn}
           >
             ← Anterior
           </button>
 
-          <div className="pagination-numbers">
+          <div className="flex items-center gap-[5px] max-[768px]:flex-wrap max-[768px]:justify-center">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum: number
               if (totalPages <= 5) {
@@ -750,7 +791,7 @@ export default function CalendarioInasistencias({
                 <button
                   key={pageNum}
                   onClick={() => handlePageChange(pageNum)}
-                  className={currentPage === pageNum ? 'page-number active' : 'page-number'}
+                  className={cn(pageNumberBase, currentPage === pageNum ? pageNumberActive : pageNumberIdle)}
                 >
                   {pageNum}
                 </button>
@@ -761,11 +802,7 @@ export default function CalendarioInasistencias({
           <button
             onClick={handleNextPage}
             disabled={currentPage === totalPages}
-            className="btn-secondary"
-            style={{
-              opacity: currentPage === totalPages ? 0.5 : 1,
-              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-            }}
+            className={paginationBtn}
           >
             Siguiente →
           </button>
@@ -774,11 +811,11 @@ export default function CalendarioInasistencias({
 
       {/* Botones de Cancelar y Guardar - Solo mostrar si no es modo solo lectura */}
       {!isReadOnly && (
-        <div className="calendario-footer">
-          <button className="btn-secondary" onClick={handleCancel}>
+        <div className="mt-5 flex justify-end gap-[15px] border-t border-line pt-5 max-[768px]:flex-col">
+          <button className={footerSecondary} onClick={handleCancel}>
             CANCELAR
           </button>
-          <button className="btn-primary" onClick={handleSave}>
+          <button className={footerPrimary} onClick={handleSave}>
             GUARDAR
           </button>
         </div>

@@ -10,7 +10,6 @@ import useLeads from '../hooks/Job/useLeads'
 import useAllLeads from '../hooks/Job/useAllLeads'
 import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
-import './Autocomplete.css'
 import {
   FaIdCard,
   FaClipboardList,
@@ -25,6 +24,29 @@ import {
 } from 'react-icons/fa'
 import { BsCameraVideo } from 'react-icons/bs'
 import { toast } from '../utils/toast'
+import {
+  autocompleteContainer,
+  autocompleteError,
+  autocompleteItem,
+  autocompleteItemCode,
+  autocompleteItemDetails,
+  autocompleteLoading,
+  autocompleteNoResults,
+  autocompleteSuggestions,
+  btnPrimary,
+  btnSecondary,
+  cn,
+  modalActions,
+  modalBackdrop,
+  modalBody,
+  modalCard,
+  modalClose,
+  modalHeader,
+  modalInput,
+  modalInputDateTime,
+  modalLabel,
+  modalTitle
+} from '@/utils/classes'
 
 /** Props de ModalIncidencia. `initial` es la incidencia a editar (vacío al crear). */
 export interface ModalIncidenciaProps {
@@ -51,6 +73,26 @@ interface SubjectEntry {
   id: ID;
   lacks: SubjectLack[];
 }
+
+/** Input de solo lectura (rellenado automáticamente con el DNI) */
+const readOnlyInput = cn(modalInput, 'cursor-not-allowed')
+
+/** Input de fecha y hora del modal */
+const dateTimeInput = cn(modalInput, modalInputDateTime)
+
+/** Recuadro con la lista de personas para copia (CC) */
+const ccList =
+  'mt-3 animate-[slideDown_0.3s_ease-out] rounded-[12px] border border-line bg-surface p-4 [backdrop-filter:blur(10px)]'
+
+/** Fila de cada persona de la lista CC (hereda el estilo de <label> del modal) */
+const checkboxLabel = cn(
+  modalLabel,
+  'flex cursor-pointer items-center gap-3 rounded-[8px] border border-transparent px-3 py-2.5 transition-all duration-300 ease-[ease] hover:translate-x-1 hover:border-primary hover:bg-[rgba(30,58,138,0.1)]'
+)
+
+/** Checkbox de la lista CC: hereda los estilos de input del modal, con tamaño de 20px */
+const checkboxInput =
+  'h-5 w-5 cursor-pointer accent-primary rounded-[10px] border border-line bg-surface px-3.5 py-3 text-[14px] text-content! outline-none transition-all duration-300 ease-[ease] [backdrop-filter:blur(5px)] focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]!'
 
 const defaultState: IncidenciaForm = {
   dni: '',
@@ -496,19 +538,20 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   const mostrarCamposBodycam = !(form.falta && form.falta.startsWith('Inasistencia'))
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card">
-        <div className="modal-header">
-          <h3>{initial ? 'Editar Incidencia' : 'Nueva Incidencia'}</h3>
-          <button className="close" onClick={onClose}>×</button>
+    <div className={modalBackdrop}>
+      <div className={modalCard}>
+        <div className={modalHeader}>
+          <h3 className={modalTitle}>{initial ? 'Editar Incidencia' : 'Nueva Incidencia'}</h3>
+          <button className={modalClose} onClick={onClose}>×</button>
         </div>
-        <form className="modal-body" onSubmit={handleSubmit}>
-          <label>
-            <FaIdCard style={{ marginRight: '8px' }} />
+        <form className={modalBody} onSubmit={handleSubmit}>
+          <label className={modalLabel}>
+            <FaIdCard className="mr-2" />
             DNI * (8 dígitos)
           </label>
-          <div className="autocomplete-container" ref={dniAutocompleteRef}>
+          <div className={autocompleteContainer} ref={dniAutocompleteRef}>
             <input
+              className={modalInput}
               value={dniSearchTerm}
               onChange={handleDNIChange}
               onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
@@ -516,23 +559,23 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               autoComplete="off"
             />
             {offenderLoading && (
-              <div className="autocomplete-loading">Buscando...</div>
+              <div className={autocompleteLoading}>Buscando...</div>
             )}
             {offenderError && (
-              <div className="autocomplete-error">{offenderError}</div>
+              <div className={autocompleteError}>{offenderError}</div>
             )}
             {showOffenderSuggestions && offendersHabilitados.length > 0 && (
-              <div className="autocomplete-suggestions">
+              <div className={autocompleteSuggestions}>
                 {offendersHabilitados.map((offender, index) => (
                   <div
                     key={offender.gestionate_id || offender.id || index}
-                    className="autocomplete-item"
+                    className={autocompleteItem}
                     onClick={() => handleOffenderSelect(offender)}
                   >
-                    <div className="autocomplete-item-code">
+                    <div className={autocompleteItemCode}>
                       DNI: {offender.dni} - {offender.name} {offender.lastname}
                     </div>
-                    <div className="autocomplete-item-details">
+                    <div className={autocompleteItemDetails}>
                       {offender.job} | {offender.shift} | {offender.regime}
                     </div>
                   </div>
@@ -540,17 +583,18 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               </div>
             )}
             {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
-              <div className="autocomplete-no-results">
+              <div className={autocompleteNoResults}>
                 No se encontraron registros
               </div>
             )}
           </div>
 
-          <label>
-            <FaClipboardList style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaClipboardList className="mr-2" />
             Seleccionar asunto *
           </label>
           <select
+            className={modalInput}
             value={form.asunto}
             onChange={e => setField('asunto', e.target.value)}
             disabled={subjectsLoading}
@@ -561,18 +605,19 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             ))}
           </select>
           {subjectsError && (
-            <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+            <div className="mt-1 text-[12px] text-[red]">
               Error al cargar asuntos desde el servidor.
             </div>
           )}
 
           {form.asunto && (
             <>
-              <label>
-                <FaExclamationTriangle style={{ marginRight: '8px' }} />
+              <label className={modalLabel}>
+                <FaExclamationTriangle className="mr-2" />
                 Seleccionar falta *
               </label>
               <select
+                className={modalInput}
                 value={form.falta}
                 onChange={e => setField('falta', e.target.value)}
               >
@@ -584,47 +629,48 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             </>
           )}
 
-          <label>
-            <FaClock style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaClock className="mr-2" />
             Turno *
           </label>
           <input
+            className={readOnlyInput}
             value={form.turno}
             readOnly
             placeholder="Se llenará automáticamente con el DNI"
-            style={{ cursor: 'not-allowed' }}
           />
 
-          <label>
-            <FaUserTie style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaUserTie className="mr-2" />
             Cargo *
           </label>
           <input
+            className={readOnlyInput}
             value={form.cargo}
             readOnly
             placeholder="Se llenará automáticamente con el DNI"
-            style={{ cursor: 'not-allowed' }}
           />
 
-          <label>
-            <FaIdBadge style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaIdBadge className="mr-2" />
             Reg. Lab *
           </label>
           <input
+            className={readOnlyInput}
             value={form.regLab}
             readOnly
             placeholder="Se llenará automáticamente con el DNI"
-            style={{ cursor: 'not-allowed' }}
           />
 
           {/* Campos de bodycam/cámara (solo para NO inasistencia) */}
           {mostrarCamposBodycam && (
             <>
-              <label>
-                <BsCameraVideo style={{ marginRight: '8px' }} />
+              <label className={modalLabel}>
+                <BsCameraVideo className="mr-2" />
                 Tipo de medio *
               </label>
               <select
+                className={modalInput}
                 value={form.tipoMedio}
                 onChange={e => {
                   const nuevoTipo = e.target.value
@@ -686,9 +732,10 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               {/* Campos de Bodycam */}
               {form.tipoMedio === 'bodycam' && (
                 <>
-                  <label>N° de Bodycam *</label>
-                  <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                  <label className={modalLabel}>N° de Bodycam *</label>
+                  <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
                     <input
+                      className={modalInput}
                       value={bodycamSearchTerm}
                       onChange={handleBodycamInputChange}
                       onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
@@ -696,24 +743,24 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                       autoComplete="off"
                     />
                     {bodycamLoading && (
-                      <div className="autocomplete-loading">Buscando...</div>
+                      <div className={autocompleteLoading}>Buscando...</div>
                     )}
                     {bodycamError && (
-                      <div className="autocomplete-error">{bodycamError}</div>
+                      <div className={autocompleteError}>{bodycamError}</div>
                     )}
                     {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                      <div className="autocomplete-suggestions">
+                      <div className={autocompleteSuggestions}>
                         {bodycamsHabilitadas.map((bodycam, index) => (
                           <div
                             key={bodycam.id || index}
-                            className="autocomplete-item"
+                            className={autocompleteItem}
                             onClick={() => handleBodycamSelect(bodycam)}
                           >
-                            <div className="autocomplete-item-code">
+                            <div className={autocompleteItemCode}>
                               {bodycam.name || bodycam.id}
                             </div>
                             {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
-                              <div className="autocomplete-item-details">
+                              <div className={autocompleteItemDetails}>
                                 {bodycam.asignadoA || bodycam.asignado || bodycam.usuario}
                               </div>
                             )}
@@ -722,14 +769,15 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                       </div>
                     )}
                     {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading && (
-                      <div className="autocomplete-no-results">
+                      <div className={autocompleteNoResults}>
                         No se encontraron bodycams
                       </div>
                     )}
                   </div>
 
-                  <label>Bodycam asignada a: *</label>
+                  <label className={modalLabel}>Bodycam asignada a: *</label>
                   <input
+                    className={modalInput}
                     value={form.bodycamAsignadaA}
                     onChange={e => setField('bodycamAsignadaA', e.target.value)}
                     placeholder="Se llenará automáticamente al seleccionar DNI"
@@ -740,9 +788,10 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               {/* Campos de Cámara */}
               {form.tipoMedio === 'camara' && (
                 <>
-                  <label>N° de Cámara *</label>
-                  <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                  <label className={modalLabel}>N° de Cámara *</label>
+                  <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
                     <input
+                      className={modalInput}
                       value={bodycamSearchTerm}
                       onChange={handleBodycamInputChange}
                       onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
@@ -750,17 +799,17 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                       autoComplete="off"
                     />
                     {bodycamLoading && (
-                      <div className="autocomplete-loading">Buscando...</div>
+                      <div className={autocompleteLoading}>Buscando...</div>
                     )}
                     {bodycamError && (
-                      <div className="autocomplete-error">{bodycamError}</div>
+                      <div className={autocompleteError}>{bodycamError}</div>
                     )}
                     {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                      <div className="autocomplete-suggestions">
+                      <div className={autocompleteSuggestions}>
                         {bodycamsHabilitadas.map((camera, index) => (
                           <div
                             key={camera.id || index}
-                            className="autocomplete-item"
+                            className={autocompleteItem}
                             onClick={() => {
                               selectBodycam(camera)
                               setShowBodycamSuggestions(false)
@@ -770,7 +819,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                             }}
                           >
                             <strong>{camera.name}</strong>
-                            {camera.serie && <span style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>Serie: {camera.serie}</span>}
+                            {camera.serie && <span className="ml-2 text-muted">Serie: {camera.serie}</span>}
                           </div>
                         ))}
                       </div>
@@ -782,9 +831,10 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               {/* Campos de Radio */}
               {form.tipoMedio === 'radio' && (
                 <>
-                  <label>N° de Radio *</label>
-                  <div className="autocomplete-container" ref={bodycamAutocompleteRef}>
+                  <label className={modalLabel}>N° de Radio *</label>
+                  <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
                     <input
+                      className={modalInput}
                       value={bodycamSearchTerm}
                       onChange={handleBodycamInputChange}
                       onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
@@ -792,17 +842,17 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                       autoComplete="off"
                     />
                     {bodycamLoading && (
-                      <div className="autocomplete-loading">Buscando...</div>
+                      <div className={autocompleteLoading}>Buscando...</div>
                     )}
                     {bodycamError && (
-                      <div className="autocomplete-error">{bodycamError}</div>
+                      <div className={autocompleteError}>{bodycamError}</div>
                     )}
                     {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                      <div className="autocomplete-suggestions">
+                      <div className={autocompleteSuggestions}>
                         {bodycamsHabilitadas.map((radio, index) => (
                           <div
                             key={radio.id || index}
-                            className="autocomplete-item"
+                            className={autocompleteItem}
                             onClick={() => {
                               selectBodycam(radio)
                               setShowBodycamSuggestions(false)
@@ -812,7 +862,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                             }}
                           >
                             <strong>{radio.name}</strong>
-                            {radio.serie && <span style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>Serie: {radio.serie}</span>}
+                            {radio.serie && <span className="ml-2 text-muted">Serie: {radio.serie}</span>}
                           </div>
                         ))}
                       </div>
@@ -823,18 +873,20 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             </>
           )}
 
-          <div className="row">
-            <div style={{ flex: 1 }}>
-              <label>Fecha de la falta *</label>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className={modalLabel}>Fecha de la falta *</label>
               <input
+                className={dateTimeInput}
                 type="date"
                 value={form.fechaIncidente}
                 onChange={e => setField('fechaIncidente', e.target.value)}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label>Hora del Incidente *</label>
+            <div className="flex-1">
+              <label className={modalLabel}>Hora del Incidente *</label>
               <input
+                className={dateTimeInput}
                 type="time"
                 value={form.horaIncidente}
                 onChange={e => setField('horaIncidente', e.target.value)}
@@ -842,20 +894,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             </div>
           </div>
 
-          <label>
-            <FaBalanceScale style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaBalanceScale className="mr-2" />
             Jurisdicción *
           </label>
           {jurisdictionsLoading ? (
-            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+            <div className="p-3 text-center text-muted">
               Cargando jurisdicciones...
             </div>
           ) : jurisdictionsError ? (
-            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+            <div className="p-3 text-center text-[#ef4444]">
               {jurisdictionsError}
             </div>
           ) : (
             <select
+              className={modalInput}
               value={form.jurisdiccion}
               onChange={e => {
                 const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
@@ -883,8 +936,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             </select>
           )}
 
-          <label>
-            <FaMapMarkerAlt style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaMapMarkerAlt className="mr-2" />
             Ubicación del Infractor *
           </label>
           <MapSelector
@@ -920,20 +973,21 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             }}
           />
 
-          <label>
-            <FaUserTag style={{ marginRight: '8px' }} />
+          <label className={modalLabel}>
+            <FaUserTag className="mr-2" />
             Destinatario *
           </label>
           {jobsLoading ? (
-            <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+            <div className="p-3 text-center text-muted">
               Cargando cargos...
             </div>
           ) : jobsError ? (
-            <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+            <div className="p-3 text-center text-[#ef4444]">
               {jobsError}
             </div>
           ) : (
             <select
+              className={modalInput}
               value={form.dirigidoA}
               onChange={e => {
                 const selectedJob = jobs.find(job => job.name === e.target.value)
@@ -953,17 +1007,18 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
 
           {form.dirigidoA && (
             <>
-              <label>Persona *</label>
+              <label className={modalLabel}>Persona *</label>
               {leadsLoading ? (
-                <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                <div className="p-3 text-center text-muted">
                   Cargando personas...
                 </div>
               ) : leadsError ? (
-                <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+                <div className="p-3 text-center text-[#ef4444]">
                   {leadsError}
                 </div>
               ) : (
                 <select
+                  className={modalInput}
                   value={selectedLeadId}
                   onChange={e => handleLeadChange(e.target.value)}
                 >
@@ -979,45 +1034,46 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
           )}
 
           {/* Sección CC - Obligatoria */}
-          <div className="cc-section">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+          <div>
+            <label className={cn(modalLabel, 'flex items-center gap-2')}>
               <FaUsers />
               Con copia (CC) - Obligatorio *
             </label>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            <p className="mt-1 text-[0.85rem] text-muted">
               Selecciona al menos 1 persona para enviar copia del reporte
             </p>
           </div>
 
           {/* Lista de personas para CC */}
           {form.conCopia && (
-            <div className="cc-list">
-              <label>Seleccionar personas para copia:</label>
+            <div className={ccList}>
+              <label className={modalLabel}>Seleccionar personas para copia:</label>
               {allLeadsLoading ? (
-                <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                <div className="p-3 text-center text-muted">
                   Cargando personas...
                 </div>
               ) : allLeadsError ? (
-                <div style={{ padding: '12px', color: '#ef4444', textAlign: 'center' }}>
+                <div className="p-3 text-center text-[#ef4444]">
                   {allLeadsError}
                 </div>
               ) : (
-                <div className="checkbox-group">
+                <div className="mt-3 flex flex-col gap-2.5">
                   {listaCC.map(lead => {
                     const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
                     return (
-                      <label key={lead.id} className="checkbox-label">
+                      <label key={lead.id} className={checkboxLabel}>
                         <input
                           type="checkbox"
+                          className={checkboxInput}
                           checked={(form.cc || []).includes(nombreCompleto)}
                           onChange={() => toggleCC(lead.id)}
                         />
-                        <span>{nombreCompleto} - {lead.job?.name || 'Sin cargo'}</span>
+                        <span className="text-[14px] text-content-2">{nombreCompleto} - {lead.job?.name || 'Sin cargo'}</span>
                       </label>
                     )
                   })}
                   {listaCC.length === 0 && !allLeadsLoading && (
-                    <div style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    <div className="p-3 text-center text-muted">
                       No hay otras personas disponibles
                     </div>
                   )}
@@ -1026,9 +1082,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             </div>
           )}
 
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn-secondary">CANCELAR</button>
-            <button type="submit" className="btn-primary">
+          <div className={modalActions}>
+            <button type="button" onClick={onClose} className={btnSecondary}>CANCELAR</button>
+            <button type="submit" className={btnPrimary}>
               {initial ? 'ACTUALIZAR INCIDENCIA' : 'CREAR INCIDENCIA'}
             </button>
           </div>
