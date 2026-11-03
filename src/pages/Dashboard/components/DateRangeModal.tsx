@@ -2,7 +2,13 @@ import React, { useState } from 'react'
 import { FaTimes, FaCalendarAlt } from 'react-icons/fa'
 import { toast } from '../../../utils/toast'
 
-export default function DateRangeModal({ onClose, onApply }) {
+export interface DateRangeModalProps {
+  onClose: () => void
+  /** Recibe null, null al limpiar el filtro. */
+  onApply: (start: Date | null, end: Date | null) => void
+}
+
+export default function DateRangeModal({ onClose, onApply }: DateRangeModalProps) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   
@@ -39,7 +45,7 @@ export default function DateRangeModal({ onClose, onApply }) {
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
               className="date-input"
             />
           </div>
@@ -49,7 +55,7 @@ export default function DateRangeModal({ onClose, onApply }) {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
               min={startDate}
               className="date-input"
             />

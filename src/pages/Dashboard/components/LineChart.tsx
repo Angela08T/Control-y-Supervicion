@@ -2,7 +2,39 @@ import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }) {
+/** Incidencias por día/mes: { [fecha]: { [asunto]: cantidad } } */
+export type IncidenciasPorDia = Record<string, Record<string, number>>
+
+/** Faltas por asunto: { [asunto]: { [falta]: cantidad } } */
+export type FaltasPorAsunto = Record<string, Record<string, number>>
+
+export interface TopFalta {
+  falta: string
+  cantidad: number
+}
+
+interface HoveredPoint {
+  asunto: string
+  dia: string
+  value: number
+  topFaltas: TopFalta[]
+  x: number
+  y: number
+}
+
+export interface LineChartProps {
+  title: string
+  subtitle: string
+  data: IncidenciasPorDia
+  incidencias?: unknown
+  faltasPorAsunto?: FaltasPorAsunto
+  onOpenDateModal?: () => void
+  defaultPeriod?: string
+  onPeriodChange?: (period: string) => void
+  onDateRangeChange?: (start: Date, end: Date) => void
+}
+
+export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }: LineChartProps) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -13,14 +45,14 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
     'Conductas que podrían afectar la Seguridad o la Integridad de Personas'
   ]
 
-  const [filtrosActivos, setFiltrosActivos] = useState(
-    nuevosAsuntos.reduce((acc, asunto) => ({ ...acc, [asunto]: true }), {})
+  const [filtrosActivos, setFiltrosActivos] = useState<Record<string, boolean>>(
+    nuevosAsuntos.reduce<Record<string, boolean>>((acc, asunto) => ({ ...acc, [asunto]: true }), {})
   )
   const [rangoTiempo, setRangoTiempo] = useState(defaultPeriod) // 7D, 15D, 30D, custom
   const [showCalendar, setShowCalendar] = useState(false)
-  const [customDateRange, setCustomDateRange] = useState(null)
-  const [animationKey, setAnimationKey] = useState(0)
-  const [hoveredPoint, setHoveredPoint] = useState(null)
+  const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null)
+  const [animationKey, setAnimationKey] = useState<number>(0)
+  const [hoveredPoint, setHoveredPoint] = useState<HoveredPoint | null>(null)
 
   // Sincronizar con el período padre
   useEffect(() => {
@@ -33,7 +65,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }, [rangoTiempo, customDateRange, data])
 
   // Notificar al padre cuando cambia el período (solo para botones, no para custom)
-  const handlePeriodChange = (newPeriod) => {
+  const handlePeriodChange = (newPeriod: string) => {
     setRangoTiempo(newPeriod)
     if (onPeriodChange && newPeriod !== 'custom') {
       onPeriodChange(newPeriod)
@@ -62,7 +94,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   const maxValue = getMaxValue()
 
   // Colores para los 6 nuevos asuntos
-  const colores = {
+  const colores: Record<string, string> = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9', // Azul cielo
     'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6', // Morado
     'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Verde
@@ -72,7 +104,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }
 
   // Obtener las 3 principales faltas por asunto
-  const getTopFaltas = (asunto, dia) => {
+  const getTopFaltas = (asunto: string, dia: string): TopFalta[] => {
     if (!faltasPorAsunto || !faltasPorAsunto[asunto]) return []
 
     // Convertir el objeto de faltas a array y ordenar por cantidad
@@ -84,14 +116,14 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
     return faltasArray
   }
 
-  const toggleFiltro = (asunto) => {
+  const toggleFiltro = (asunto: string) => {
     setFiltrosActivos(prev => ({
       ...prev,
       [asunto]: !prev[asunto]
     }))
   }
 
-  const handleCalendarApply = (start, end) => {
+  const handleCalendarApply = (start: Date, end: Date) => {
     setCustomDateRange({ start, end })
     setRangoTiempo('custom')
     // Notificar al padre del nuevo rango de fechas personalizado
@@ -121,12 +153,12 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   const chartHeight = height - paddingTop - paddingBottom
   const marginInside = 10  // Margen interno para evitar que las líneas toquen los bordes
 
-  const getX = (index) => {
+  const getX = (index: number) => {
     // Los puntos empiezan después de paddingLeft + yAxisLabelWidth + margen interno
     const effectiveWidth = chartWidth - (marginInside * 2)
     return paddingLeft + yAxisLabelWidth + marginInside + (index / (meses.length - 1)) * effectiveWidth
   }
-  const getY = (value) => {
+  const getY = (value: number) => {
     // Calcular posición Y desde la base hacia arriba con margen interno
     const effectiveHeight = chartHeight - (marginInside * 2)
     return paddingTop + marginInside + effectiveHeight - (value / maxValue) * effectiveHeight
@@ -137,7 +169,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
   // Crear path con curvas suaves tipo Bezier cúbica para mejor apariencia
   // Siempre empieza desde el borde izquierdo del gráfico en la parte inferior (valor 0)
-  const createPath = (values) => {
+  const createPath = (values: number[]) => {
     if (values.length === 0) return ''
 
     // Comenzar desde el borde izquierdo en la parte inferior (valor 0)
@@ -172,7 +204,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
 
   // Calcular la longitud aproximada del path para animar correctamente
   // Incluye la línea inicial desde el borde izquierdo (base) hasta el primer punto
-  const getPathLength = (values) => {
+  const getPathLength = (values: number[]) => {
     if (values.length === 0) return 0
 
     let length = 0
@@ -451,7 +483,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
               className={`filter-button ${filtrosActivos[asunto] ? 'active' : ''}`}
               style={{
                 '--filter-color': colores[asunto]
-              }}
+              } as React.CSSProperties}
               onClick={() => toggleFiltro(asunto)}
               title={asunto} // Tooltip con el nombre completo
             >

@@ -1,6 +1,16 @@
 import React from 'react'
 
-export default function StatCard({ title, value, subtitle, change, icon, color, onIconClick }) {
+export interface StatCardProps {
+  title: string
+  value: number | string
+  subtitle?: string
+  change?: string
+  icon: React.ReactNode
+  color: string
+  onIconClick?: () => void
+}
+
+export default function StatCard({ title, value, subtitle, change, icon, color, onIconClick }: StatCardProps) {
   const isPositive = change?.startsWith('+')
   
   return (

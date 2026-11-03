@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useAppSelector } from '@/store/hooks';
 
 const NotFoundPage = () => {
   const navigate = useNavigate();
-  const role = useSelector((state) => state.auth?.role);
+  const role = useAppSelector((state) => state.auth?.role);
 
   // Lógica de redirección según rol
-  const getRedirectPath = () => {
+  const getRedirectPath = (): string => {
     switch (role) {
       case 'admin':
         return '/dashboard/admin';

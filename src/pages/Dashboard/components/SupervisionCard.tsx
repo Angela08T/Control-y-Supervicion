@@ -1,6 +1,13 @@
 import React from 'react'
 
-export default function SupervisionCard({ serenosEnCampo, serenosSinConexion, nivelCumplimiento }) {
+export interface SupervisionCardProps {
+  serenosEnCampo: number
+  serenosSinConexion: number
+  /** Porcentaje 0-100 */
+  nivelCumplimiento: number
+}
+
+export default function SupervisionCard({ serenosEnCampo, serenosSinConexion, nivelCumplimiento }: SupervisionCardProps) {
   const circumference = 2 * Math.PI * 60
   const strokeDashoffset = circumference - (nivelCumplimiento / 100) * circumference
   

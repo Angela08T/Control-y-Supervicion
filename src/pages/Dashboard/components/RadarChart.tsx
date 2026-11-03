@@ -2,7 +2,44 @@ import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function RadarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }) {
+/** Incidencias por día/mes: { [fecha]: { [asunto]: cantidad } } */
+export type IncidenciasPorDia = Record<string, Record<string, number>>
+
+/** Faltas por asunto: { [asunto]: { [falta]: cantidad } } */
+export type FaltasPorAsunto = Record<string, Record<string, number>>
+
+export interface TopFalta {
+  falta: string
+  cantidad: number
+}
+
+interface RadarPoint {
+  x: number
+  y: number
+  radius: number
+  angle: number
+}
+
+interface HoveredSegment {
+  asunto: string
+  valor: number
+  topFaltas: TopFalta[]
+  x: number
+  y: number
+}
+
+export interface RadarChartProps {
+  title: string
+  subtitle: string
+  data: IncidenciasPorDia
+  incidencias?: unknown
+  faltasPorAsunto?: FaltasPorAsunto
+  defaultPeriod?: string
+  onPeriodChange?: (period: string) => void
+  onDateRangeChange?: (start: Date, end: Date) => void
+}
+
+export default function RadarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }: RadarChartProps) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -15,8 +52,8 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
 
   const [rangoTiempo, setRangoTiempo] = useState(defaultPeriod)
   const [showCalendar, setShowCalendar] = useState(false)
-  const [customDateRange, setCustomDateRange] = useState(null)
-  const [hoveredSegment, setHoveredSegment] = useState(null)
+  const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null)
+  const [hoveredSegment, setHoveredSegment] = useState<HoveredSegment | null>(null)
 
   // Sincronizar con el período padre
   useEffect(() => {
@@ -24,7 +61,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   }, [defaultPeriod])
 
   // Notificar al padre cuando cambia el período
-  const handlePeriodChange = (newPeriod) => {
+  const handlePeriodChange = (newPeriod: string) => {
     setRangoTiempo(newPeriod)
     if (onPeriodChange && newPeriod !== 'custom') {
       onPeriodChange(newPeriod)
@@ -32,7 +69,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   }
 
   // Calcular totales por asunto desde los datos
-  const totalesPorAsunto = {}
+  const totalesPorAsunto: Record<string, number> = {}
   const dias = Object.keys(data)
 
   nuevosAsuntos.forEach(asunto => {
@@ -46,7 +83,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   })
 
   // Colores para los 6 nuevos asuntos
-  const colores = {
+  const colores: Record<string, string> = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9',
     'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6',
     'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981',
@@ -56,7 +93,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   }
 
   // Nombres cortos para mostrar
-  const nombresCortos = {
+  const nombresCortos: Record<string, string> = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': 'Horario y Asistencia',
     'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': 'Funciones y Desempeño',
     'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': 'Uso de Recursos',
@@ -65,7 +102,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
     'Conductas que podrían afectar la Seguridad o la Integridad de Personas': 'Seguridad'
   }
 
-  const handleCalendarApply = (start, end) => {
+  const handleCalendarApply = (start: Date, end: Date) => {
     setCustomDateRange({ start, end })
     setRangoTiempo('custom')
     // Notificar al padre del nuevo rango de fechas personalizado
@@ -99,7 +136,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   const angleStep = (2 * Math.PI) / nuevosAsuntos.length
 
   // Calcular las posiciones de cada punto del radar
-  const getRadarPoint = (asunto, index) => {
+  const getRadarPoint = (asunto: string, index: number): RadarPoint => {
     const valor = totalesPorAsunto[asunto]
     const radius = (valor / maxValor) * maxRadius
     const angle = angleStep * index - Math.PI / 2 // Comenzar desde arriba
@@ -119,7 +156,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   ).join(' ') + ' Z'
 
   // Obtener las 3 principales faltas por asunto
-  const getTopFaltas = (asunto) => {
+  const getTopFaltas = (asunto: string): TopFalta[] => {
     if (!faltasPorAsunto || !faltasPorAsunto[asunto]) return []
 
     const faltasArray = Object.entries(faltasPorAsunto[asunto])
@@ -186,7 +223,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
         </defs>
 
         {/* Círculos concéntricos de fondo */}
-        {[...Array(numLevels)].map((_, i) => {
+        {Array.from({ length: numLevels }, (_, i) => {
           const radius = ((i + 1) / numLevels) * maxRadius
           const levelValue = Math.round(((i + 1) / numLevels) * maxValor)
 
@@ -282,7 +319,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
           const labelY = centerY + labelRadius * Math.sin(angle)
 
           // Ajustar la posición del texto según el ángulo
-          let textAnchor = 'middle'
+          let textAnchor: 'start' | 'middle' | 'end' = 'middle'
           if (angle > -Math.PI / 2 && angle < Math.PI / 2) {
             textAnchor = 'start'
           } else if (angle > Math.PI / 2 || angle < -Math.PI / 2) {

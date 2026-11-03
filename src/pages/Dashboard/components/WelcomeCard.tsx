@@ -1,9 +1,13 @@
 import React from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../../store/hooks'
 import loboImage from '../../../assets/lobo.png'
 
-export default function WelcomeCard({ message }) {
-  const { username } = useSelector((state) => state.auth)
+export interface WelcomeCardProps {
+  message: string
+}
+
+export default function WelcomeCard({ message }: WelcomeCardProps) {
+  const { username } = useAppSelector((state) => state.auth)
 
   return (
     <div className="welcome-card">

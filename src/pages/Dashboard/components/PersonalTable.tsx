@@ -1,9 +1,31 @@
 import React, { useState, useEffect } from 'react'
 import { FaCircle } from 'react-icons/fa'
 import api from '../../../api/config'
+import type { User } from '@/types'
+
+/** Fila de la tabla de personal. */
+interface PersonalRow {
+  nombre: string
+  rol: string
+  turno: string
+  activo: boolean
+  avatar: string
+  dni: string | null
+}
+
+/** Usuario de GET /user con los campos que usa la tabla y que no estan en `User`. */
+interface PersonalApiUser extends User {
+  shift?: string
+  status?: string | boolean
+}
+
+/** Cuerpo de GET /user: la lista viene en `data` o en `data.data` (paginada). */
+interface PersonalListBody {
+  data?: PersonalApiUser[] | { data?: PersonalApiUser[] }
+}
 
 export default function PersonalTable() {
-  const [personal, setPersonal] = useState([])
+  const [personal, setPersonal] = useState<PersonalRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -13,12 +35,13 @@ export default function PersonalTable() {
   const fetchPersonal = async () => {
     try {
       // Obtener usuarios con rol SENTINEL
-      const response = await api.get('/user', {
+      const response = await api.get<PersonalListBody>('/user', {
         params: { rol: 'SENTINEL' }
       })
 
       // Extraer datos de la respuesta
-      const usersData = response.data?.data?.data || response.data?.data || []
+      const payload = response.data?.data
+      const usersData: PersonalApiUser[] = (Array.isArray(payload) ? payload : payload?.data) || []
 
       // Si no hay datos, mostrar lista vacía
       if (!usersData || usersData.length === 0) {
@@ -28,7 +51,7 @@ export default function PersonalTable() {
       }
 
       // Transformar datos de la API al formato de la tabla
-      const personalData = usersData.map(user => {
+      const personalData: PersonalRow[] = usersData.map(user => {
         // Construir nombre completo
         const nombreCompleto = `${user.name || ''} ${user.lastname || ''}`.trim() || 'Sin nombre'
 

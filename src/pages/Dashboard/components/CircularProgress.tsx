@@ -1,12 +1,18 @@
 import React from 'react'
 import { FaFrown, FaMeh, FaSmile } from 'react-icons/fa'
 
-export default function CircularProgress({ title, percentage, subtitle }) {
+export interface CircularProgressProps {
+  title: string
+  percentage: number
+  subtitle?: string
+}
+
+export default function CircularProgress({ title, percentage, subtitle }: CircularProgressProps) {
   const circumference = 2 * Math.PI * 65
   const strokeDashoffset = circumference - (percentage / 100) * circumference
 
   // Determinar el emoji según el porcentaje
-  const getEmoji = () => {
+  const getEmoji = (): React.ReactElement => {
     if (percentage < 50) {
       return <FaFrown className="satisfaction-icon sad" />
     } else if (percentage < 80) {
@@ -17,7 +23,7 @@ export default function CircularProgress({ title, percentage, subtitle }) {
   }
 
   // Determinar el color del progreso según el porcentaje
-  const getProgressColor = () => {
+  const getProgressColor = (): string => {
     if (percentage < 50) return '#ef4444' // Rojo
     if (percentage < 80) return '#f59e0b' // Amarillo/Naranja
     return '#10b981' // Verde

@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../../store/hooks'
 import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
 import { getFieldSupervisionStats, getAllOffenders, getDashboardTrends, getDashboardGeneral } from '../../api/statistics'
 import useSubjects from '../../hooks/Subject/useSubjects'
+import type { DashboardGeneral, DashboardTrends, Incidencia, Offender, StoredIncidencia } from '@/types'
 import StatCard from './components/StatCard'
 import DateCard from './components/DateCard'
 import WelcomeCard from './components/WelcomeCard'
@@ -15,14 +16,32 @@ import PersonalTable from './components/PersonalTable'
 import TurnoList from './components/TurnoList'
 import DateRangeModal from './components/DateRangeModal'
 
+/** Incidencia en cualquiera de sus formas: legado de localStorage o fila de la API. */
+type IncidenciaItem = StoredIncidencia | Incidencia
+
+/** Offender con el campo `status` que usa el dashboard (no declarado en `Offender`). */
+interface OffenderListItem extends Offender {
+  status?: string
+}
+
+/** Respuesta de GET /statistics/field-supervision (sin tipo en el backend). */
+interface FieldSupervisionResponse {
+  data?: {
+    serenosEnCampo?: number
+    serenosSinConexion?: number
+    nivelCumplimiento?: number
+  }
+}
+
 export default function DashboardPage() {
   // Obtener el rol del usuario desde Redux
-  const userRole = useSelector(state => state.auth.role)
+  // Se tipa como string porque AppRole usa minusculas y la comparacion con 'ADMIN' se mantiene igual
+  const userRole: string | null = useAppSelector(state => state.auth.role)
   const isAdmin = userRole === 'ADMIN'
 
-  const [incidencias, setIncidencias] = useState(loadIncidencias())
+  const [incidencias, setIncidencias] = useState<IncidenciaItem[]>(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
-  const [dateRange, setDateRange] = useState({ start: null, end: null })
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null })
   const [chartPeriod, setChartPeriod] = useState('30D') // Período para los gráficos (7D, 15D, 30D)
   const [serenosActivos, setSerenosActivos] = useState(0)
   const [pdfStats, setPdfStats] = useState(getPDFDownloadStats())
@@ -32,8 +51,8 @@ export default function DashboardPage() {
     nivelCumplimiento: 0
   })
   const [loading, setLoading] = useState(true)
-  const [trendsData, setTrendsData] = useState(null) // Datos de tendencias de la API
-  const [generalStats, setGeneralStats] = useState(null) // Datos generales (incidencias críticas y zonas)
+  const [trendsData, setTrendsData] = useState<DashboardTrends | null>(null) // Datos de tendencias de la API
+  const [generalStats, setGeneralStats] = useState<DashboardGeneral | null>(null) // Datos generales (incidencias críticas y zonas)
 
   // Obtener asuntos y faltas desde la API
   const { subjects } = useSubjects()
@@ -59,9 +78,10 @@ export default function DashboardPage() {
       const offendersResponse = await getAllOffenders()
 
       // La estructura puede ser response.data.data o response.data
-      const offendersList = Array.isArray(offendersResponse?.data?.data)
+      const offendersPayload: unknown = offendersResponse?.data
+      const offendersList: OffenderListItem[] = Array.isArray(offendersResponse?.data?.data)
         ? offendersResponse.data.data
-        : (Array.isArray(offendersResponse?.data) ? offendersResponse.data : [])
+        : (Array.isArray(offendersPayload) ? offendersPayload as OffenderListItem[] : [])
 
       const activeCount = offendersList.filter(o => o.status === 'active').length || 0
       setSerenosActivos(activeCount)
@@ -71,7 +91,7 @@ export default function DashboardPage() {
 
     try {
       // Obtener datos de supervisión de campo
-      const supervisionResponse = await getFieldSupervisionStats()
+      const supervisionResponse = (await getFieldSupervisionStats()) as FieldSupervisionResponse | null | undefined
       if (supervisionResponse?.data) {
         setSupervisionData({
           serenosEnCampo: supervisionResponse.data.serenosEnCampo || 18,
@@ -99,7 +119,7 @@ export default function DashboardPage() {
   // Cargar datos de tendencias y estadísticas generales cuando cambia el rango de fechas o el período de gráficos
   useEffect(() => {
     const fetchDashboardStats = async () => {
-      let startDate, endDate
+      let startDate: string, endDate: string
 
       if (dateRange.start && dateRange.end) {
         // Usar rango personalizado
@@ -141,10 +161,12 @@ export default function DashboardPage() {
     let filtered = incidencias
 
     // Filtrar por rango de fechas si está activo
-    if (dateRange.start && dateRange.end) {
+    const rangeStart = dateRange.start
+    const rangeEnd = dateRange.end
+    if (rangeStart && rangeEnd) {
       filtered = incidencias.filter(inc => {
         const fecha = new Date(inc.fechaIncidente)
-        return fecha >= dateRange.start && fecha <= dateRange.end
+        return fecha >= rangeStart && fecha <= rangeEnd
       })
     }
 
@@ -158,13 +180,13 @@ export default function DashboardPage() {
     const cambioSerenos = serenosActivos > 20 ? '+5%' : '0%'
 
     // Calcular conteo de asuntos (necesario para varios cálculos)
-    const conteoAsuntos = {}
+    const conteoAsuntos: Record<string, number> = {}
     filtered.forEach(inc => {
       conteoAsuntos[inc.asunto] = (conteoAsuntos[inc.asunto] || 0) + 1
     })
 
     // Incidencia crítica - Usar datos de la API si están disponibles
-    let asuntoMasFrecuente, totalCriticas
+    let asuntoMasFrecuente: string, totalCriticas: number
     if (generalStats?.top_subject) {
       asuntoMasFrecuente = generalStats.top_subject.name
       totalCriticas = generalStats.top_subject.sent
@@ -183,13 +205,13 @@ export default function DashboardPage() {
     }
 
     // Zona con más incidencias - Usar datos de la API si están disponibles
-    let zonaConMas, totalZona
+    let zonaConMas: string, totalZona: number
     if (generalStats?.top_jurisdiction) {
       zonaConMas = generalStats.top_jurisdiction.name
       totalZona = generalStats.top_jurisdiction.sent
     } else {
       // Fallback a cálculo local
-      const conteoJurisdicciones = {}
+      const conteoJurisdicciones: Record<string, number> = {}
       filtered.forEach(inc => {
         if (inc.jurisdiccion) {
           conteoJurisdicciones[inc.jurisdiccion] = (conteoJurisdicciones[inc.jurisdiccion] || 0) + 1
@@ -214,7 +236,7 @@ export default function DashboardPage() {
       : 0
 
     // Evolución por mes - Usando datos de la API de tendencias cuando estén disponibles
-    const incidenciasPorMes = {}
+    const incidenciasPorMes: Record<string, Record<string, number>> = {}
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
     // Obtener lista de asuntos desde la API (o fallback a lista hardcodeada)
@@ -230,7 +252,7 @@ export default function DashboardPage() {
         ]
 
     // Crear mapa de ID a nombre de subject para la API
-    const subjectIdToName = {}
+    const subjectIdToName: Record<string, string> = {}
     if (subjects && subjects.length > 0) {
       subjects.forEach(subject => {
         subjectIdToName[subject.id] = subject.name
@@ -240,7 +262,7 @@ export default function DashboardPage() {
     // Si tenemos datos de la API de tendencias, usarlos
     if (trendsData && trendsData.days && trendsData.days.length > 0) {
       // Inicializar estructura para fechas del rango
-      const fechasMap = {}
+      const fechasMap: Record<string, Record<string, number>> = {}
       trendsData.days.forEach(day => {
         const fecha = new Date(day.date)
         const diaNum = fecha.getDate()
@@ -291,7 +313,7 @@ export default function DashboardPage() {
     }
 
     // Incidencias por turno - Usar datos de la API si están disponibles
-    const incidenciasPorTurno = {
+    const incidenciasPorTurno: Record<string, number> = {
       'Mañana': 0,
       'Tarde': 0,
       'Noche': 0
@@ -312,7 +334,7 @@ export default function DashboardPage() {
     }
 
     // Conteo por asunto para las barras - Usando API de tendencias o conteo local
-    const incidenciasPorAsunto = {}
+    const incidenciasPorAsunto: Record<string, number> = {}
 
     if (trendsData && trendsData.days && trendsData.days.length > 0) {
       // Inicializar con 0 para todos los asuntos
@@ -340,7 +362,7 @@ export default function DashboardPage() {
     }
 
     // También agregar el conteo de faltas por asunto
-    const faltasPorAsunto = {}
+    const faltasPorAsunto: Record<string, Record<string, number>> = {}
     filtered.forEach(inc => {
       if (inc.asunto && inc.falta) {
         if (!faltasPorAsunto[inc.asunto]) {
@@ -366,7 +388,7 @@ export default function DashboardPage() {
     }
   }, [incidencias, dateRange, serenosActivos, subjects, trendsData, generalStats])
 
-  const handleDateRangeChange = (start, end) => {
+  const handleDateRangeChange = (start: Date | null, end: Date | null) => {
     setDateRange({ start, end })
     setShowDateModal(false)
   }

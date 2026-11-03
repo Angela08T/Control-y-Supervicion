@@ -2,7 +2,37 @@ import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt } from 'react-icons/fa'
 import CalendarModal from './CalendarModal'
 
-export default function BarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange }) {
+/** Incidencias por día: { [fecha]: { [asunto]: cantidad } } */
+export type IncidenciasPorDia = Record<string, Record<string, number>>
+
+/** Faltas por asunto: { [asunto]: { [falta]: cantidad } } */
+export type FaltasPorAsunto = Record<string, Record<string, number>>
+
+export interface TopFalta {
+  falta: string
+  cantidad: number
+}
+
+interface HoveredBar {
+  asunto: string
+  dia: string
+  valor: number
+  topFaltas: TopFalta[]
+  x: number
+  y: number
+}
+
+export interface BarChartProps {
+  title: string
+  subtitle: string
+  data: IncidenciasPorDia
+  incidencias?: unknown
+  faltasPorAsunto?: FaltasPorAsunto
+  defaultPeriod?: string
+  onPeriodChange?: (period: string) => void
+}
+
+export default function BarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange }: BarChartProps) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -15,8 +45,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
 
   const [rangoTiempo, setRangoTiempo] = useState(defaultPeriod)
   const [showCalendar, setShowCalendar] = useState(false)
-  const [customDateRange, setCustomDateRange] = useState(null)
-  const [hoveredBar, setHoveredBar] = useState(null)
+  const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null)
+  const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null)
 
   // Sincronizar con el período padre
   useEffect(() => {
@@ -24,7 +54,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   }, [defaultPeriod])
 
   // Notificar al padre cuando cambia el período
-  const handlePeriodChange = (newPeriod) => {
+  const handlePeriodChange = (newPeriod: string) => {
     setRangoTiempo(newPeriod)
     if (onPeriodChange && newPeriod !== 'custom') {
       onPeriodChange(newPeriod)
@@ -36,7 +66,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   const dias = Object.keys(datosActuales)
 
   // Colores para los 6 nuevos asuntos
-  const colores = {
+  const colores: Record<string, string> = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9', // Azul cielo
     'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6', // Morado
     'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Verde
@@ -46,7 +76,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   }
 
   // Obtener las 3 principales faltas por asunto
-  const getTopFaltas = (asunto) => {
+  const getTopFaltas = (asunto: string): TopFalta[] => {
     if (!faltasPorAsunto || !faltasPorAsunto[asunto]) return []
 
     const faltasArray = Object.entries(faltasPorAsunto[asunto])
@@ -57,7 +87,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
     return faltasArray
   }
 
-  const handleCalendarApply = (start, end) => {
+  const handleCalendarApply = (start: Date, end: Date) => {
     setCustomDateRange({ start, end })
     setRangoTiempo('custom')
   }
@@ -98,7 +128,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   const barWidth = Math.max(Math.min(calculatedBarWidth, 20), 3) // Mínimo 3px, máximo 20px (más gruesas)
 
   // Función para obtener posición Y
-  const getY = (value) => {
+  const getY = (value: number) => {
     // Las barras deben comenzar desde la misma línea base (paddingTop + chartHeight)
     // y crecer hacia arriba proporcionalmente
     return paddingTop + chartHeight - (value / maxValor) * chartHeight

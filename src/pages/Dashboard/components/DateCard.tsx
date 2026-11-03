@@ -2,7 +2,7 @@ import React from 'react'
 import { FaCalendarDay } from 'react-icons/fa'
 
 export default function DateCard() {
-  const obtenerFechaFormateada = () => {
+  const obtenerFechaFormateada = (): { diaSemana: string; fecha: string } => {
     const fecha = new Date()
     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']

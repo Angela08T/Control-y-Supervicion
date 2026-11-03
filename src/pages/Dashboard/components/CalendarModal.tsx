@@ -1,8 +1,13 @@
 import React, { useState } from 'react'
 import { FaTimes } from 'react-icons/fa'
 
-export default function CalendarModal({ onClose, onApply }) {
-  const [selectedDates, setSelectedDates] = useState([])
+export interface CalendarModalProps {
+  onClose: () => void
+  onApply: (start: Date, end: Date) => void
+}
+
+export default function CalendarModal({ onClose, onApply }: CalendarModalProps) {
+  const [selectedDates, setSelectedDates] = useState<Date[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const meses = [
@@ -13,7 +18,7 @@ export default function CalendarModal({ onClose, onApply }) {
   const diasSemana = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
 
   // Obtener días del mes
-  const getDaysInMonth = (date) => {
+  const getDaysInMonth = (date: Date): (Date | null)[] => {
     const year = date.getFullYear()
     const month = date.getMonth()
     const firstDay = new Date(year, month, 1)
@@ -21,7 +26,7 @@ export default function CalendarModal({ onClose, onApply }) {
     const daysInMonth = lastDay.getDate()
     const startingDayOfWeek = firstDay.getDay()
 
-    const days = []
+    const days: (Date | null)[] = []
 
     // Agregar espacios vacíos para los días anteriores
     for (let i = 0; i < startingDayOfWeek; i++) {
@@ -38,7 +43,7 @@ export default function CalendarModal({ onClose, onApply }) {
 
   const days = getDaysInMonth(currentMonth)
 
-  const isDateSelected = (date) => {
+  const isDateSelected = (date: Date | null): boolean => {
     if (!date) return false
     return selectedDates.some(d =>
       d.getDate() === date.getDate() &&
@@ -47,19 +52,19 @@ export default function CalendarModal({ onClose, onApply }) {
     )
   }
 
-  const isDateInRange = (date) => {
+  const isDateInRange = (date: Date | null): boolean => {
     if (!date || selectedDates.length !== 2) return false
-    const [start, end] = selectedDates.sort((a, b) => a - b)
+    const [start, end] = selectedDates.sort((a, b) => a.getTime() - b.getTime())
     return date >= start && date <= end
   }
 
-  const handleDateClick = (date) => {
+  const handleDateClick = (date: Date | null): void => {
     if (!date) return
 
     if (selectedDates.length === 0) {
       setSelectedDates([date])
     } else if (selectedDates.length === 1) {
-      setSelectedDates([...selectedDates, date].sort((a, b) => a - b))
+      setSelectedDates([...selectedDates, date].sort((a, b) => a.getTime() - b.getTime()))
     } else {
       setSelectedDates([date])
     }
@@ -75,7 +80,7 @@ export default function CalendarModal({ onClose, onApply }) {
 
   const handleApply = () => {
     if (selectedDates.length === 2) {
-      const [start, end] = selectedDates.sort((a, b) => a - b)
+      const [start, end] = selectedDates.sort((a, b) => a.getTime() - b.getTime())
       onApply(start, end)
       onClose()
     }

@@ -1,7 +1,12 @@
 import React from 'react'
 import { FaSun, FaCloudSun, FaMoon } from 'react-icons/fa'
 
-export default function TurnoList({ data }) {
+export interface TurnoListProps {
+  /** Conteo por turno: claves 'Mañana', 'Tarde' y 'Noche'. */
+  data: Record<string, number>
+}
+
+export default function TurnoList({ data }: TurnoListProps) {
   const turnos = [
     {
       nombre: 'Mañana',
