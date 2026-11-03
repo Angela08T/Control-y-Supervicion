@@ -3,6 +3,32 @@ import AuditoriaTable from '../../components/AuditoriaTable';
 import useAudit from '../../hooks/Audit/useAudit';
 import type { AuditFilterState } from '../../hooks/Audit/useAudit';
 import { FaSearch, FaRedo } from 'react-icons/fa';
+import {
+  btnSecondary,
+  cn,
+  controlsBar,
+  controlsInput,
+  controlsSelect,
+  incidenciasPage,
+  pageHeaderIncidencias,
+  pageTitle,
+  tableWrapper
+} from '../../utils/classes';
+
+/** Ajustes de .controls a ancho tablet (<=900px) que no incluyen las constantes compartidas */
+const controlsBarResponsive = cn(controlsBar, 'max-[900px]:flex-wrap max-[900px]:justify-between max-[900px]:gap-2');
+const controlsSelectResponsive = cn(controlsSelect, 'max-[900px]:flex-[1_1_100%] max-[900px]:min-w-0');
+const controlsInputResponsive = cn(controlsInput, 'max-[900px]:flex-[1_1_100%] max-[900px]:min-w-0');
+
+/** Boton de pagina numerica (activo / inactivo) */
+const pageButton = (active: boolean) =>
+  cn(
+    'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2',
+    active ? 'border-primary bg-primary font-bold text-white' : 'border-line bg-transparent font-normal [color:inherit]'
+  );
+
+/** Boton anterior / siguiente de la paginacion */
+const navButton = cn(btnSecondary, 'flex items-center gap-[5px] px-4! py-2! disabled:cursor-not-allowed disabled:opacity-50');
 
 export default function AuditoriaPage() {
   const {
@@ -42,12 +68,13 @@ export default function AuditoriaPage() {
   };
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>AUDITORÍA DEL SISTEMA</h2>
-          <div className="controls">
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className="flex flex-1 items-center gap-5">
+          <h2 className={pageTitle}>AUDITORÍA DEL SISTEMA</h2>
+          <div className={controlsBarResponsive}>
             <select
+              className={controlsSelectResponsive}
               value={filters.action}
               onChange={(e) => handleFilterChange('action', e.target.value)}
             >
@@ -62,6 +89,7 @@ export default function AuditoriaPage() {
             </select>
 
             <select
+              className={controlsSelectResponsive}
               value={filters.model}
               onChange={(e) => handleFilterChange('model', e.target.value)}
             >
@@ -75,6 +103,7 @@ export default function AuditoriaPage() {
             </select>
 
             <select
+              className={controlsSelectResponsive}
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
@@ -84,26 +113,18 @@ export default function AuditoriaPage() {
               <option value="FAILED">Fallido</option>
             </select>
 
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                className={cn(controlsInputResponsive, 'pl-[35px]!')}
                 placeholder="Buscar por usuario..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                style={{ paddingLeft: '35px' }}
               />
             </div>
 
-            <button className="btn-secondary" onClick={resetFilters}>
-              <FaRedo style={{ marginRight: '8px' }} />
+            <button className={btnSecondary} onClick={resetFilters}>
+              <FaRedo className="mr-2" />
               Limpiar
             </button>
           </div>
@@ -111,29 +132,17 @@ export default function AuditoriaPage() {
       </header>
 
       {error && (
-        <div style={{
-          padding: '12px 16px',
-          background: 'rgba(239, 68, 68, 0.1)',
-          color: 'var(--danger)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          borderRadius: '8px',
-          marginBottom: '1rem'
-        }}>
+        <div className="mb-4 rounded-[8px] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.1)] px-4 py-3 text-danger">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className="p-10 text-center text-[17.6px] text-muted">
           Cargando registros de auditoría...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableWrapper}>
           <AuditoriaTable
             data={audits}
             currentPage={pagination.currentPage}
@@ -141,45 +150,22 @@ export default function AuditoriaPage() {
           />
 
           {/* Controles de paginación */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px',
-            marginTop: '20px',
-            background: 'var(--card-bg)',
-            borderRadius: '8px',
-            border: '1px solid var(--border)',
-            flexWrap: 'wrap',
-            gap: '15px'
-          }}>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-[8px] border border-line p-5">
             {/* Lado izquierdo: Contador y selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-              <div style={{
-                color: 'var(--text)',
-                fontSize: '0.95rem',
-                fontWeight: '500'
-              }}>
+            <div className="flex flex-wrap items-center gap-5">
+              <div className="text-[15.2px] font-medium">
                 Mostrando {audits.length} de {pagination.totalCount} registros
               </div>
 
               {/* Selector de items por página */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              <div className="flex items-center gap-2">
+                <label className="text-[14.4px] text-muted">
                   Mostrar:
                 </label>
                 <select
+                  className="cursor-pointer rounded-[4px] border border-line [background:var(--bg)] px-3 py-1.5 text-[14.4px] [color:inherit]"
                   value={itemsPerPage}
                   onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg)',
-                    color: 'var(--text)',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem'
-                  }}
                 >
                   <option value={10}>10</option>
                   <option value={25}>25</option>
@@ -190,30 +176,18 @@ export default function AuditoriaPage() {
             </div>
 
             {/* Lado derecho: Botones de navegación */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={handlePreviousPage}
                 disabled={pagination.currentPage === 1}
-                className="btn-secondary"
-                style={{
-                  padding: '8px 16px',
-                  opacity: pagination.currentPage === 1 ? 0.5 : 1,
-                  cursor: pagination.currentPage === 1 ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
+                className={navButton}
               >
                 ← Anterior
               </button>
 
               {/* Números de página */}
               {pagination.totalPages > 1 && (
-                <div style={{
-                  display: 'flex',
-                  gap: '5px',
-                  alignItems: 'center'
-                }}>
+                <div className="flex items-center gap-[5px]">
                   {(() => {
                     const pages: (number | '...')[] = [];
                     const totalPages = pagination.totalPages;
@@ -253,12 +227,7 @@ export default function AuditoriaPage() {
                         return (
                           <span
                             key={`ellipsis-${idx}`}
-                            style={{
-                              padding: '8px 12px',
-                              color: 'var(--text-muted)',
-                              minWidth: '40px',
-                              textAlign: 'center'
-                            }}
+                            className="min-w-10 px-3 py-2 text-center text-muted"
                           >
                             ...
                           </span>
@@ -269,16 +238,7 @@ export default function AuditoriaPage() {
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          style={{
-                            padding: '8px 12px',
-                            background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                            color: currentPage === pageNum ? 'white' : 'var(--text)',
-                            border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                            minWidth: '40px'
-                          }}
+                          className={pageButton(currentPage === pageNum)}
                         >
                           {pageNum}
                         </button>
@@ -290,16 +250,7 @@ export default function AuditoriaPage() {
 
               {/* Indicador de página actual si solo hay 1 página */}
               {pagination.totalPages === 1 && (
-                <div style={{
-                  padding: '8px 12px',
-                  background: 'var(--primary)',
-                  color: 'white',
-                  border: '1px solid var(--primary)',
-                  borderRadius: '4px',
-                  fontWeight: 'bold',
-                  minWidth: '40px',
-                  textAlign: 'center'
-                }}>
+                <div className="min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white">
                   1
                 </div>
               )}
@@ -307,15 +258,7 @@ export default function AuditoriaPage() {
               <button
                 onClick={handleNextPage}
                 disabled={pagination.currentPage === pagination.totalPages}
-                className="btn-secondary"
-                style={{
-                  padding: '8px 16px',
-                  opacity: pagination.currentPage === pagination.totalPages ? 0.5 : 1,
-                  cursor: pagination.currentPage === pagination.totalPages ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
+                className={navButton}
               >
                 Siguiente →
               </button>

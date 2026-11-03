@@ -13,6 +13,16 @@ import {
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
 import type { CreateUserDto, ID, Role, User } from '@/types'
+import {
+  btnPrimary,
+  cn,
+  controlsBar,
+  controlsInput,
+  incidenciasPage,
+  pageHeaderIncidencias,
+  pageTitle,
+  tableWrapper
+} from '../../utils/classes'
 
 /** Filtro de rol: 'all' o un rol del backend */
 type RoleFilter = 'all' | Role
@@ -30,6 +40,18 @@ interface MutationError {
 }
 
 const readMutationBody = (body: unknown): MutationBody => body as MutationBody
+
+/** Ajustes de .controls a ancho tablet (<=900px) que no incluyen las constantes compartidas */
+const controlsBarResponsive = cn(controlsBar, 'max-[900px]:flex-wrap max-[900px]:justify-between max-[900px]:gap-2')
+const controlsInputResponsive = cn(controlsInput, 'max-[900px]:flex-[1_1_100%] max-[900px]:min-w-0')
+
+/** Select de filtro por rol (el borde y el padding inline del original anulan el hover/focus de .controls select) */
+const roleSelect = cn(
+  'max-w-[200px] max-[900px]:flex-[1_1_100%] overflow-hidden text-ellipsis whitespace-nowrap',
+  'cursor-pointer rounded-[8px] border border-line [background:var(--bg)] px-3 py-2 min-w-[180px]',
+  'text-[15.2px] text-content! outline-none [backdrop-filter:blur(5px)] transition-all duration-300',
+  'hover:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:-translate-y-0.5 focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]!'
+)
 
 export default function UsuariosPage() {
   const { role: userRole } = useAppSelector((state) => state.auth) // Rol del usuario actual
@@ -222,25 +244,16 @@ export default function UsuariosPage() {
   const filteredData = users
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE USUARIOS</h2>
-          <div className="controls">
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className="flex flex-1 items-center gap-5">
+          <h2 className={pageTitle}>GESTIÓN DE USUARIOS</h2>
+          <div className={controlsBarResponsive}>
             {/* Filtro por rol */}
             <select
+              className={roleSelect}
               value={filters.roleFilter}
               onChange={e => setFilters(f => ({ ...f, roleFilter: e.target.value as RoleFilter }))}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text)',
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                minWidth: '180px'
-              }}
             >
               <option value="all">📋 Todos los roles</option>
               {userRole === 'admin' && <option value="ADMINISTRATOR">👑 Administradores</option>}
@@ -250,33 +263,16 @@ export default function UsuariosPage() {
             </select>
 
             {/* Búsqueda */}
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                className={cn(controlsInputResponsive, 'pl-[35px]!', isSearching ? 'pr-[35px]!' : 'pr-3!')}
                 placeholder="Buscar por nombre, usuario o email"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
               />
               {isSearching && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--primary)',
-                    animation: 'spin 1s linear infinite'
-                  }}
-                >
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
                   ⏳
                 </div>
               )}
@@ -284,8 +280,8 @@ export default function UsuariosPage() {
 
             {/* Botón agregar (solo si tiene permisos) */}
             {canCreate && (
-              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus style={{ marginRight: '8px' }} />
+              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus className="mr-2" />
                 Agregar Usuario
               </button>
             )}
@@ -294,27 +290,15 @@ export default function UsuariosPage() {
       </header>
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className="p-10 text-center text-[17.6px] text-muted">
           Cargando usuarios...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableWrapper}>
           {/* Mensaje informativo según permisos */}
           {!canCreate && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(251, 191, 36, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(251, 191, 36, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.9rem', color: '#f59e0b', margin: '0' }}>
+            <div className="mb-[15px] rounded-[8px] border border-[rgba(251,191,36,0.3)] bg-[rgba(251,191,36,0.1)] p-3 text-center">
+              <p className="m-0 text-[14.4px] text-[#f59e0b]">
                 ⚠️ Como Sentinel, solo puedes ver los usuarios registrados
               </p>
             </div>
@@ -331,21 +315,8 @@ export default function UsuariosPage() {
           />
 
           {/* Contador de usuarios */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '20px',
-            marginTop: '20px',
-            background: 'var(--card-bg)',
-            borderRadius: '8px',
-            border: '1px solid var(--border)'
-          }}>
-            <div style={{
-              color: 'var(--text)',
-              fontSize: '0.95rem',
-              fontWeight: '500'
-            }}>
+          <div className="mt-5 flex items-center justify-center rounded-[8px] border border-line p-5">
+            <div className="text-[15.2px] font-medium">
               Total: {filteredData.length} usuario(s)
             </div>
           </div>

@@ -8,6 +8,7 @@ import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import useNotification from '../../hooks/useNotification'
+import { btnPrimary, cn, controlsBar, controlsInput, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
 import type { CreateLackDto, Lack, Paginated, TablePagination } from '@/types'
 
 /** Listado de faltas: `data` paginado (o array plano); la paginación va dentro de `data`. */
@@ -32,6 +33,26 @@ const messageOf = (value: unknown): string | undefined => {
   if (typeof value !== 'object' || value === null) return undefined
   return (value as { message?: string }).message
 }
+
+// Clases propias de esta vista (buscador, mensajes, paginación)
+const headerLeft = 'flex flex-1 items-center gap-5'
+const searchWrapper = 'relative'
+const searchIcon = 'absolute top-1/2 left-3 -translate-y-1/2'
+const searchInput = 'pl-[35px]! max-[900px]:flex-[1_1_100%] min-[601px]:max-[900px]:min-w-0'
+const tableContainer = cn(tableWrapper, '[&::-webkit-scrollbar-thumb]:[border:2px_solid_var(--bg)]')
+const loadingText = 'p-10 text-center text-[1.1rem] text-muted'
+const paginationBar = 'mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-lg border border-line bg-transparent p-5'
+const paginationLeft = 'flex flex-wrap items-center gap-5'
+const rowCount = 'text-[0.95rem] font-medium'
+const perPageWrap = 'flex items-center gap-2'
+const perPageLabel = 'text-[0.9rem] text-muted'
+const perPageSelect = 'cursor-pointer rounded-[4px] border border-line [background:var(--bg)] px-3 py-1.5 text-[0.9rem] [color:inherit]'
+const pagesRight = 'flex items-center gap-2.5'
+const navButton = 'flex items-center gap-[5px] rounded-[10px] border-2 border-[#6b7280] bg-[#f3f4f6] px-4 py-2 text-[14px] font-semibold text-[#374151] [transition:all_0.3s_ease] hover:-translate-y-[2px] hover:border-[#1e3a8a] hover:bg-[#e5e7eb] hover:text-[#1e3a8a]'
+const pageNumber = 'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2'
+const pageNumberActive = 'border-primary bg-primary font-bold text-white'
+const pageNumberIdle = 'border-line bg-transparent font-normal [color:inherit]'
+const onlyPage = 'min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white'
 
 export default function LackPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
@@ -223,32 +244,24 @@ export default function LackPage() {
   const filteredData = lacks
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE FALTAS</h2>
-          <div className="controls">
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className={headerLeft}>
+          <h2 className={pageTitle}>GESTIÓN DE FALTAS</h2>
+          <div className={controlsBar}>
+            <div className={searchWrapper}>
+              <FaSearch className={searchIcon} />
               <input
                 placeholder="Buscar por nombre de la falta"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px' }}
+                className={cn(controlsInput, searchInput)}
               />
             </div>
 
             {permissions.canCreate && (
-              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus style={{ marginRight: '8px' }} />
+              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus className="mr-2" />
                 Agregar Falta
               </button>
             )}
@@ -257,16 +270,11 @@ export default function LackPage() {
       </header>
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className={loadingText}>
           Cargando faltas...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableContainer}>
           <LackTable
             data={filteredData}
             onToggleStatus={handleToggleStatus}
@@ -277,45 +285,22 @@ export default function LackPage() {
           />
 
           {/* Controles de paginación */}
-          <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              marginTop: '20px',
-              background: 'var(--card-bg)',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-              gap: '15px'
-            }}>
+          <div className={paginationBar}>
               {/* Lado izquierdo: Contador y selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{
-                  color: 'var(--text)',
-                  fontSize: '0.95rem',
-                  fontWeight: '500'
-                }}>
+              <div className={paginationLeft}>
+                <div className={rowCount}>
                   {pagination.from}-{pagination.to} de {pagination.total}
                 </div>
 
                 {/* Selector de items por página */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <div className={perPageWrap}>
+                  <label className={perPageLabel}>
                     Mostrar:
                   </label>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
+                    className={perPageSelect}
                   >
                     <option value={10}>10</option>
                     <option value={25}>25</option>
@@ -326,30 +311,18 @@ export default function LackPage() {
               </div>
 
               {/* Lado derecho: Botones de navegación */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div className={pagesRight}>
                 <button
                   onClick={handlePreviousPage}
                   disabled={currentPage === 1}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 16px',
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={cn(navButton, currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
                 >
                   ← Anterior
                 </button>
 
                 {/* Números de página */}
                 {pagination.totalPages > 1 && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '5px',
-                    alignItems: 'center'
-                  }}>
+                  <div className="flex items-center gap-[5px]">
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                       let pageNum: number;
                       if (pagination.totalPages <= 5) {
@@ -366,16 +339,7 @@ export default function LackPage() {
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          style={{
-                            padding: '8px 12px',
-                            background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                            color: currentPage === pageNum ? 'white' : 'var(--text)',
-                            border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                            minWidth: '40px'
-                          }}
+                          className={cn(pageNumber, currentPage === pageNum ? pageNumberActive : pageNumberIdle)}
                         >
                           {pageNum}
                         </button>
@@ -386,16 +350,7 @@ export default function LackPage() {
 
                 {/* Indicador de página actual si solo hay 1 página */}
                 {pagination.totalPages === 1 && (
-                  <div style={{
-                    padding: '8px 12px',
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: '1px solid var(--primary)',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    minWidth: '40px',
-                    textAlign: 'center'
-                  }}>
+                  <div className={onlyPage}>
                     1
                   </div>
                 )}
@@ -403,15 +358,7 @@ export default function LackPage() {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === pagination.totalPages}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 16px',
-                    opacity: currentPage === pagination.totalPages ? 0.5 : 1,
-                    cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={cn(navButton, currentPage === pagination.totalPages ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
                 >
                   Siguiente →
                 </button>

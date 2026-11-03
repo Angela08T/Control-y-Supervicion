@@ -7,6 +7,17 @@ import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
 import type { BodycamView, CreateBodycamDto, TablePagination } from '@/types'
+import {
+  btnPrimary,
+  btnSecondary,
+  cn,
+  controlsBar,
+  controlsInput,
+  incidenciasPage,
+  pageHeaderIncidencias,
+  pageTitle,
+  tableWrapper
+} from '../../utils/classes'
 
 /** Tipos de filtro de dispositivo del selector */
 type DeviceType = 'all' | 'camera' | 'sg' | 'fisca'
@@ -30,6 +41,28 @@ interface MutationError {
 }
 
 const readMutationBody = (body: unknown): MutationBody => body as MutationBody
+
+/** Ajustes de .controls a ancho tablet (<=900px) que no incluyen las constantes compartidas */
+const controlsBarResponsive = cn(controlsBar, 'max-[900px]:flex-wrap max-[900px]:justify-between max-[900px]:gap-2')
+const controlsInputResponsive = cn(controlsInput, 'max-[900px]:flex-[1_1_100%] max-[900px]:min-w-0')
+
+/** Select de filtro del encabezado (el borde y el padding inline del original anulan el hover/focus de .controls select) */
+const deviceSelect = cn(
+  'max-w-[200px] max-[900px]:flex-[1_1_100%] overflow-hidden text-ellipsis whitespace-nowrap',
+  'cursor-pointer rounded-[8px] border border-line [background:var(--bg)] px-3 py-2 min-w-[150px]',
+  'text-[15.2px] text-content! outline-none [backdrop-filter:blur(5px)] transition-all duration-300',
+  'hover:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:-translate-y-0.5 focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]!'
+)
+
+/** Boton de pagina numerica (activo / inactivo) */
+const pageButton = (active: boolean) =>
+  cn(
+    'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2',
+    active ? 'border-primary bg-primary font-bold text-white' : 'border-line bg-transparent font-normal [color:inherit]'
+  )
+
+/** Botones primera / anterior / siguiente / ultima de la paginacion */
+const navButton = cn(btnSecondary, 'px-3! py-2! disabled:cursor-not-allowed disabled:opacity-50')
 
 export default function BodycamPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
@@ -319,25 +352,16 @@ export default function BodycamPage() {
   const filteredData = searchResult !== null ? searchResult : bodycams
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE DISPOSITIVOS</h2>
-          <div className="controls">
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className="flex flex-1 items-center gap-5">
+          <h2 className={pageTitle}>GESTIÓN DE DISPOSITIVOS</h2>
+          <div className={controlsBarResponsive}>
             {/* Filtro por tipo de dispositivo */}
             <select
+              className={deviceSelect}
               value={filters.deviceType}
               onChange={e => setFilters(f => ({ ...f, deviceType: e.target.value as DeviceType }))}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text)',
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                minWidth: '150px'
-              }}
             >
               <option value="all">📋 Todos</option>
               <option value="camera">📹 Cámaras</option>
@@ -345,41 +369,24 @@ export default function BodycamPage() {
               <option value="fisca">🎥 Bodycam FISCA</option>
             </select>
 
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                className={cn(controlsInputResponsive, 'pl-[35px]!', isSearching ? 'pr-[35px]!' : 'pr-3!')}
                 placeholder="Buscar por nombre, serie o ID"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
               />
               {isSearching && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--primary)',
-                    animation: 'spin 1s linear infinite'
-                  }}
-                >
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
                   ⏳
                 </div>
               )}
             </div>
 
             {permissions.canCreate && (
-              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus style={{ marginRight: '8px' }} />
+              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus className="mr-2" />
                 Agregar Dispositivo
               </button>
             )}
@@ -389,45 +396,26 @@ export default function BodycamPage() {
 
       {/* Mensaje informativo para roles con permisos de solo lectura */}
       {!permissions.canCreate && permissions.canView && (
-        <div style={{
-          textAlign: 'center',
-          padding: '12px',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          borderRadius: '8px',
-          margin: '20px',
-          border: '1px solid rgba(59, 130, 246, 0.3)'
-        }}>
-          <p style={{ fontSize: '0.9rem', color: '#3b82f6', margin: '0' }}>
+        <div className="m-5 rounded-[8px] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.1)] p-3 text-center">
+          <p className="m-0 text-[14.4px] text-[#3b82f6]">
             ℹ️ Tienes permisos de solo lectura. No puedes crear, editar o eliminar dispositivos.
           </p>
         </div>
       )}
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className="p-10 text-center text-[17.6px] text-muted">
           Cargando dispositivos...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableWrapper}>
           {/* Mensaje cuando se busca pero no se encuentra */}
           {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div style={{
-              textAlign: 'center',
-              padding: '30px',
-              backgroundColor: 'var(--card)',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              border: '2px dashed var(--border)'
-            }}>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
+            <div className="mb-5 rounded-[8px] border-2 border-dashed border-line bg-card p-[30px] text-center">
+              <p className="m-0 text-[17.6px] text-content-2">
                 🔍 No se encontró ningún dispositivo con: <strong>{filters.search}</strong>
               </p>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              <p className="mt-2 text-[14.4px] text-muted">
                 Verifica que el nombre, serie o ID sea correcto.
               </p>
             </div>
@@ -435,15 +423,8 @@ export default function BodycamPage() {
 
           {/* Mensaje cuando se encuentra dispositivo */}
           {searchResult !== null && searchResult.length > 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(74, 222, 128, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(74, 222, 128, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
+            <div className="mb-[15px] rounded-[8px] border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.1)] p-3 text-center">
+              <p className="m-0 text-[15.2px] font-medium text-success">
                 ✅ {filteredData.length} dispositivo(s) encontrado(s)
               </p>
             </div>
@@ -460,45 +441,22 @@ export default function BodycamPage() {
 
           {/* Controles de paginación (ocultar cuando se busca) */}
           {searchResult === null && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              marginTop: '20px',
-              background: 'var(--card-bg)',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-              gap: '15px'
-            }}>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-[8px] border border-line p-5">
               {/* Lado izquierdo: Contador y selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{
-                  color: 'var(--text)',
-                  fontSize: '0.95rem',
-                  fontWeight: '500'
-                }}>
+              <div className="flex flex-wrap items-center gap-5">
+                <div className="text-[15.2px] font-medium">
                   {pagination.from}-{pagination.to} de {pagination.total}
                 </div>
 
                 {/* Selector de items por página */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <div className="flex items-center gap-2">
+                  <label className="text-[14.4px] text-muted">
                     Mostrar:
                   </label>
                   <select
+                    className="cursor-pointer rounded-[4px] border border-line [background:var(--bg)] px-3 py-1.5 text-[14.4px] [color:inherit]"
                     value={itemsPerPage}
                     onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
                   >
                     <option value={10}>10</option>
                     <option value={25}>25</option>
@@ -509,18 +467,13 @@ export default function BodycamPage() {
               </div>
 
               {/* Lado derecho: Botones de navegación */}
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <div className="flex items-center gap-1.5">
                 {/* Botón Primera página */}
                 <button
                   onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
-                  className="btn-secondary"
+                  className={navButton}
                   title="Primera página"
-                  style={{
-                    padding: '8px 12px',
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                  }}
                 >
                   ««
                 </button>
@@ -528,23 +481,14 @@ export default function BodycamPage() {
                 <button
                   onClick={handlePreviousPage}
                   disabled={currentPage === 1}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 12px',
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                  }}
+                  className={navButton}
                 >
                   ←
                 </button>
 
                 {/* Números de página */}
                 {pagination.totalPages > 1 && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '4px',
-                    alignItems: 'center'
-                  }}>
+                  <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                       let pageNum: number;
                       if (pagination.totalPages <= 5) {
@@ -561,16 +505,7 @@ export default function BodycamPage() {
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          style={{
-                            padding: '8px 12px',
-                            background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                            color: currentPage === pageNum ? 'white' : 'var(--text)',
-                            border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                            minWidth: '40px'
-                          }}
+                          className={pageButton(currentPage === pageNum)}
                         >
                           {pageNum}
                         </button>
@@ -581,16 +516,7 @@ export default function BodycamPage() {
 
                 {/* Indicador de página actual si solo hay 1 página */}
                 {pagination.totalPages === 1 && (
-                  <div style={{
-                    padding: '8px 12px',
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: '1px solid var(--primary)',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    minWidth: '40px',
-                    textAlign: 'center'
-                  }}>
+                  <div className="min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white">
                     1
                   </div>
                 )}
@@ -598,12 +524,7 @@ export default function BodycamPage() {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === pagination.totalPages}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 12px',
-                    opacity: currentPage === pagination.totalPages ? 0.5 : 1,
-                    cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer'
-                  }}
+                  className={navButton}
                 >
                   →
                 </button>
@@ -612,13 +533,8 @@ export default function BodycamPage() {
                 <button
                   onClick={() => handlePageChange(pagination.totalPages)}
                   disabled={currentPage === pagination.totalPages}
-                  className="btn-secondary"
+                  className={navButton}
                   title="Última página"
-                  style={{
-                    padding: '8px 12px',
-                    opacity: currentPage === pagination.totalPages ? 0.5 : 1,
-                    cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer'
-                  }}
                 >
                   »»
                 </button>

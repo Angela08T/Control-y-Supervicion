@@ -7,6 +7,7 @@ import type { OffenderFormData } from '../../components/ModalOffender'
 import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
+import { btnPrimary, btnSecondary, cn, controlsBar, controlsInput, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
 import { useNotification } from '../../context/NotificationContext'
 import ConfirmModal from '../../components/ConfirmModal'
 import { toast } from '../../utils/toast'
@@ -293,47 +294,34 @@ export default function OffenderPage() {
   const filteredData = searchResult !== null ? searchResult : offenders
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE INFRACTORES</h2>
-          <div className="controls">
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+    <div className={incidenciasPage}>
+      <header className={cn(pageHeaderIncidencias, 'border-t-0 border-x-0')}>
+        <div className="flex flex-1 items-center gap-5">
+          <h2 className={pageTitle}>GESTIÓN DE INFRACTORES</h2>
+          <div className={cn(controlsBar, 'max-[900px]:flex-wrap max-[900px]:justify-between max-[900px]:gap-2')}>
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 placeholder="Buscar por DNI (8 dígitos)"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
                 maxLength={8}
-                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
+                className={cn(
+                  controlsInput,
+                  'max-[900px]:min-w-0 max-[900px]:flex-[1_1_100%] pl-[35px]!',
+                  isSearching ? 'pr-[35px]!' : 'pr-3!'
+                )}
               />
               {isSearching && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--primary)',
-                    animation: 'spin 1s linear infinite'
-                  }}
-                >
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
                   ⏳
                 </div>
               )}
             </div>
 
             {permissions.canCreate && (
-              <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus style={{ marginRight: '8px' }} />
+              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                <FaPlus className="mr-2" />
                 Agregar Infractor
               </button>
             )}
@@ -342,30 +330,18 @@ export default function OffenderPage() {
       </header>
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className="p-10 text-center text-[1.1rem] text-muted">
           Cargando infractores...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableWrapper}>
           {/* Mensaje cuando se busca pero no se encuentra */}
           {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div style={{
-              textAlign: 'center',
-              padding: '30px',
-              backgroundColor: 'var(--card)',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              border: '2px dashed var(--border)'
-            }}>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
+            <div className="mb-5 rounded-lg border-2 border-dashed border-line bg-card p-[30px] text-center">
+              <p className="m-0 text-[1.1rem] text-content-2">
                 🔍 No se encontró ningún infractor con DNI: <strong>{filters.search}</strong>
               </p>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              <p className="mt-2 text-[0.9rem] text-muted">
                 Verifica que el DNI sea correcto (8 dígitos).
               </p>
             </div>
@@ -373,15 +349,8 @@ export default function OffenderPage() {
 
           {/* Mensaje cuando se encuentra infractor */}
           {searchResult !== null && searchResult.length > 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(74, 222, 128, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(74, 222, 128, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
+            <div className="mb-[15px] rounded-lg border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.1)] p-3 text-center">
+              <p className="m-0 text-[0.95rem] font-medium text-success">
                 ✅ Infractor encontrado
               </p>
             </div>
@@ -389,15 +358,8 @@ export default function OffenderPage() {
 
           {/* Mensaje informativo para supervisor */}
           {!permissions.canCreate && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(251, 191, 36, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(251, 191, 36, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.9rem', color: '#f59e0b', margin: '0' }}>
+            <div className="mb-[15px] rounded-lg border border-[rgba(251,191,36,0.3)] bg-[rgba(251,191,36,0.1)] p-3 text-center">
+              <p className="m-0 text-[0.9rem] text-warning">
                 ⚠️ Como Supervisor, solo puedes visualizar los infractores registrados
               </p>
             </div>
@@ -414,45 +376,22 @@ export default function OffenderPage() {
 
           {/* Controles de paginación (ocultar cuando se busca) */}
           {searchResult === null && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              marginTop: '20px',
-              background: 'var(--card-bg)',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-              gap: '15px'
-            }}>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-lg border border-line p-5">
               {/* Lado izquierdo: Contador y selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{
-                  color: 'var(--text)',
-                  fontSize: '0.95rem',
-                  fontWeight: '500'
-                }}>
+              <div className="flex flex-wrap items-center gap-5">
+                <div className="text-[0.95rem] font-medium">
                   {pagination.from}-{pagination.to} de {pagination.total}
                 </div>
 
                 {/* Selector de items por página */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <div className="flex items-center gap-2">
+                  <label className="text-[0.9rem] text-muted">
                     Mostrar:
                   </label>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
+                    className="cursor-pointer rounded border border-line px-3 py-1.5 text-[0.9rem] [background:var(--bg)] [color:inherit]"
                   >
                     <option value={10}>10</option>
                     <option value={25}>25</option>
@@ -463,30 +402,18 @@ export default function OffenderPage() {
               </div>
 
               {/* Lado derecho: Botones de navegación */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div className="flex items-center gap-2.5">
                 <button
                   onClick={handlePreviousPage}
                   disabled={currentPage === 1}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 16px',
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={cn(btnSecondary, 'flex items-center gap-[5px] px-4! py-2! disabled:cursor-not-allowed disabled:opacity-50')}
                 >
                   ← Anterior
                 </button>
 
                 {/* Números de página */}
                 {pagination.totalPages > 1 && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '5px',
-                    alignItems: 'center'
-                  }}>
+                  <div className="flex items-center gap-[5px]">
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                       let pageNum: number;
                       if (pagination.totalPages <= 5) {
@@ -503,16 +430,12 @@ export default function OffenderPage() {
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          style={{
-                            padding: '8px 12px',
-                            background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                            color: currentPage === pageNum ? 'white' : 'var(--text)',
-                            border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                            minWidth: '40px'
-                          }}
+                          className={cn(
+                            'min-w-[40px] cursor-pointer rounded border px-3 py-2',
+                            currentPage === pageNum
+                              ? 'border-primary bg-primary font-bold text-white'
+                              : 'border-line bg-transparent font-normal [color:inherit]'
+                          )}
                         >
                           {pageNum}
                         </button>
@@ -523,16 +446,7 @@ export default function OffenderPage() {
 
                 {/* Indicador de página actual si solo hay 1 página */}
                 {pagination.totalPages === 1 && (
-                  <div style={{
-                    padding: '8px 12px',
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: '1px solid var(--primary)',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    minWidth: '40px',
-                    textAlign: 'center'
-                  }}>
+                  <div className="min-w-[40px] rounded border border-primary bg-primary px-3 py-2 text-center font-bold text-white">
                     1
                   </div>
                 )}
@@ -540,15 +454,7 @@ export default function OffenderPage() {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === pagination.totalPages}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 16px',
-                    opacity: currentPage === pagination.totalPages ? 0.5 : 1,
-                    cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={cn(btnSecondary, 'flex items-center gap-[5px] px-4! py-2! disabled:cursor-not-allowed disabled:opacity-50')}
                 >
                   Siguiente →
                 </button>

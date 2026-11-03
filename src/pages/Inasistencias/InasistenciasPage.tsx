@@ -11,6 +11,14 @@ import { initSocket, onReportStatusChanged, disconnectSocket } from '../../servi
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import { toast } from '../../utils/toast'
 import type { AttendanceItemDto, ID, ISODateString, Lead } from '@/types'
+import {
+  btnPrimary,
+  btnSecondary,
+  cn,
+  incidenciasPage,
+  pageHeaderIncidencias,
+  pageTitle
+} from '../../utils/classes'
 
 /** Fila de asistencia tal como la devuelve GET /attendance */
 type AttendanceRow = Awaited<ReturnType<typeof getAttendances>>['data'][number]
@@ -57,6 +65,9 @@ interface RequestError {
     data?: { message?: string | string[] }
   }
 }
+
+/** Boton de calendario: el padding inline original sobreescribe el de .btn-secondary */
+const calendarButton = cn(btnSecondary, 'flex items-center gap-2 px-4! py-2!')
 
 export default function InasistenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
@@ -337,36 +348,25 @@ export default function InasistenciasPage() {
   }
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>CONTROL Y SUPERVISIÓN</h2>
-          <div className="controls" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className="flex flex-1 items-center gap-5">
+          <h2 className={pageTitle}>CONTROL Y SUPERVISIÓN</h2>
+          <div className="flex items-center gap-[10px] animate-[slideInRight_0.5s_ease-out] max-[600px]:w-full max-[900px]:flex-wrap max-[900px]:justify-between">
             {/* Botón de calendario para seleccionar rango de fechas */}
             <button
-              className="btn-secondary"
+              className={calendarButton}
               onClick={() => setShowCalendarModal(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px'
-              }}
             >
               <FaCalendarAlt />
-              <span style={{ fontSize: '0.85rem' }}>{formatDateRange()}</span>
+              <span className="text-[13.6px]">{formatDateRange()}</span>
             </button>
 
             {/* Botón +PDF para validadores */}
             {userRole === 'validator' && (
               <button
-                className="btn-primary"
+                className={cn(btnPrimary, 'flex items-center gap-2')}
                 onClick={() => setShowPDFModal(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
               >
                 <FaFilePdf />
                 PDF
@@ -374,8 +374,8 @@ export default function InasistenciasPage() {
             )}
 
             {permissions.canCreate && (
-              <button className="btn-primary" onClick={() => setShowModal(true)}>
-                <FaPlus style={{ marginRight: '8px' }} />
+              <button className={btnPrimary} onClick={() => setShowModal(true)}>
+                <FaPlus className="mr-2" />
                 Agregar
               </button>
             )}
@@ -384,12 +384,7 @@ export default function InasistenciasPage() {
       </header>
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className="p-10 text-center text-[17.6px] text-muted">
           Cargando inasistencias...
         </div>
       ) : (

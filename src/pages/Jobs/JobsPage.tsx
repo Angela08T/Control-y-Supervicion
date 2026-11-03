@@ -6,6 +6,7 @@ import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from 
 import { getModulePermissions } from '../../utils/permissions'
 import { FaPlus, FaSearch } from 'react-icons/fa'
 import { toast } from '../../utils/toast'
+import { btnPrimary, cn, controlsBar, controlsInput, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
 import type { CreateJobDto, Job, Paginated, TablePagination } from '@/types'
 
 /** Listado de cargos: `data` paginado (o array plano) y `pagination` opcional. */
@@ -37,6 +38,31 @@ const messageOf = (value: unknown): string | undefined => {
   if (typeof value !== 'object' || value === null) return undefined
   return (value as { message?: string }).message
 }
+
+// Clases propias de esta vista (buscador, mensajes, paginación)
+const headerLeft = 'flex flex-1 items-center gap-5'
+const searchIcon = 'absolute top-1/2 left-3 -translate-y-1/2'
+const searchSpinner = 'absolute top-1/2 right-3 -translate-y-1/2 text-primary'
+const searchInput = 'pl-[35px]! max-[900px]:flex-[1_1_100%] min-[601px]:max-[900px]:min-w-0'
+const tableContainer = cn(tableWrapper, '[&::-webkit-scrollbar-thumb]:[border:2px_solid_var(--bg)]')
+const loadingText = 'p-10 text-center text-[1.1rem] text-muted'
+const emptyBanner = 'mb-5 rounded-lg border-2 border-dashed border-line bg-card p-[30px] text-center'
+const emptyTitle = 'm-0 text-[1.1rem] text-content-2'
+const emptyHint = 'mt-2 text-[0.9rem] text-muted'
+const foundBanner = 'mb-[15px] rounded-lg border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.1)] p-3 text-center'
+const foundText = 'm-0 text-[0.95rem] font-medium text-success'
+const paginationBar = 'mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-lg border border-line bg-transparent p-5'
+const paginationLeft = 'flex flex-wrap items-center gap-5'
+const rowCount = 'text-[0.95rem] font-medium'
+const perPageWrap = 'flex items-center gap-2'
+const perPageLabel = 'text-[0.9rem] text-muted'
+const perPageSelect = 'cursor-pointer rounded-[4px] border border-line [background:var(--bg)] px-3 py-1.5 text-[0.9rem] [color:inherit]'
+const pagesRight = 'flex items-center gap-2.5'
+const navButton = 'flex items-center gap-[5px] rounded-[10px] border-2 border-[#6b7280] bg-[#f3f4f6] px-4 py-2 text-[14px] font-semibold text-[#374151] [transition:all_0.3s_ease] hover:-translate-y-[2px] hover:border-[#1e3a8a] hover:bg-[#e5e7eb] hover:text-[#1e3a8a]'
+const pageNumber = 'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2'
+const pageNumberActive = 'border-primary bg-primary font-bold text-white'
+const pageNumberIdle = 'border-line bg-transparent font-normal [color:inherit]'
+const onlyPage = 'min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white'
 
 export default function JobsPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
@@ -276,45 +302,28 @@ export default function JobsPage() {
   const filteredData = searchResult !== null ? searchResult : jobs
 
   return (
-    <div className="incidencias-page">
-      <header className="page-header">
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
-          <h2>GESTIÓN DE CARGOS</h2>
-          <div className="controls">
-            <div style={{ position: 'relative' }}>
-              <FaSearch
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)'
-                }}
-              />
+    <div className={incidenciasPage}>
+      <header className={pageHeaderIncidencias}>
+        <div className={headerLeft}>
+          <h2 className={pageTitle}>GESTIÓN DE CARGOS</h2>
+          <div className={controlsBar}>
+            <div className="relative">
+              <FaSearch className={searchIcon} />
               <input
                 placeholder="Buscar por nombre o ID"
                 value={filters.search}
                 onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                style={{ paddingLeft: '35px', paddingRight: isSearching ? '35px' : '12px' }}
+                className={cn(controlsInput, searchInput, isSearching ? 'pr-[35px]!' : 'pr-3!')}
               />
               {isSearching && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--primary)',
-                    animation: 'spin 1s linear infinite'
-                  }}
-                >
+                <div className={searchSpinner}>
                   ⏳
                 </div>
               )}
             </div>
 
-            <button className="btn-primary" onClick={() => { setEditItem(null); setShowModal(true) }}>
-              <FaPlus style={{ marginRight: '8px' }} />
+            <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
+              <FaPlus className="mr-2" />
               Agregar Cargo
             </button>
           </div>
@@ -322,30 +331,18 @@ export default function JobsPage() {
       </header>
 
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem'
-        }}>
+        <div className={loadingText}>
           Cargando cargos...
         </div>
       ) : (
-        <div className="table-container-wrapper">
+        <div className={tableContainer}>
           {/* Mensaje cuando se busca pero no se encuentra */}
           {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div style={{
-              textAlign: 'center',
-              padding: '30px',
-              backgroundColor: 'var(--card)',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              border: '2px dashed var(--border)'
-            }}>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '0' }}>
+            <div className={emptyBanner}>
+              <p className={emptyTitle}>
                 🔍 No se encontró ningún cargo con: <strong>{filters.search}</strong>
               </p>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              <p className={emptyHint}>
                 Verifica que el nombre o ID sea correcto.
               </p>
             </div>
@@ -353,15 +350,8 @@ export default function JobsPage() {
 
           {/* Mensaje cuando se encuentra cargo */}
           {searchResult !== null && searchResult.length > 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '12px',
-              backgroundColor: 'rgba(74, 222, 128, 0.1)',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              border: '1px solid rgba(74, 222, 128, 0.3)'
-            }}>
-              <p style={{ fontSize: '0.95rem', color: 'var(--success)', margin: '0', fontWeight: '500' }}>
+            <div className={foundBanner}>
+              <p className={foundText}>
                 ✅ {searchResult.length} cargo(s) encontrado(s)
               </p>
             </div>
@@ -378,45 +368,22 @@ export default function JobsPage() {
 
           {/* Controles de paginación (ocultar cuando se busca) */}
           {searchResult === null && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              marginTop: '20px',
-              background: 'var(--card-bg)',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-              gap: '15px'
-            }}>
+            <div className={paginationBar}>
               {/* Lado izquierdo: Contador y selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{
-                  color: 'var(--text)',
-                  fontSize: '0.95rem',
-                  fontWeight: '500'
-                }}>
+              <div className={paginationLeft}>
+                <div className={rowCount}>
                   {pagination.from}-{pagination.to} de {pagination.total}
                 </div>
 
                 {/* Selector de items por página */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <div className={perPageWrap}>
+                  <label className={perPageLabel}>
                     Mostrar:
                   </label>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
+                    className={perPageSelect}
                   >
                     <option value={10}>10</option>
                     <option value={25}>25</option>
@@ -427,30 +394,18 @@ export default function JobsPage() {
               </div>
 
               {/* Lado derecho: Botones de navegación */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div className={pagesRight}>
                 <button
                   onClick={handlePreviousPage}
                   disabled={currentPage === 1}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 16px',
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={cn(navButton, currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
                 >
                   ← Anterior
                 </button>
 
                 {/* Números de página */}
                 {pagination.totalPages > 1 && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '5px',
-                    alignItems: 'center'
-                  }}>
+                  <div className="flex items-center gap-[5px]">
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                       let pageNum: number;
                       if (pagination.totalPages <= 5) {
@@ -467,16 +422,7 @@ export default function JobsPage() {
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          style={{
-                            padding: '8px 12px',
-                            background: currentPage === pageNum ? 'var(--primary)' : 'transparent',
-                            color: currentPage === pageNum ? 'white' : 'var(--text)',
-                            border: `1px solid ${currentPage === pageNum ? 'var(--primary)' : 'var(--border)'}`,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                            minWidth: '40px'
-                          }}
+                          className={cn(pageNumber, currentPage === pageNum ? pageNumberActive : pageNumberIdle)}
                         >
                           {pageNum}
                         </button>
@@ -487,16 +433,7 @@ export default function JobsPage() {
 
                 {/* Indicador de página actual si solo hay 1 página */}
                 {pagination.totalPages === 1 && (
-                  <div style={{
-                    padding: '8px 12px',
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: '1px solid var(--primary)',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    minWidth: '40px',
-                    textAlign: 'center'
-                  }}>
+                  <div className={onlyPage}>
                     1
                   </div>
                 )}
@@ -504,15 +441,7 @@ export default function JobsPage() {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === pagination.totalPages}
-                  className="btn-secondary"
-                  style={{
-                    padding: '8px 16px',
-                    opacity: currentPage === pagination.totalPages ? 0.5 : 1,
-                    cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={cn(navButton, currentPage === pagination.totalPages ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
                 >
                   Siguiente →
                 </button>
