@@ -7,6 +7,12 @@ import App from './App'
 import './styles.css'
 import { Buffer } from 'buffer'
 
+declare global {
+  interface Window {
+    Buffer: typeof Buffer
+  }
+}
+
 // Polyfill para @react-pdf/renderer
 window.Buffer = Buffer
 
@@ -24,7 +30,7 @@ const LoadingScreen = () => (
   </div>
 )
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <Provider store={store}>
     <PersistGate loading={<LoadingScreen />} persistor={persistor}>
       <App />

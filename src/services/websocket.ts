@@ -1,14 +1,14 @@
-import { io } from 'socket.io-client'
+import { io, type Socket } from 'socket.io-client'
 
-const WS_URL = import.meta.env.VITE_WS_URL
+const WS_URL: string | undefined = import.meta.env.VITE_WS_URL
 
-let socket = null
+let socket: Socket | null = null
 
 /**
  * Inicializar conexión WebSocket
  * @returns {Socket} - Instancia del socket
  */
-export const initSocket = () => {
+export const initSocket = (): Socket | null => {
   if (socket && socket.connected) {
     return socket
   }
@@ -32,7 +32,7 @@ export const initSocket = () => {
  * Obtener la instancia del socket actual
  * @returns {Socket|null} - Instancia del socket o null si no está conectado
  */
-export const getSocket = () => {
+export const getSocket = (): Socket | null => {
   if (!socket) {
     return initSocket()
   }
@@ -42,7 +42,7 @@ export const getSocket = () => {
 /**
  * Desconectar el WebSocket
  */
-export const disconnectSocket = () => {
+export const disconnectSocket = (): void => {
   if (socket) {
     socket.disconnect()
     socket = null
@@ -54,11 +54,11 @@ export const disconnectSocket = () => {
  * @param {Function} callback - Función a ejecutar cuando cambie el estado
  * @returns {Function} - Función para cancelar la suscripción
  */
-export const onReportStatusChanged = (callback) => {
+export const onReportStatusChanged = <T = unknown>(callback: (data: T) => void): (() => void) => {
   const socketInstance = getSocket()
   if (!socketInstance) return () => {}
 
-  const handler = (data) => {
+  const handler = (data: T): void => {
     callback(data)
   }
 
@@ -74,11 +74,11 @@ export const onReportStatusChanged = (callback) => {
  * @param {Function} callback - Función a ejecutar cuando se valide el estado
  * @returns {Function} - Función para cancelar la suscripción
  */
-export const onReportStatusValidate = (callback) => {
+export const onReportStatusValidate = <T = unknown>(callback: (data: T) => void): (() => void) => {
   const socketInstance = getSocket()
   if (!socketInstance) return () => {}
 
-  const handler = (data) => {
+  const handler = (data: T): void => {
     callback(data)
   }
 
@@ -94,7 +94,7 @@ export const onReportStatusValidate = (callback) => {
  * @param {string} event - Nombre del evento
  * @param {any} data - Datos a enviar
  */
-export const emitEvent = (event, data) => {
+export const emitEvent = (event: string, data?: unknown): void => {
   const socketInstance = getSocket()
   if (socketInstance && socketInstance.connected) {
     socketInstance.emit(event, data)

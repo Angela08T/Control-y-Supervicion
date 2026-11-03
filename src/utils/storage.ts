@@ -1,11 +1,27 @@
+import type {
+  ID,
+  LatLng,
+  PDFDownloadRecord,
+  PDFDownloadStats,
+  StoredIncidencia,
+} from '@/types'
+
 const KEY = 'centinela_incidencias_v2' // Cambiar versión para forzar actualización
 
-export function loadIncidencias(){
+/** Ubicacion tal como puede estar guardada: array de coordenadas (formato antiguo) u objeto. */
+type RawUbicacion = LatLng | { coordinates?: LatLng | null; address?: string } | null
+
+/** Registro leído del localStorage antes de migrarlo al formato actual. */
+interface RawIncidencia extends Omit<StoredIncidencia, 'ubicacion'> {
+  ubicacion?: RawUbicacion
+}
+
+export function loadIncidencias(): StoredIncidencia[]{
   const raw = localStorage.getItem(KEY)
   try{
-    const data = raw ? JSON.parse(raw) : []
+    const data: RawIncidencia[] = raw ? JSON.parse(raw) : []
     // Migrar datos antiguos si es necesario
-    return data.map(item => ({
+    return data.map((item: RawIncidencia): StoredIncidencia => ({
       // Campos antiguos
       id: item.id,
       dni: item.dni,
@@ -17,9 +33,9 @@ export function loadIncidencias(){
       horaIncidente: item.horaIncidente,
       bodycamNumber: item.bodycamNumber,
       ubicacion: item.ubicacion ? {
-        coordinates: Array.isArray(item.ubicacion) ? item.ubicacion : 
+        coordinates: Array.isArray(item.ubicacion) ? item.ubicacion :
                     (item.ubicacion.coordinates || null),
-        address: item.ubicacion.address || ''
+        address: Array.isArray(item.ubicacion) ? '' : (item.ubicacion.address || '')
       } : null,
       dirigidoA: item.dirigidoA,
       destinatario: item.destinatario,
@@ -41,14 +57,14 @@ export function loadIncidencias(){
   }
 }
 
-export function saveIncidencias(list){
+export function saveIncidencias(list: StoredIncidencia[]): void{
   localStorage.setItem(KEY, JSON.stringify(list))
 }
 
 // Gestión de descargas de PDF
 const PDF_DOWNLOADS_KEY = 'centinela_pdf_downloads'
 
-export function trackPDFDownload(incidenciaId) {
+export function trackPDFDownload(incidenciaId: ID): void {
   try {
     const downloads = getPDFDownloads()
     downloads.push({
@@ -60,7 +76,7 @@ export function trackPDFDownload(incidenciaId) {
   }
 }
 
-export function getPDFDownloads() {
+export function getPDFDownloads(): PDFDownloadRecord[] {
   try {
     const raw = localStorage.getItem(PDF_DOWNLOADS_KEY)
     return raw ? JSON.parse(raw) : []
@@ -69,7 +85,7 @@ export function getPDFDownloads() {
   }
 }
 
-export function getPDFDownloadStats() {
+export function getPDFDownloadStats(): PDFDownloadStats {
   try {
     const incidencias = loadIncidencias()
     const downloads = getPDFDownloads()

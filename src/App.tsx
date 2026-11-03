@@ -3,7 +3,7 @@ import Router from './routes/Router'
 import { NotificationProvider } from './context/NotificationContext'
 import { ToastProvider } from './components/ToastContainer'
 
-export default function App(){
+export default function App(): React.JSX.Element {
   return (
     <NotificationProvider>
       <ToastProvider>

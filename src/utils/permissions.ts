@@ -2,6 +2,13 @@
  * Sistema de permisos centralizado para Control y Supervisión
  * Define qué puede hacer cada rol en el sistema
  */
+import type {
+  AppRole,
+  ModulePermissions,
+  PermissionAction,
+  PermissionMap,
+  PermissionModule,
+} from '@/types'
 
 // Definición de roles
 export const ROLES = {
@@ -10,7 +17,7 @@ export const ROLES = {
   CENTINELA: 'centinela',
   VALIDATOR: 'validator',
   SUBGERENTE: 'subgerente'
-}
+} as const
 
 /**
  * Normaliza el rol del backend al formato del frontend
@@ -19,10 +26,10 @@ export const ROLES = {
  * @param {string} backendRole - Rol del backend
  * @returns {string} Rol normalizado para el frontend
  */
-export function normalizeRole(backendRole) {
+export function normalizeRole(backendRole: string | null | undefined): AppRole {
   if (!backendRole) return ROLES.CENTINELA
 
-  const roleMap = {
+  const roleMap: Record<string, AppRole> = {
     'ADMINISTRATOR': ROLES.ADMIN,
     'ADMIN': ROLES.ADMIN,
     'SUPERVISOR': ROLES.SUPERVISOR,
@@ -32,12 +39,12 @@ export function normalizeRole(backendRole) {
     'SUBGERENTE': ROLES.SUBGERENTE
   }
 
-  const normalized = roleMap[backendRole.toUpperCase()]
+  const normalized: AppRole | undefined = roleMap[backendRole.toUpperCase()]
   return normalized || ROLES.CENTINELA
 }
 
 // Permisos por módulo y rol
-export const PERMISSIONS = {
+export const PERMISSIONS: PermissionMap = {
   // DASHBOARD
   dashboard: {
     view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR, ROLES.SUBGERENTE]
@@ -130,7 +137,11 @@ export const PERMISSIONS = {
  * @param {string} action - Acción a realizar (view, create, edit, delete)
  * @returns {boolean}
  */
-export function hasPermission(role, module, action) {
+export function hasPermission(
+  role: AppRole | null | undefined,
+  module: PermissionModule | null | undefined,
+  action: PermissionAction | null | undefined
+): boolean {
   if (!role || !module || !action) return false
 
   const modulePermissions = PERMISSIONS[module]
@@ -148,7 +159,10 @@ export function hasPermission(role, module, action) {
  * @param {string} module - Módulo del sistema
  * @returns {boolean}
  */
-export function canAccessModule(role, module) {
+export function canAccessModule(
+  role: AppRole | null | undefined,
+  module: PermissionModule | null | undefined
+): boolean {
   return hasPermission(role, module, 'view')
 }
 
@@ -158,7 +172,10 @@ export function canAccessModule(role, module) {
  * @param {string} module - Módulo del sistema
  * @returns {object} Objeto con booleanos para cada acción
  */
-export function getModulePermissions(role, module) {
+export function getModulePermissions(
+  role: AppRole | null | undefined,
+  module: PermissionModule | null | undefined
+): ModulePermissions {
   return {
     canView: hasPermission(role, module, 'view'),
     canCreate: hasPermission(role, module, 'create'),
@@ -174,7 +191,11 @@ export function getModulePermissions(role, module) {
  * SUPERVISOR solo puede crear/editar/eliminar CENTINELA
  * ADMIN puede crear/editar/eliminar cualquier usuario
  */
-export function canManageUser(currentUserRole, targetUserRole, action) {
+export function canManageUser(
+  currentUserRole: AppRole | null | undefined,
+  targetUserRole: AppRole | null | undefined,
+  action: PermissionAction
+): boolean {
   if (currentUserRole === ROLES.ADMIN) {
     return true // Admin puede hacer todo
   }

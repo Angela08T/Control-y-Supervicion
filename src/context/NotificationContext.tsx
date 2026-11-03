@@ -1,9 +1,34 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
 import Toast from '../components/Toast'
 
-const NotificationContext = createContext()
+/** Tipos de notificación disponibles. */
+export type NotificationType = 'success' | 'error' | 'warning' | 'info'
 
-export const useNotification = () => {
+/** Notificación activa en pantalla. */
+export interface NotificationItem {
+  id: number
+  message: string
+  type: NotificationType
+  duration: number
+}
+
+/** Valor expuesto por NotificationContext. */
+export interface NotificationContextValue {
+  showNotification: (message: string, type?: NotificationType, duration?: number) => number
+  showSuccess: (message: string, duration?: number) => number
+  showError: (message: string, duration?: number) => number
+  showWarning: (message: string, duration?: number) => number
+  showInfo: (message: string, duration?: number) => number
+  removeNotification: (id: number) => void
+}
+
+export interface NotificationProviderProps {
+  children: React.ReactNode
+}
+
+const NotificationContext = createContext<NotificationContextValue | undefined>(undefined)
+
+export const useNotification = (): NotificationContextValue => {
   const context = useContext(NotificationContext)
   if (!context) {
     throw new Error('useNotification must be used within NotificationProvider')
@@ -11,12 +36,12 @@ export const useNotification = () => {
   return context
 }
 
-export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([])
+export const NotificationProvider = ({ children }: NotificationProviderProps) => {
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
 
-  const showNotification = useCallback((message, type = 'success', duration = 4000) => {
+  const showNotification = useCallback((message: string, type: NotificationType = 'success', duration: number = 4000): number => {
     const id = Date.now() + Math.random()
-    const notification = { id, message, type, duration }
+    const notification: NotificationItem = { id, message, type, duration }
 
     setNotifications(prev => [...prev, notification])
 
@@ -30,27 +55,27 @@ export const NotificationProvider = ({ children }) => {
     return id
   }, [])
 
-  const removeNotification = useCallback((id) => {
+  const removeNotification = useCallback((id: number): void => {
     setNotifications(prev => prev.filter(notif => notif.id !== id))
   }, [])
 
-  const showSuccess = useCallback((message, duration) => {
+  const showSuccess = useCallback((message: string, duration?: number): number => {
     return showNotification(message, 'success', duration)
   }, [showNotification])
 
-  const showError = useCallback((message, duration) => {
+  const showError = useCallback((message: string, duration?: number): number => {
     return showNotification(message, 'error', duration)
   }, [showNotification])
 
-  const showWarning = useCallback((message, duration) => {
+  const showWarning = useCallback((message: string, duration?: number): number => {
     return showNotification(message, 'warning', duration)
   }, [showNotification])
 
-  const showInfo = useCallback((message, duration) => {
+  const showInfo = useCallback((message: string, duration?: number): number => {
     return showNotification(message, 'info', duration)
   }, [showNotification])
 
-  const value = {
+  const value: NotificationContextValue = {
     showNotification,
     showSuccess,
     showError,
