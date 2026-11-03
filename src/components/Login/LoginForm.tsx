@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
+import type { AppRole } from '@/types'
 import useLogin from '../../hooks/Login/useLogin'
 import logoSJL from '../../assets/logo-sjl.png'
 import muniBackground from '../../assets/muni-background.png'
@@ -13,7 +14,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     // Validación básica
@@ -26,7 +27,7 @@ export default function LoginForm() {
 
     if (result.success) {
       // Redirigir según el rol
-      const roleRoutes = {
+      const roleRoutes: Record<AppRole, string> = {
         admin: '/dashboard/admin',
         supervisor: '/dashboard/supervisor',
         centinela: '/dashboard/centinela',
@@ -34,7 +35,7 @@ export default function LoginForm() {
         subgerente: '/dashboard/subgerente'
       }
 
-      navigate(roleRoutes[result.role] || '/dashboard/admin')
+      navigate((result.role && roleRoutes[result.role]) || '/dashboard/admin')
     }
   }
 

@@ -1,6 +1,22 @@
 import React from 'react'
 import { FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa'
 
+export type ConfirmModalType = 'warning' | 'danger' | 'info'
+
+export interface ConfirmModalProps {
+  isOpen: boolean
+  title: string
+  message: string
+  type?: ConfirmModalType
+  onConfirm: () => void
+  onCancel: () => void
+  confirmText?: string
+  cancelText?: string
+}
+
+/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
+const styledJsxAttr = { jsx: 'true' }
+
 /**
  * Modal de confirmación personalizado
  * @param {boolean} isOpen - Si el modal está abierto
@@ -21,7 +37,7 @@ export default function ConfirmModal({
   onCancel,
   confirmText = 'Aceptar',
   cancelText = 'Cancelar'
-}) {
+}: ConfirmModalProps) {
   if (!isOpen) return null
 
   const colors = {
@@ -142,7 +158,7 @@ export default function ConfirmModal({
         </div>
       </div>
 
-      <style jsx="true">{`
+      <style {...styledJsxAttr}>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

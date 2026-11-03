@@ -1,10 +1,24 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import Toast from './Toast'
-import { setToastFunction } from '../utils/toast'
+import { setToastFunction, type ToastType } from '../utils/toast'
 
-const ToastContext = createContext(null)
+export interface ToastProviderProps {
+  children: React.ReactNode
+}
 
-export const useToast = () => {
+interface ToastItem {
+  id: number
+  message: string
+  type: ToastType
+}
+
+interface ToastContextValue {
+  showToast: (message: string, type?: ToastType) => void
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null)
+
+export const useToast = (): ToastContextValue => {
   const context = useContext(ToastContext)
   if (!context) {
     throw new Error('useToast debe ser usado dentro de ToastProvider')
@@ -12,10 +26,10 @@ export const useToast = () => {
   return context
 }
 
-export const ToastProvider = ({ children }) => {
-  const [toasts, setToasts] = useState([])
+export const ToastProvider = ({ children }: ToastProviderProps) => {
+  const [toasts, setToasts] = useState<ToastItem[]>([])
 
-  const showToast = useCallback((message, type = 'success') => {
+  const showToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = Date.now()
     setToasts((prev) => [...prev, { id, message, type }])
 
@@ -30,7 +44,7 @@ export const ToastProvider = ({ children }) => {
     setToastFunction(showToast)
   }, [showToast])
 
-  const removeToast = useCallback((id) => {
+  const removeToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
 

@@ -1,8 +1,15 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import type { AppRole } from '@/types'
+import { useAppSelector } from '@/store/hooks'
 
-const menuItems = {
+interface MenuItem {
+  path: string
+  label: string
+  svg: React.ReactElement
+}
+
+const menuItems: Record<AppRole, MenuItem[]> = {
   admin: [
     {
       path: '/dashboard/admin',
@@ -387,8 +394,8 @@ const menuItems = {
 }
 
 export default function Sidebar() {
-  const { role } = useSelector((state) => state.auth)
-  const items = menuItems[role] || []
+  const { role } = useAppSelector((state) => state.auth)
+  const items: MenuItem[] = (role && menuItems[role]) || []
 
   return (
     <aside className="sidebar">

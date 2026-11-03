@@ -1,7 +1,16 @@
 import React from 'react'
 import { FaCheckCircle } from 'react-icons/fa'
 
-export default function SuccessModal({ show, message, onClose }) {
+export interface SuccessModalProps {
+  show: boolean
+  message?: string
+  onClose?: () => void
+}
+
+/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
+const styledJsxAttr = { jsx: 'true' }
+
+export default function SuccessModal({ show, message, onClose }: SuccessModalProps) {
   if (!show) return null
 
   const handleAccept = () => {
@@ -104,14 +113,16 @@ export default function SuccessModal({ show, message, onClose }) {
               boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
             }}
             onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#16a34a'
-              e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = '0 6px 16px rgba(34, 197, 94, 0.4)'
+              const target = e.target as HTMLElement
+              target.style.backgroundColor = '#16a34a'
+              target.style.transform = 'translateY(-2px)'
+              target.style.boxShadow = '0 6px 16px rgba(34, 197, 94, 0.4)'
             }}
             onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#22c55e'
-              e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)'
+              const target = e.target as HTMLElement
+              target.style.backgroundColor = '#22c55e'
+              target.style.transform = 'translateY(0)'
+              target.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)'
             }}
           >
             Aceptar
@@ -119,7 +130,7 @@ export default function SuccessModal({ show, message, onClose }) {
         </div>
       </div>
 
-      <style jsx="true">{`
+      <style {...styledJsxAttr}>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

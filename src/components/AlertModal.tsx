@@ -1,6 +1,19 @@
 import React from 'react'
 import { FaCheckCircle, FaExclamationCircle, FaInfoCircle } from 'react-icons/fa'
 
+export type AlertModalType = 'success' | 'error' | 'info'
+
+export interface AlertModalProps {
+  isOpen: boolean
+  title: string
+  message: string
+  type?: AlertModalType
+  onClose: () => void
+}
+
+/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
+const styledJsxAttr = { jsx: 'true' }
+
 /**
  * Modal de alerta personalizado (reemplazo de alert())
  * @param {boolean} isOpen - Si el modal está abierto
@@ -15,7 +28,7 @@ export default function AlertModal({
   message,
   type = 'success',
   onClose
-}) {
+}: AlertModalProps) {
   if (!isOpen) return null
 
   const styles = {
@@ -127,7 +140,7 @@ export default function AlertModal({
         </div>
       </div>
 
-      <style jsx="true">{`
+      <style {...styledJsxAttr}>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

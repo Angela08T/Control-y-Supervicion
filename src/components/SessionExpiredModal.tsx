@@ -2,7 +2,15 @@ import React from 'react'
 import { FaExclamationTriangle } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
 
-export default function SessionExpiredModal({ show, onAccept }) {
+export interface SessionExpiredModalProps {
+  show: boolean
+  onAccept?: () => void
+}
+
+/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
+const styledJsxAttr = { jsx: 'true' }
+
+export default function SessionExpiredModal({ show, onAccept }: SessionExpiredModalProps) {
   const navigate = useNavigate()
 
   if (!show) return null
@@ -109,14 +117,16 @@ export default function SessionExpiredModal({ show, onAccept }) {
               boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
             }}
             onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#d97706'
-              e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.4)'
+              const target = e.target as HTMLElement
+              target.style.backgroundColor = '#d97706'
+              target.style.transform = 'translateY(-2px)'
+              target.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.4)'
             }}
             onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#f59e0b'
-              e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)'
+              const target = e.target as HTMLElement
+              target.style.backgroundColor = '#f59e0b'
+              target.style.transform = 'translateY(0)'
+              target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)'
             }}
           >
             Ir a Inicio de Sesión
@@ -124,7 +134,7 @@ export default function SessionExpiredModal({ show, onAccept }) {
         </div>
       </div>
 
-      <style jsx="true">{`
+      <style {...styledJsxAttr}>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

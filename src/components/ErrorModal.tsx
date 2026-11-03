@@ -1,7 +1,16 @@
 import React from 'react'
 import { FaExclamationTriangle } from 'react-icons/fa'
 
-export default function ErrorModal({ show, message, onClose }) {
+export interface ErrorModalProps {
+  show: boolean
+  message?: string
+  onClose?: () => void
+}
+
+/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
+const styledJsxAttr = { jsx: 'true' }
+
+export default function ErrorModal({ show, message, onClose }: ErrorModalProps) {
   if (!show) return null
 
   const handleAccept = () => {
@@ -108,14 +117,16 @@ export default function ErrorModal({ show, message, onClose }) {
               letterSpacing: '0.5px'
             }}
             onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#d97706'
-              e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.5)'
+              const target = e.target as HTMLElement
+              target.style.backgroundColor = '#d97706'
+              target.style.transform = 'translateY(-2px)'
+              target.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.5)'
             }}
             onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#f59e0b'
-              e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)'
+              const target = e.target as HTMLElement
+              target.style.backgroundColor = '#f59e0b'
+              target.style.transform = 'translateY(0)'
+              target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)'
             }}
           >
             Ir a Inicio de Sesión
@@ -123,7 +134,7 @@ export default function ErrorModal({ show, message, onClose }) {
         </div>
       </div>
 
-      <style jsx="true">{`
+      <style {...styledJsxAttr}>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

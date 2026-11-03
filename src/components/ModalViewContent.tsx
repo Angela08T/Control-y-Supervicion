@@ -1,7 +1,13 @@
 import React from 'react'
 import { FaFileAlt, FaTimes } from 'react-icons/fa'
 
-export default function ModalViewContent({ content, title, onClose }) {
+export interface ModalViewContentProps {
+  content?: string | null
+  title?: string
+  onClose: () => void
+}
+
+export default function ModalViewContent({ content, title, onClose }: ModalViewContentProps) {
   return (
     <div className="modal-backdrop">
       <div

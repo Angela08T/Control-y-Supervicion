@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import { FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaInfoCircle, FaTimes } from 'react-icons/fa'
+import type { ToastType } from '../utils/toast'
 
-export default function Toast({ message, type = 'success', onClose }) {
+export interface ToastProps {
+  message: string
+  type?: ToastType
+  onClose?: () => void
+}
+
+/** Atributo `jsx` heredado de styled-jsx; se conserva para no cambiar el DOM renderizado. */
+const styledJsxAttr = { jsx: 'true' }
+
+export default function Toast({ message, type = 'success', onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [isExiting, setIsExiting] = useState(false)
 
@@ -135,14 +145,16 @@ export default function Toast({ message, type = 'success', onClose }) {
           height: '32px'
         }}
         onMouseOver={(e) => {
-          e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
-          e.target.style.color = '#1a1a1a'
-          e.target.style.transform = 'scale(1.1)'
+          const target = e.target as HTMLElement
+          target.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
+          target.style.color = '#1a1a1a'
+          target.style.transform = 'scale(1.1)'
         }}
         onMouseOut={(e) => {
-          e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
-          e.target.style.color = '#6b7280'
-          e.target.style.transform = 'scale(1)'
+          const target = e.target as HTMLElement
+          target.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+          target.style.color = '#6b7280'
+          target.style.transform = 'scale(1)'
         }}
       >
         <FaTimes size={16} />
@@ -168,7 +180,7 @@ export default function Toast({ message, type = 'success', onClose }) {
         }} />
       </div>
 
-      <style jsx="true">{`
+      <style {...styledJsxAttr}>{`
         @keyframes progress {
           from {
             width: 100%;

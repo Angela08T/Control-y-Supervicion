@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { FaSignOutAlt } from 'react-icons/fa'
-import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { logout as logoutAction } from '../../store/slices/authSlice'
 import { clearToken } from '../../api/config'
 import { logout as logoutApi } from '../../api/auth'
@@ -9,9 +9,9 @@ import logoSJL from '../../assets/logo-sjl.png'
 import userAvatar from '../../assets/user-avatar.png'
 
 export default function Topbar() {
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { username, role } = useSelector((state) => state.auth)
+  const { username, role } = useAppSelector((state) => state.auth)
 
   // Forzar modo claro siempre
   useEffect(() => {
