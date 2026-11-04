@@ -140,8 +140,8 @@ export const incidenciasPage = 'flex w-full flex-col'
 
 export const autocompleteContainer = 'relative w-full [&_input]:w-full'
 
-const autocompleteBox =
-  'absolute inset-x-0 top-full z-[1000] mt-1 rounded-lg border px-3 py-2 text-[13px] shadow-[0_4px_12px_var(--shadow-hover)]'
+/** Avisos de carga/error/sin resultados: van en el flujo para no tapar lo que hay debajo */
+const autocompleteBox = 'mt-1 rounded-lg border px-3 py-2 text-[13px]'
 
 export const autocompleteLoading = `${autocompleteBox} border-line bg-surface text-content-2`
 

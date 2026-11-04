@@ -841,7 +841,7 @@ export default function IncidenciasPage() {
         />
 
         {/* Estado del informe: mismos valores que el antiguo select de estado */}
-        <div role="tablist" aria-label="Filtrar por estado" className="inline-flex items-center rounded-lg border border-line-strong bg-surface p-0.5">
+        <div role="tablist" aria-label="Filtrar por estado" className="inline-flex max-w-full items-center overflow-x-auto rounded-lg border border-line-strong bg-surface p-0.5">
           {STATUS_OPTIONS.map(option => {
             const active = filters.process === option.value
             return (
