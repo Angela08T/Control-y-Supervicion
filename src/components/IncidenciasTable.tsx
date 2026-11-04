@@ -96,17 +96,17 @@ export default function IncidenciasTable({
             description="Prueba cambiando los filtros o agrega una nueva con el botón “Nueva incidencia”."
           />
         ) : (
-          <div className="max-h-[calc(100vh-300px)] min-h-0 overflow-y-auto">
-            <table className={cn(incTable, 'table-fixed')}>
+          <div className="overflow-x-auto">
+            <table className={incTable}>
               <thead>
                 <tr>
                   <th className={cn(incTableTh, 'w-[120px]')}>Estado</th>
-                  <th className={cn(incTableTh, 'w-[190px]')}>Infractor</th>
+                  <th className={incTableTh}>Infractor</th>
                   <th className={incTableTh}>Falta</th>
-                  <th className={cn(incTableTh, 'w-[110px]')}>Fecha</th>
-                  <th className={cn(incTableTh, 'w-[130px]')}>Medio</th>
-                  <th className={cn(incTableTh, 'w-[150px]')}>Registrado por</th>
-                  <th className={cn(incTableTh, 'w-[168px] text-right')}>Acciones</th>
+                  <th className={cn(incTableTh, 'w-[120px]')}>Fecha</th>
+                  <th className={cn(incTableTh, 'w-[140px]')}>Medio</th>
+                  <th className={cn(incTableTh, 'w-[160px]')}>Registrado por</th>
+                  <th className={cn(incTableTh, 'w-[120px] text-right')}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,13 +135,13 @@ export default function IncidenciasTable({
                       <td className={incTableTd}>
                         <div className="min-w-0">
                           <p
-                            className="m-0 truncate text-sm font-medium text-content"
+                            className="m-0 line-clamp-2 text-sm font-medium text-content"
                             title={item.nombreCompleto || item.dni || DASH}
                           >
                             {item.nombreCompleto || item.dni || DASH}
                           </p>
                           {item.nombreCompleto && item.dni && (
-                            <p className="m-0 truncate text-xs text-muted">{item.dni}</p>
+                            <p className="m-0 text-xs text-muted">{item.dni}</p>
                           )}
                         </div>
                       </td>
@@ -149,7 +149,7 @@ export default function IncidenciasTable({
                       {/* Falta y asunto */}
                       <td className={incTableTd}>
                         <div className="min-w-0">
-                          <p className="m-0 truncate text-sm font-medium text-content" title={item.falta || DASH}>
+                          <p className="m-0 line-clamp-2 text-sm font-medium text-content" title={item.falta || DASH}>
                             {item.falta || DASH}
                           </p>
                           <p className="m-0 line-clamp-1 text-xs text-muted" title={item.asunto || undefined}>
@@ -163,7 +163,7 @@ export default function IncidenciasTable({
                         <p className="m-0 text-sm text-content">
                           {isAbsence ? formatAbsenceDates(item) : item.fechaIncidente || DASH}
                         </p>
-                        <p className="m-0 truncate text-xs text-muted">
+                        <p className="m-0 whitespace-nowrap text-xs text-muted">
                           {isAbsence
                             ? item.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada'
                             : `${item.horaIncidente || DASH} · ${formatTurno(item.turno)}`}
@@ -172,12 +172,12 @@ export default function IncidenciasTable({
 
                       {/* Medio */}
                       <td className={cn(incTableTd, 'text-sm')}>
-                        <span className="block truncate" title={medioLabel(item)}>{medioLabel(item)}</span>
+                        <span className="line-clamp-2" title={medioLabel(item)}>{medioLabel(item)}</span>
                       </td>
 
                       {/* Registrado por */}
                       <td className={cn(incTableTd, 'text-sm')}>
-                        <span className="block truncate" title={item.registradoPor || DASH}>{item.registradoPor || DASH}</span>
+                        <span className="line-clamp-2" title={item.registradoPor || DASH}>{item.registradoPor || DASH}</span>
                       </td>
 
                       {/* Acciones */}
