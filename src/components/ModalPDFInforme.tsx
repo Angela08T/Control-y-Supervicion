@@ -7,7 +7,11 @@ import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl,
 import { getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
 import { toast } from '../utils/toast'
-import { btnPrimary, btnSecondary, cn, modalActions, modalBackdrop, modalClose, modalHeader } from '../utils/classes'
+import { cn } from '../utils/classes'
+import Modal from '@/components/UI/Modal'
+import Button from '@/components/UI/Button'
+import Badge from '@/components/UI/Badge'
+import { FiDownload } from 'react-icons/fi'
 import type { ID, Incidencia, ReportWithEvidences } from '@/types'
 
 /** Imagen de evidencia del formulario: existente en el backend o nueva (aun sin subir). */
@@ -170,16 +174,6 @@ const articulosPorFalta: Record<string, string> = {
 }
 
 /* Clases de la vista previa. Es un documento en papel: fondo blanco y texto negro en ambos temas. */
-
-/** Tarjeta del documento (.modal-pdf) */
-const pdfCard =
-  'flex max-h-[90vh] w-[750px] max-w-[95%] flex-col rounded-[20px] border border-[#e2e8f0] bg-[#ffffff]! shadow-[0_20px_60px_rgba(0,0,0,0.1)] animate-[modalSlideIn_0.4s_cubic-bezier(0.68,-0.55,0.265,1.55)] max-[900px]:w-[95%]'
-
-/** <h3> del encabezado: el modal PDF fija el color en ambos temas */
-const pdfTitle = 'm-[18px] text-[20px] font-bold text-[#1e3a8a]! [text-shadow:none]!'
-
-/** Badge de estado del encabezado (el color se agrega por estado) */
-const badgeBase = 'inline-flex items-center gap-[5px] rounded-[12px] border px-3 py-1 text-[0.85rem] font-semibold'
 
 const pdfPreview = 'flex-1 overflow-y-auto bg-[#ffffff]! p-[30px] text-[#000000]!'
 
@@ -906,38 +900,46 @@ Se adjuntan las evidencias:`
 
   const esInasistencia = incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
-  return (
-    <div className={modalBackdrop}>
-      <div className={pdfCard}>
-        <div className={modalHeader}>
-          <div className="flex items-center gap-3">
-            <h3 className={pdfTitle}>Vista Previa del Informe</h3>
-            {/* Badge de estado */}
-            {incidencia.status === 'approved' && (
-              <span className={cn(badgeBase, 'border-[rgba(34,197,94,0.5)] bg-[rgba(34,197,94,0.2)] text-[#22c55e]')}>
-                ✓ Aprobado
-              </span>
-            )}
-            {incidencia.status === 'pending' && (
-              <span className={cn(badgeBase, 'border-[rgba(245,158,11,0.5)] bg-[rgba(245,158,11,0.2)] text-[#f59e0b]')}>
-                ⏳ Pendiente de aprobación
-              </span>
-            )}
-            {incidencia.status === 'draft' && (
-              <span className={cn(badgeBase, 'border-[rgba(148,163,184,0.5)] bg-[rgba(148,163,184,0.2)] text-[#94a3b8]')}>
-                📝 Borrador
-              </span>
-            )}
-            {incidencia.status === 'rejected' && (
-              <span className={cn(badgeBase, 'border-[rgba(239,68,68,0.5)] bg-[rgba(239,68,68,0.2)] text-[#ef4444]')}>
-                ✗ Rechazado
-              </span>
-            )}
-          </div>
-          <button className={modalClose} onClick={onClose}>×</button>
-        </div>
+  // Estado del informe, mostrado como etiqueta de texto en el encabezado del marco
+  const estadoBadge =
+    incidencia.status === 'approved' ? <Badge tone="success">Aprobado</Badge>
+    : incidencia.status === 'pending' ? <Badge tone="warning">Pendiente de aprobación</Badge>
+    : incidencia.status === 'draft' ? <Badge tone="neutral">Borrador</Badge>
+    : incidencia.status === 'rejected' ? <Badge tone="danger">Rechazado</Badge>
+    : null
 
-        <div className={pdfPreview}>
+  const modalFooter = (
+    <>
+      <Button variant="secondary" onClick={onClose} disabled={savingReport}>
+        Cancelar
+      </Button>
+      <Button
+        variant="secondary"
+        onClick={guardarCambios}
+        loading={savingReport}
+        disabled={savingReport || loadingEvidences}
+      >
+        {savingReport ? 'Guardando cambios…' : 'Guardar cambios'}
+      </Button>
+      <Button icon={<FiDownload />} onClick={generarPDF} disabled={savingReport || loadingEvidences}>
+        Descargar PDF
+      </Button>
+    </>
+  )
+
+  return (
+    <Modal
+      title="Vista previa del informe"
+      description={
+        <span className="inline-flex flex-wrap items-center gap-2">
+          Revisa el informe antes de descargarlo. {estadoBadge}
+        </span>
+      }
+      onClose={onClose}
+      size="lg"
+      footer={modalFooter}
+    >
+      <div className={pdfPreview}>
           <div className={pdfContent}>
             <div className={pdfHeader}>
               <h2 className={pdfHeaderTitle}>SAN JUAN DE LURIGANCHO</h2>
@@ -1407,31 +1409,6 @@ Se adjuntan las evidencias:`
             </div>
           </div>
         </div>
-
-        <div className={modalActions}>
-          <button
-            className={btnSecondary}
-            onClick={onClose}
-            disabled={savingReport}
-          >
-            Cancelar
-          </button>
-          <button
-            className={cn(btnSecondary, 'ml-2.5')}
-            onClick={guardarCambios}
-            disabled={savingReport || loadingEvidences}
-          >
-            {savingReport ? '💾 Guardando...' : 'Guardar'}
-          </button>
-          <button
-            className={btnPrimary}
-            onClick={generarPDF}
-            disabled={savingReport || loadingEvidences}
-          >
-            Descargar PDF
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
