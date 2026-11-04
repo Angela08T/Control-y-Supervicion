@@ -41,7 +41,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div>
       <Topbar onMenuClick={() => setMobileOpen(true)} />
       <Sidebar
         collapsed={collapsed}
@@ -51,8 +51,11 @@ export default function DashboardLayout() {
       />
       <main
         className={cn(
-          'mt-14 box-border h-[calc(100vh-56px)] overflow-x-hidden overflow-y-auto bg-page p-6 transition-[margin] duration-200 max-md:ml-0 max-md:p-4',
-          collapsed ? 'md:ml-16' : 'md:ml-[232px]'
+          // Fijo entre la barra superior y el borde inferior: es el UNICO elemento que desplaza,
+          // sin depender de calc(100vh) (que con el escalado de Windows suma una fraccion de pixel
+          // y hacia aparecer un segundo scroll en toda la pagina).
+          'fixed top-14 right-0 bottom-0 box-border overflow-x-hidden overflow-y-auto bg-page p-6 transition-[left] duration-200 max-md:left-0 max-md:p-4',
+          collapsed ? 'md:left-16' : 'md:left-[232px]'
         )}
       >
         <Outlet />
