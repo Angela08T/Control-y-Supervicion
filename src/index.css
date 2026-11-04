@@ -420,3 +420,12 @@
     }
   }
 }
+
+/* Leaflet: al hacer clic dentro de una jurisdiccion el navegador dibujaba un recuadro negro
+   (anillo de foco del SVG). El mapa se usa con el mouse; se quita solo en sus capas. */
+.leaflet-container path.leaflet-interactive:focus,
+.leaflet-container path.leaflet-interactive:focus-visible,
+.leaflet-container .leaflet-interactive:focus,
+.leaflet-container .leaflet-interactive:focus-visible {
+  outline: none;
+}

@@ -175,7 +175,7 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
 
   return (
     <div className="mt-2">
-      <div className="h-[250px] w-full overflow-hidden rounded-lg border border-line">
+      <div className="h-[220px] w-full overflow-hidden rounded-lg border border-line">
         <MapContainer
           center={[-11.9833, -77.0075]}
           zoom={13}

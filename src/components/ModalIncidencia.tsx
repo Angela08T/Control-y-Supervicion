@@ -533,7 +533,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
       title={initial ? 'Editar incidencia' : 'Nueva incidencia'}
       description="Los campos con * son obligatorios."
       onClose={onClose}
-      size="xl"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -550,7 +550,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
         <section className="flex flex-col gap-4">
           <h4 className="m-0 text-[13px] font-semibold text-content">Infractor</h4>
           <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-            <div className={cn(autocompleteContainer, 'col-span-2')} ref={dniAutocompleteRef}>
+            <div className={autocompleteContainer} ref={dniAutocompleteRef}>
               <Field label="DNI del infractor" required hint="8 dígitos; al ingresarlo se completan los demás datos">
                 <Input
                   value={dniSearchTerm}
@@ -612,7 +612,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             <Field
               label="Asunto"
               required
-              className="col-span-2"
               error={subjectsError ? 'Error al cargar asuntos desde el servidor.' : undefined}
             >
               <Select
@@ -628,16 +627,14 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               </Select>
             </Field>
 
-            {form.asunto && (
-              <Field label="Falta" required className="col-span-2">
-                <Select value={form.falta} onChange={e => setField('falta', e.target.value)}>
-                  <option value="">Selecciona</option>
-                  {lacksDisponibles.map(lack => (
-                    <option key={lack.id} value={lack.name}>{lack.name}</option>
-                  ))}
-                </Select>
-              </Field>
-            )}
+            <Field label="Falta" required>
+              <Select value={form.falta} onChange={e => setField('falta', e.target.value)} disabled={!form.asunto}>
+                <option value="">{form.asunto ? 'Selecciona' : 'Primero elige el asunto'}</option>
+                {lacksDisponibles.map(lack => (
+                  <option key={lack.id} value={lack.name}>{lack.name}</option>
+                ))}
+              </Select>
+            </Field>
 
             <Field label="Fecha del hecho" required>
               <Input
@@ -654,11 +651,18 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               />
             </Field>
 
+          </div>
+        </section>
+
+        {/* Ubicación */}
+        <section className="flex flex-col gap-4 border-t border-line pt-5">
+          <h4 className="m-0 text-[13px] font-semibold text-content">Ubicación</h4>
+          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
             <Field
               label="Jurisdicción"
               required
               className="col-span-2"
-              hint="Se sugiere según la ubicación en el mapa. Puedes cambiarla."
+              hint="Se sugiere según el punto del mapa. Puedes cambiarla."
             >
               {jurisdictionsLoading ? (
                 <span className="block text-sm text-muted">Cargando jurisdicciones...</span>
@@ -697,7 +701,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             <div className="col-span-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-[13px] font-medium text-content-2">
-                  Ubicación del infractor<span className="ml-0.5 text-danger">*</span>
+                  Punto en el mapa<span className="ml-0.5 text-danger">*</span>
                 </span>
                 <Button
                   variant="secondary"

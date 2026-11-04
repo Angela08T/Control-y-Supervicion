@@ -51,10 +51,11 @@ export default function DashboardLayout() {
       />
       <main
         className={cn(
-          // Fijo entre la barra superior y el borde inferior: es el UNICO elemento que desplaza,
+          // Absoluto entre la barra superior y el borde inferior (no 'fixed': fixed crea un contexto de
+          // apilamiento y los modales quedarian por debajo de la barra). Es el UNICO elemento que desplaza,
           // sin depender de calc(100vh) (que con el escalado de Windows suma una fraccion de pixel
           // y hacia aparecer un segundo scroll en toda la pagina).
-          'fixed top-14 right-0 bottom-0 box-border overflow-x-hidden overflow-y-auto bg-page p-6 transition-[left] duration-200 max-md:left-0 max-md:p-4',
+          'absolute top-14 right-0 bottom-0 box-border overflow-x-hidden overflow-y-auto bg-page p-6 transition-[left] duration-200 max-md:left-0 max-md:p-4',
           collapsed ? 'md:left-16' : 'md:left-[232px]'
         )}
       >
