@@ -16,9 +16,11 @@ import type { CreateUserDto, ID, Role, User } from '@/types'
 import Button from '@/components/UI/Button'
 import { Select } from '@/components/UI/Field'
 import PageHeader from '@/components/UI/PageHeader'
+import Pagination from '@/components/UI/Pagination'
 import SearchInput from '@/components/UI/SearchInput'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { cardClass } from '@/utils/classes'
+import { usePagedList } from '@/hooks/usePagedList'
 
 /** Filtro de rol: 'all' o un rol del backend */
 type RoleFilter = 'all' | Role
@@ -227,6 +229,7 @@ export default function UsuariosPage() {
   // Los usuarios ya vienen filtrados desde la API, no necesitamos filtrar en el frontend
   const filteredData = users
   const hasFilters = filters.search.trim() !== '' || filters.roleFilter !== 'all'
+  const paged = usePagedList(filteredData, filters.search + '|' + filters.roleFilter)
 
   return (
     <div className="flex w-full flex-col">
@@ -285,17 +288,22 @@ export default function UsuariosPage() {
         ) : (
           <>
             <UserTable
-              data={filteredData}
+              data={paged.pageItems}
               onToggleStatus={handleToggleStatus}
               onEdit={handleEdit}
               onDeactivateSession={userRole === 'admin' ? handleDeactivateSession : null}
-              startIndex={0}
+              startIndex={paged.from - 1}
               canEdit={canEdit}
               canDelete={canDelete}
             />
-            <div className="border-t border-line px-4 py-3 text-[13px] text-muted">
-              Total: {filteredData.length} usuario(s)
-            </div>
+            <Pagination
+              page={paged.page}
+              totalPages={paged.totalPages}
+              total={paged.total}
+              from={paged.from}
+              to={paged.to}
+              onPageChange={paged.setPage}
+            />
           </>
         )}
       </div>

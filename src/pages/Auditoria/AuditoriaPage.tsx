@@ -10,6 +10,7 @@ import Pagination from '@/components/UI/Pagination';
 import SearchInput from '@/components/UI/SearchInput';
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState';
 import { cardClass } from '@/utils/classes';
+import { PAGE_SIZE } from '@/hooks/usePagedList';
 
 /** Ancho fijo de cada filtro dentro de la barra */
 const filterWrap = 'w-44 max-w-full';
@@ -24,9 +25,7 @@ export default function AuditoriaPage() {
     error,
     pagination,
     filters,
-    itemsPerPage,
     changePage,
-    changeItemsPerPage,
     updateFilters,
     resetFilters
   } = useAudit();
@@ -42,14 +41,10 @@ export default function AuditoriaPage() {
     }
   };
 
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    changeItemsPerPage(newItemsPerPage);
-  };
-
   const hasFilters = Boolean(filters.action || filters.model || filters.status || filters.search);
   const total = pagination.totalCount;
-  const from = total === 0 ? 0 : (pagination.currentPage - 1) * itemsPerPage + 1;
-  const to = Math.min(pagination.currentPage * itemsPerPage, total);
+  const from = total === 0 ? 0 : (pagination.currentPage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(pagination.currentPage * PAGE_SIZE, total);
 
   return (
     <div className="flex w-full flex-col">
@@ -126,7 +121,7 @@ export default function AuditoriaPage() {
             <EmptyState title="Aún no hay registros" description="Cuando haya acciones en el sistema, aparecerán aquí." />
           )
         ) : (
-          <AuditoriaTable data={audits} currentPage={pagination.currentPage} itemsPerPage={itemsPerPage} />
+          <AuditoriaTable data={audits} currentPage={pagination.currentPage} itemsPerPage={PAGE_SIZE} />
         )}
 
         {!loading && !error && (
@@ -136,9 +131,7 @@ export default function AuditoriaPage() {
             total={total}
             from={from}
             to={to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
         )}
       </div>

@@ -4,6 +4,8 @@ import type { User } from '@/types'
 import Badge from '@/components/UI/Badge'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { cardClass, incTable, incTableTh, incTableTr, incTableTd } from '@/utils/classes'
+import Pagination from '@/components/UI/Pagination'
+import { usePagedList } from '@/hooks/usePagedList'
 
 /** Fila de la tabla de personal. */
 interface PersonalRow {
@@ -38,7 +40,8 @@ export default function PersonalTable() {
     try {
       // Obtener usuarios con rol SENTINEL
       const response = await api.get<PersonalListBody>('/user', {
-        params: { rol: 'SENTINEL' }
+        // Se piden todos (como en Usuarios) y se paginan de a 10 en el navegador
+        params: { rol: 'SENTINEL', page: 1, limit: 1000 }
       })
 
       // Extraer datos de la respuesta
@@ -99,6 +102,8 @@ export default function PersonalTable() {
 
   const enTurno = turnoActual()
 
+  const { pageItems, page, setPage, totalPages, total, from, to } = usePagedList(personal)
+
   return (
     <div className={cardClass}>
       <div className="flex flex-col gap-0.5 border-b border-line px-5 py-4">
@@ -122,7 +127,7 @@ export default function PersonalTable() {
               </tr>
             </thead>
             <tbody>
-              {personal.map((persona, index) => {
+              {pageItems.map((persona, index) => {
                 const esSuTurno = persona.turno === enTurno
 
                 return (
@@ -145,6 +150,9 @@ export default function PersonalTable() {
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && personal.length > 0 && (
+        <Pagination page={page} totalPages={totalPages} total={total} from={from} to={to} onPageChange={setPage} />
       )}
     </div>
   )

@@ -16,6 +16,7 @@ import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import Button from '@/components/UI/Button'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
+import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 import type {
   ApiMessageResponse,
   ApiResponse,
@@ -66,11 +67,11 @@ export default function OffenderPage() {
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -80,6 +81,8 @@ export default function OffenderPage() {
   const [searchResult, setSearchResult] = useState<OffenderRow[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [confirmModal, setConfirmModal] = useState<ConfirmState>({ isOpen: false, item: null })
+  // Resultados de búsqueda por DNI: paginación en navegador (vuelve a la página 1 al cambiar la búsqueda)
+  const searchPaged = usePagedList(searchResult ?? [], filters.search)
 
   // Cargar infractores desde la API con paginación
   useEffect(() => {
@@ -282,13 +285,8 @@ export default function OffenderPage() {
     }
   }
 
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
-  }
-
-  // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : offenders
+  // Con búsqueda activa se muestra la página actual de searchResult; si no, la página del servidor
+  const filteredData = searchResult !== null ? searchPaged.pageItems : offenders
 
   return (
     <div className="flex w-full flex-col">
@@ -339,13 +337,25 @@ export default function OffenderPage() {
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={searchResult !== null ? searchPaged.from - 1 : pagination.from - 1}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
         )}
 
-        {/* Paginación solo cuando no hay búsqueda activa */}
+        {/* Búsqueda activa: paginación en navegador (sin resultados no hay paginación, como antes) */}
+        {!loading && searchResult !== null && searchPaged.total > 0 && (
+          <Pagination
+            page={searchPaged.page}
+            totalPages={searchPaged.totalPages}
+            total={searchPaged.total}
+            from={searchPaged.from}
+            to={searchPaged.to}
+            onPageChange={searchPaged.setPage}
+          />
+        )}
+
+        {/* Sin búsqueda: paginación del servidor */}
         {!loading && searchResult === null && (
           <Pagination
             page={currentPage}
@@ -353,9 +363,7 @@ export default function OffenderPage() {
             total={pagination.total}
             from={pagination.from}
             to={pagination.to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
         )}
       </div>

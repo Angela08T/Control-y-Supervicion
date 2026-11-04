@@ -12,6 +12,7 @@ import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import Button from '@/components/UI/Button'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
+import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 import type { CreateLeadDto, Lead, Paginated, TablePagination } from '@/types'
 
 /** Listado de personal: `data` paginado (o array plano) y `pagination` opcional. */
@@ -55,11 +56,11 @@ export default function LeadsPage() {
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -68,6 +69,8 @@ export default function LeadsPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [searchResult, setSearchResult] = useState<Lead[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
+  // Paginación en el navegador para los resultados de búsqueda (lista completa en memoria)
+  const searchPaged = usePagedList(searchResult ?? [], filters.search)
 
   // Cargar personal desde la API con paginación
   useEffect(() => {
@@ -80,8 +83,20 @@ export default function LeadsPage() {
         setLeads(leadsData)
 
         // Manejar paginación si existe, sino usar valores por defecto
+        const meta = Array.isArray(result.data) ? undefined : result.data
         if (result.pagination) {
           setPagination(result.pagination)
+        } else if (meta?.totalPages) {
+          // El backend devuelve el total dentro de `data` (totalCount, totalPages, currentPage)
+          const totalCount = meta.totalCount ?? leadsData.length
+          setPagination({
+            currentPage: meta.currentPage || currentPage,
+            totalPages: meta.totalPages || 1,
+            perPage: itemsPerPage,
+            total: totalCount,
+            from: leadsData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
+            to: Math.min(currentPage * itemsPerPage, totalCount)
+          })
         } else {
           // Si no hay paginación, calcular valores básicos
           setPagination({
@@ -265,13 +280,8 @@ export default function LeadsPage() {
     }
   }
 
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
-  }
-
-  // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : leads
+  // Búsqueda: se muestra la página actual de searchResult; si no, la página del servidor
+  const filteredData = searchResult !== null ? searchPaged.pageItems : leads
 
   return (
     <div className="flex w-full flex-col">
@@ -306,24 +316,33 @@ export default function LeadsPage() {
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={searchResult !== null ? searchPaged.from - 1 : pagination.from - 1}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
         )}
 
-        {!loading && searchResult === null && (
+        {!loading && (searchResult !== null ? (
+          searchPaged.total > 0 && (
+            <Pagination
+              page={searchPaged.page}
+              totalPages={searchPaged.totalPages}
+              total={searchPaged.total}
+              from={searchPaged.from}
+              to={searchPaged.to}
+              onPageChange={searchPaged.setPage}
+            />
+          )
+        ) : (
           <Pagination
             page={currentPage}
             totalPages={pagination.totalPages}
             total={pagination.total}
             from={pagination.from}
             to={pagination.to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
-        )}
+        ))}
       </div>
 
       {showModal && (

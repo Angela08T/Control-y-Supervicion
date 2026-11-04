@@ -9,6 +9,7 @@ import Button from '@/components/UI/Button'
 import PageHeader from '@/components/UI/PageHeader'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
+import { PAGE_SIZE } from '@/hooks/usePagedList'
 import Badge from '@/components/UI/Badge'
 import { Select } from '@/components/UI/Field'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
@@ -171,11 +172,11 @@ export default function IncidenciasPage() {
   const [showAdvanced, setShowAdvanced] = useState(false) // Panel de filtros avanzados (asunto, falta, jurisdicción, subgerencia, turno)
   const [subgerencias, setSubgerencias] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -613,11 +614,6 @@ export default function IncidenciasPage() {
       setCurrentPage(newPage)
       window.scrollTo({ top: 0, behavior: 'smooth' }) // Scroll to top al cambiar página
     }
-  }
-
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1) // Volver a la primera página al cambiar items por página
   }
 
   // Verificar si el término de búsqueda es un UUID
@@ -1063,9 +1059,7 @@ export default function IncidenciasPage() {
             total={paginationData.total}
             from={paginationData.from}
             to={paginationData.to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
         </div>
       )}

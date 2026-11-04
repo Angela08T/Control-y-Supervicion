@@ -14,6 +14,7 @@ import SearchInput from '../../components/UI/SearchInput'
 import Button from '../../components/UI/Button'
 import Pagination from '../../components/UI/Pagination'
 import { EmptyState, LoadingState } from '../../components/UI/EmptyState'
+import { PAGE_SIZE } from '@/hooks/usePagedList'
 import type { CreateLackDto, Lack, Paginated, TablePagination } from '@/types'
 
 /** Listado de faltas: `data` paginado (o array plano); la paginación va dentro de `data`. */
@@ -51,11 +52,11 @@ export default function LackPage() {
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -212,11 +213,6 @@ export default function LackPage() {
     }
   }
 
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
-  }
-
   // Los datos ya vienen filtrados desde la API
   const filteredData = lacks
   const isEmpty = filteredData.length === 0
@@ -275,9 +271,7 @@ export default function LackPage() {
             total={pagination.total}
             from={pagination.from}
             to={pagination.to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
         )}
       </div>

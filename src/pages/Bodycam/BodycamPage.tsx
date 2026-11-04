@@ -14,6 +14,7 @@ import Button from '@/components/UI/Button'
 import { Select } from '@/components/UI/Field'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { cardClass } from '@/utils/classes'
+import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 
 /** Tipos de filtro de dispositivo del selector */
 type DeviceType = 'all' | 'camera' | 'sg' | 'fisca'
@@ -108,11 +109,11 @@ export default function BodycamPage() {
     searchByType()
   }, [filters.deviceType])
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -121,6 +122,8 @@ export default function BodycamPage() {
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [searchResult, setSearchResult] = useState<BodycamRow[] | null>(null)
   const [isSearching, setIsSearching] = useState<boolean>(false)
+  // Resultados de búsqueda: paginación en navegador (vuelve a la página 1 al cambiar búsqueda o tipo)
+  const searchPaged = usePagedList(searchResult ?? [], `${filters.search}|${filters.deviceType}`)
 
   // Cargar bodycams desde la API con paginación
   useEffect(() => {
@@ -311,13 +314,8 @@ export default function BodycamPage() {
     }
   }
 
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
-  }
-
-  // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : bodycams
+  // Con búsqueda activa se muestra la página actual de searchResult; si no, la página del servidor
+  const filteredData = searchResult !== null ? searchPaged.pageItems : bodycams
 
   // Texto del estado vacío según haya búsqueda o no
   const emptySearchDescription = filters.search.trim()
@@ -382,13 +380,25 @@ export default function BodycamPage() {
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={searchResult !== null ? searchPaged.from - 1 : pagination.from - 1}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
         )}
 
-        {/* Paginación solo cuando no hay búsqueda activa */}
+        {/* Búsqueda activa: paginación en navegador (sin resultados no hay paginación, como antes) */}
+        {!loading && searchResult !== null && searchPaged.total > 0 && (
+          <Pagination
+            page={searchPaged.page}
+            totalPages={searchPaged.totalPages}
+            total={searchPaged.total}
+            from={searchPaged.from}
+            to={searchPaged.to}
+            onPageChange={searchPaged.setPage}
+          />
+        )}
+
+        {/* Sin búsqueda: paginación del servidor */}
         {!loading && searchResult === null && (
           <Pagination
             page={currentPage}
@@ -396,9 +406,7 @@ export default function BodycamPage() {
             total={pagination.total}
             from={pagination.from}
             to={pagination.to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
         )}
       </div>

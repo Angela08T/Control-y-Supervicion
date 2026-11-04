@@ -12,6 +12,7 @@ import Button from '../../components/UI/Button'
 import Pagination from '../../components/UI/Pagination'
 import { EmptyState, LoadingState } from '../../components/UI/EmptyState'
 import { toast } from '../../utils/toast'
+import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 import type {
   ApiMessageResponse,
   ApiResponse,
@@ -43,11 +44,11 @@ export default function SubjectPage() {
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -56,6 +57,8 @@ export default function SubjectPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [searchResult, setSearchResult] = useState<Subject[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
+  // Paginación en el navegador para los resultados de búsqueda (lista completa en memoria)
+  const searchPaged = usePagedList(searchResult ?? [], filters.search)
 
   // Cargar asuntos desde la API con paginación
   useEffect(() => {
@@ -260,13 +263,8 @@ export default function SubjectPage() {
     }
   }
 
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
-  }
-
-  // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : subjects
+  // Búsqueda: se muestra la página actual de searchResult; si no, la página del servidor
+  const filteredData = searchResult !== null ? searchPaged.pageItems : subjects
 
   const isEmpty = filteredData.length === 0
 
@@ -311,25 +309,32 @@ export default function SubjectPage() {
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={searchResult !== null ? searchPaged.from - 1 : pagination.from - 1}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
         )}
 
-        {/* La paginación se oculta mientras se busca, como antes */}
-        {!loading && !isEmpty && searchResult === null && (
+        {/* Búsqueda: paginación en el navegador; sin búsqueda: paginación del servidor */}
+        {!loading && !isEmpty && (searchResult !== null ? (
+          <Pagination
+            page={searchPaged.page}
+            totalPages={searchPaged.totalPages}
+            total={searchPaged.total}
+            from={searchPaged.from}
+            to={searchPaged.to}
+            onPageChange={searchPaged.setPage}
+          />
+        ) : (
           <Pagination
             page={currentPage}
             totalPages={pagination.totalPages}
             total={pagination.total}
             from={pagination.from}
             to={pagination.to}
-            perPage={itemsPerPage}
             onPageChange={handlePageChange}
-            onPerPageChange={handleItemsPerPageChange}
           />
-        )}
+        ))}
       </div>
 
       {showModal && (

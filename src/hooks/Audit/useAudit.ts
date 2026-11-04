@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAllAudits } from '../../api/audit';
 import type { Action, Audit, AuditFilters, Model, PaginatedResponse, PaginationMeta, Status } from '@/types';
+import { PAGE_SIZE } from '@/hooks/usePagedList';
 
 /** Estado de filtros de la tabla de auditoría ('' = sin filtro) */
 export interface AuditFilterState {
@@ -21,9 +22,7 @@ export interface UseAuditResult {
   error: string | null;
   pagination: PaginationMeta;
   filters: AuditFilterState;
-  itemsPerPage: number;
   changePage: (newPage: number) => void;
-  changeItemsPerPage: (newItemsPerPage: number) => void;
   updateFilters: (newFilters: Partial<AuditFilterState>) => void;
   resetFilters: () => void;
 }
@@ -33,10 +32,10 @@ const useAudit = (): UseAuditResult => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const itemsPerPage = PAGE_SIZE;
   const [pagination, setPagination] = useState<PaginationMeta>({
     currentPage: 1,
-    pageCount: 10,
+    pageCount: PAGE_SIZE,
     totalCount: 0,
     totalPages: 1
   });
@@ -61,7 +60,7 @@ const useAudit = (): UseAuditResult => {
     return () => clearTimeout(timer);
   }, [filters.search]);
 
-  // Cargar datos cuando cambien filtros, página o items por página
+  // Cargar datos cuando cambien filtros o página
   useEffect(() => {
     const fetchAudits = async () => {
       setLoading(true);
@@ -82,7 +81,7 @@ const useAudit = (): UseAuditResult => {
           setAudits(response.data.data || []);
           setPagination({
             currentPage: response.data.currentPage || 1,
-            pageCount: response.data.pageCount || 10,
+            pageCount: response.data.pageCount || PAGE_SIZE,
             totalCount: response.data.totalCount || 0,
             totalPages: response.data.totalPages || 1
           });
@@ -103,11 +102,6 @@ const useAudit = (): UseAuditResult => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage);
     }
-  };
-
-  const changeItemsPerPage = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Volver a la primera página al cambiar items por página
   };
 
   const updateFilters = (newFilters: Partial<AuditFilterState>) => {
@@ -131,9 +125,7 @@ const useAudit = (): UseAuditResult => {
     error,
     pagination,
     filters,
-    itemsPerPage,
     changePage,
-    changeItemsPerPage,
     updateFilters,
     resetFilters
   };

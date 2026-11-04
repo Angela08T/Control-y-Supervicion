@@ -6,6 +6,7 @@ import { actionBtnDanger, cardClass, cn } from '@/utils/classes'
 import Badge from '@/components/UI/Badge'
 import Button from '@/components/UI/Button'
 import { EmptyState } from '@/components/UI/EmptyState'
+import { PAGE_SIZE } from '@/hooks/usePagedList'
 
 /** Persona con inasistencias tal como llega desde la pagina de inasistencias */
 interface InasistenciaItem {
@@ -166,7 +167,7 @@ export default function CalendarioInasistencias({
   const [tempMarks, setTempMarks] = useState<Record<string, TempMark>>({}) // Marcas temporales: { "dni-dia": { tipo: "I"/"J", id: null } }
   const [marksToDelete, setMarksToDelete] = useState<ID[]>([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
-  const itemsPerPage = 12 // Límite de personas por página
+  const itemsPerPage = PAGE_SIZE // Límite de personas por página (máx. 10)
 
   // Sincronizar selectedDate cuando cambie dateRange desde el padre
   useEffect(() => {
@@ -778,7 +779,7 @@ export default function CalendarioInasistencias({
                 )
               })
             )}
-            {/* Filas vacías para completar hasta 12 */}
+            {/* Filas vacías para completar hasta itemsPerPage (10) */}
             {Array.from({ length: Math.max(0, itemsPerPage - personasPaginadas.length) }).map((_, index) => (
               <tr key={`empty-${index}`} className={bodyRow}>
                 <td className={cn(cellBase, bodyFixed, 'left-0 w-10 px-2 text-center font-semibold text-muted')}>{startIndex + personasPaginadas.length + index + 1}</td>

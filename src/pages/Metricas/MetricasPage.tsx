@@ -9,6 +9,8 @@ import Badge from '@/components/UI/Badge'
 import Button from '@/components/UI/Button'
 import { Field, Input } from '@/components/UI/Field'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
+import Pagination from '@/components/UI/Pagination'
+import { usePagedList } from '@/hooks/usePagedList'
 
 const ROL_LABEL: Record<string, string> = {
   ADMINISTRATOR: 'Admin',
@@ -114,6 +116,8 @@ function TabUsuarios({ start, end }: TabUsuariosProps) {
   const performance = (data?.performance || []).filter(u =>
     !search.trim() || `${u.name} ${u.lastname}`.toLowerCase().includes(search.toLowerCase())
   )
+  const { pageItems, page, setPage, totalPages, total, from, to } =
+    usePagedList(performance, `${search}|${start}|${end}`)
 
   return (
     <>
@@ -157,9 +161,9 @@ function TabUsuarios({ start, end }: TabUsuariosProps) {
                 </tr>
               </thead>
               <tbody>
-                {performance.map((u, i) => (
+                {pageItems.map((u, i) => (
                   <tr key={u.id} className={incTableTr}>
-                    <td className={cn(incTableTd, 'text-muted tabular-nums')}>{i + 1}</td>
+                    <td className={cn(incTableTd, 'text-muted tabular-nums')}>{from + i}</td>
                     <td className={incTableTd}>
                       <div className="font-medium text-content">{u.name} {u.lastname}</div>
                       <div className="text-xs text-muted">{ROL_LABEL[u.rol] || u.rol}</div>
@@ -178,6 +182,9 @@ function TabUsuarios({ start, end }: TabUsuariosProps) {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && performance.length > 0 && (
+          <Pagination page={page} totalPages={totalPages} total={total} from={from} to={to} onPageChange={setPage} />
         )}
       </div>
     </>
@@ -214,6 +221,8 @@ function TabInfractores({ start, end }: TabInfractoresProps) {
     `${o.name} ${o.lastname}`.toLowerCase().includes(search.toLowerCase()) ||
     (o.dni || '').includes(search)
   )
+  const { pageItems, page, setPage, totalPages, total, from, to } =
+    usePagedList(performance, `${search}|${start}|${end}`)
 
   return (
     <>
@@ -251,9 +260,9 @@ function TabInfractores({ start, end }: TabInfractoresProps) {
                 </tr>
               </thead>
               <tbody>
-                {performance.map((o, i) => (
+                {pageItems.map((o, i) => (
                   <tr key={o.id} className={incTableTr}>
-                    <td className={cn(incTableTd, 'text-muted tabular-nums')}>{i + 1}</td>
+                    <td className={cn(incTableTd, 'text-muted tabular-nums')}>{from + i}</td>
                     <td className={cn(incTableTd, 'font-mono text-sm')}>{o.dni || '—'}</td>
                     <td className={incTableTd}>
                       <div className="font-medium text-content">{o.name} {o.lastname}</div>
@@ -277,6 +286,9 @@ function TabInfractores({ start, end }: TabInfractoresProps) {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && performance.length > 0 && (
+          <Pagination page={page} totalPages={totalPages} total={total} from={from} to={to} onPageChange={setPage} />
         )}
       </div>
     </>
