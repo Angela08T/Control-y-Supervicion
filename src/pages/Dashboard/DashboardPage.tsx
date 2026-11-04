@@ -1,14 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useAppSelector } from '../../store/hooks'
 import { ROLES } from '../../utils/permissions'
-import { FaCalendarAlt, FaUsers, FaExclamationTriangle, FaMapMarkerAlt } from 'react-icons/fa'
+import { FiCalendar, FiAlertTriangle, FiMapPin } from 'react-icons/fi'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
 import { getFieldSupervisionStats, getAllOffenders, getDashboardTrends, getDashboardGeneral } from '../../api/statistics'
 import useSubjects from '../../hooks/Subject/useSubjects'
 import type { DashboardGeneral, DashboardTrends, Incidencia, Offender, StoredIncidencia } from '@/types'
 import StatCard from './components/StatCard'
-import DateCard from './components/DateCard'
 import WelcomeCard from './components/WelcomeCard'
 import CircularProgress from './components/CircularProgress'
 import LineChart from './components/LineChart'
@@ -394,46 +393,45 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-full bg-transparent!">
-      {/* Cards superiores */}
-      <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-5">
-        <DateCard />
+    <div className="flex flex-col gap-5">
+      {/* Encabezado: saludo, fecha y frase corta */}
+      <WelcomeCard
+        message="Revisa el control de las incidencias y el desempeño del equipo"
+      />
 
+      {/* Métricas */}
+      <div className="grid grid-cols-3 gap-4 max-[1100px]:grid-cols-2 max-[600px]:grid-cols-1">
         <StatCard
-          title="Total de Incidencias"
+          title="Total de incidencias"
           value={stats.totalIncidencias}
           change={stats.cambioIncidencias}
-          icon={<FaCalendarAlt />}
-          color="#4a9b8e"
+          icon={<FiCalendar />}
+          color="#1e3a8a"
         />
 
         <StatCard
-          title="Incidencias Críticas"
+          title="Incidencias críticas"
           value={stats.totalCriticas}
           subtitle={stats.asuntoMasFrecuente}
           change="+12%"
-          icon={<FaExclamationTriangle />}
-          color="#ed8936"
+          icon={<FiAlertTriangle />}
+          color="#f59e0b"
         />
 
         <StatCard
-          title="Zona con Más Incidencias"
+          title="Zona con más incidencias"
           value={stats.totalZona}
           subtitle={stats.zonaConMas}
           change="+8%"
-          icon={<FaMapMarkerAlt />}
-          color="#48bb78"
+          icon={<FiMapPin />}
+          color="#10b981"
         />
       </div>
 
-      {/* Segunda fila: Welcome, Cumplimiento y Turnos */}
-      <div className="mb-5 grid grid-cols-[2fr_1fr_1fr] gap-5 max-[1200px]:grid-cols-[1fr]">
-        <WelcomeCard
-          message="Revisa el control de las incidencias y el desempeño del equipo"
-        />
-
+      {/* Cumplimiento y turnos */}
+      <div className="grid grid-cols-2 items-stretch gap-4 max-[700px]:grid-cols-1">
         <CircularProgress
-          title="Cumplimiento de Reportes"
+          title="Cumplimiento de reportes"
           percentage={pdfStats.percentage}
           subtitle="de reportes realizados"
         />
@@ -443,10 +441,10 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Tercera fila: Evolución de Incidencias e Incidencias (50/50) */}
-      <div className="mb-5 grid grid-cols-[1fr_1fr] items-stretch gap-5 max-[1200px]:grid-cols-[1fr]">
+      {/* Gráficos */}
+      <div className="grid grid-cols-2 items-stretch gap-4 max-[1100px]:grid-cols-1">
         <LineChart
-          title="Evolución de Incidencias"
+          title="Evolución de incidencias"
           subtitle="Últimos días registrados"
           data={stats.incidenciasPorMes}
           incidencias={incidencias}
@@ -458,7 +456,7 @@ export default function DashboardPage() {
         />
 
         <RadarChart
-          title="Análisis de Incidencias Asignadas"
+          title="Análisis de incidencias asignadas"
           subtitle="Distribución de incidencias por tipo de asunto"
           data={stats.incidenciasPorMes}
           incidencias={incidencias}
@@ -469,12 +467,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Última fila: Tabla de Centinelas (solo para ADMIN) */}
-      {isAdmin && (
-        <div className="grid grid-cols-[1fr] gap-5">
-          <PersonalTable />
-        </div>
-      )}
+      {/* Tabla de centinelas (solo para ADMIN) */}
+      {isAdmin && <PersonalTable />}
 
       {/* Modal de rango de fechas */}
       {showDateModal && (

@@ -1,22 +1,20 @@
 import React, { useState } from 'react'
-import { FaTimes } from 'react-icons/fa'
-import { cn } from '../../../utils/classes'
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi'
+import Modal from '@/components/UI/Modal'
+import Button from '@/components/UI/Button'
+import { cn } from '@/utils/classes'
 
 export interface CalendarModalProps {
   onClose: () => void
   onApply: (start: Date, end: Date) => void
 }
 
-/** Clases de una celda del calendario (equivale a .calendar-day con sus estados). */
-const dayClassName = (date: Date | null, selected: boolean, inRange: boolean): string => cn(
-  'flex aspect-square items-center justify-center rounded-[8px] text-[14px] font-semibold select-none [transition:all_0.2s_ease]',
-  !date && 'cursor-default bg-transparent',
-  date && 'cursor-pointer',
-  date && !inRange && !selected && 'bg-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.3)]',
-  date && inRange && 'bg-[rgba(255,255,255,0.4)]',
-  date && !inRange && selected && 'bg-white',
-  selected ? 'text-[#0c4a6e] shadow-[0_4px_12px_rgba(0,0,0,0.2)] [transform:scale(1.1)]' : 'text-white',
-  date && !selected && 'hover:[transform:scale(1.05)]'
+/** Clases de una celda del calendario: inicio/fin en primary, dias intermedios tintados. */
+const dayClassName = (date: Date, selected: boolean, inRange: boolean): string => cn(
+  'flex h-9 w-full cursor-pointer items-center justify-center rounded-md text-[13px] select-none transition-colors duration-150',
+  selected && 'bg-primary font-semibold text-btn',
+  !selected && inRange && 'bg-[rgba(30,58,138,0.08)] text-content',
+  !selected && !inRange && 'text-content hover:bg-subtle'
 )
 
 export default function CalendarModal({ onClose, onApply }: CalendarModalProps) {
@@ -24,8 +22,8 @@ export default function CalendarModal({ onClose, onApply }: CalendarModalProps) 
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const meses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
   ]
 
   const diasSemana = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
@@ -104,51 +102,69 @@ export default function CalendarModal({ onClose, onApply }: CalendarModalProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 [backdrop-filter:blur(4px)]">
-      <div className="w-[90%] max-w-[400px] rounded-[16px] bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_50%,#0369a1_100%)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[slideUp_0.3s_ease] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_50%,#3b82f6_100%)]">
-        <div className="mb-5 flex items-center justify-between">
-          <button className="flex size-8 cursor-pointer items-center justify-center rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] text-[20px] text-white [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.3)] hover:[transform:scale(1.1)]" onClick={previousMonth}>
-            ‹
-          </button>
-          <h3 className="m-0 text-[18px] font-bold text-white capitalize">
-            {meses[currentMonth.getMonth()]} De {currentMonth.getFullYear()}
-          </h3>
-          <button className="flex size-8 cursor-pointer items-center justify-center rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] text-[20px] text-white [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.3)] hover:[transform:scale(1.1)]" onClick={nextMonth}>
-            ›
-          </button>
-        </div>
+    <Modal
+      title="Seleccionar rango de fechas"
+      description="Elige el día de inicio y el día de fin."
+      onClose={onClose}
+      size="sm"
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel}>
+            Cancelar
+          </Button>
+          <Button onClick={handleApply} disabled={selectedDates.length !== 2}>
+            Aplicar
+          </Button>
+        </>
+      }
+    >
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={previousMonth}
+          aria-label="Mes anterior"
+          title="Mes anterior"
+          className="flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-subtle hover:text-content"
+        >
+          <FiChevronLeft aria-hidden />
+        </button>
+        <p className="m-0 text-sm font-semibold text-content">
+          {meses[currentMonth.getMonth()]} de {currentMonth.getFullYear()}
+        </p>
+        <button
+          type="button"
+          onClick={nextMonth}
+          aria-label="Mes siguiente"
+          title="Mes siguiente"
+          className="flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-subtle hover:text-content"
+        >
+          <FiChevronRight aria-hidden />
+        </button>
+      </div>
 
-        <div className="mb-3 grid grid-cols-[repeat(7,1fr)] gap-2">
-          {diasSemana.map((dia, i) => (
-            <div key={i} className="py-2 text-center text-[12px] font-semibold text-white opacity-90">{dia}</div>
-          ))}
-        </div>
+      <div className="grid grid-cols-7 gap-1">
+        {diasSemana.map((dia) => (
+          <div key={dia} className="py-1 text-center text-xs text-muted">{dia}</div>
+        ))}
+      </div>
 
-        <div className="mb-5 grid grid-cols-[repeat(7,1fr)] gap-2">
-          {days.map((date, i) => (
-            <div
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((date, i) => (
+          date ? (
+            <button
               key={i}
+              type="button"
+              aria-pressed={isDateSelected(date)}
               className={dayClassName(date, isDateSelected(date), isDateInRange(date))}
               onClick={() => handleDateClick(date)}
             >
-              {date ? date.getDate() : ''}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button className="cursor-pointer rounded-[8px] border-none bg-[rgba(255,255,255,0.2)] px-5 py-2.5 text-[14px] font-semibold text-white [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.3)]" onClick={handleCancel}>
-            Cancelar
-          </button>
-          <button
-            className="cursor-pointer rounded-[8px] border-none bg-white px-5 py-2.5 text-[14px] font-semibold text-[#0c4a6e] [transition:all_0.3s_ease] hover:bg-[rgba(255,255,255,0.95)] hover:[transform:translateY(-2px)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:[transform:none] disabled:hover:shadow-none"
-            onClick={handleApply}
-            disabled={selectedDates.length !== 2}
-          >
-            Aplicar
-          </button>
-        </div>
+              {date.getDate()}
+            </button>
+          ) : (
+            <span key={i} aria-hidden />
+          )
+        ))}
       </div>
-    </div>
+    </Modal>
   )
 }

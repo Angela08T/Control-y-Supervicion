@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import { FaCalendarAlt } from 'react-icons/fa'
+import { FiCalendar } from 'react-icons/fi'
 import CalendarModal from './CalendarModal'
-import { cn } from '../../../utils/classes'
+import { cn } from '@/utils/classes'
 
 // Estilos de controles compartidos por los gráficos (iguales en LineChart y RadarChart).
-// `!` en transition: styles.css (sin capas) tiene `* { transition }` y ganaría a las utilidades.
 const chartHeader = 'mb-4 flex flex-wrap items-start justify-between gap-3'
-const chartTitle = 'mb-1 text-[16px] font-semibold leading-[1.3] text-content'
-const chartSubtitle = 'text-[11px] leading-[1.4] text-content-2'
-const timeRangeControls = 'flex flex-wrap items-center gap-3'
-const timeRangeButtons = 'flex gap-2 rounded-lg border border-line bg-surface p-1'
-const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]'
-const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-[rgba(59,130,246,0.1)] hover:text-primary'
-const timeBtnActive = 'bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_100%)] text-white shadow-[0_2px_8px_rgba(7,89,133,0.3)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_100%)] dark:shadow-[0_2px_8px_rgba(37,99,235,0.4)]'
-const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease] hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
-const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-card p-3 shadow-[0_4px_12px_var(--shadow)]'
+const chartTitle = 'm-0 text-[15px] font-semibold text-content'
+const chartSubtitle = 'mt-0.5 text-xs text-muted'
+const timeRangeControls = 'flex flex-wrap items-center gap-2'
+const timeRangeButtons = 'inline-flex gap-0.5 rounded-lg border border-line bg-surface p-0.5'
+const timeBtn = 'h-8 cursor-pointer rounded-md border-none px-3 text-xs font-medium transition-colors duration-150'
+const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-subtle hover:text-content'
+const timeBtnActive = 'bg-primary text-btn'
+const dateRangeBtn = 'inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-xs font-medium text-content-2 transition-colors duration-150 hover:bg-subtle hover:text-content [&_svg]:text-muted'
+const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-surface p-3 shadow-[0_4px_12px_var(--shadow)]'
 
 /** Incidencias por día: { [fecha]: { [asunto]: cantidad } } */
 export type IncidenciasPorDia = Record<string, Record<string, number>>
@@ -81,12 +80,12 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
 
   // Colores para los 6 nuevos asuntos
   const colores: Record<string, string> = {
-    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9', // Azul cielo
-    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6', // Morado
-    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Verde
-    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b', // Naranja
-    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#ec4899', // Rosa
-    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444' // Rojo
+    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#1e3a8a', // Primary
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#3b82f6', // Secondary
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Success
+    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b', // Warning
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#64748b', // Gris
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444' // Danger
   }
 
   // Obtener las 3 principales faltas por asunto
@@ -152,7 +151,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
   const yAxisValues = [0, 1, 2, 3, 4].map(i => Math.round((maxValor / 4) * i))
 
   return (
-    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-transparent! p-5 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-xl border border-line bg-surface p-5">
       <div className={chartHeader}>
         <div>
           <h3 className={chartTitle}>{title}</h3>
@@ -182,7 +181,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
           </div>
 
           <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
-            <FaCalendarAlt />
+            <FiCalendar aria-hidden />
             <span>{formatDateRange()}</span>
           </button>
         </div>
@@ -201,18 +200,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
           </clipPath>
         </defs>
 
-        {/* Rectángulo de borde del gráfico */}
-        <rect
-          x={paddingLeft + yAxisLabelWidth}
-          y={paddingTop}
-          width={chartWidth}
-          height={chartHeight}
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth="2"
-        />
-
-        {/* Grid lines horizontales */}
+        {/* Grid lines horizontales (muy tenues) */}
         {[0, 1, 2, 3, 4].map(i => {
           const y = paddingTop + (i / 4) * chartHeight
           return (
@@ -224,7 +212,6 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
                 y2={y}
                 stroke="var(--grid-line-color)"
                 strokeWidth="1"
-                strokeDasharray="4 4"
               />
               {/* Etiquetas del eje Y */}
               <text
@@ -232,8 +219,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
                 y={y + 4}
                 textAnchor="end"
                 fill="var(--text-muted)"
-                fontSize="10"
-                fontWeight="600"
+                fontSize="11"
               >
                 {yAxisValues[4 - i]}
               </text>
@@ -265,10 +251,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
               y1={paddingTop}
               x2={groupX + barGroupWidth / 2}
               y2={paddingTop + chartHeight}
-              stroke="var(--border)"
+              stroke="var(--grid-line-color)"
               strokeWidth="1"
-              strokeDasharray="3,3"
-              opacity="0.5"
             />
           )
         })}
@@ -300,8 +284,8 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
                       width={barWidth}
                       height={barHeight}
                       fill={colores[asunto]}
-                      rx="3"
-                      className="cursor-pointer [transition:all_0.3s_ease] hover:[filter:brightness(1.1)]"
+                      rx="2"
+                      className="cursor-pointer transition-opacity duration-150"
                       style={{
                         opacity: hoveredBar && hoveredBar.asunto === asunto && hoveredBar.dia === dia ? 0.8 : 1
                       }}
@@ -313,8 +297,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
                         y={barY - 5}
                         textAnchor="middle"
                         fill="var(--text-primary)"
-                        fontSize="10"
-                        fontWeight="600"
+                        fontSize="11"
                       >
                         {valor}
                       </text>
@@ -352,8 +335,7 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
               y={paddingTop + chartHeight + 20}
               textAnchor="middle"
               fill="var(--text-muted)"
-              fontSize="10"
-              fontWeight="600"
+              fontSize="11"
             >
               {dia}
             </text>
@@ -371,19 +353,19 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
             transform: hoveredBar.y < height / 2 ? 'translate(-50%, 10px)' : 'translate(-50%, calc(-100% - 10px))'
           }}
         >
-          <div className="mb-2 text-[0.85rem] font-semibold text-content">
+          <div className="mb-1 text-[13px] font-semibold text-content">
             {hoveredBar.dia} - {hoveredBar.valor} incidencia{hoveredBar.valor !== 1 ? 's' : ''}
           </div>
-          <div className="mb-1.5 text-[0.75rem] text-muted">
+          <div className="mb-1.5 text-xs text-muted">
             {hoveredBar.asunto}
           </div>
           {hoveredBar.topFaltas && hoveredBar.topFaltas.length > 0 && (
-            <div className="mt-1.5 border-t border-line pt-1.5 text-[0.75rem]">
+            <div className="mt-1.5 border-t border-line pt-1.5 text-xs">
               <div className="mb-1 font-semibold text-content-2">Top 3 faltas:</div>
               {hoveredBar.topFaltas.map((falta, idx) => (
                 <div key={idx} className="mb-0.5 flex justify-between gap-2">
-                  <span className="flex-1 text-[0.7rem] text-muted">{falta.falta}</span>
-                  <span className="font-semibold text-primary">{falta.cantidad}</span>
+                  <span className="flex-1 text-xs text-muted">{falta.falta}</span>
+                  <span className="font-semibold text-content">{falta.cantidad}</span>
                 </div>
               ))}
             </div>
@@ -404,9 +386,9 @@ export default function BarChart({ title, subtitle, data, incidencias, faltasPor
           ]
 
           return (
-            <div key={asunto} className="flex items-center gap-1.5 text-[11px] text-content-2" title={asunto}>
-              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colores[asunto] }}></span>
-              <span className="text-[11px] leading-[1.3]">{nombresCortos[index]}</span>
+            <div key={asunto} className="flex items-center gap-1.5 text-xs text-content-2" title={asunto}>
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colores[asunto] }} aria-hidden></span>
+              <span>{nombresCortos[index]}</span>
             </div>
           )
         })}

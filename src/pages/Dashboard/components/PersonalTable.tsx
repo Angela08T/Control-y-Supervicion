@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { FaCircle } from 'react-icons/fa'
 import api from '../../../api/config'
 import type { User } from '@/types'
-import { cn } from '../../../utils/classes'
+import Badge from '@/components/UI/Badge'
+import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
+import { cardClass, incTable, incTableTh, incTableTr, incTableTd } from '@/utils/classes'
 
 /** Fila de la tabla de personal. */
 interface PersonalRow {
@@ -98,84 +99,53 @@ export default function PersonalTable() {
 
   const enTurno = turnoActual()
 
-  if (loading) {
-    return (
-      <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
-        <div className="mb-5 flex items-start justify-between">
-          <h3 className="mb-1 text-[18px] font-semibold text-content! dark:text-[#f8fafc]!">Centinelas</h3>
-        </div>
-        <div className="p-10 text-center text-muted">
-          Cargando personal...
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <h3 className="mb-1 text-[18px] font-semibold text-content! dark:text-[#f8fafc]!">Centinelas</h3>
-          <p className="flex items-center gap-1.5 text-[12px] text-content-2">
-            <FaCircle className="size-2 text-success" />
-            {personal.filter(p => p.activo).length} en turno
-          </p>
-        </div>
-        <button className="cursor-pointer border-none bg-transparent p-0 text-[20px] text-content-2">⋮</button>
+    <div className={cardClass}>
+      <div className="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+        <h3 className="m-0 text-[15px] font-semibold text-content">Centinelas</h3>
+        {!loading && <p className="m-0 text-xs text-muted">{personal.filter(p => p.activo).length} en turno</p>}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">#</th>
-              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Personal</th>
-              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Rol</th>
-              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Turno</th>
-              <th className="bg-[rgba(30,58,138,0.1)] p-3 text-left text-[12px] font-semibold uppercase text-content! border-b border-line dark:bg-[rgba(59,130,246,0.2)] dark:text-[#f8fafc]!">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {personal.length === 0 && (
+      {loading ? (
+        <LoadingState label="Cargando personal…" />
+      ) : personal.length === 0 ? (
+        <EmptyState title="No hay personal registrado" />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className={incTable}>
+            <thead>
               <tr>
-                <td colSpan={5} className="p-5 text-center text-[14px] text-content! dark:text-[#f8fafc]!">
-                  No hay personal registrado
-                </td>
+                <th className={incTableTh}>Personal</th>
+                <th className={incTableTh}>Rol</th>
+                <th className={incTableTh}>Turno</th>
+                <th className={incTableTh}>Estado</th>
               </tr>
-            )}
-            {personal.map((persona, index) => {
-              const esSuTurno = persona.turno === enTurno
-              const estado = esSuTurno ? 'En turno' : 'Fuera de turno'
+            </thead>
+            <tbody>
+              {personal.map((persona, index) => {
+                const esSuTurno = persona.turno === enTurno
 
-              return (
-                <tr key={index} className="border-b border-line [transition:background_0.2s_ease] hover:bg-[rgba(30,58,138,0.05)]">
-                  <td className="w-[40px] px-3 py-4 text-center text-[14px] font-bold text-content! dark:text-[#f8fafc]!">
-                    {index + 1}
-                  </td>
-                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-[8px] bg-[linear-gradient(135deg,var(--primary),var(--secondary))] text-[12px] font-semibold text-white">{persona.avatar}</div>
-                      <span>{persona.nombre}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
-                    <span className="rounded-[6px] bg-[rgba(126,34,206,0.1)] px-3 py-1 text-[12px] font-semibold text-[#7e22ce] dark:bg-[rgba(192,132,252,0.2)] dark:text-[#c084fc]!">{persona.rol}</span>
-                  </td>
-                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
-                    <span className="rounded-[6px] bg-[rgba(30,58,138,0.1)] px-3 py-1 text-[12px] font-medium text-primary dark:bg-[rgba(59,130,246,0.2)] dark:text-[#60a5fa]!">{persona.turno}</span>
-                  </td>
-                  <td className="px-3 py-4 text-[14px] text-content! dark:text-[#f8fafc]!">
-                    <span className={cn('flex items-center gap-1.5 text-[13px]', esSuTurno ? 'text-success' : 'text-content-2')}>
-                      <FaCircle className="text-[8px]" />
-                      {estado}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                return (
+                  <tr key={index} className={incTableTr}>
+                    <td className={incTableTd}>
+                      <span className="font-medium text-content">{persona.nombre}</span>
+                    </td>
+                    <td className={incTableTd}>
+                      <Badge tone="neutral" dot={false}>{persona.rol}</Badge>
+                    </td>
+                    <td className={incTableTd}>
+                      <Badge tone="info" dot={false}>{persona.turno}</Badge>
+                    </td>
+                    <td className={incTableTd}>
+                      {esSuTurno ? <Badge tone="success">En turno</Badge> : <Badge tone="neutral">Fuera de turno</Badge>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

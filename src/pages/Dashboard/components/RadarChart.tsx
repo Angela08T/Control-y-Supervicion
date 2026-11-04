@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import { FaCalendarAlt } from 'react-icons/fa'
+import { FiCalendar } from 'react-icons/fi'
 import CalendarModal from './CalendarModal'
-import { cn } from '../../../utils/classes'
+import { cn } from '@/utils/classes'
 
 // Estilos de controles compartidos por los gráficos (iguales en BarChart y LineChart).
-// `!` en transition: styles.css (sin capas) tiene `* { transition }` y ganaría a las utilidades.
 const chartHeader = 'mb-4 flex flex-wrap items-start justify-between gap-3'
-const chartTitle = 'mb-1 text-[16px] font-semibold leading-[1.3] text-content'
-const chartSubtitle = 'text-[11px] leading-[1.4] text-content-2'
-const timeRangeControls = 'flex flex-wrap items-center gap-3'
-const timeRangeButtons = 'flex gap-2 rounded-lg border border-line bg-surface p-1'
-const timeBtn = 'cursor-pointer rounded-md border-none px-3 py-1.5 text-[12px] font-semibold [transition:all_0.3s_ease]'
-const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-[rgba(59,130,246,0.1)] hover:text-primary'
-const timeBtnActive = 'bg-[linear-gradient(135deg,#0c4a6e_0%,#075985_100%)] text-white shadow-[0_2px_8px_rgba(7,89,133,0.3)] dark:bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_100%)] dark:shadow-[0_2px_8px_rgba(37,99,235,0.4)]'
-const dateRangeBtn = 'flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-content [transition:all_0.3s_ease] hover:-translate-y-px hover:border-primary hover:bg-[rgba(59,130,246,0.1)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:bg-[rgba(15,23,42,0.8)] dark:hover:bg-[rgba(15,23,42,0.95)] [&_svg]:text-[14px] [&_svg]:text-primary'
-const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-card p-3 shadow-[0_4px_12px_var(--shadow)]'
+const chartTitle = 'm-0 text-[15px] font-semibold text-content'
+const chartSubtitle = 'mt-0.5 text-xs text-muted'
+const timeRangeControls = 'flex flex-wrap items-center gap-2'
+const timeRangeButtons = 'inline-flex gap-0.5 rounded-lg border border-line bg-surface p-0.5'
+const timeBtn = 'h-8 cursor-pointer rounded-md border-none px-3 text-xs font-medium transition-colors duration-150'
+const timeBtnIdle = 'bg-transparent text-content-2 hover:bg-subtle hover:text-content'
+const timeBtnActive = 'bg-primary text-btn'
+const dateRangeBtn = 'inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-xs font-medium text-content-2 transition-colors duration-150 hover:bg-subtle hover:text-content [&_svg]:text-muted'
+const tooltip = 'pointer-events-none absolute z-[1000] min-w-[200px] max-w-[280px] rounded-lg border border-line bg-surface p-3 shadow-[0_4px_12px_var(--shadow)]'
 
 /** Incidencias por día/mes: { [fecha]: { [asunto]: cantidad } } */
 export type IncidenciasPorDia = Record<string, Record<string, number>>
@@ -98,12 +97,12 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
 
   // Colores para los 6 nuevos asuntos
   const colores: Record<string, string> = {
-    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#0ea5e9',
-    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#8b5cf6',
-    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981',
-    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b',
-    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#ec4899',
-    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444'
+    'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#1e3a8a', // Primary
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#3b82f6', // Secondary
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Success
+    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b', // Warning
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#64748b', // Gris
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444' // Danger
   }
 
   // Nombres cortos para mostrar
@@ -190,7 +189,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   , { asunto: '', valor: 0 })
 
   return (
-    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-transparent! p-5 pb-[15px] shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)]">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-xl border border-line bg-surface p-5">
       <div className={chartHeader}>
         <div>
           <h3 className={chartTitle}>{title}</h3>
@@ -220,7 +219,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
           </div>
 
           <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
-            <FaCalendarAlt />
+            <FiCalendar aria-hidden />
             <span>{formatDateRange()}</span>
           </button>
         </div>
@@ -228,14 +227,6 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
 
       {/* Gráfico de Radar */}
       <svg className="mb-0 block h-auto w-full max-w-full shrink-0 overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-        <defs>
-          {/* Gradiente para el polígono */}
-          <linearGradient id="radarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#4a9eff" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.6" />
-          </linearGradient>
-        </defs>
-
         {/* Círculos concéntricos de fondo */}
         {Array.from({ length: numLevels }, (_, i) => {
           const radius = ((i + 1) / numLevels) * maxRadius
@@ -259,8 +250,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
                   y={centerY - radius - 5}
                   textAnchor="middle"
                   fill="var(--text-muted)"
-                  fontSize="10"
-                  fontWeight="600"
+                  fontSize="11"
                 >
                   {levelValue}
                 </text>
@@ -292,10 +282,10 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
         {/* Polígono del radar (datos) */}
         <path
           d={pathData}
-          fill="url(#radarGradient)"
-          stroke="#4a9eff"
+          fill="#1e3a8a"
+          fillOpacity="0.12"
+          stroke="#1e3a8a"
           strokeWidth="2"
-          opacity="0.7"
         />
 
         {/* Puntos en cada vértice del radar */}
@@ -315,11 +305,11 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
               <circle
                 cx={point.x}
                 cy={point.y}
-                r="5"
+                r="4"
                 fill={colores[asunto]}
-                stroke="#fff"
+                stroke="var(--bg-secondary)"
                 strokeWidth="2"
-                className="cursor-pointer [transition:all_0.3s_ease] hover:[r:7] hover:[filter:brightness(1.2)]"
+                className="cursor-pointer"
               />
             </g>
           )
@@ -346,10 +336,8 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
               x={labelX}
               y={labelY}
               textAnchor={textAnchor}
-              fill="var(--text-primary)"
-              fontSize="10"
-              fontWeight="600"
-              className="fill-[var(--text-primary)] text-[10px] font-semibold"
+              fill="var(--text-muted)"
+              fontSize="11"
             >
               {nombresCortos[asunto]}
             </text>
@@ -366,19 +354,19 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
             top: `${(hoveredSegment.y / height) * 100}%`
           }}
         >
-          <div className="mb-2 text-[0.85rem] font-semibold text-content">
+          <div className="mb-1 text-[13px] font-semibold text-content">
             {hoveredSegment.valor} incidencia{hoveredSegment.valor !== 1 ? 's' : ''}
           </div>
-          <div className="mb-1.5 text-[0.75rem] text-muted">
+          <div className="mb-1.5 text-xs text-muted">
             {hoveredSegment.asunto}
           </div>
           {hoveredSegment.topFaltas && hoveredSegment.topFaltas.length > 0 && (
-            <div className="mt-1.5 border-t border-line pt-1.5 text-[0.75rem]">
+            <div className="mt-1.5 border-t border-line pt-1.5 text-xs">
               <div className="mb-1 font-semibold text-content-2">Top 3 faltas:</div>
               {hoveredSegment.topFaltas.map((falta, idx) => (
                 <div key={idx} className="mb-0.5 flex justify-between gap-2">
-                  <span className="flex-1 text-[0.7rem] text-muted">{falta.falta}</span>
-                  <span className="font-semibold text-primary">{falta.cantidad}</span>
+                  <span className="flex-1 text-xs text-muted">{falta.falta}</span>
+                  <span className="font-semibold text-content">{falta.cantidad}</span>
                 </div>
               ))}
             </div>
@@ -387,14 +375,14 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
       )}
 
       {/* Tabla inferior con la lista de asuntos - Top 4 */}
-      <div className="mt-auto flex flex-wrap justify-center gap-6 border-t border-line px-[15px] py-5">
+      <div className="mt-auto flex flex-wrap justify-center gap-x-6 gap-y-2 border-t border-line pt-4">
         {Object.entries(totalesPorAsunto)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 4)
           .map(([asunto, valor]) => (
             <div
               key={asunto}
-              className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line px-3 py-2 text-[15px] text-content-2 [transition:all_0.2s_ease] hover:-translate-y-0.5 hover:opacity-80 hover:shadow-[0_4px_12px_var(--shadow)]"
+              className="flex items-center gap-2 text-[13px] text-content-2"
               onMouseEnter={() => {
                 const index = nuevosAsuntos.indexOf(asunto)
                 const point = radarPoints[index]
@@ -402,13 +390,9 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
               }}
               onMouseLeave={() => setHoveredSegment(null)}
             >
-              <div className="flex items-center gap-2">
-                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: colores[asunto] }}></span>
-                <span className="text-[14px] font-semibold text-content">{nombresCortos[asunto]}</span>
-              </div>
-              <div className="flex items-center justify-end">
-                <span className="ml-2 text-[16px] font-bold text-primary">{valor}</span>
-              </div>
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colores[asunto] }} aria-hidden></span>
+              <span>{nombresCortos[asunto]}</span>
+              <span className="font-semibold text-content">{valor}</span>
             </div>
           ))}
       </div>
