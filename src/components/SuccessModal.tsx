@@ -1,5 +1,6 @@
 import React from 'react'
-import { FaCheckCircle } from 'react-icons/fa'
+import { FiCheckCircle } from 'react-icons/fi'
+import Button from '@/components/UI/Button'
 
 export interface SuccessModalProps {
   show: boolean
@@ -17,49 +18,22 @@ export default function SuccessModal({ show, message, onClose }: SuccessModalPro
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 [backdrop-filter:blur(4px)] animate-[fadeInPointInstant_0.2s_ease-in-out]"
-      onClick={handleAccept}
-    >
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/45 p-4 animate-[fadeInSoft_0.15s_ease-out]" onClick={handleAccept}>
       <div
-        className="w-[90%] max-w-[420px] overflow-hidden rounded-[16px] [background-color:var(--card-bg)] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[modalSlideDown_0.3s_ease-out]"
+        role="dialog"
+        aria-modal="true"
+        className="flex w-full max-w-[400px] flex-col items-center rounded-xl border border-line bg-surface p-6 text-center shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header con icono */}
-        <div className="flex flex-col items-center border-b-2 border-[rgba(34,197,94,0.2)] bg-[linear-gradient(135deg,rgba(34,197,94,0.1)_0%,rgba(34,197,94,0.05)_100%)] px-6 pt-8 pb-5">
-          <div className="mb-4 rounded-[50%] border-[3px] border-[#22c55e] bg-[rgba(34,197,94,0.15)] p-5 text-[#22c55e] animate-[scaleIn_0.4s_ease-out]">
-            <FaCheckCircle size={56} />
-          </div>
-          <h3 className="m-0 text-center text-[1.4rem] font-bold">
-            ¡Cambios guardados exitosamente!
-          </h3>
+        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(16,185,129,0.12)] text-success">
+          <FiCheckCircle size={20} aria-hidden />
         </div>
-
-        {/* Body */}
-        <div className="px-7 py-6 text-center text-[1rem] leading-[1.6] text-content-2">
+        <h3 className="m-0 text-base font-semibold text-content">¡Cambios guardados exitosamente!</h3>
+        <p className="m-0 mt-2 text-sm leading-relaxed text-content-2">
           {message || 'La operación se ha realizado correctamente'}
-        </div>
-
-        {/* Footer con botón */}
-        <div className="flex justify-center px-6 pt-5 pb-7">
-          <button
-            onClick={handleAccept}
-            className="min-w-[140px] cursor-pointer rounded-[10px] border-none bg-[#22c55e] px-8 py-3 text-[1rem] font-semibold text-white shadow-[0_4px_12px_rgba(34,197,94,0.3)] transition-all duration-200 ease-[ease]"
-            onMouseOver={(e) => {
-              const target = e.target as HTMLElement
-              target.style.backgroundColor = '#16a34a'
-              target.style.transform = 'translateY(-2px)'
-              target.style.boxShadow = '0 6px 16px rgba(34, 197, 94, 0.4)'
-            }}
-            onMouseOut={(e) => {
-              const target = e.target as HTMLElement
-              target.style.backgroundColor = '#22c55e'
-              target.style.transform = 'translateY(0)'
-              target.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)'
-            }}
-          >
-            Aceptar
-          </button>
+        </p>
+        <div className="mt-6 flex w-full justify-center">
+          <Button onClick={handleAccept}>Aceptar</Button>
         </div>
       </div>
     </div>
