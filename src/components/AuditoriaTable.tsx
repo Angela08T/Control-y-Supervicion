@@ -1,179 +1,147 @@
 import React from 'react';
-import type { Action, Audit, Status } from '@/types';
-import { cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes';
+import type { Audit } from '@/types';
+import Badge, { type BadgeTone } from '@/components/UI/Badge';
+import { EmptyState } from '@/components/UI/EmptyState';
+import { cn, incTable, incTableTd, incTableTh, incTableTr } from '@/utils/classes';
 
-/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
-const headerCell = `${incTableTh} border-x-0 border-t-0`;
-const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`;
-
-// Función para formatear fecha
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
-}
-
-/** Badges (antes .badge + .badge-*) */
-const badgeBase =
-  'inline-block rounded-[12px] border px-3 py-1 text-[11px] font-semibold uppercase leading-[1.5] tracking-[0.5px]';
-
-const badgeVariant = {
-  success: 'border-[rgba(16,185,129,0.3)] bg-[rgba(16,185,129,0.15)] text-success',
-  danger: 'border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.15)] text-danger',
-  warning: 'border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.15)] text-warning',
-  info: 'border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.15)] text-secondary',
-  primary: 'border-[rgba(30,58,138,0.3)] bg-[rgba(30,58,138,0.15)] text-primary',
-  secondary: 'border-[rgba(100,116,139,0.3)] bg-[rgba(100,116,139,0.15)] text-muted',
-  default: 'border-[rgba(148,163,184,0.3)] bg-[rgba(148,163,184,0.15)] text-content-2',
+/** Nombres en español de las acciones (el valor original se muestra si no hay nombre) */
+export const ACTION_LABELS: Record<string, string> = {
+  LOGIN: 'Inicio de sesión',
+  LOGOUT: 'Cierre de sesión',
+  CREATE: 'Crear',
+  UPDATE: 'Actualizar',
+  DELETE: 'Eliminar',
+  GET_ALL: 'Consultar todos',
+  GET_ONE: 'Consultar uno',
+  APPROVE: 'Aprobar',
+  REJECT: 'Rechazar',
+  DOWNLOAD: 'Descargar',
+  RESTORE: 'Restaurar',
+  REVOKE: 'Revocar',
+  SEND: 'Enviar'
 };
 
-// Función para obtener badge de estado
-function getStatusBadge(status: Status): React.ReactElement {
-  const statusColors: Record<string, string> = {
-    SUCCESS: badgeVariant.success,
-    BLOCKED: badgeVariant.danger,
-    ERROR: badgeVariant.warning,
-    FAILED: badgeVariant.danger
-  };
+/** Nombres en español de los módulos */
+export const MODEL_LABELS: Record<string, string> = {
+  AUTH: 'Autenticación',
+  AUDIT: 'Auditoría',
+  BODYCAM: 'Dispositivos',
+  JOB: 'Cargos',
+  JURISDICTION: 'Jurisdicciones',
+  LACK: 'Faltas',
+  LEAD: 'Personal',
+  OFFENDER: 'Infractores',
+  REPORT: 'Incidencias',
+  SESSION: 'Sesiones',
+  SUBJECT: 'Asuntos',
+  USER: 'Usuarios'
+};
 
-  return (
-    <span className={cn(badgeBase, statusColors[status] || badgeVariant.default)}>
-      {status}
-    </span>
-  );
+/** Estado de la acción: texto + color */
+const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
+  SUCCESS: { label: 'Exitoso', tone: 'success' },
+  FAILED: { label: 'Fallido', tone: 'danger' },
+  BLOCKED: { label: 'Bloqueado', tone: 'warning' },
+  ERROR: { label: 'Error', tone: 'warning' }
+};
+
+/** Bloque de contenido JSON (antes/después) */
+const preClass = 'm-0 mt-1 max-h-[150px] overflow-auto rounded-md border border-line bg-subtle p-2 text-xs text-content-2';
+
+/** Muestra JSON formateado; si no es JSON, devuelve el texto tal cual */
+function prettyContent(raw: string): string {
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
 }
-
-// Función para obtener badge de acción
-function getActionBadge(action: Action): React.ReactElement {
-  const actionColors: Partial<Record<Action, string>> = {
-    LOGIN: badgeVariant.info,
-    LOGOUT: badgeVariant.secondary,
-    CREATE: badgeVariant.success,
-    UPDATE: badgeVariant.warning,
-    DELETE: badgeVariant.danger,
-    GET_ALL: badgeVariant.primary,
-    GET_ONE: badgeVariant.primary
-  };
-
-  return (
-    <span className={cn(badgeBase, actionColors[action] || badgeVariant.default)}>
-      {action}
-    </span>
-  );
-}
-
-/** Bloque <pre> de contenido JSON (antes inline) */
-const preClass =
-  'text-[0.75em] [background:var(--bg)] p-2 rounded mt-1 overflow-auto max-h-[150px] border border-line';
 
 export interface AuditoriaTableProps {
   data?: Audit[];
+  /** Ya no se muestra numeración de filas; se conservan por compatibilidad de props. */
   currentPage?: number;
   itemsPerPage?: number;
 }
 
-export default function AuditoriaTable({ data = [], currentPage = 1, itemsPerPage = 10 }: AuditoriaTableProps) {
+/** Tabla de solo lectura del registro de auditoría. Va dentro de una tarjeta que pone la pagina. */
+export default function AuditoriaTable({ data = [] }: AuditoriaTableProps) {
+  if (data.length === 0) {
+    return <EmptyState title="Sin registros" description="No hay registros de auditoría para mostrar." />;
+  }
+
   return (
-    <div className={tableCard}>
-      <div className={tableScroll}>
-        <table className={incTable}>
-          <thead>
-            <tr>
-              <th className={headerCell}>#</th>
-              <th className={headerCell}>Usuario</th>
-              <th className={headerCell}>IP</th>
-              <th className={headerCell}>Acción</th>
-              <th className={headerCell}>Modelo</th>
-              <th className={headerCell}>Estado</th>
-              <th className={headerCell}>Descripción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.length === 0 && (
-              <tr className={bodyRow}>
-                <td colSpan={7} className={cn(incTableTd, 'text-center text-content! p-10!')}>
-                  No hay registros de auditoría disponibles
-                </td>
-              </tr>
-            )}
-            {data.map((item, index) => (
-              <tr key={item.id} className={bodyRow}>
-                <td className={cn(incTableTd, 'w-10 text-center font-bold text-muted!')}>
-                  {(currentPage - 1) * itemsPerPage + index + 1}
-                </td>
+    <div className="overflow-x-auto">
+      <table className={incTable}>
+        <thead>
+          <tr>
+            <th className={incTableTh}>Fecha y hora</th>
+            <th className={incTableTh}>Usuario</th>
+            <th className={incTableTh}>Acción</th>
+            <th className={incTableTh}>Módulo</th>
+            <th className={incTableTh}>Descripción</th>
+            <th className={incTableTh}>IP</th>
+            <th className={incTableTh}>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item) => {
+            const date = item.created_at ? new Date(item.created_at) : null;
+            const status = STATUS_BADGE[item.status] ?? { label: item.status, tone: 'neutral' as BadgeTone };
+
+            return (
+              <tr key={item.id} className={incTableTr}>
                 <td className={incTableTd}>
-                  <strong>{item.user?.username || 'N/A'}</strong>
-                  <br />
-                  <small className="text-muted text-[0.85em]">
-                    ID: {item.user?.id?.substring(0, 8) || 'N/A'}...
-                  </small>
+                  <div className="text-content-2">{date ? date.toLocaleDateString('es-PE') : '-'}</div>
+                  <div className="text-xs text-muted">
+                    {date ? date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </div>
                 </td>
-                <td className={incTableTd}>{item.ip}</td>
-                <td className={incTableTd}>{getActionBadge(item.action)}</td>
-                <td className={incTableTd}>
-                  <span className={cn(badgeBase, badgeVariant.default)}>{item.model}</span>
-                </td>
-                <td className={incTableTd}>{getStatusBadge(item.status)}</td>
-                <td className={incTableTd}>
-                  {item.description}
-                  {(item.preview_content || item.new_content) && (
-                    <div className="mt-2">
-                      {item.preview_content && (
-                        <details>
-                          <summary className="cursor-pointer text-primary text-[0.85em]">
-                            📄 Contenido anterior
-                          </summary>
-                          <pre className={preClass}>
-                          {(() => {
-                            try {
-                              return JSON.stringify(JSON.parse(item.preview_content ?? ''), null, 2);
-                            } catch {
-                              return item.preview_content;
-                            }
-                          })()}
-                          </pre>
-                        </details>
-                      )}
-                      {item.new_content && (
-                        <details className="mt-1">
-                          <summary className="cursor-pointer text-success text-[0.85em]">
-                            ✅ Contenido nuevo
-                          </summary>
-                          <pre className={preClass}>
-                            {(() => {
-                            try {
-                              return JSON.stringify(JSON.parse(item.new_content ?? ''), null, 2);
-                            } catch {
-                              return item.new_content;
-                            }
-                          })()}
-                          </pre>
-                        </details>
-                      )}
+
+                <td className={cn(incTableTd, 'font-medium text-content')}>{item.user?.username || 'N/A'}</td>
+
+                <td className={incTableTd}>{ACTION_LABELS[item.action] ?? item.action}</td>
+
+                <td className={incTableTd}>{MODEL_LABELS[item.model] ?? item.model}</td>
+
+                <td className={`${incTableTd} max-w-[360px]`}>
+                  <p className="m-0 line-clamp-2 text-content-2" title={item.description}>
+                    {item.description}
+                  </p>
+                  {item.field && (
+                    <div className="mt-1 text-xs text-muted">
+                      Campo: <span className="font-medium text-content-2">{item.field}</span>
                     </div>
                   )}
                   {item.register_id && (
-                    <div className="mt-1">
-                      <small className="text-muted text-[0.85em]">
-                        Registro: <code className="text-[0.85em] [background:var(--bg)] px-1.5 py-0.5 rounded">
-                          {item.register_id.substring(0, 8)}...
-                        </code>
-                      </small>
+                    <div className="mt-0.5 text-xs text-muted">
+                      Registro: <code className="font-mono">{item.register_id.substring(0, 8)}…</code>
                     </div>
                   )}
-                  {item.field && (
-                    <div className="mt-1">
-                      <small className="text-muted text-[0.85em]">
-                        Campo: <strong>{item.field}</strong>
-                      </small>
-                    </div>
+                  {item.preview_content && (
+                    <details className="mt-1.5">
+                      <summary className="cursor-pointer text-xs text-primary">Ver contenido anterior</summary>
+                      <pre className={preClass}>{prettyContent(item.preview_content)}</pre>
+                    </details>
+                  )}
+                  {item.new_content && (
+                    <details className="mt-1.5">
+                      <summary className="cursor-pointer text-xs text-primary">Ver contenido nuevo</summary>
+                      <pre className={preClass}>{prettyContent(item.new_content)}</pre>
+                    </details>
                   )}
                 </td>
+
+                <td className={cn(incTableTd, 'text-xs text-muted')}>{item.ip}</td>
+
+                <td className={incTableTd}>
+                  <Badge tone={status.tone}>{status.label}</Badge>
+                </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
