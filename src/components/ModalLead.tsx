@@ -1,28 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { FaUser, FaBriefcase } from 'react-icons/fa'
 import { getJobs } from '../api/job'
 import { toast } from '../utils/toast'
 import type { CreateLeadDto, Job, Lead } from '@/types'
-import {
-  btnPrimary,
-  btnSecondary,
-  cn,
-  formGroup,
-  formLabel,
-  modalActions,
-  modalBackdrop,
-  modalBody,
-  modalCard,
-  modalClose,
-  modalHeader,
-  modalInput,
-  modalLabel,
-  modalTitle
-} from '../utils/classes'
-
-// Ajustes responsive (@media max-width: 900px) de .modal-card y .modal-body
-const cardClass = cn(modalCard, 'max-[900px]:w-[95%] max-[900px]:max-h-[90vh] max-[900px]:overflow-y-auto max-[900px]:m-[10px_auto]')
-const bodyClass = cn(modalBody, 'max-[900px]:max-h-[calc(90vh-120px)] max-[900px]:overflow-y-auto')
+import Modal from '@/components/UI/Modal'
+import Button from '@/components/UI/Button'
+import { Field, Input, Select } from '@/components/UI/Field'
 
 export interface ModalLeadProps {
   initial?: Lead | null
@@ -122,92 +104,63 @@ export default function ModalLead({ initial, onClose, onSave }: ModalLeadProps) 
   }
 
   return (
-    <div className={modalBackdrop}>
-      <div className={cardClass}>
-        <div className={modalHeader}>
-          <h3 className={modalTitle}>{initial ? 'Editar Personal' : 'Nuevo Personal'}</h3>
-          <button className={modalClose} onClick={onClose}>×</button>
-        </div>
+    <Modal
+      title={initial ? 'Editar personal' : 'Nuevo personal'}
+      description="Los campos marcados con * son obligatorios."
+      onClose={onClose}
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="form-lead">
+            Guardar cambios
+          </Button>
+        </>
+      }
+    >
+      <form id="form-lead" onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field label="Nombre" required error={errors.name}>
+          <Input
+            type="text"
+            placeholder="Ej: Diego"
+            value={form.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            invalid={!!errors.name}
+            autoFocus
+          />
+        </Field>
 
-        <form onSubmit={handleSubmit} className={bodyClass}>
-          {/* Nombre */}
-          <div className={formGroup}>
-            <label className={cn(modalLabel, formLabel)}>
-              <FaUser className="mr-2" />
-              Nombre *
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Diego Matut"
-              value={form.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              className={cn(modalInput, errors.name && 'input-error')}
-            />
-            {errors.name && <span className="error-message">{errors.name}</span>}
-          </div>
+        <Field label="Apellido" required error={errors.lastname}>
+          <Input
+            type="text"
+            placeholder="Ej: Matute Espino"
+            value={form.lastname}
+            onChange={(e) => handleChange('lastname', e.target.value)}
+            invalid={!!errors.lastname}
+          />
+        </Field>
 
-          {/* Apellido */}
-          <div className={formGroup}>
-            <label className={cn(modalLabel, formLabel)}>
-              <FaUser className="mr-2" />
-              Apellido *
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Matute Espino"
-              value={form.lastname}
-              onChange={(e) => handleChange('lastname', e.target.value)}
-              className={cn(modalInput, errors.lastname && 'input-error')}
-            />
-            {errors.lastname && <span className="error-message">{errors.lastname}</span>}
-          </div>
-
-          {/* Cargo */}
-          <div className={formGroup}>
-            <label className={cn(modalLabel, formLabel)}>
-              <FaBriefcase className="mr-2" />
-              Cargo *
-            </label>
-            {loadingJobs ? (
-              <div className="p-3 text-center text-muted">
-                Cargando cargos disponibles...
-              </div>
-            ) : (
-              <select
-                value={form.job_id}
-                onChange={(e) => handleChange('job_id', e.target.value)}
-                className={cn(modalInput, errors.job_id && 'input-error')}
-              >
-                <option value="">Selecciona un cargo</option>
-                {Array.isArray(jobs) && jobs.map(job => (
-                  <option key={job.id} value={job.id}>{job.name}</option>
-                ))}
-              </select>
-            )}
-            {errors.job_id && <span className="error-message">{errors.job_id}</span>}
-            {jobs.length === 0 && !loadingJobs && (
-              <span className="block mt-1 text-[0.85rem] text-muted">
-                No hay cargos disponibles. Por favor, crea un cargo primero.
-              </span>
-            )}
-          </div>
-
-          {/* Nota informativa */}
-          <div className="mt-2.5 rounded-[6px] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.1)] p-3 text-[0.9rem] text-content-2">
-            <strong>Nota:</strong> Todos los campos marcados con (*) son requeridos.
-          </div>
-
-          {/* Botones de acción */}
-          <div className={modalActions}>
-            <button type="button" className={btnSecondary} onClick={onClose}>
-              CANCELAR
-            </button>
-            <button type="submit" className={btnPrimary}>
-              {initial ? 'ACTUALIZAR PERSONAL' : 'CREAR PERSONAL'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Field
+          label="Cargo"
+          required
+          error={errors.job_id}
+          hint={!loadingJobs && jobs.length === 0 ? 'No hay cargos disponibles. Crea un cargo primero.' : undefined}
+        >
+          <Select
+            value={form.job_id}
+            onChange={(e) => handleChange('job_id', e.target.value)}
+            invalid={!!errors.job_id}
+            disabled={loadingJobs}
+          >
+            <option value="">{loadingJobs ? 'Cargando cargos…' : 'Selecciona un cargo'}</option>
+            {jobs.map(job => (
+              <option key={job.id} value={job.id}>{job.name}</option>
+            ))}
+          </Select>
+        </Field>
+      </form>
+    </Modal>
   )
 }

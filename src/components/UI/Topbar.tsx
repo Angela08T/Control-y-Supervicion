@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react'
-import { FaSignOutAlt } from 'react-icons/fa'
+import React from 'react'
+import { FiLogOut, FiMenu } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
+import type { AppRole } from '@/types'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { logout as logoutAction } from '../../store/slices/authSlice'
 import { clearToken } from '../../api/config'
@@ -8,25 +9,33 @@ import { logout as logoutApi } from '../../api/auth'
 import logoSJL from '../../assets/logo-sjl.png'
 import userAvatar from '../../assets/user-avatar.png'
 
-export default function Topbar() {
+const ROLE_LABEL: Record<AppRole, string> = {
+  admin: 'Administrador',
+  supervisor: 'Supervisor',
+  centinela: 'Centinela',
+  validator: 'Validador',
+  subgerente: 'Subgerente',
+}
+
+export interface TopbarProps {
+  /** Abre el menu lateral en pantallas pequenas */
+  onMenuClick?: () => void
+}
+
+export default function Topbar({ onMenuClick }: TopbarProps) {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { username, role } = useAppSelector((state) => state.auth)
+  const { username, role, nombre, apellido } = useAppSelector((state) => state.auth)
 
-  // Forzar modo claro siempre
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light')
-    localStorage.setItem('centinela-theme', 'light')
-  }, [])
+  const displayName = [nombre, apellido].filter(Boolean).join(' ') || username || 'Usuario'
 
   const handleLogout = async () => {
     try {
-      // Llamar al endpoint de logout del backend para cerrar la sesión en el servidor
+      // Cierra la sesión en el servidor
       await logoutApi()
     } catch (error) {
       // Continuar con el logout local aunque falle el backend
     } finally {
-      // Limpiar el estado local independientemente del resultado
       clearToken() // Limpiar el token global de axios
       dispatch(logoutAction()) // Limpiar el estado de Redux
       navigate('/login')
@@ -34,27 +43,40 @@ export default function Topbar() {
   }
 
   return (
-    <header className="fixed top-0 left-0 z-[1000] flex h-[65px] w-full items-center justify-between px-[30px] py-0 text-white! [background-image:var(--topbar-bg)] bg-[length:200%_200%] animate-[gradientShift_10s_ease_infinite] shadow-[0_4px_20px_rgba(0,0,0,0.2)] [backdrop-filter:blur(10px)] border-b border-[rgba(255,255,255,0.1)] max-[600px]:px-2.5">
-      <div className="flex items-center gap-[15px] animate-[slideInLeft_0.6s_ease-out]">
-        <img
-          src={logoSJL}
-          alt="Logo SJL"
-          className="h-[75px] w-[75px] object-contain [filter:drop-shadow(0_2px_8px_rgba(255,255,255,0.3))] transition-transform duration-[0.4s] ease-[ease] hover:rotate-[360deg] hover:scale-110"
-        />
-        <h1 className="m-0 text-[22px] font-extrabold tracking-[2px] text-white! [text-shadow:0_2px_10px_rgba(0,0,0,0.3)] animate-[fadeIn_0.8s_ease-out_0.2s_both] max-[600px]:text-[18px]">CENTINELA</h1>
+    <header className="fixed top-0 left-0 z-[1600] flex h-14 w-full items-center justify-between bg-[var(--topbar-bg)] px-4 text-white max-md:px-3">
+      <div className="flex items-center gap-3">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Abrir menú"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 text-xl text-white transition-colors duration-150 hover:bg-white/10 md:hidden"
+          >
+            <FiMenu />
+          </button>
+        )}
+        <img src={logoSJL} alt="San Juan de Lurigancho" className="h-9 w-auto object-contain" />
+        <span className="h-5 w-px bg-white/25 max-sm:hidden" aria-hidden />
+        <h1 className="m-0 text-[15px] font-semibold tracking-wide text-white max-sm:hidden">Sistema Centinela</h1>
       </div>
 
-      <div className="flex items-center gap-[15px] animate-[slideInRight_0.6s_ease-out]">
-        <span className="text-[15px] font-semibold text-white! [text-shadow:0_2px_4px_rgba(0,0,0,0.2)] max-[600px]:hidden">{username || 'Usuario'}</span>
-        <img
-          src={userAvatar}
-          alt="Usuario"
-          className="size-10 cursor-pointer rounded-full border-[3px] border-[rgba(255,255,255,0.3)] object-cover shadow-[0_4px_15px_var(--shadow)] transition-all duration-[0.4s] ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] hover:scale-[1.15] hover:rotate-5 hover:border-[rgba(255,255,255,0.8)] hover:shadow-[0_6px_25px_var(--shadow-hover)] max-[600px]:size-8"
-        />
-
-        {/* Botón de Salir */}
-        <button className="flex size-11 cursor-pointer items-center justify-center rounded-[10px] border-2 border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.1)] p-2.5 text-danger [backdrop-filter:blur(5px)] transition-all duration-300 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] hover:scale-110 hover:-rotate-5 hover:border-danger hover:bg-[rgba(239,68,68,0.2)] hover:text-white hover:shadow-[0_4px_15px_rgba(239,68,68,0.4)]" onClick={handleLogout} title="Cerrar sesión">
-          <FaSignOutAlt />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <img src={userAvatar} alt="" className="size-8 rounded-full border border-white/30 object-cover" />
+          <div className="flex flex-col leading-tight max-sm:hidden">
+            <span className="text-[13px] font-medium text-white">{displayName}</span>
+            {role && <span className="text-xs text-white/70">{ROLE_LABEL[role]}</span>}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          aria-label="Cerrar sesión"
+          className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-white/25 bg-transparent px-3 text-[13px] font-medium text-white transition-colors duration-150 hover:bg-white/10"
+        >
+          <FiLogOut aria-hidden />
+          <span className="max-sm:hidden">Salir</span>
         </button>
       </div>
     </header>

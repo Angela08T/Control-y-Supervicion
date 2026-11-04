@@ -17,8 +17,8 @@ declare global {
 window.Buffer = Buffer
 
 const LoadingScreen = () => (
-  <div className="flex h-screen items-center justify-center bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_50%,#334155_100%)] text-[18px] text-white">
-    Cargando...
+  <div className="flex h-screen items-center justify-center bg-page text-sm text-muted">
+    Cargando…
   </div>
 )
 

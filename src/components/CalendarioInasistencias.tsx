@@ -1,8 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { FaFilePdf, FaTrash } from 'react-icons/fa'
+import { FiChevronLeft, FiChevronRight, FiTrash2 } from 'react-icons/fi'
 import { toast } from '../utils/toast'
 import type { ID } from '@/types'
-import { cn } from '@/utils/classes'
+import { actionBtnDanger, cardClass, cn } from '@/utils/classes'
+import Badge from '@/components/UI/Badge'
+import Button from '@/components/UI/Button'
+import { EmptyState } from '@/components/UI/EmptyState'
+import { PAGE_SIZE } from '@/hooks/usePagedList'
 
 /** Persona con inasistencias tal como llega desde la pagina de inasistencias */
 interface InasistenciaItem {
@@ -95,55 +99,49 @@ export interface CalendarioInasistenciasProps {
   canDelete?: boolean
 }
 
-/** Celda de la tabla (equivale a `.calendario-table th, .calendario-table td`) */
-const cellBase = 'border border-line p-2 text-center text-[0.85rem] whitespace-nowrap'
+/** Celda de la rejilla: borde fino, sin franjas ni sombras */
+const cellBase = 'border border-line py-2 text-[13px] whitespace-nowrap text-content-2'
 
-/** Encabezado de la tabla (equivale a `.calendario-table th`) */
-const headerCell = `${cellBase} sticky top-0 z-10 bg-surface font-semibold text-content`
+/** Cabecera de la rejilla */
+const headerBase = 'border border-line bg-subtle py-2.5 text-xs font-semibold whitespace-nowrap text-muted'
+const headerSticky = 'sticky top-0 z-10'
+/** Cabecera de las columnas fijas (cruza el scroll en ambas direcciones) */
+const headerFixed = 'sticky top-0 z-20'
 
-/** Fila del cuerpo: franjas pares y hover (equivale a `.calendario-table tbody tr`) */
-const bodyRow = 'even:bg-[rgba(59,130,246,0.03)] hover:bg-[rgba(59,130,246,0.08)]'
+/** Columnas fijas del cuerpo: se mantienen al desplazar la tabla en horizontal */
+const bodyFixed = 'sticky z-10 bg-surface transition-colors duration-150 group-hover:bg-subtle'
 
-/** Celda de dia clicable en modo marcado o edicion (equivale a `.col-dia.clickable`) */
-const clickableDay = 'cursor-pointer transition-all duration-200 ease-[ease]'
+/** Fila del cuerpo: solo cambia el fondo al pasar el cursor */
+const bodyRow = 'group transition-colors duration-150 hover:bg-subtle'
 
-/** Hover de celda clicable que no es editable (equivale a `.col-dia.clickable:hover`) */
-const clickableDayHover = 'hover:bg-[rgba(59,130,246,0.15)]!'
+/** Celda de dia clicable en modo marcado */
+const clickableDay = 'cursor-pointer transition-colors duration-150 hover:bg-[rgba(59,130,246,0.08)]'
 
-/** Celda con marca guardada en modo edicion (equivale a `.col-dia.editable:hover`) */
-const editableDay = 'cursor-pointer hover:bg-[rgba(245,158,11,0.15)]!'
+/** Celda de marca guardada en modo edicion */
+const editableDay = 'cursor-pointer transition-colors duration-150 hover:bg-[rgba(245,158,11,0.10)]'
 
-/** Celda seleccionada (equivale a `.col-dia.selected`) */
-const selectedDay = 'border-2! border-primary! bg-[rgba(59,130,246,0.25)]!'
+/** Celda seleccionada: fondo tenue del azul de accion */
+const selectedDay = 'bg-[rgba(30,58,138,0.12)] font-semibold'
 
-/** Texto vacio de la tabla (equivale a `.empty-message`) */
-const emptyMessage = 'border border-line p-[30px]! text-center! text-[0.85rem] whitespace-nowrap italic text-muted'
+/** Dia de hoy: anillo fino, sin relleno fuerte */
+const hoyRing = 'ring-2 ring-inset ring-accent'
 
-/** Marca de falta base (equivale a `.marca-falta`) */
-const marcaFalta = 'inline-block rounded-[4px] px-1.5 py-0.5 text-[0.75rem]'
+/** Marca de falta: texto + color suave */
+const marcaBase = 'inline-flex min-w-6 items-center justify-center rounded px-1.5 py-0.5 text-xs font-semibold'
+const marcaJustificada = 'bg-[rgba(16,185,129,0.12)] text-[#047857]'
+const marcaInjustificada = 'bg-[rgba(239,68,68,0.10)] text-[#b91c1c]'
+/** Marca temporal (aun sin guardar) */
+const marcaPendiente = 'border border-dashed border-current'
 
-/** Boton I / J de modo de marcado (equivale a `.btn-fl`) */
-const btnFl = 'cursor-pointer rounded-[6px] border px-4 py-2 text-[0.9rem] font-semibold text-white transition-all duration-200 ease-[ease] hover:-translate-y-px'
+/** Botones de modo de marcado (I / J) */
+const toggleBase = 'inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors duration-150'
+const toggleIdle = 'border-line-strong bg-surface text-content-2 hover:bg-subtle hover:text-content'
+const toggleInjustificada = 'border-danger bg-[rgba(239,68,68,0.10)] text-[#b91c1c]'
+const toggleJustificada = 'border-success bg-[rgba(16,185,129,0.12)] text-[#047857]'
 
-/** Boton I / J sin activar (`.btn-fl.btn-injustificado` y `.btn-fl.btn-justificado`) */
-const btnFlIdle = 'border-[#ef4444] bg-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626]'
-
-/** Boton I / J activo (`.btn-fl.active` + `.btn-*.active`) */
-const btnFlActive = 'border-[#dc2626] bg-[#dc2626] shadow-[0_0_10px_rgba(239,68,68,0.4)]'
-
-/** Boton Anterior / Siguiente (equivale a `.calendario-pagination .btn-secondary`) */
-const paginationBtn = 'flex cursor-pointer items-center gap-[5px] rounded-[6px] border border-line bg-surface px-4 py-2 text-[0.9rem] font-medium text-content transition-all duration-200 ease-[ease] hover:-translate-y-0.5 enabled:hover:border-primary enabled:hover:bg-primary enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-50'
-
-/** Numero de pagina (equivale a `.page-number`) */
-const pageNumberBase = 'cursor-pointer rounded-[4px] border px-3 py-2 min-w-[40px] transition-all duration-200 ease-[ease]'
-const pageNumberIdle = 'border-line bg-transparent font-medium text-content hover:bg-surface'
-const pageNumberActive = 'border-primary bg-primary font-bold text-white'
-
-/** Boton Cancelar del pie (equivale a `.calendario-footer .btn-secondary`) */
-const footerSecondary = 'cursor-pointer rounded-[6px] border border-line bg-surface px-[30px] py-2.5 text-[0.95rem] font-semibold text-content transition-all duration-200 ease-[ease] hover:-translate-y-0.5 hover:bg-line max-[768px]:w-full'
-
-/** Boton Guardar del pie (equivale a `.calendario-footer .btn-primary`) */
-const footerPrimary = 'relative cursor-pointer overflow-hidden rounded-[6px] border border-primary bg-primary px-[30px] py-2.5 text-[0.95rem] font-semibold text-btn! shadow-[0_4px_15px_var(--shadow)] transition-all duration-200 ease-[ease] hover:-translate-y-px hover:bg-primary-hover hover:shadow-[0_4px_12px_rgba(30,58,138,0.3)] active:-translate-y-px [&:active:not(:hover)]:scale-[1.02] max-[768px]:w-full'
+/** Paginacion de personas */
+const pageBtn = 'inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border border-line-strong bg-surface px-2 text-[13px] text-content-2 transition-colors duration-150 hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40'
+const pageBtnActive = 'border-primary bg-primary text-btn hover:bg-primary'
 
 export default function CalendarioInasistencias({
   inasistencias = [],
@@ -169,7 +167,7 @@ export default function CalendarioInasistencias({
   const [tempMarks, setTempMarks] = useState<Record<string, TempMark>>({}) // Marcas temporales: { "dni-dia": { tipo: "I"/"J", id: null } }
   const [marksToDelete, setMarksToDelete] = useState<ID[]>([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
-  const itemsPerPage = 12 // Límite de personas por página
+  const itemsPerPage = PAGE_SIZE // Límite de personas por página (máx. 10)
 
   // Sincronizar selectedDate cuando cambie dateRange desde el padre
   useEffect(() => {
@@ -186,11 +184,11 @@ export default function CalendarioInasistencias({
 
   // Obtener nombre del mes en español
   const meses = [
-    'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-    'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
   ]
 
-  const diasSemanaCorto = ['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SÁ']
+  const diasSemanaCorto = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']
 
   // Procesar savedAttendances para obtener las marcas guardadas: { "dni-dia": { tipo: "J"/"I", id: "uuid" } }
   const savedMarks = useMemo(() => {
@@ -563,218 +561,262 @@ export default function CalendarioInasistencias({
     handlePageChange(currentPage + 1)
   }
 
+  // Dia de hoy (para el anillo de la cabecera y de la celda)
+  const hoy = new Date()
+  const esHoy = (dia: DiaCalendario) =>
+    dia.fecha.getFullYear() === hoy.getFullYear() &&
+    dia.fecha.getMonth() === hoy.getMonth() &&
+    dia.fecha.getDate() === hoy.getDate()
+
+  // Columnas fijas: "#" (40px) y, si hay eliminar, la columna de eliminar (48px)
+  const nameLeft = canDelete ? 'left-[88px]' : 'left-10'
+  const colSpanVacio = (canDelete ? 7 : 6) + diasDelMes.length
+
   return (
-    <div className="rounded-[12px] border border-line bg-card p-5 shadow-[0_4px_12px_var(--shadow)]">
-      {/* Botones de acción - Solo mostrar si no es modo solo lectura */}
+    <div className={cardClass}>
+      {/* Titulo del periodo */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
+        <h3 className="m-0 text-[15px] font-semibold text-content">
+          {dateRange?.start && dateRange?.end ? (
+            <>
+              Inasistencias de servicio: {dateRange.start.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })} al {dateRange.end.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </>
+          ) : (
+            `Inasistencias de servicio: ${meses[selectedDate.getMonth()]}`
+          )}
+        </h3>
+      </div>
+
+      {/* Modo de marcado: solo si no es modo solo lectura */}
       {!isReadOnly && (
-        <div className="mb-5 flex items-center gap-[10px]">
+        <div className="flex flex-wrap items-center gap-2 px-5 pt-4">
           <button
-            className={cn(btnFl, markMode === 'I' ? btnFlActive : btnFlIdle)}
+            type="button"
+            aria-pressed={markMode === 'I'}
+            className={cn(toggleBase, markMode === 'I' ? toggleInjustificada : toggleIdle)}
             onClick={() => handleToggleMark('I')}
-            title={markMode === 'I' ? 'Desactivar modo Injustificado' : 'Activar modo Injustificado'}
+            title={markMode === 'I' ? 'Desactivar modo injustificada' : 'Activar modo injustificada'}
           >
-            I
+            <span className="font-semibold">I</span>
+            Injustificada
           </button>
           <button
-            className={cn(btnFl, markMode === 'J' ? btnFlActive : btnFlIdle)}
+            type="button"
+            aria-pressed={markMode === 'J'}
+            className={cn(toggleBase, markMode === 'J' ? toggleJustificada : toggleIdle)}
             onClick={() => handleToggleMark('J')}
-            title={markMode === 'J' ? 'Desactivar modo Justificado' : 'Activar modo Justificado'}
+            title={markMode === 'J' ? 'Desactivar modo justificada' : 'Activar modo justificada'}
           >
-            J
+            <span className="font-semibold">J</span>
+            Justificada
           </button>
+
           {markMode === 'I' && (
-            <span className="ml-2.5 text-[0.9rem] font-medium text-danger">
-              Modo Injustificado activo - Haz clic en las celdas para marcar inasistencia injustificada
-            </span>
+            <div className="flex flex-wrap items-center gap-2 text-[13px] text-content-2">
+              <Badge tone="danger">Modo injustificada activo</Badge>
+              Haz clic en las celdas para marcar la inasistencia.
+            </div>
           )}
           {markMode === 'J' && (
-            <span className="ml-2.5 text-[0.9rem] font-medium text-danger">
-              Modo Justificado activo - Haz clic en las celdas para marcar inasistencia justificada
-            </span>
+            <div className="flex flex-wrap items-center gap-2 text-[13px] text-content-2">
+              <Badge tone="success">Modo justificada activo</Badge>
+              Haz clic en las celdas para marcar la inasistencia.
+            </div>
           )}
           {editMode && (
-            <span className="ml-2.5 text-[0.9rem] font-medium text-warning">
-              Modo edición activo - Haz clic en las celdas marcadas para eliminarlas
-            </span>
+            <div className="flex flex-wrap items-center gap-2 text-[13px] text-content-2">
+              <Badge tone="warning">Modo edición activo</Badge>
+              Haz clic en las celdas marcadas para eliminarlas.
+            </div>
           )}
         </div>
       )}
 
+      {/* Leyenda: el texto acompana al color */}
+      <div className="flex flex-wrap items-center gap-2 px-5 pt-4 text-xs text-muted">
+        <span>Leyenda:</span>
+        <Badge tone="success">J · Justificada</Badge>
+        <Badge tone="danger">I · Injustificada</Badge>
+        <Badge tone="neutral">- · Sin marca</Badge>
+        <span>Borde punteado: sin guardar</span>
+      </div>
+
       {/* Tabla calendario */}
-      <div className="overflow-hidden rounded-lg border border-line">
-        <div className="bg-primary px-5 py-3 text-center text-[1rem] font-semibold tracking-[0.5px] text-white">
-          {dateRange?.start && dateRange?.end ? (
-            <>
-              INASISTENCIAS DE SERVICIO - {
-                dateRange.start.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).toUpperCase()
-              } AL {
-                dateRange.end.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
-              }
-            </>
-          ) : (
-            `INASISTENCIAS DE SERVICIO - MES DE ${meses[selectedDate.getMonth()]}`
-          )}
-        </div>
-
-        <div className="overflow-x-auto bg-surface">
-          <table className="w-full min-w-[1200px] border-collapse">
-            <thead>
-              <tr>
-                <th className={cn(headerCell, 'w-10')}>#</th>
-                {canDelete && <th className={headerCell}></th>}
-                <th className={cn(headerCell, 'min-w-[200px] text-left!')}>APELLIDOS Y NOMBRES</th>
-                <th className={cn(headerCell, 'min-w-[80px]')}>TURNO</th>
-                <th className={cn(headerCell, 'min-w-[120px]')}>CARGO</th>
-                <th className={cn(headerCell, 'min-w-[100px]')}>RÉGIMEN</th>
-                {diasDelMes.map(dia => (
-                  <th key={dia.numero} className={cn(headerCell, 'w-[35px] min-w-[35px]')}>
-                    <div className="flex flex-col items-center gap-[2px]">
-                      <span className="text-[0.75rem] font-semibold text-content-2">{dia.diaSemana}</span>
-                      <span className="text-[0.8rem] font-medium text-content">{dia.numero.toString().padStart(2, '0')}</span>
-                    </div>
-                  </th>
-                ))}
-                <th className={cn(headerCell, 'min-w-[60px]')}>TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {totalPersonas === 0 ? (
-                <tr className={bodyRow}>
-                  <td colSpan={6 + diasDelMes.length} className={emptyMessage}>
-                    No hay inasistencias registradas en este mes
-                  </td>
-                </tr>
-              ) : (
-                personasPaginadas.map((persona, index) => {
-                  // Calcular total de inasistencias para esta persona
-                  // Contar marcas guardadas + marcas temporales para este DNI
-                  const totalInasistencias = diasDelMes.reduce((count, dia) => {
-                    const savedKey = `${persona.dni}-${dia.numero}`
-                    const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
-                    const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
-                    const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
-
-                    // Contar si hay marca guardada O marca temporal
-                    if (savedMarks[savedKey] || tempMarks[fullKey]) {
-                      return count + 1
-                    }
-                    return count
-                  }, 0)
-
-                  // Número de fila global (considerando la paginación)
-                  const numeroFila = startIndex + index + 1
-
-                  return (
-                    <tr key={persona.dni} className={bodyRow}>
-                      <td className={cn(cellBase, 'w-10 font-semibold text-muted')}>{numeroFila}</td>
-                      {canDelete && (
-                        <td className={cellBase}>
-                          <button
-                            title="Eliminar persona"
-                            onClick={() => onDelete && onDelete(persona.id, persona.nombreCompleto)}
-                            className="flex cursor-pointer items-center rounded-[4px] border-none bg-transparent p-1 text-danger"
-                          >
-                            <FaTrash size={13} />
-                          </button>
-                        </td>
-                      )}
-                      <td className={cn(cellBase, 'min-w-[200px] text-left! font-medium')}>{persona.nombreCompleto}</td>
-                      <td className={cn(cellBase, 'min-w-[80px]')}>{persona.turno}</td>
-                      <td className={cn(cellBase, 'min-w-[120px]')}>{persona.cargo}</td>
-                      <td className={cn(cellBase, 'min-w-[100px]')}>{persona.regimen}</td>
-                      {diasDelMes.map(dia => {
-                        // Key para savedMarks (simple)
-                        const savedKey = `${persona.dni}-${dia.numero}`
-                        // Key completa para tempMarks y selectedCells
-                        const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
-                        const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
-                        const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
-
-                        const isSelected = selectedCells[fullKey]
-                        const tempMark = tempMarks[fullKey]
-                        const savedMark = savedMarks[savedKey]
-
-                        // Mostrar marca temporal o marca guardada, o guion si no hay nada
-                        let content: React.ReactNode
-
-                        if (tempMark) {
-                          // Marca temporal (nueva, aún no guardada)
-                          const displayText = tempMark.tipo === 'justificada' ? 'J' : 'I'
-                          content = <span className={cn(marcaFalta, 'animate-[pulse_1s_infinite] border border-danger bg-[rgba(239,68,68,0.2)] font-semibold text-danger')}>{displayText}</span>
-                        } else if (savedMark) {
-                          // Marca guardada desde la API
-                          const displayText = savedMark.tipo // "J" o "I"
-                          content = <span className={cn(marcaFalta, 'border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.15)] font-bold text-[#dc2626]')}>{displayText}</span>
-                        } else {
-                          // Sin marca
-                          content = <span className="text-[0.8rem] text-muted">-</span>
-                        }
-
-                        // Interaccion: celdas clicables, seleccionadas y editables
-                        const clickable = !!(markMode || editMode)
-                        const editable = editMode && !!savedMark
-                        const cellClass = cn(
-                          cellBase,
-                          'w-[35px] min-w-[35px]',
-                          clickable && clickableDay,
-                          clickable && !editable && clickableDayHover,
-                          editable && editableDay,
-                          isSelected && selectedDay
-                        )
-
-                        return (
-                          <td
-                            key={`${dia.numero}-${mes}-${anio}`}
-                            className={cellClass}
-                            onClick={() => handleCellClick(persona.dni, dia.numero, mes, anio)}
-                          >
-                            {content}
-                          </td>
-                        )
-                      })}
-                      <td className={cn(cellBase, 'min-w-[60px] bg-primary font-bold text-white')}>
-                        <span className="text-[1rem] font-bold">{totalInasistencias}</span>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-              {/* Filas vacías para completar hasta 12 */}
-              {Array.from({ length: Math.max(0, itemsPerPage - personasPaginadas.length) }).map((_, index) => (
-                <tr key={`empty-${index}`} className={bodyRow}>
-                  <td className={cn(cellBase, 'w-10 font-semibold text-muted')}>{startIndex + personasPaginadas.length + index + 1}</td>
-                  {canDelete && <td className={cellBase}></td>}
-                  <td className={cn(cellBase, 'min-w-[200px] text-left! font-medium')}></td>
-                  <td className={cn(cellBase, 'min-w-[80px]')}></td>
-                  <td className={cn(cellBase, 'min-w-[120px]')}></td>
-                  <td className={cn(cellBase, 'min-w-[100px]')}></td>
-                  {diasDelMes.map(dia => (
-                    <td key={dia.numero} className={cn(cellBase, 'w-[35px] min-w-[35px]', markMode && clickableDay, markMode && clickableDayHover)}>
-                      <span className="text-[0.8rem] text-muted">-</span>
-                    </td>
-                  ))}
-                  <td className={cn(cellBase, 'min-w-[60px] bg-primary font-bold text-white')}>
-                    <span className="text-[1rem] font-bold">0</span>
-                  </td>
-                </tr>
+      <div className="mt-4 overflow-x-auto border-y border-line">
+        <table className="w-full min-w-[1200px] border-collapse">
+          <thead>
+            <tr>
+              <th className={cn(headerBase, headerFixed, 'left-0 w-10 px-2 text-center')}>#</th>
+              {canDelete && <th className={cn(headerBase, headerFixed, 'left-10 w-12')}></th>}
+              <th className={cn(headerBase, headerFixed, nameLeft, 'min-w-[200px] px-2 text-left')}>Apellidos y nombres</th>
+              <th className={cn(headerBase, headerSticky, 'min-w-[80px] px-2 text-center')}>Turno</th>
+              <th className={cn(headerBase, headerSticky, 'min-w-[120px] px-2 text-center')}>Cargo</th>
+              <th className={cn(headerBase, headerSticky, 'min-w-[100px] px-2 text-center')}>Régimen</th>
+              {diasDelMes.map(dia => (
+                <th key={dia.numero} className={cn(headerBase, headerSticky, 'w-9 min-w-9 text-center', esHoy(dia) && hoyRing)}>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-[11px] font-medium text-muted">{dia.diaSemana}</span>
+                    <span className="text-[13px] font-semibold text-content">{dia.numero.toString().padStart(2, '0')}</span>
+                  </div>
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
+              <th className={cn(headerBase, headerSticky, 'min-w-[60px] px-2 text-center')}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {totalPersonas === 0 ? (
+              <tr>
+                <td colSpan={colSpanVacio} className="border border-line p-0">
+                  <EmptyState title="No hay inasistencias registradas en este periodo" />
+                </td>
+              </tr>
+            ) : (
+              personasPaginadas.map((persona, index) => {
+                // Calcular total de inasistencias para esta persona
+                // Contar marcas guardadas + marcas temporales para este DNI
+                const totalInasistencias = diasDelMes.reduce((count, dia) => {
+                  const savedKey = `${persona.dni}-${dia.numero}`
+                  const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
+                  const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
+                  const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
+
+                  // Contar si hay marca guardada O marca temporal
+                  if (savedMarks[savedKey] || tempMarks[fullKey]) {
+                    return count + 1
+                  }
+                  return count
+                }, 0)
+
+                // Número de fila global (considerando la paginación)
+                const numeroFila = startIndex + index + 1
+
+                return (
+                  <tr key={persona.dni} className={bodyRow}>
+                    <td className={cn(cellBase, bodyFixed, 'left-0 w-10 px-2 text-center font-semibold text-muted')}>{numeroFila}</td>
+                    {canDelete && (
+                      <td className={cn(cellBase, bodyFixed, 'left-10 w-12 px-2 text-center')}>
+                        <button
+                          type="button"
+                          title="Eliminar persona"
+                          aria-label={`Eliminar a ${persona.nombreCompleto}`}
+                          onClick={() => onDelete && onDelete(persona.id, persona.nombreCompleto)}
+                          className={actionBtnDanger}
+                        >
+                          <FiTrash2 aria-hidden />
+                        </button>
+                      </td>
+                    )}
+                    <td className={cn(cellBase, bodyFixed, nameLeft, 'min-w-[200px] px-2 text-left font-medium text-content')}>{persona.nombreCompleto}</td>
+                    <td className={cn(cellBase, 'min-w-[80px] px-2 text-center')}>{persona.turno}</td>
+                    <td className={cn(cellBase, 'min-w-[120px] px-2 text-center')}>{persona.cargo}</td>
+                    <td className={cn(cellBase, 'min-w-[100px] px-2 text-center')}>{persona.regimen}</td>
+                    {diasDelMes.map(dia => {
+                      // Key para savedMarks (simple)
+                      const savedKey = `${persona.dni}-${dia.numero}`
+                      // Key completa para tempMarks y selectedCells
+                      const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
+                      const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
+                      const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
+
+                      const isSelected = selectedCells[fullKey]
+                      const tempMark = tempMarks[fullKey]
+                      const savedMark = savedMarks[savedKey]
+
+                      // Mostrar marca temporal o marca guardada, o guion si no hay nada
+                      let content: React.ReactNode
+
+                      if (tempMark) {
+                        // Marca temporal (nueva, aún no guardada)
+                        const esJustificada = tempMark.tipo === 'justificada'
+                        content = (
+                          <span
+                            title={esJustificada ? 'Justificada (sin guardar)' : 'Injustificada (sin guardar)'}
+                            className={cn(marcaBase, esJustificada ? marcaJustificada : marcaInjustificada, marcaPendiente)}
+                          >
+                            {esJustificada ? 'J' : 'I'}
+                          </span>
+                        )
+                      } else if (savedMark) {
+                        // Marca guardada desde la API
+                        const esJustificada = savedMark.tipo === 'J'
+                        content = (
+                          <span
+                            title={esJustificada ? 'Justificada' : 'Injustificada'}
+                            className={cn(marcaBase, esJustificada ? marcaJustificada : marcaInjustificada)}
+                          >
+                            {savedMark.tipo}
+                          </span>
+                        )
+                      } else {
+                        // Sin marca
+                        content = <span className="text-xs text-muted">-</span>
+                      }
+
+                      // Interaccion: celdas clicables, seleccionadas y editables
+                      const clickable = !!(markMode || editMode)
+                      const editable = editMode && !!savedMark
+                      const cellClass = cn(
+                        cellBase,
+                        'w-9 min-w-9 text-center',
+                        clickable && !editable && clickableDay,
+                        editable && editableDay,
+                        isSelected && selectedDay,
+                        esHoy(dia) && hoyRing
+                      )
+
+                      return (
+                        <td
+                          key={`${dia.numero}-${mes}-${anio}`}
+                          className={cellClass}
+                          onClick={() => handleCellClick(persona.dni, dia.numero, mes, anio)}
+                        >
+                          {content}
+                        </td>
+                      )
+                    })}
+                    <td className={cn(cellBase, 'min-w-[60px] px-2 text-center font-semibold text-content')}>{totalInasistencias}</td>
+                  </tr>
+                )
+              })
+            )}
+            {/* Filas vacías para completar hasta itemsPerPage (10) */}
+            {Array.from({ length: Math.max(0, itemsPerPage - personasPaginadas.length) }).map((_, index) => (
+              <tr key={`empty-${index}`} className={bodyRow}>
+                <td className={cn(cellBase, bodyFixed, 'left-0 w-10 px-2 text-center font-semibold text-muted')}>{startIndex + personasPaginadas.length + index + 1}</td>
+                {canDelete && <td className={cn(cellBase, bodyFixed, 'left-10 w-12')}></td>}
+                <td className={cn(cellBase, bodyFixed, nameLeft, 'min-w-[200px] px-2 text-left')}></td>
+                <td className={cn(cellBase, 'min-w-[80px]')}></td>
+                <td className={cn(cellBase, 'min-w-[120px]')}></td>
+                <td className={cn(cellBase, 'min-w-[100px]')}></td>
+                {diasDelMes.map(dia => (
+                  <td key={dia.numero} className={cn(cellBase, 'w-9 min-w-9 text-center', markMode && clickableDay)}>
+                    <span className="text-xs text-muted">-</span>
+                  </td>
+                ))}
+                <td className={cn(cellBase, 'min-w-[60px] px-2 text-center font-semibold text-content')}>0</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Controles de paginación */}
       {totalPages > 1 && (
-        <div className="mt-5 flex items-center justify-center gap-2.5 rounded-lg border border-line p-[15px] max-[768px]:flex-wrap">
-          <button
-            onClick={handlePreviousPage}
-            disabled={currentPage === 1}
-            className={paginationBtn}
-          >
-            ← Anterior
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+          <span className="text-[13px] text-muted">
+            {totalPersonas} {totalPersonas === 1 ? 'persona' : 'personas'} · Página {currentPage} de {totalPages}
+          </span>
+          <nav className="flex items-center gap-1" aria-label="Paginación">
+            <button
+              type="button"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              className={pageBtn}
+              aria-label="Página anterior"
+            >
+              <FiChevronLeft aria-hidden />
+            </button>
 
-          <div className="flex items-center gap-[5px] max-[768px]:flex-wrap max-[768px]:justify-center">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum: number
               if (totalPages <= 5) {
@@ -790,34 +832,38 @@ export default function CalendarioInasistencias({
               return (
                 <button
                   key={pageNum}
+                  type="button"
                   onClick={() => handlePageChange(pageNum)}
-                  className={cn(pageNumberBase, currentPage === pageNum ? pageNumberActive : pageNumberIdle)}
+                  aria-current={currentPage === pageNum ? 'page' : undefined}
+                  className={cn(pageBtn, 'font-medium', currentPage === pageNum && pageBtnActive)}
                 >
                   {pageNum}
                 </button>
               )
             })}
-          </div>
 
-          <button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
-            className={paginationBtn}
-          >
-            Siguiente →
-          </button>
+            <button
+              type="button"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              className={pageBtn}
+              aria-label="Página siguiente"
+            >
+              <FiChevronRight aria-hidden />
+            </button>
+          </nav>
         </div>
       )}
 
       {/* Botones de Cancelar y Guardar - Solo mostrar si no es modo solo lectura */}
       {!isReadOnly && (
-        <div className="mt-5 flex justify-end gap-[15px] border-t border-line pt-5 max-[768px]:flex-col">
-          <button className={footerSecondary} onClick={handleCancel}>
-            CANCELAR
-          </button>
-          <button className={footerPrimary} onClick={handleSave}>
-            GUARDAR
-          </button>
+        <div className="flex flex-wrap justify-end gap-3 border-t border-line bg-subtle px-5 py-3">
+          <Button variant="secondary" onClick={handleCancel}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave}>
+            Guardar cambios
+          </Button>
         </div>
       )}
     </div>

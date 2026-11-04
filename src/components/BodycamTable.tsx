@@ -1,27 +1,30 @@
-import React from 'react'
-import type { BodycamView } from '@/types'
-import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle } from 'react-icons/fa'
-import { actionBtn, actions, cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes'
+import type { BodycamView, Cam } from '@/types'
+import { FiEdit2, FiRotateCcw, FiSlash } from 'react-icons/fi'
+import Badge from '@/components/UI/Badge'
+import { actionBtn, actionBtnDanger, actions, cn, incTable, incTableTd, incTableTh, incTableTr } from '@/utils/classes'
 
-/** Fila que la tabla necesita (los resultados de busqueda no traen `cam`) */
-export type BodycamTableRow = Pick<BodycamView, 'id' | 'name' | 'serie' | 'deleted_at'>;
+/** Fila que la tabla necesita (los resultados de busqueda traen el mismo subconjunto) */
+export type BodycamTableRow = Pick<BodycamView, 'id' | 'name' | 'serie' | 'cam' | 'deleted_at'>
 
-/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
-const headerCell = `${incTableTh} border-x-0 border-t-0 py-4! px-3.5! text-[13px]!`
-const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`
-/** Celdas de bodycam: mas padding y letra de 15px (antes .bodycam-table) */
-const cell = `${incTableTd} py-4! px-3.5! text-[15px]`
+const camLabels: Record<Cam, string> = {
+  BODYCAM: 'Bodycam',
+  CAMERA: 'Cámara',
+  RADIO: 'Radio',
+  PHONE: 'Teléfono'
+}
 
 export interface BodycamTableProps {
   data?: BodycamTableRow[];
   onToggleStatus: (item: BodycamTableRow) => void;
   onEdit: (item: BodycamTableRow) => void;
+  /** Ya no se muestra numeración de fila; se mantiene por compatibilidad con la página */
   startIndex?: number;
   canEdit?: boolean;
   canDelete?: boolean;
 }
 
-export default function BodycamTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: BodycamTableProps) {
+/** Solo la tabla: la tarjeta, el estado vacío y la paginación los pone la página. */
+export default function BodycamTable({ data = [], onToggleStatus, onEdit, canEdit = true, canDelete = true }: BodycamTableProps) {
   const showActions = canEdit || canDelete
 
   // Función para formatear la fecha de deshabilitación
@@ -38,79 +41,71 @@ export default function BodycamTable({ data = [], onToggleStatus, onEdit, startI
   }
 
   return (
-    <div className={tableCard}>
-      <div className={tableScroll}>
-        <table className={cn(incTable, 'text-[15px]!')}>
-          <thead>
-            <tr>
-              <th className={headerCell}>#</th>
-              {showActions && <th className={headerCell}>Acciones</th>}
-              <th className={headerCell}>Nombre</th>
-              <th className={headerCell}>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.length === 0 && (
-              <tr className={bodyRow}>
-                <td colSpan={showActions ? 4 : 3} className={cn(cell, 'text-center text-content! p-10!')}>
-                  No hay bodycams registradas
+    <div className="overflow-x-auto">
+      <table className={incTable}>
+        <thead>
+          <tr>
+            <th className={incTableTh}>Dispositivo</th>
+            <th className={incTableTh}>Tipo</th>
+            <th className={incTableTh}>Estado</th>
+            {showActions && <th className={cn(incTableTh, 'text-right!')}>Acciones</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item) => {
+            const isEnabled = !item.deleted_at
+            return (
+              <tr key={item.id} className={cn(incTableTr, !isEnabled && 'opacity-60')}>
+                <td className={incTableTd}>
+                  <div className="font-medium text-content">{item.name}</div>
+                  {item.serie && <div className="text-xs text-muted">{item.serie}</div>}
                 </td>
-              </tr>
-            )}
-            {data.map((item, index) => {
-              const isEnabled = !item.deleted_at
-              return (
-                <tr key={item.id} className={bodyRow}>
-                  <td className={cn(cell, 'w-10 text-center font-bold text-muted!')}>
-                    {startIndex + index + 1}
-                  </td>
-                  {showActions && (
-                    <td className={cn(cell, actions)}>
+                <td className={incTableTd}>
+                  {item.cam ? <Badge tone="info">{camLabels[item.cam]}</Badge> : <span className="text-muted">Sin tipo</span>}
+                </td>
+                <td className={incTableTd}>
+                  {isEnabled ? (
+                    <Badge tone="success">Habilitado</Badge>
+                  ) : (
+                    <span title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}>
+                      <Badge tone="danger">Deshabilitado</Badge>
+                    </span>
+                  )}
+                </td>
+                {showActions && (
+                  <td className={incTableTd}>
+                    <div className={actions}>
                       {canEdit && (
-                        <button title="Editar" onClick={() => onEdit(item)} className={actionBtn}>
-                          <FaEdit />
+                        <button
+                          type="button"
+                          title="Editar"
+                          aria-label={`Editar ${item.name}`}
+                          onClick={() => onEdit(item)}
+                          className={actionBtn}
+                        >
+                          <FiEdit2 aria-hidden />
                         </button>
                       )}
                       {canDelete && (
                         <button
-                          title={isEnabled ? "Deshabilitar" : "Habilitar"}
+                          type="button"
+                          title={isEnabled ? 'Deshabilitar' : 'Habilitar'}
+                          aria-label={`${isEnabled ? 'Deshabilitar' : 'Habilitar'} ${item.name}`}
                           onClick={() => onToggleStatus(item)}
-                          className={actionBtn}
+                          className={isEnabled ? actionBtnDanger : actionBtn}
                         >
-                          {isEnabled ? <FaBan /> : <FaCheckCircle />}
+                          {isEnabled ? <FiSlash aria-hidden /> : <FiRotateCcw aria-hidden />}
                         </button>
                       )}
-                      {!canEdit && !canDelete && (
-                        <span className="text-muted text-[0.85rem] italic">
-                          Solo lectura
-                        </span>
-                      )}
-                    </td>
-                  )}
-                  <td className={cell}>{item.name}</td>
-                  <td className={cell}>
-                    {isEnabled ? (
-                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#22c55e]">
-                        <FaCheckCircle /> Habilitado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#ef4444]">
-                        <FaBan /> Deshabilitado
-                        <span
-                          title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}
-                          className="cursor-help text-muted text-[14px] ml-[3px]"
-                        >
-                          <FaInfoCircle />
-                        </span>
-                      </span>
-                    )}
+                      {!canEdit && !canDelete && <span className="text-xs text-muted">Solo lectura</span>}
+                    </div>
                   </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                )}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

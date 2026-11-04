@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '../../../utils/classes'
+import Badge, { type BadgeTone } from '@/components/UI/Badge'
 
 export interface StatCardProps {
   title: string
@@ -7,42 +7,54 @@ export interface StatCardProps {
   subtitle?: string
   change?: string
   icon: React.ReactNode
+  /** Color de marca del icono (hex). Se usa tintado al 10% como fondo del icono. */
   color: string
   onIconClick?: () => void
 }
 
+/** Variación: "+" sube (verde), "0%" neutra, cualquier otra cosa empeora (rojo). */
+const changeTone = (change: string): BadgeTone => {
+  if (change.startsWith('+')) return 'success'
+  if (change === '0%') return 'neutral'
+  return 'danger'
+}
+
 export default function StatCard({ title, value, subtitle, change, icon, color, onIconClick }: StatCardProps) {
-  const isPositive = change?.startsWith('+')
+  const iconStyle = { backgroundColor: `${color}1a`, color }
+  const iconClass = 'flex size-9 shrink-0 items-center justify-center rounded-lg text-lg'
 
   return (
-    <div className="rounded-[16px] border border-line bg-transparent! p-6 shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)] [transition:transform_0.3s_ease,box-shadow_0.3s_ease] hover:[transform:translateY(-4px)] hover:shadow-[0_8px_30px_var(--shadow-hover)]">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="mb-2 text-[15px] font-medium uppercase tracking-[0.5px] text-content-2!">{title}</p>
-          <h3 className="m-0 flex items-baseline gap-3 text-[36px] font-bold text-content! dark:text-[#f8fafc]!">
-            {value}
-            {change && (
-              <span className={cn(
-                'rounded-[6px] px-2 py-1 text-[14px] font-semibold',
-                isPositive ? 'bg-[rgba(16,185,129,0.1)] text-success' : 'bg-[rgba(239,68,68,0.1)] text-danger'
-              )}>
-                {change}
-              </span>
-            )}
-          </h3>
-          {subtitle && <p className="mt-1 text-[12px] text-content-2">{subtitle}</p>}
-        </div>
-
-        <div
-          className="flex size-14 cursor-pointer items-center justify-center rounded-[12px] text-[24px] text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)] [transition:transform_0.2s_ease] hover:[transform:scale(1.1)]"
-          style={{ background: color }}
-          onClick={onIconClick}
-          role={onIconClick ? "button" : undefined}
-          tabIndex={onIconClick ? 0 : undefined}
-        >
-          {icon}
-        </div>
+    <div className="flex flex-col rounded-xl border border-line bg-surface p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="m-0 text-[13px] text-muted">{title}</p>
+        {onIconClick ? (
+          <button
+            type="button"
+            onClick={onIconClick}
+            aria-label={title}
+            title={title}
+            className={`${iconClass} cursor-pointer border-none transition-colors duration-150`}
+            style={iconStyle}
+          >
+            {icon}
+          </button>
+        ) : (
+          <span className={iconClass} style={iconStyle} aria-hidden>
+            {icon}
+          </span>
+        )}
       </div>
+
+      <div className="mt-3 flex flex-wrap items-baseline gap-2">
+        <span className="text-3xl font-semibold text-content">{value}</span>
+        {change && (
+          <Badge tone={changeTone(change)} dot={false}>
+            {change}
+          </Badge>
+        )}
+      </div>
+
+      {subtitle && <p className="m-0 mt-1 text-xs text-muted">{subtitle}</p>}
     </div>
   )
 }

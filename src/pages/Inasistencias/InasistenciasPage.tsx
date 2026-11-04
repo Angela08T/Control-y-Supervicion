@@ -6,19 +6,15 @@ import CalendarModal from '../Dashboard/components/CalendarModal'
 import { createReport, getReports, mapFormDataToAPI } from '../../api/report'
 import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
-import { FaPlus, FaCalendarAlt, FaFilePdf } from 'react-icons/fa'
+import { FiCalendar, FiFileText, FiPlus } from 'react-icons/fi'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import { toast } from '../../utils/toast'
 import type { AttendanceItemDto, ID, ISODateString, Lead } from '@/types'
-import {
-  btnPrimary,
-  btnSecondary,
-  cn,
-  incidenciasPage,
-  pageHeaderIncidencias,
-  pageTitle
-} from '../../utils/classes'
+import { cardClass, incidenciasPage } from '../../utils/classes'
+import PageHeader from '@/components/UI/PageHeader'
+import Button from '@/components/UI/Button'
+import { LoadingState } from '@/components/UI/EmptyState'
 
 /** Fila de asistencia tal como la devuelve GET /attendance */
 type AttendanceRow = Awaited<ReturnType<typeof getAttendances>>['data'][number]
@@ -65,9 +61,6 @@ interface RequestError {
     data?: { message?: string | string[] }
   }
 }
-
-/** Boton de calendario: el padding inline original sobreescribe el de .btn-secondary */
-const calendarButton = cn(btnSecondary, 'flex items-center gap-2 px-4! py-2!')
 
 export default function InasistenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
@@ -349,43 +342,36 @@ export default function InasistenciasPage() {
 
   return (
     <div className={incidenciasPage}>
-      <header className={pageHeaderIncidencias}>
-        <div className="flex flex-1 items-center gap-5">
-          <h2 className={pageTitle}>CONTROL Y SUPERVISIÓN</h2>
-          <div className="flex items-center gap-[10px] animate-[slideInRight_0.5s_ease-out] max-[600px]:w-full max-[900px]:flex-wrap max-[900px]:justify-between">
-            {/* Botón de calendario para seleccionar rango de fechas */}
-            <button
-              className={calendarButton}
-              onClick={() => setShowCalendarModal(true)}
-            >
-              <FaCalendarAlt />
-              <span className="text-[13.6px]">{formatDateRange()}</span>
-            </button>
-
-            {/* Botón +PDF para validadores */}
+      <PageHeader
+        title="Inasistencias"
+        description="Registra y revisa las inasistencias del personal por día."
+        actions={
+          <>
             {userRole === 'validator' && (
-              <button
-                className={cn(btnPrimary, 'flex items-center gap-2')}
-                onClick={() => setShowPDFModal(true)}
-              >
-                <FaFilePdf />
-                PDF
-              </button>
+              <Button variant="secondary" icon={<FiFileText />} onClick={() => setShowPDFModal(true)}>
+                Generar PDF
+              </Button>
             )}
-
             {permissions.canCreate && (
-              <button className={btnPrimary} onClick={() => setShowModal(true)}>
-                <FaPlus className="mr-2" />
-                Agregar
-              </button>
+              <Button icon={<FiPlus />} onClick={() => setShowModal(true)}>
+                Agregar inasistencia
+              </Button>
             )}
-          </div>
+          </>
+        }
+      >
+        {/* Filtro: periodo (rango de fechas) con etiqueta visible */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-content-2">Periodo</span>
+          <Button variant="secondary" icon={<FiCalendar />} onClick={() => setShowCalendarModal(true)}>
+            {formatDateRange()}
+          </Button>
         </div>
-      </header>
+      </PageHeader>
 
       {loading ? (
-        <div className="p-10 text-center text-[17.6px] text-muted">
-          Cargando inasistencias...
+        <div className={cardClass}>
+          <LoadingState label="Cargando inasistencias…" />
         </div>
       ) : (
         <CalendarioInasistencias

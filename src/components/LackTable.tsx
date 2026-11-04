@@ -1,12 +1,9 @@
 import React, { useState } from 'react'
 import type { Lack } from '@/types'
-import { FaEdit, FaCheckCircle, FaBan, FaInfoCircle, FaFolder, FaFileAlt, FaEye } from 'react-icons/fa'
+import { FiCheckCircle, FiEdit2, FiEye, FiSlash } from 'react-icons/fi'
+import Badge from '@/components/UI/Badge'
 import ModalViewContent from './ModalViewContent'
-import { actionBtn, actions, cn, incTable, incTableTd, incTableTh, incTableTr, tableCard, tableScroll } from '@/utils/classes'
-
-/** Los bordes del encabezado y de las filas solo llevan ancho en un lado: se anulan los demas */
-const headerCell = `${incTableTh} border-x-0 border-t-0`
-const bodyRow = `${incTableTr} border-x-0 border-t-0 ease-[ease]`
+import { actionBtn, actionBtnDanger, actions, cn, incTable, incTableTd, incTableTh, incTableTr } from '@/utils/classes'
 
 export interface LackTableProps {
   data?: Lack[];
@@ -17,11 +14,11 @@ export interface LackTableProps {
   canDelete?: boolean;
 }
 
-export default function LackTable({ data = [], onToggleStatus, onEdit, startIndex = 0, canEdit = true, canDelete = true }: LackTableProps) {
-  const showActions = canEdit || canDelete
+/** Tabla de faltas. Muestra pocos campos; el resto se ve en el formulario o en "Ver contenido". */
+export default function LackTable({ data = [], onToggleStatus, onEdit, canEdit = true, canDelete = true }: LackTableProps) {
   const [viewingContent, setViewingContent] = useState<Lack | null>(null)
 
-  // Función para formatear la fecha de deshabilitación
+  // Fecha de deshabilitacion, mostrada como ayuda al pasar el cursor sobre el estado
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
     const date = new Date(dateString)
@@ -34,163 +31,90 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
     })
   }
 
-  // Función para truncar texto largo
-  const truncateText = (text: string | null | undefined, maxLength = 100): string => {
-    if (!text) return 'Sin contenido'
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + '...'
-  }
-
   return (
-    <div className={tableCard}>
-      <div className={tableScroll}>
+    <>
+      <div className="overflow-x-auto">
         <table className={incTable}>
           <thead>
             <tr>
-              <th className={cn(headerCell, 'w-[50px] min-w-[50px]')}>#</th>
-              {showActions && <th className={cn(headerCell, 'w-[120px] min-w-[120px]')}>Acciones</th>}
-              <th className={cn(headerCell, 'w-[280px] min-w-[280px]')}>Nombre de la Falta</th>
-              <th className={cn(headerCell, 'w-[280px] min-w-[280px]')}>Asunto</th>
-              <th className={cn(headerCell, 'w-[100px] min-w-[90px] text-center!')}>Artículo</th>
-              <th className={cn(headerCell, 'w-[200px] min-w-[180px]')}>Descripción</th>
-              <th className={cn(headerCell, 'w-[320px] min-w-[300px]')}>Contenido</th>
-              <th className={cn(headerCell, 'w-[150px] min-w-[150px]')}>Estado</th>
+              <th className={incTableTh}>Nombre de la falta</th>
+              <th className={cn(incTableTh, '!text-center')}>Artículo</th>
+              <th className={incTableTh}>Contenido</th>
+              <th className={incTableTh}>Estado</th>
+              <th className={cn(incTableTh, '!text-right')}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 && (
-              <tr className={bodyRow}>
-                <td colSpan={showActions ? 8 : 7} className={cn(incTableTd, 'text-center text-content! p-10!')}>
-                  No hay faltas registradas
-                </td>
-              </tr>
-            )}
-            {data.map((item, index) => {
+            {data.map((item) => {
               const isEnabled = !item.deleted_at
               return (
-                <tr key={item.id} className={bodyRow}>
-                  <td className={cn(incTableTd, 'w-[50px] text-center font-bold text-muted!')}>
-                    {startIndex + index + 1}
+                <tr key={item.id} className={cn(incTableTr, !isEnabled && 'opacity-60')}>
+                  <td className={incTableTd}>
+                    <div className="font-semibold text-content">{item.name}</div>
+                    <div className="mt-0.5 text-xs text-muted">{item.subject ? item.subject.name : 'Sin asunto'}</div>
                   </td>
-                  {showActions && (
-                    <td className={cn(incTableTd, actions, 'w-[120px]')}>
+                  <td className={cn(incTableTd, 'text-center text-[13px]')}>
+                    {item.article ? `Art. ${item.article}` : <span className="text-muted">—</span>}
+                  </td>
+                  <td className={cn(incTableTd, 'max-w-[360px]')}>
+                    {item.content ? (
+                      <div className="line-clamp-2 text-[13px]" title={item.content}>
+                        {item.content}
+                      </div>
+                    ) : (
+                      <span className="text-[13px] text-muted">Sin contenido</span>
+                    )}
+                  </td>
+                  <td className={incTableTd}>
+                    {isEnabled ? (
+                      <Badge tone="success">Habilitado</Badge>
+                    ) : (
+                      <span title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}>
+                        <Badge tone="danger">Deshabilitado</Badge>
+                      </span>
+                    )}
+                  </td>
+                  <td className={cn(incTableTd, actions)}>
                       {canEdit && (
-                        <button title="Editar" onClick={() => onEdit(item)} className={actionBtn}>
-                          <FaEdit />
+                        <button type="button" title="Editar" aria-label="Editar falta" onClick={() => onEdit(item)} className={actionBtn}>
+                          <FiEdit2 aria-hidden />
                         </button>
                       )}
-                      {canDelete && (
+                      {item.content && (
                         <button
-                          title={isEnabled ? "Deshabilitar" : "Habilitar"}
-                          onClick={() => onToggleStatus(item)}
+                          type="button"
+                          title="Ver contenido completo"
+                          aria-label="Ver contenido completo"
+                          onClick={() => setViewingContent(item)}
                           className={actionBtn}
                         >
-                          {isEnabled ? <FaBan /> : <FaCheckCircle />}
+                          <FiEye aria-hidden />
                         </button>
                       )}
-                      {!canEdit && !canDelete && (
-                        <span className="text-muted text-[0.85rem] italic">
-                          Solo lectura
-                        </span>
-                      )}
+                      {canDelete &&
+                        (isEnabled ? (
+                          <button
+                            type="button"
+                            title="Deshabilitar"
+                            aria-label="Deshabilitar falta"
+                            onClick={() => onToggleStatus(item)}
+                            className={actionBtnDanger}
+                          >
+                            <FiSlash aria-hidden />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            title="Habilitar"
+                            aria-label="Habilitar falta"
+                            onClick={() => onToggleStatus(item)}
+                            className={actionBtn}
+                          >
+                            <FiCheckCircle aria-hidden />
+                          </button>
+                        ))}
+                      {!canEdit && !canDelete && !item.content && <span className="text-[13px] text-muted">Solo lectura</span>}
                     </td>
-                  )}
-                  <td className={cn(incTableTd, 'font-semibold text-content! w-[280px] min-w-[280px] max-w-[280px] pr-5! align-top')}>
-                    <div
-                      title={item.name}
-                      className="line-clamp-3 text-ellipsis leading-[1.4] [word-break:break-word] max-w-[260px] cursor-help"
-                    >
-                      {item.name}
-                    </div>
-                  </td>
-                  <td className={cn(incTableTd, 'w-[280px] min-w-[280px] max-w-[280px] px-5! align-top')}>
-                    {item.subject ? (
-                      <div className="line-clamp-3 text-ellipsis leading-[1.4] [word-break:break-word] max-w-[240px]">
-                        <span
-                          className="inline-flex max-w-full items-center gap-[5px] rounded-[12px] bg-[rgba(59,130,246,0.1)] px-3 py-1 text-[0.85rem] font-medium text-secondary"
-                          title={item.subject.name}
-                        >
-                          <FaFolder className="shrink-0 text-[0.7rem]" />
-                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-                            {item.subject.name}
-                          </span>
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted text-[0.85rem] italic">
-                        Sin asunto
-                      </span>
-                    )}
-                  </td>
-                  <td className={cn(incTableTd, 'w-[100px] min-w-[90px] pt-3! text-center align-top')}>
-                    {item.article ? (
-                      <span className="rounded-lg border border-[rgba(234,179,8,0.2)] bg-[rgba(234,179,8,0.1)] px-2.5 py-[3px] text-[0.8rem] font-semibold text-[#eab308]">
-                        Art. {item.article}
-                      </span>
-                    ) : (
-                      <span className="text-muted text-[0.8rem] italic">
-                        -
-                      </span>
-                    )}
-                  </td>
-                  <td className={cn(incTableTd, 'w-[200px] min-w-[180px] max-w-[200px] pr-[15px]! text-[0.85rem] align-top')}>
-                    {item.description ? (
-                      <div className="line-clamp-2 text-ellipsis leading-[1.4]">
-                        {item.description}
-                      </div>
-                    ) : (
-                      <span className="text-muted italic">
-                        Sin descripción
-                      </span>
-                    )}
-                  </td>
-                  <td className={cn(incTableTd, 'w-[320px] min-w-[300px] max-w-[320px] text-[0.85rem] align-top')}>
-                    {item.content ? (
-                      <div className="flex items-center gap-2.5">
-                        <div className="line-clamp-3 text-ellipsis leading-[1.4] flex-1">
-                          <FaFileAlt className="mr-[5px] text-[0.7rem] text-primary" />
-                          {item.content}
-                        </div>
-                        <button
-                          onClick={() => setViewingContent(item)}
-                          title="Ver contenido completo"
-                          className="flex cursor-pointer items-center gap-[5px] whitespace-nowrap rounded-md border border-primary bg-[rgba(59,130,246,0.1)] px-3 py-1.5 text-[0.8rem] font-medium text-primary transition-all duration-200 ease-[ease]"
-                          onMouseOver={(e: React.MouseEvent<HTMLButtonElement>) => {
-                            e.currentTarget.style.background = 'var(--primary)'
-                            e.currentTarget.style.color = 'white'
-                          }}
-                          onMouseOut={(e: React.MouseEvent<HTMLButtonElement>) => {
-                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'
-                            e.currentTarget.style.color = 'var(--primary)'
-                          }}
-                        >
-                          <FaEye />
-                          Ver
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-muted italic">
-                        Sin contenido
-                      </span>
-                    )}
-                  </td>
-                  <td className={cn(incTableTd, 'w-[150px] min-w-[150px]')}>
-                    {isEnabled ? (
-                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#22c55e]">
-                        <FaCheckCircle /> Habilitado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-[5px] font-semibold text-[#ef4444]">
-                        <FaBan /> Deshabilitado
-                        <span
-                          title={`Deshabilitado el: ${formatDate(item.deleted_at)}`}
-                          className="cursor-help text-muted text-[14px] ml-[3px]"
-                        >
-                          <FaInfoCircle />
-                        </span>
-                      </span>
-                    )}
-                  </td>
                 </tr>
               )
             })}
@@ -198,7 +122,7 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
         </table>
       </div>
 
-      {/* Modal de vista de contenido */}
+      {/* Modal de vista de contenido (componente aparte, pendiente de estilo) */}
       {viewingContent && (
         <ModalViewContent
           content={viewingContent.content}
@@ -206,6 +130,6 @@ export default function LackTable({ data = [], onToggleStatus, onEdit, startInde
           onClose={() => setViewingContent(null)}
         />
       )}
-    </div>
+    </>
   )
 }

@@ -47,9 +47,8 @@ const icon = L.icon({
   shadowSize: [41, 41]
 })
 
-/** Caja de coordenadas, direccion y jurisdiccion bajo el mapa (los colores de fondo/borde se añaden por elemento) */
-const mapCoords =
-  "mt-2 rounded-lg border border-line px-3 py-2.5 text-[13px] font-medium text-left [font-family:'Courier_New',monospace] [backdrop-filter:blur(5px)]"
+/** Caja de la leyenda bajo el mapa (coordenadas, dirección, jurisdicción) */
+const mapCoords = 'rounded-lg border border-line bg-subtle px-3 py-2 text-[13px] text-content-2'
 
 // Función helper para formatear direccion
 const getFormattedAddress = (addr: NominatimAddress): string | null => {
@@ -176,7 +175,7 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
 
   return (
     <div className="mt-2">
-      <div className="h-[250px] w-full rounded-[6px] overflow-hidden border border-[#21343d]">
+      <div className="h-[220px] w-full overflow-hidden rounded-lg border border-line">
         <MapContainer
           center={[-11.9833, -77.0075]}
           zoom={13}
@@ -188,7 +187,6 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
 
-          /* Renderisar Jurisdicciones*/
           {jurisdicciones && jurisdicciones.map(jurisdiccion => {
             if (!jurisdiccion.geometry || !jurisdiccion.geometry.coordinates) return null;
 
@@ -226,35 +224,23 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
           {position && <Marker position={position} icon={icon} />}
         </MapContainer>
       </div>
-      <div className="mt-2 text-center text-[12px] italic text-muted">Haz clic en el mapa para seleccionar ubicación</div>
+      <div className="mt-2 text-xs text-muted">Haz clic en el mapa para seleccionar ubicación</div>
       {position && (
-        <div className="mt-2.5">
-          <div className={cn(mapCoords, 'mb-2 text-content bg-[rgba(30,58,138,0.08)] dark:bg-[rgba(59,130,246,0.15)]')}>
-            📍 Coordenadas: Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
+        <div className="mt-2 flex flex-col gap-2">
+          <div className={cn(mapCoords, 'font-mono')}>
+            Coordenadas: Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
           </div>
-          <div className={cn(
-            mapCoords,
-            'mb-2 text-content',
-            address === 'Cargando dirección...'
-              ? 'bg-[rgba(245,158,11,0.1)] italic'
-              : 'bg-[rgba(74,155,142,0.1)] not-italic'
-          )}>
-            🏠 {address || 'Sin dirección'}
+          <div className={cn(mapCoords, 'text-content', address === 'Cargando dirección...' && 'italic')}>
+            Dirección: {address || 'Sin dirección'}
           </div>
           {jurisdiccionDetectada && (
-            <div className={cn(
-              mapCoords,
-              'bg-[rgba(59,130,246,0.1)] border-[rgba(59,130,246,0.3)] text-[#3b82f6]'
-            )}>
-              🏛️ Jurisdicción: {jurisdiccionDetectada.name}
+            <div className={cn(mapCoords, 'text-content')}>
+              Jurisdicción: {jurisdiccionDetectada.name}
             </div>
           )}
           {!jurisdiccionDetectada && jurisdicciones.length > 0 && (
-            <div className={cn(
-              mapCoords,
-              'bg-[rgba(251,191,36,0.1)] border-[rgba(251,191,36,0.3)] text-[#f59e0b] italic'
-            )}>
-              ⚠️ No se detectó jurisdicción para esta ubicación
+            <div className={cn(mapCoords, 'text-warning')}>
+              No se detectó jurisdicción para esta ubicación
             </div>
           )}
         </div>

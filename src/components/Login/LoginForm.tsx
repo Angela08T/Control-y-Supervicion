@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
-import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import type { AppRole } from '@/types'
 import useLogin from '../../hooks/Login/useLogin'
 import logoSJL from '../../assets/logo-sjl.png'
 import muniBackground from '../../assets/muni-background.png'
-import { formGroup, formLabel } from '../../utils/classes'
-
-const loginInput =
-  'w-full rounded-[10px] border-2 border-line [background:var(--bg)] px-4 py-3 text-[14px] text-content! outline-none transition-all duration-300 ease-[ease] placeholder:text-muted focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] disabled:cursor-not-allowed disabled:opacity-60 disabled:[background:rgba(100,116,139,0.1)] dark:text-[#f8fafc]!'
+import Button from '@/components/UI/Button'
+import { Field, Input } from '@/components/UI/Field'
 
 export default function LoginForm() {
   const navigate = useNavigate()
@@ -44,66 +42,47 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <img
-          src={muniBackground}
-          alt="Municipalidad de San Juan de Lurigancho - CECOM"
-          className="size-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(30,58,138,0.85)_0%,rgba(15,23,42,0.90)_100%)] [backdrop-filter:blur(3px)]"></div>
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#1e3a8a] p-4">
+      {/* Marca de agua de fondo, con baja opacidad */}
+      <img
+        src={muniBackground}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 size-full object-cover object-center opacity-[0.12]"
+      />
 
-      <div className="relative z-10 w-[420px] max-w-[95%] rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-surface p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)] [backdrop-filter:blur(20px)] animate-[modalSlideIn_0.6s_cubic-bezier(0.68,-0.55,0.265,1.55)] max-[600px]:px-5 max-[600px]:py-[30px]">
-        {/* Logo Municipal */}
-        <div className="mb-[30px] text-center">
+      <div className="relative z-10 w-full max-w-[400px] rounded-xl bg-surface p-8 shadow-[0_1px_2px_var(--shadow)] max-[600px]:p-6">
+        {/* Identidad */}
+        <div className="mb-7 flex flex-col items-center text-center">
           <img
             src={logoSJL}
             alt="Logo Municipalidad San Juan de Lurigancho"
-            className="mx-auto mt-0 mb-5 block h-20 w-[200px] object-fill [filter:drop-shadow(0_4px_15px_rgba(30,58,138,0.4))] animate-[fadeIn_0.8s_ease-out]"
+            className="mb-5 block h-20 w-[200px] object-contain"
           />
-          <div>
-            <h1 className="m-0 mb-2 text-[24px] font-extrabold tracking-[2px] text-primary! [text-shadow:0_2px_10px_rgba(30,58,138,0.3)] dark:text-[#60a5fa]! max-[600px]:text-[20px]">SISTEMA CENTINELA</h1>
-            <p className="m-0 text-[13px] font-medium text-content-2 max-[600px]:text-[12px]">Control y Supervisión - CECOM SJL</p>
-          </div>
+          <h1 className="m-0 text-[22px] font-semibold text-primary">Sistema Centinela</h1>
+          <p className="m-0 mt-1 text-[13px] text-muted">Control y supervisión · CECOM SJL</p>
         </div>
 
-        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          {/* Mensajes de error */}
-          {loginError && (
-            <div className="mb-[15px] rounded-[10px] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.1)] px-4 py-3 text-[13px] font-medium text-danger">
-              {loginError}
-            </div>
-          )}
-
-          {/* Usuario */}
-          <div className={formGroup}>
-            <label className={formLabel}>
-              <FaUser className="text-[14px] text-primary" />
-              Usuario
-            </label>
-            <input
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <Field label="Usuario">
+            <Input
               type="text"
               placeholder="Ingrese su usuario"
-              className={loginInput}
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={loading}
               required
             />
-          </div>
+          </Field>
 
-          {/* Contraseña */}
-          <div className={formGroup}>
-            <label className={formLabel}>
-              <FaLock className="text-[14px] text-primary" />
-              Contraseña
-            </label>
+          <Field label="Contraseña">
             <div className="relative flex items-center">
-              <input
-                type={showPassword ? "text" : "password"}
+              <Input
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Ingrese su contraseña"
-                className={`${loginInput} pr-[45px]`}
+                autoComplete="current-password"
+                className="pr-10"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
@@ -111,20 +90,28 @@ export default function LoginForm() {
               />
               <button
                 type="button"
-                className="absolute right-3 flex cursor-pointer items-center justify-center rounded-[6px] border-none bg-transparent p-2 text-[16px] text-muted transition-all duration-300 ease-[ease] hover:bg-[rgba(30,58,138,0.1)] hover:text-primary"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                className="absolute right-2 flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted transition-colors duration-150 hover:bg-subtle hover:text-content disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loading}
               >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
+                {showPassword ? <FiEyeOff aria-hidden /> : <FiEye aria-hidden />}
               </button>
             </div>
-          </div>
+          </Field>
 
-          {/* Botón de Ingreso */}
-          <button type="submit" className="cursor-pointer rounded-[10px] border-none bg-[linear-gradient(135deg,var(--primary)_0%,var(--secondary)_100%)] px-6 py-3.5 text-[14px] font-bold uppercase tracking-[1px] text-white! shadow-[0_4px_15px_rgba(30,58,138,0.3)] transition-all duration-300 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] hover:-translate-y-[3px] hover:shadow-[0_8px_25px_rgba(30,58,138,0.5)] active:-translate-y-px disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-none disabled:hover:shadow-[0_4px_15px_rgba(30,58,138,0.3)]" disabled={loading}>
-            {loading ? 'INGRESANDO...' : 'INGRESAR AL SISTEMA'}
-          </button>
+          {/* Mensaje de error bajo los campos */}
+          {loginError && (
+            <p role="alert" className="m-0 flex items-start gap-2 text-sm text-danger">
+              <FiAlertCircle className="mt-0.5 shrink-0" aria-hidden />
+              <span>{loginError}</span>
+            </p>
+          )}
 
+          <Button type="submit" className="mt-1 h-10 w-full" loading={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar'}
+          </Button>
         </form>
       </div>
     </div>

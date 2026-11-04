@@ -4,9 +4,15 @@ import LeadTable from '../../components/LeadTable'
 import ModalLead from '../../components/ModalLead'
 import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
 import { getModulePermissions } from '../../utils/permissions'
-import { FaPlus, FaSearch } from 'react-icons/fa'
+import { FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
-import { btnPrimary, cn, controlsBar, controlsInput, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
+import { cardClass } from '../../utils/classes'
+import PageHeader from '@/components/UI/PageHeader'
+import SearchInput from '@/components/UI/SearchInput'
+import Pagination from '@/components/UI/Pagination'
+import Button from '@/components/UI/Button'
+import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
+import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 import type { CreateLeadDto, Lead, Paginated, TablePagination } from '@/types'
 
 /** Listado de personal: `data` paginado (o array plano) y `pagination` opcional. */
@@ -39,31 +45,6 @@ const messageOf = (value: unknown): string | undefined => {
   return (value as { message?: string }).message
 }
 
-// Clases propias de esta vista (buscador, mensajes, paginación)
-const headerLeft = 'flex flex-1 items-center gap-5'
-const searchIcon = 'absolute top-1/2 left-3 -translate-y-1/2'
-const searchSpinner = 'absolute top-1/2 right-3 -translate-y-1/2 text-primary'
-const searchInput = 'pl-[35px]! max-[900px]:flex-[1_1_100%] min-[601px]:max-[900px]:min-w-0'
-const tableContainer = cn(tableWrapper, '[&::-webkit-scrollbar-thumb]:[border:2px_solid_var(--bg)]')
-const loadingText = 'p-10 text-center text-[1.1rem] text-muted'
-const emptyBanner = 'mb-5 rounded-lg border-2 border-dashed border-line bg-card p-[30px] text-center'
-const emptyTitle = 'm-0 text-[1.1rem] text-content-2'
-const emptyHint = 'mt-2 text-[0.9rem] text-muted'
-const foundBanner = 'mb-[15px] rounded-lg border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.1)] p-3 text-center'
-const foundText = 'm-0 text-[0.95rem] font-medium text-success'
-const paginationBar = 'mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-lg border border-line bg-transparent p-5'
-const paginationLeft = 'flex flex-wrap items-center gap-5'
-const rowCount = 'text-[0.95rem] font-medium'
-const perPageWrap = 'flex items-center gap-2'
-const perPageLabel = 'text-[0.9rem] text-muted'
-const perPageSelect = 'cursor-pointer rounded-[4px] border border-line [background:var(--bg)] px-3 py-1.5 text-[0.9rem] [color:inherit]'
-const pagesRight = 'flex items-center gap-2.5'
-const navButton = 'flex items-center gap-[5px] rounded-[10px] border-2 border-[#6b7280] bg-[#f3f4f6] px-4 py-2 text-[14px] font-semibold text-[#374151] [transition:all_0.3s_ease] hover:-translate-y-[2px] hover:border-[#1e3a8a] hover:bg-[#e5e7eb] hover:text-[#1e3a8a]'
-const pageNumber = 'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2'
-const pageNumberActive = 'border-primary bg-primary font-bold text-white'
-const pageNumberIdle = 'border-line bg-transparent font-normal [color:inherit]'
-const onlyPage = 'min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white'
-
 export default function LeadsPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'personal')
@@ -75,11 +56,11 @@ export default function LeadsPage() {
     search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -88,6 +69,8 @@ export default function LeadsPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [searchResult, setSearchResult] = useState<Lead[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
+  // Paginación en el navegador para los resultados de búsqueda (lista completa en memoria)
+  const searchPaged = usePagedList(searchResult ?? [], filters.search)
 
   // Cargar personal desde la API con paginación
   useEffect(() => {
@@ -100,8 +83,20 @@ export default function LeadsPage() {
         setLeads(leadsData)
 
         // Manejar paginación si existe, sino usar valores por defecto
+        const meta = Array.isArray(result.data) ? undefined : result.data
         if (result.pagination) {
           setPagination(result.pagination)
+        } else if (meta?.totalPages) {
+          // El backend devuelve el total dentro de `data` (totalCount, totalPages, currentPage)
+          const totalCount = meta.totalCount ?? leadsData.length
+          setPagination({
+            currentPage: meta.currentPage || currentPage,
+            totalPages: meta.totalPages || 1,
+            perPage: itemsPerPage,
+            total: totalCount,
+            from: leadsData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
+            to: Math.min(currentPage * itemsPerPage, totalCount)
+          })
         } else {
           // Si no hay paginación, calcular valores básicos
           setPagination({
@@ -285,171 +280,70 @@ export default function LeadsPage() {
     }
   }
 
-  function handlePreviousPage() {
-    handlePageChange(currentPage - 1)
-  }
-
-  function handleNextPage() {
-    handlePageChange(currentPage + 1)
-  }
-
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
-  }
-
-  // Filtros - cuando hay searchResult lo mostramos directamente
-  const filteredData = searchResult !== null ? searchResult : leads
+  // Búsqueda: se muestra la página actual de searchResult; si no, la página del servidor
+  const filteredData = searchResult !== null ? searchPaged.pageItems : leads
 
   return (
-    <div className={incidenciasPage}>
-      <header className={pageHeaderIncidencias}>
-        <div className={headerLeft}>
-          <h2 className={pageTitle}>GESTIÓN DE PERSONAL</h2>
-          <div className={controlsBar}>
-            <div className="relative">
-              <FaSearch className={searchIcon} />
-              <input
-                placeholder="Buscar por nombre o ID"
-                value={filters.search}
-                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                className={cn(controlsInput, searchInput, isSearching ? 'pr-[35px]!' : 'pr-3!')}
-              />
-              {isSearching && (
-                <div className={searchSpinner}>
-                  ⏳
-                </div>
-              )}
-            </div>
+    <div className="flex w-full flex-col">
+      <PageHeader
+        title="Personal"
+        description="Personas registradas y el cargo que ocupan."
+        actions={
+          <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
+            Agregar personal
+          </Button>
+        }
+      >
+        <SearchInput
+          value={filters.search}
+          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+          placeholder="Buscar por nombre o ID"
+          loading={isSearching}
+        />
+      </PageHeader>
 
-            <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
-              <FaPlus className="mr-2" />
-              Agregar Personal
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {loading ? (
-        <div className={loadingText}>
-          Cargando personal...
-        </div>
-      ) : (
-        <div className={tableContainer}>
-          {/* Mensaje cuando se busca pero no se encuentra */}
-          {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div className={emptyBanner}>
-              <p className={emptyTitle}>
-                🔍 No se encontró ningún personal con: <strong>{filters.search}</strong>
-              </p>
-              <p className={emptyHint}>
-                Verifica que el nombre o ID sea correcto.
-              </p>
-            </div>
-          )}
-
-          {/* Mensaje cuando se encuentra personal */}
-          {searchResult !== null && searchResult.length > 0 && (
-            <div className={foundBanner}>
-              <p className={foundText}>
-                ✅ {searchResult.length} persona(s) encontrada(s)
-              </p>
-            </div>
-          )}
-
+      <div className={cardClass}>
+        {loading ? (
+          <LoadingState label="Cargando personal…" />
+        ) : filteredData.length === 0 ? (
+          searchResult !== null ? (
+            <EmptyState title="Sin resultados" description={`No hay personal que coincidan con “${filters.search}”.`} />
+          ) : (
+            <EmptyState title="Aún no hay personal" description="Agrega el primero con el botón “Agregar personal”." />
+          )
+        ) : (
           <LeadTable
             data={filteredData}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEdit}
-            startIndex={searchResult !== null ? 0 : pagination.from - 1}
+            startIndex={searchResult !== null ? searchPaged.from - 1 : pagination.from - 1}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
+        )}
 
-          {/* Controles de paginación (ocultar cuando se busca) */}
-          {searchResult === null && (
-            <div className={paginationBar}>
-              {/* Lado izquierdo: Contador y selector */}
-              <div className={paginationLeft}>
-                <div className={rowCount}>
-                  {pagination.from}-{pagination.to} de {pagination.total}
-                </div>
-
-                {/* Selector de items por página */}
-                <div className={perPageWrap}>
-                  <label className={perPageLabel}>
-                    Mostrar:
-                  </label>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                    className={perPageSelect}
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Lado derecho: Botones de navegación */}
-              <div className={pagesRight}>
-                <button
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                  className={cn(navButton, currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
-                >
-                  ← Anterior
-                </button>
-
-                {/* Números de página */}
-                {pagination.totalPages > 1 && (
-                  <div className="flex items-center gap-[5px]">
-                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum: number;
-                      if (pagination.totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= pagination.totalPages - 2) {
-                        pageNum = pagination.totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={cn(pageNumber, currentPage === pageNum ? pageNumberActive : pageNumberIdle)}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Indicador de página actual si solo hay 1 página */}
-                {pagination.totalPages === 1 && (
-                  <div className={onlyPage}>
-                    1
-                  </div>
-                )}
-
-                <button
-                  onClick={handleNextPage}
-                  disabled={currentPage === pagination.totalPages}
-                  className={cn(navButton, currentPage === pagination.totalPages ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}
-                >
-                  Siguiente →
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        {!loading && (searchResult !== null ? (
+          searchPaged.total > 0 && (
+            <Pagination
+              page={searchPaged.page}
+              totalPages={searchPaged.totalPages}
+              total={searchPaged.total}
+              from={searchPaged.from}
+              to={searchPaged.to}
+              onPageChange={searchPaged.setPage}
+            />
+          )
+        ) : (
+          <Pagination
+            page={currentPage}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            from={pagination.from}
+            to={pagination.to}
+            onPageChange={handlePageChange}
+          />
+        ))}
+      </div>
 
       {showModal && (
         <ModalLead

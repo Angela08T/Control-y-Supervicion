@@ -1,20 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import type { Offender } from '@/types'
-import {
-  btnPrimary,
-  btnSecondary,
-  cn,
-  formGroup,
-  formLabel,
-  modalActions,
-  modalBackdrop,
-  modalBody,
-  modalCard,
-  modalClose,
-  modalHeader,
-  modalInput,
-  modalTitle
-} from '@/utils/classes'
+import Modal from '@/components/UI/Modal'
+import Button from '@/components/UI/Button'
+import { Field, Input, Select } from '@/components/UI/Field'
 
 /** Datos del formulario de infractor que se envían al guardar */
 export interface OffenderFormData {
@@ -29,9 +17,6 @@ export interface OffenderFormData {
 
 /** Errores por campo del formulario (null = sin error) */
 type OffenderFormErrors = Partial<Record<keyof OffenderFormData, string | null>>
-
-/** Etiqueta de campo: formLabel + margen superior del label dentro del modal */
-const labelClass = cn(formLabel, 'mt-1.5')
 
 export interface ModalOffenderProps {
   initial?: Partial<Offender> | null
@@ -117,119 +102,103 @@ export default function ModalOffender({ initial, onClose, onSave }: ModalOffende
   }
 
   return (
-    <div className={modalBackdrop}>
-      <div className={cn(modalCard, 'max-[900px]:mx-auto max-[900px]:my-2.5 max-[900px]:max-h-[90vh] max-[900px]:w-[95%] max-[900px]:overflow-y-auto')}>
-        <div className={modalHeader}>
-          <h3 className={modalTitle}>{initial ? 'Editar Infractor' : 'Agregar Infractor'}</h3>
-          <button className={modalClose} onClick={onClose}>×</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className={cn(modalBody, 'max-[900px]:max-h-[calc(90vh-120px)] max-[900px]:overflow-y-auto')}>
-          <div className="grid grid-cols-[1fr_1fr] gap-4">
-            {/* Nombre */}
-            <div className={formGroup}>
-              <label className={labelClass}>Nombre <span className="text-danger">*</span></label>
-              <input
+    <Modal
+      title={initial ? 'Editar infractor' : 'Agregar infractor'}
+      description="Los campos marcados con * son obligatorios."
+      onClose={onClose}
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="form-offender">
+            {initial ? 'Guardar cambios' : 'Guardar infractor'}
+          </Button>
+        </>
+      }
+    >
+      <form id="form-offender" onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <section className="flex flex-col gap-4">
+          <h4 className="m-0 text-[13px] font-semibold text-content">Datos personales</h4>
+          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+            <Field label="Nombre" required error={errors.name ?? undefined}>
+              <Input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Ingrese el nombre"
-                className={cn(modalInput, errors.name && 'input-error')}
+                invalid={!!errors.name}
               />
-              {errors.name && <span className="error-message">{errors.name}</span>}
-            </div>
+            </Field>
 
-            {/* Apellido */}
-            <div className={formGroup}>
-              <label className={labelClass}>Apellido <span className="text-danger">*</span></label>
-              <input
+            <Field label="Apellido" required error={errors.lastname ?? undefined}>
+              <Input
                 type="text"
                 value={formData.lastname}
                 onChange={(e) => handleChange('lastname', e.target.value)}
                 placeholder="Ingrese el apellido"
-                className={cn(modalInput, errors.lastname && 'input-error')}
+                invalid={!!errors.lastname}
               />
-              {errors.lastname && <span className="error-message">{errors.lastname}</span>}
-            </div>
+            </Field>
 
-            {/* DNI */}
-            <div className={formGroup}>
-              <label className={labelClass}>DNI <span className="text-danger">*</span></label>
-              <input
+            <Field label="DNI" required error={errors.dni ?? undefined} hint={errors.dni ? undefined : '8 dígitos'}>
+              <Input
                 type="text"
+                inputMode="numeric"
                 value={formData.dni}
                 onChange={(e) => handleChange('dni', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="8 dígitos"
+                placeholder="Ej: 43044869"
                 maxLength={8}
-                className={cn(modalInput, errors.dni && 'input-error')}
+                invalid={!!errors.dni}
               />
-              {errors.dni && <span className="error-message">{errors.dni}</span>}
-            </div>
+            </Field>
+          </div>
+        </section>
 
-            {/* Cargo */}
-            <div className={formGroup}>
-              <label className={labelClass}>Cargo <span className="text-danger">*</span></label>
-              <input
+        <section className="flex flex-col gap-4 border-t border-line pt-4">
+          <h4 className="m-0 text-[13px] font-semibold text-content">Datos laborales</h4>
+          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+            <Field label="Cargo" required error={errors.job ?? undefined}>
+              <Input
                 type="text"
                 value={formData.job}
                 onChange={(e) => handleChange('job', e.target.value)}
-                placeholder="Ej: Inspector Comercial"
-                className={cn(modalInput, errors.job && 'input-error')}
+                placeholder="Ej: Inspector comercial"
+                invalid={!!errors.job}
               />
-              {errors.job && <span className="error-message">{errors.job}</span>}
-            </div>
+            </Field>
 
-            {/* Régimen */}
-            <div className={formGroup}>
-              <label className={labelClass}>Régimen <span className="text-danger">*</span></label>
-              <input
+            <Field label="Régimen" required error={errors.regime ?? undefined}>
+              <Input
                 type="text"
                 value={formData.regime}
                 onChange={(e) => handleChange('regime', e.target.value)}
-                placeholder="Ej: Locador, Cas 1057, 728"
-                className={cn(modalInput, errors.regime && 'input-error')}
+                placeholder="Ej: Locador, CAS 1057, 728"
+                invalid={!!errors.regime}
               />
-              {errors.regime && <span className="error-message">{errors.regime}</span>}
-            </div>
+            </Field>
 
-            {/* Turno */}
-            <div className={formGroup}>
-              <label className={labelClass}>Turno <span className="text-danger">*</span></label>
-              <select
-                value={formData.shift}
-                onChange={(e) => handleChange('shift', e.target.value)}
-                className={modalInput}
-              >
+            <Field label="Turno" required>
+              <Select value={formData.shift} onChange={(e) => handleChange('shift', e.target.value)}>
                 <option value="Mañana">Mañana</option>
                 <option value="Tarde">Tarde</option>
                 <option value="Noche">Noche</option>
-              </select>
-            </div>
+              </Select>
+            </Field>
 
-            {/* Subgerencia - ocupa todo el ancho */}
-            <div className={cn(formGroup, 'col-span-full')}>
-              <label className={labelClass}>Subgerencia <span className="text-danger">*</span></label>
-              <input
+            <Field label="Subgerencia" required error={errors.subgerencia ?? undefined}>
+              <Input
                 type="text"
                 value={formData.subgerencia}
                 onChange={(e) => handleChange('subgerencia', e.target.value)}
-                placeholder="Ej: Fiscalización y Sanciones administrativas"
-                className={cn(modalInput, errors.subgerencia && 'input-error')}
+                placeholder="Ej: Fiscalización y sanciones administrativas"
+                invalid={!!errors.subgerencia}
               />
-              {errors.subgerencia && <span className="error-message">{errors.subgerencia}</span>}
-            </div>
+            </Field>
           </div>
-
-          <div className={modalActions}>
-            <button type="button" className={btnSecondary} onClick={onClose}>
-              CANCELAR
-            </button>
-            <button type="submit" className={btnPrimary}>
-              {initial ? 'ACTUALIZAR INFRACTOR' : 'GUARDAR INFRACTOR'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </section>
+      </form>
+    </Modal>
   )
 }

@@ -5,6 +5,14 @@ import ModalPDFInforme from '../../components/ModalPDFInforme'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import AlertModal, { type AlertModalType } from '../../components/AlertModal'
 import ConfirmModal, { type ConfirmModalType } from '../../components/ConfirmModal'
+import Button from '@/components/UI/Button'
+import PageHeader from '@/components/UI/PageHeader'
+import SearchInput from '@/components/UI/SearchInput'
+import Pagination from '@/components/UI/Pagination'
+import { PAGE_SIZE } from '@/hooks/usePagedList'
+import Badge from '@/components/UI/Badge'
+import { Select } from '@/components/UI/Field'
+import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport, exportReportsExcel } from '../../api/report'
 import { getSubgerencias } from '../../api/offender'
@@ -13,7 +21,7 @@ import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { useAppSelector } from '../../store/hooks'
-import { FaPlus, FaSearch, FaFileExcel } from 'react-icons/fa'
+import { FiDownload, FiFilter, FiPlus } from 'react-icons/fi'
 import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
 import type {
   ISODateString,
@@ -34,7 +42,7 @@ import type {
   StoredIncidencia,
   TablePagination,
 } from '@/types'
-import { btnPrimary, btnSecondary, cn, incidenciasPage, pageHeaderIncidencias, pageTitle, tableWrapper } from '../../utils/classes'
+import { cardClass, cn, incidenciasPage } from '../../utils/classes'
 
 /** Forma mínima de un error (axios / NestJS) que lee esta página. */
 interface ApiErrorLike {
@@ -112,6 +120,18 @@ interface SearchReportRecord extends Report {
   lack: NamedRef & { created_at?: ISODateString; updated_at?: ISODateString };
 }
 
+/** Opciones del control de estado (mismos valores que los antiguos <option> de filters.process) */
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Todos' },
+  { value: 'null', label: 'Borrador' },
+  { value: 'PENDING', label: 'Pendiente' },
+  { value: 'APPROVED', label: 'Aprobado' },
+  { value: 'REJECTED', label: 'Rechazado' },
+]
+
+/** Clase de los selects de filtros avanzados (`!w-auto` porque el kit Select fuerza w-full) */
+const advancedSelect = 'h-9 !w-auto max-w-[220px]'
+
 /** Convierte incidencias de la API al formato legado de localStorage (utils/storage.ts). */
 function toStoredList(list: Incidencia[]): StoredIncidencia[] {
   return list as unknown as StoredIncidencia[];
@@ -128,56 +148,12 @@ function errorMessageOf(error: unknown, fallback: string): string {
   return (err.response?.data?.message as string | undefined) || err.message || fallback;
 }
 
-/** Fila superior de la cabecera (antes .header-top); en tablet/movil apila y estira los botones */
-const headerTop =
-  'flex w-full items-center justify-between max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-[15px] max-[768px]:[&_button]:w-full max-[768px]:[&_button]:justify-center'
-
-/** Barra de filtros (antes .header-filters) */
-const headerFilters =
-  'flex w-full flex-wrap items-center gap-3 rounded-[12px] border border-line bg-[rgba(255,255,255,0.4)] p-4 [backdrop-filter:blur(5px)] shadow-[0_4px_15px_rgba(0,0,0,0.03)] dark:bg-[rgba(30,41,59,0.4)] max-[768px]:flex-col max-[768px]:items-stretch'
-
-/** Select de filtro de la cabecera (antes .filter-select). La flecha es un SVG embebido; las clases van completas porque Tailwind no detecta clases armadas por interpolacion */
-const filterSelect = cn(
-  'flex-[1_1_180px] min-w-[160px] appearance-none cursor-pointer rounded-[8px] border border-line bg-surface py-2.5 pl-3.5 pr-10 text-[0.9rem] text-content outline-none transition-all duration-200 ease-[ease]',
-  '[background-image:url(data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2024%2024%27%20fill=%27none%27%20stroke=%27currentColor%27%20stroke-width=%272%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27%3e%3cpolyline%20points=%276%209%2012%2015%2018%209%27%3e%3c/polyline%3e%3c/svg%3e)] bg-no-repeat [background-position:right_10px_center] [background-size:16px]',
-  'hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] focus:-translate-y-0.5 focus:border-primary focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]',
-  'dark:text-[#f8fafc] dark:[background-image:url(data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2024%2024%27%20fill=%27none%27%20stroke=%27%23f8fafc%27%20stroke-width=%272%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27%3e%3cpolyline%20points=%276%209%2012%2015%2018%209%27%3e%3c/polyline%3e%3c/svg%3e)]',
-  'max-[768px]:w-full max-[768px]:flex-none'
-)
-
-/** Contenedor del buscador (antes .search-container) */
-const searchContainer =
-  'relative flex-[2_1_300px] min-w-[250px] max-[768px]:order-[-1] max-[768px]:mb-2.5 max-[768px]:w-full max-[768px]:flex-none'
-
-/** Icono de lupa dentro del buscador (antes .search-icon) */
-const searchIcon = 'pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[1.1rem] text-muted'
-
-/** Input del buscador (antes .search-input) */
-const searchInput =
-  'w-full rounded-[8px] border border-line bg-surface py-3 pl-[45px] pr-3.5 text-[0.95rem] text-content outline-none transition-all duration-300 ease-[ease] focus:border-primary focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15)] dark:text-[#f8fafc]'
-
-/** Indicador de "buscando" dentro del buscador (antes .search-spinner; su animacion `spin` no existe, se omite) */
-const searchSpinner = 'absolute right-3.5 top-1/2 -translate-y-1/2 text-[1rem]'
-
-/** Botones anterior / siguiente: .btn-secondary con padding y flex en linea */
-const navButton = cn(btnSecondary, 'flex items-center gap-[5px] px-4! py-2! disabled:cursor-not-allowed disabled:opacity-50')
-
-/** Boton de pagina numerica (activo / inactivo) */
-const pageButton = (active: boolean) =>
-  cn(
-    'min-w-10 cursor-pointer rounded-[4px] border px-3 py-2',
-    active ? 'border-primary bg-primary font-bold text-white' : 'border-line bg-transparent font-normal [color:inherit]'
-  )
-
 export default function IncidenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'incidencias')
 
-  const [incidencias, setIncidencias] = useState<Incidencia[]>([])
-  const [showModal, setShowModal] = useState(false)
-  const [showPDFModal, setShowPDFModal] = useState(false)
-  const [editItem, setEditItem] = useState<Incidencia | null>(null)
-  const [filters, setFilters] = useState<IncidenciasFilters>({
+  /** Valores iniciales de los filtros; "Limpiar filtros" vuelve a ellos */
+  const defaultFilters: IncidenciasFilters = {
     turno: '', // Ahora usa letras: M=Mañana, T=Tarde, N=Noche, ''=Todos
     search: '',
     lackId: '', // Filtro por ID de falta
@@ -186,14 +162,21 @@ export default function IncidenciasPage() {
     subgerencia: '', // Filtro por subgerencia
     showDeleted: permissions.canDelete ? 'all' : 'active', // 'all' = todos, 'active' = solo activos, 'deleted' = solo eliminados
     process: '' // '' = todos, 'PENDING', 'APPROVED', 'REJECTED', null=draft
-  })
+  }
+
+  const [incidencias, setIncidencias] = useState<Incidencia[]>([])
+  const [showModal, setShowModal] = useState(false)
+  const [showPDFModal, setShowPDFModal] = useState(false)
+  const [editItem, setEditItem] = useState<Incidencia | null>(null)
+  const [filters, setFilters] = useState<IncidenciasFilters>(defaultFilters)
+  const [showAdvanced, setShowAdvanced] = useState(false) // Panel de filtros avanzados (asunto, falta, jurisdicción, subgerencia, turno)
   const [subgerencias, setSubgerencias] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10) // Nuevo estado para items por página
+  const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
     currentPage: 1,
     totalPages: 1,
-    perPage: 10,
+    perPage: PAGE_SIZE,
     total: 0,
     from: 0,
     to: 0
@@ -226,7 +209,7 @@ export default function IncidenciasPage() {
     }).catch(() => {})
   }, [])
 
-  // 🔹 Función para actualizar estado de un reporte específico
+  // Función para actualizar estado de un reporte específico
   const updateReportStatus = useCallback(async (reportId: ID, updates: Partial<Incidencia>, fullData: ReportSocketPayload | null = null): Promise<void> => {
     // Actualizar en la lista principal
     setIncidencias(prev => {
@@ -301,7 +284,7 @@ export default function IncidenciasPage() {
     })
   }, [])
 
-  // 🔹 WebSocket: Escuchar cambios de estado de reportes en tiempo real
+  // WebSocket: Escuchar cambios de estado de reportes en tiempo real
   useEffect(() => {
     // Inicializar conexión WebSocket
     initSocket()
@@ -356,7 +339,7 @@ export default function IncidenciasPage() {
     }
   }, [updateReportStatus])
 
-  // 🔹 NUEVO: cargar incidencias desde la API con paginación y filtros
+  // Cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
     async function fetchIncidencias() {
       setLoading(true)
@@ -392,7 +375,7 @@ export default function IncidenciasPage() {
     saveIncidencias(toStoredList(incidencias))
   }, [incidencias])
 
-  // 🔹 Crear o editar incidencia
+  // Crear o editar incidencia
   async function handleCreate(data: IncidenciaForm, allLeads: Lead[] = []): Promise<void> {
     if (editItem) {
       setIncidencias(prev =>
@@ -488,15 +471,15 @@ export default function IncidenciasPage() {
     if (status === 'approved') {
       setConfirmModal({
         isOpen: true,
-        title: '⚠️ ADVERTENCIA: Informe Aprobado',
-        message: 'Este informe está APROBADO y tiene un código oficial asignado.\n\nAl eliminarlo:\n• El código quedará "consumido" y no se reutilizará\n• El informe puede ser restaurado más tarde si es necesario\n• Se recomienda consultar con un supervisor antes de proceder\n\n¿Está completamente seguro de que desea deshabilitar este informe aprobado?',
+        title: 'Advertencia: informe aprobado',
+        message: 'Este informe está aprobado y tiene un código oficial asignado.\n\nAl eliminarlo:\n• El código quedará "consumido" y no se reutilizará\n• El informe puede ser restaurado más tarde si es necesario\n• Se recomienda consultar con un supervisor antes de proceder\n\n¿Está completamente seguro de que desea deshabilitar este informe aprobado?',
         type: 'danger',
         onConfirm: () => {
           setConfirmModal({ ...confirmModal, isOpen: false })
           // Segunda confirmación para informes aprobados
           setConfirmModal({
             isOpen: true,
-            title: '⚠️ CONFIRMACIÓN FINAL',
+            title: 'Confirmación final',
             message: 'Esta es su última oportunidad para cancelar.\n\n¿Realmente desea deshabilitar este informe aprobado?',
             type: 'danger',
             confirmText: 'Sí, deshabilitar',
@@ -622,7 +605,7 @@ export default function IncidenciasPage() {
     return incidencias.filter(inc => inc.dni === dni && inc.falta && inc.falta.startsWith('Inasistencia'))
   }
 
-  // 🔹 Funciones de paginación
+  // Funciones de paginación
   function handlePageChange(newPage: number) {
     // Usar searchPagination si está en modo búsqueda, sino usar pagination normal
     const paginationToUse = isSearchMode && searchPagination ? searchPagination : pagination
@@ -633,26 +616,13 @@ export default function IncidenciasPage() {
     }
   }
 
-  function handlePreviousPage() {
-    handlePageChange(currentPage - 1)
-  }
-
-  function handleNextPage() {
-    handlePageChange(currentPage + 1)
-  }
-
-  function handleItemsPerPageChange(newItemsPerPage: number) {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1) // Volver a la primera página al cambiar items por página
-  }
-
-  // 🔹 Verificar si el término de búsqueda es un UUID
+  // Verificar si el término de búsqueda es un UUID
   const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     return uuidRegex.test(str)
   }
 
-  // 🔹 Buscar incidencia por ID o por otros campos cuando el usuario escribe
+  // Buscar incidencia por ID o por otros campos cuando el usuario escribe
   useEffect(() => {
     const searchTerm = filters.search.trim()
 
@@ -711,30 +681,44 @@ export default function IncidenciasPage() {
 
           if (results.length > 0) {
             // Transformar los resultados al formato esperado
-            const transformed = results.map(r => ({
-              id: r.id,
-              dni: r.offender?.dni || '',
-              asunto: r.subject?.name || '',
-              falta: r.lack?.name || '',
-              tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-              medio: r.bodycam ? 'Bodycam' : 'Otro',
-              fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
-              horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
-              turno: r.offender?.shift || '',
-              cargo: r.offender?.job || '',
-              regLab: r.offender?.regime || '',
-              jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
-              bodycamNumber: r.bodycam?.name || '',
-              bodycamAsignadaA: r.bodycam_user || '',
-              encargadoBodycam: r.bodycam_supervisor || (r.user ? `${r.user.name} ${r.user.lastname}` : ''),
-              dirigidoA: r.header?.to?.job || '',
-              destinatario: r.header?.to?.name || '',
-              nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
-              status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
-              evidences: r.evidences || [],
-              createdAt: r.lack?.created_at || r.date,
-              updatedAt: r.lack?.updated_at || r.date
-            })) as Incidencia[]
+            const transformed = results.map(r => {
+              // Mismo criterio de inasistencias que el listado normal (api/report.ts)
+              const isAbsenceReport = r.absences && r.absences.length > 0
+              const absenceData = isAbsenceReport ? r.absences[0] : null
+
+              return {
+                id: r.id,
+                dni: r.offender?.dni || '',
+                asunto: r.subject?.name || '',
+                falta: r.lack?.name || '',
+                tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
+                medio: r.bodycam ? 'Bodycam' : 'Otro',
+                fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
+                horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+                turno: r.offender?.shift || '',
+                cargo: r.offender?.job || '',
+                regLab: r.offender?.regime || '',
+                subgerencia: r.offender?.subgerencia || '',
+                jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
+                bodycamNumber: r.bodycam?.name || '',
+                bodycamAsignadaA: r.bodycam_user || '',
+                encargadoBodycam: r.bodycam_supervisor || (r.user ? `${r.user.name} ${r.user.lastname}` : ''),
+                registradoPor: r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '',
+                dirigidoA: r.header?.to?.job || '',
+                destinatario: r.header?.to?.name || '',
+                nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
+                status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
+                evidences: r.evidences || [],
+                // Datos específicos de reportes de inasistencias
+                isAbsenceReport: isAbsenceReport,
+                absences: r.absences || [],
+                absenceStart: absenceData?.start || null,
+                absenceEnd: absenceData?.end || null,
+                absenceMode: absenceData?.mode || null, // JUSTIFIED o UNJUSTIFIED
+                createdAt: r.lack?.created_at || r.date,
+                updatedAt: r.lack?.updated_at || r.date
+              }
+            }) as Incidencia[]
 
             setSearchResult(transformed)
 
@@ -806,46 +790,105 @@ export default function IncidenciasPage() {
     ? applyFrontendFilters(searchResult) // Si hay resultado de búsqueda, aplicar filtros
     : applyFrontendFilters(incidencias) // Aplicar filtros a incidencias
 
+  // Filtros avanzados activos (para el contador de "Más filtros")
+  const advancedCount = [filters.subjectId, filters.lackId, filters.jurisdictionId, filters.subgerencia, filters.turno].filter(Boolean).length
+
+  // Hay algún filtro distinto de su valor inicial (búsqueda, estado o avanzados)
+  const hasActiveFilters = (Object.keys(defaultFilters) as (keyof IncidenciasFilters)[]).some(key => filters[key] !== defaultFilters[key])
+
+  // Paginación que se muestra: la de búsqueda si está en modo búsqueda, sino la normal
+  const paginationData = isSearchMode && searchPagination ? searchPagination : pagination
+
+  function handleClearFilters() {
+    setFilters(defaultFilters)
+    setCurrentPage(1)
+  }
+
   return (
     <div className={incidenciasPage}>
-      <header className={pageHeaderIncidencias}>
-        <div className={headerTop}>
-          <div className="flex items-center gap-[15px]">
-            <h2 className={pageTitle}>CONTROL Y SUPERVISIÓN</h2>
-            <div className="rounded-[12px] bg-primary px-2.5 py-0.5 text-[0.8rem] font-semibold text-white">
-              {pagination.total} Reg.
-            </div>
-          </div>
-
-          <div className="flex gap-2.5">
-            <button
-              className={btnSecondary}
+      <PageHeader
+        title="Incidencias"
+        description={`Registra, envía y valida los informes de incidencias del personal. · ${pagination.total} registros`}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              icon={<FiDownload />}
               onClick={handleExportExcel}
-              disabled={exporting}
+              loading={exporting}
               title="Exportar lista a Excel con los filtros actuales"
             >
-              <FaFileExcel className="mr-2" />
-              {exporting ? 'Exportando...' : 'Exportar Excel'}
-            </button>
+              Exportar a Excel
+            </Button>
 
             {permissions.canCreate && (
-              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus className="mr-2" />
-                Agregar Nueva Incidencia
-              </button>
+              <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
+                Nueva incidencia
+              </Button>
             )}
-          </div>
+          </>
+        }
+      >
+        <SearchInput
+          value={filters.search}
+          onChange={v => setFilters(f => ({ ...f, search: v }))}
+          placeholder="Buscar por DNI, nombre o código"
+          loading={isSearching}
+        />
+
+        {/* Estado del informe: mismos valores que el antiguo select de estado */}
+        <div role="tablist" aria-label="Filtrar por estado" className="inline-flex max-w-full items-center overflow-x-auto rounded-lg border border-line-strong bg-surface p-0.5">
+          {STATUS_OPTIONS.map(option => {
+            const active = filters.process === option.value
+            return (
+              <button
+                key={option.value || 'todos'}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setFilters(f => ({ ...f, process: option.value }))
+                  setCurrentPage(1)
+                }}
+                className={cn(
+                  'h-8 cursor-pointer rounded-md border-none px-3 text-[13px] font-medium transition-colors duration-150',
+                  active ? 'bg-primary text-btn' : 'bg-transparent text-content-2 hover:bg-subtle'
+                )}
+              >
+                {option.label}
+              </button>
+            )
+          })}
         </div>
 
-        <div className={headerFilters}>
+        <Button
+          variant="secondary"
+          icon={<FiFilter />}
+          onClick={() => setShowAdvanced(v => !v)}
+          aria-expanded={showAdvanced}
+          aria-controls={showAdvanced ? 'incidencias-filtros-avanzados' : undefined}
+        >
+          Más filtros
+          {advancedCount > 0 && <Badge tone="info" dot={false}>{advancedCount}</Badge>}
+        </Button>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" onClick={handleClearFilters}>
+            Limpiar filtros
+          </Button>
+        )}
+
+        {showAdvanced && (
+          <div id="incidencias-filtros-avanzados" className="flex w-full flex-wrap items-center gap-2">
             {/* Filtro por Asunto (Subject) - Usando datos de la API */}
             {subjectsLoading ? (
-              <select disabled className={filterSelect}>
+              <Select disabled aria-label="Asunto" className={advancedSelect}>
                 <option>Cargando asuntos...</option>
-              </select>
+              </Select>
             ) : (
-              <select
-                className={filterSelect}
+              <Select
+                aria-label="Asunto"
+                className={advancedSelect}
                 value={filters.subjectId}
                 onChange={e => {
                   const selectedSubjectId = e.target.value
@@ -857,7 +900,7 @@ export default function IncidenciasPage() {
                   setCurrentPage(1) // Resetear a página 1 al cambiar filtro
                 }}
               >
-                <option value="">Todos los Asuntos</option>
+                <option value="">Todos los asuntos</option>
                 {subjects && subjects
                   .filter(subject => !subject.deleted_at) // Solo mostrar asuntos activos
                   .map(subject => (
@@ -865,17 +908,18 @@ export default function IncidenciasPage() {
                       {subject.name}
                     </option>
                   ))}
-              </select>
+              </Select>
             )}
 
             {/* Filtro por Falta (Lack) - Usando lacks anidadas del subject seleccionado */}
             {subjectsLoading ? (
-              <select disabled className={filterSelect}>
+              <Select disabled aria-label="Falta" className={advancedSelect}>
                 <option>Cargando faltas...</option>
-              </select>
+              </Select>
             ) : (
-              <select
-                className={filterSelect}
+              <Select
+                aria-label="Falta"
+                className={advancedSelect}
                 value={filters.lackId || ''}
                 onChange={e => {
                   const selectedLackId = e.target.value
@@ -886,7 +930,7 @@ export default function IncidenciasPage() {
                   setCurrentPage(1) // Resetear a página 1 al cambiar filtro
                 }}
               >
-                <option value="">Todas las Faltas</option>
+                <option value="">Todas las faltas</option>
                 {(() => {
                   // Si hay un subject seleccionado, obtener sus lacks anidadas
                   if (filters.subjectId) {
@@ -910,24 +954,25 @@ export default function IncidenciasPage() {
                       </option>
                     ))
                 })()}
-              </select>
+              </Select>
             )}
 
             {/* Filtro por Jurisdicción - Envía ID al backend */}
             {jurisdictionsLoading ? (
-              <select disabled className={filterSelect}>
+              <Select disabled aria-label="Jurisdicción" className={advancedSelect}>
                 <option>Cargando jurisdicciones...</option>
-              </select>
+              </Select>
             ) : (
-              <select
-                className={filterSelect}
+              <Select
+                aria-label="Jurisdicción"
+                className={advancedSelect}
                 value={filters.jurisdictionId}
                 onChange={e => {
                   setFilters(f => ({ ...f, jurisdictionId: e.target.value }))
                   setCurrentPage(1) // Resetear a página 1 al cambiar filtro
                 }}
               >
-                <option value="">Todas las Jurisdicciones</option>
+                <option value="">Todas las jurisdicciones</option>
                 {jurisdictions
                   .filter(jurisdiction => !jurisdiction.deleted_at) // Solo mostrar jurisdicciones activas
                   .map(jurisdiction => (
@@ -935,205 +980,87 @@ export default function IncidenciasPage() {
                       {jurisdiction.name}
                     </option>
                   ))}
-              </select>
+              </Select>
             )}
 
             {/* Filtro por Subgerencia */}
-            <select
-              className={filterSelect}
+            <Select
+              aria-label="Subgerencia"
+              className={advancedSelect}
               value={filters.subgerencia}
               onChange={e => {
                 setFilters(f => ({ ...f, subgerencia: e.target.value }))
                 setCurrentPage(1)
               }}
             >
-              <option value="">Todas las Subgerencias</option>
+              <option value="">Todas las subgerencias</option>
               {subgerencias.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
-            </select>
+            </Select>
 
-            <select
-              className={filterSelect}
+            <Select
+              aria-label="Turno"
+              className={advancedSelect}
               value={filters.turno}
               onChange={e => setFilters(f => ({ ...f, turno: e.target.value }))}
             >
-              <option value="">Todos los Turnos</option>
+              <option value="">Todos los turnos</option>
               <option value="M">Mañana</option>
               <option value="T">Tarde</option>
               <option value="N">Noche</option>
-            </select>
+            </Select>
+          </div>
+        )}
+      </PageHeader>
 
-            {/* Filtro de estado de proceso */}
-            <select
-              className={filterSelect}
-              value={filters.process}
-              onChange={e => {
-                setFilters(f => ({ ...f, process: e.target.value }))
-                setCurrentPage(1)
-              }}
-            >
-              <option value="">Todos los Estados</option>
-              <option value="null">Borrador</option>
-              <option value="PENDING">Pendiente</option>
-              <option value="APPROVED">Aprobado</option>
-              <option value="REJECTED">Rechazado</option>
-            </select>
-
-            <div className={searchContainer}>
-              <FaSearch className={searchIcon} />
-              <input
-                className={searchInput}
-                placeholder="Buscar (DNI, Nombre, ID...)"
-                value={filters.search}
-                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-              />
-              {isSearching && (
-                <div className={searchSpinner}>
-                  ⏳
-                </div>
-              )}
-            </div>
-        </div>
-      </header>
-
-      {/* Mensaje informativo para CENTINELA */}
+      {/* Aviso para CENTINELA: solo puede crear */}
       {!permissions.canDelete && permissions.canCreate && (
-        <div className="m-5 rounded-[8px] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.1)] p-3 text-center">
-          <p className="m-0 text-[0.9rem] text-[#3b82f6]">
-            ℹ️ Solo puedes crear incidencias. No puedes eliminar incidencias existentes.
-          </p>
-        </div>
+        <p className="m-0 mb-3 rounded-lg border border-line bg-subtle px-4 py-2.5 text-[13px] text-content-2">
+          Solo puedes crear incidencias. No puedes eliminar incidencias existentes.
+        </p>
       )}
 
       {loading ? (
-        <div className="p-10 text-center text-[1.1rem] text-muted">
-          Cargando incidencias...
+        <div className={cardClass}>
+          <LoadingState label="Cargando incidencias..." />
+        </div>
+      ) : filteredData.length === 0 && hasActiveFilters ? (
+        <div className={cardClass}>
+          <EmptyState
+            title="Sin resultados"
+            description={filters.search.trim()
+              ? `No hay incidencias que coincidan con “${filters.search.trim()}”.`
+              : 'No hay incidencias que coincidan con los filtros seleccionados.'}
+            action={<Button variant="secondary" onClick={handleClearFilters}>Limpiar filtros</Button>}
+          />
         </div>
       ) : (
-        <div className={tableWrapper}>
-          {/* Mensaje cuando se busca pero no se encuentra */}
-          {searchResult !== null && searchResult.length === 0 && !isSearching && (
-            <div className="mb-5 rounded-[8px] border-2 border-dashed border-line bg-card p-[30px] text-center">
-              <p className="m-0 text-[1.1rem] text-content-2">
-                🔍 No se encontró ninguna incidencia con: <strong>{filters.search}</strong>
-              </p>
-              <p className="mt-2 text-[0.9rem] text-muted">
-                Verifica que el DNI, nombre o ID sea correcto.
-              </p>
-            </div>
-          )}
+        <IncidenciasTable
+          data={filteredData}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+          onSend={handleSendToValidator}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          startIndex={searchResult !== null ? ((isSearchMode && searchPagination) ? searchPagination.from - 1 : 0) : pagination.from - 1}
+          canDelete={permissions.canDelete}
+          canSend={permissions.canSend}
+          canValidate={permissions.canValidate}
+        />
+      )}
 
-          {/* Mensaje cuando se encuentra incidencia(s) */}
-          {searchResult !== null && searchResult.length > 0 && (
-            <div className="mb-[15px] rounded-[8px] border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.1)] p-3 text-center">
-              <p className="m-0 text-[0.95rem] font-medium text-success">
-                ✅ {searchResult.length} incidencia(s) encontrada(s)
-              </p>
-            </div>
-          )}
-
-          <IncidenciasTable
-            data={filteredData}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            onSend={handleSendToValidator}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            startIndex={searchResult !== null ? ((isSearchMode && searchPagination) ? searchPagination.from - 1 : 0) : pagination.from - 1}
-            canDelete={permissions.canDelete}
-            canSend={permissions.canSend}
-            canValidate={permissions.canValidate}
+      {/* Paginación (misma condición que antes: búsqueda con paginación o listado normal) */}
+      {!loading && (!isSearchMode || searchPagination) && (
+        <div className="mt-3 overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_var(--shadow)] [&>div]:border-t-0">
+          <Pagination
+            page={currentPage}
+            totalPages={paginationData.totalPages}
+            total={paginationData.total}
+            from={paginationData.from}
+            to={paginationData.to}
+            onPageChange={handlePageChange}
           />
-
-          {/* Controles de paginación (mostrar para búsqueda con paginación o listado normal) */}
-          {(!isSearchMode || (isSearchMode && searchPagination)) && (() => {
-            // Usar searchPagination si está en modo búsqueda, sino usar pagination normal
-            const paginationData = isSearchMode && searchPagination ? searchPagination : pagination
-
-            // Controles de paginacion: el contenedor usa flex-wrap en movil
-            return (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-[15px] rounded-[8px] border border-line p-5">
-                {/* Lado izquierdo: Contador y selector */}
-                <div className="flex flex-wrap items-center gap-5">
-                  <div className="text-[0.95rem] font-medium">
-                    {paginationData.from}-{paginationData.to} de {paginationData.total}
-                  </div>
-
-                  {/* Selector de items por página */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-[0.9rem] text-muted">
-                      Mostrar:
-                    </label>
-                    <select
-                      value={itemsPerPage}
-                      onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                      className="cursor-pointer rounded-[4px] border border-line px-3 py-1.5 text-[0.9rem] [background:var(--bg)] [color:inherit]"
-                    >
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Lado derecho: Botones de navegación */}
-                <div className="flex flex-wrap items-center justify-center gap-2.5">
-                  <button
-                    onClick={handlePreviousPage}
-                    disabled={currentPage === 1}
-                    className={navButton}
-                  >
-                    ← Anterior
-                  </button>
-
-                  {/* Números de página - solo si hay más de 1 página */}
-                  {paginationData.totalPages > 1 && (
-                    <div className="flex flex-wrap items-center justify-center gap-[5px]">
-                      {Array.from({ length: Math.min(5, paginationData.totalPages) }, (_, i) => {
-                        let pageNum: number;
-                        if (paginationData.totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= paginationData.totalPages - 2) {
-                          pageNum = paginationData.totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={pageButton(currentPage === pageNum)}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Indicador de página actual si solo hay 1 página */}
-                  {paginationData.totalPages === 1 && (
-                    <div className="min-w-10 rounded-[4px] border border-primary bg-primary px-3 py-2 text-center font-bold text-white">
-                      1
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleNextPage}
-                    disabled={currentPage === paginationData.totalPages}
-                    className={navButton}
-                  >
-                    Siguiente →
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       )}
 

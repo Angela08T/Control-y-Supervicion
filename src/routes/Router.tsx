@@ -5,11 +5,7 @@ import { clearToken, setSessionExpiredCallback } from "../api/config";
 import { useAppDispatch } from "@/store/hooks";
 
 // LAYOUTS
-import DashboardLayoutAdmin from "../layouts/DashboardLayoutAdmin";
-import DashboardLayoutSupervisor from "../layouts/DashboardLayoutSupervisor";
-import DashboardLayoutCentinela from "../layouts/DashboardLayoutCentinela";
-import DashboardLayoutValidator from "../layouts/DashboardLayoutValidator";
-import DashboardLayoutSubgerente from "../layouts/DashboardLayoutSubgerente";
+import DashboardLayout from "../layouts/DashboardLayout";
 
 // PAGES
 import LoginPage from "../pages/LoginPage";
@@ -67,7 +63,7 @@ export default function Router() {
           path="/dashboard/admin"
           element={
             <PrivateRoute requiredRole="admin">
-              <DashboardLayoutAdmin />
+              <DashboardLayout />
             </PrivateRoute>
           }
         >
@@ -96,7 +92,7 @@ export default function Router() {
           path="/dashboard/supervisor"
           element={
             <PrivateRoute requiredRole="supervisor">
-              <DashboardLayoutSupervisor />
+              <DashboardLayout />
             </PrivateRoute>
           }
         >
@@ -120,7 +116,7 @@ export default function Router() {
           path="/dashboard/centinela"
           element={
             <PrivateRoute requiredRole="centinela">
-              <DashboardLayoutCentinela />
+              <DashboardLayout />
             </PrivateRoute>
           }
         >
@@ -135,7 +131,7 @@ export default function Router() {
           path="/dashboard/validator"
           element={
             <PrivateRoute requiredRole="validator">
-              <DashboardLayoutValidator />
+              <DashboardLayout />
             </PrivateRoute>
           }
         >
@@ -149,7 +145,7 @@ export default function Router() {
           path="/dashboard/subgerente"
           element={
             <PrivateRoute requiredRole="subgerente">
-              <DashboardLayoutSubgerente />
+              <DashboardLayout />
             </PrivateRoute>
           }
         >

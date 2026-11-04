@@ -9,7 +9,10 @@ import { createAbsenceReport, getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
 import { toast } from '../utils/toast'
 import type { CreateAbsenceDto, ID, Mode } from '@/types'
-import { btnPrimary, btnSecondary, modalActions, modalBackdrop, modalClose, modalHeader } from '../utils/classes'
+import Modal from '@/components/UI/Modal'
+import Button from '@/components/UI/Button'
+import { Field, Input, Select } from '@/components/UI/Field'
+import { LoadingState } from '@/components/UI/EmptyState'
 
 /** Texto o relación `{ name }`: el backend a veces devuelve un objeto y a veces un string. */
 type TextOrNamed = string | { name?: string | null } | null
@@ -149,9 +152,6 @@ function formatearFecha(fecha: string | Date | null | undefined): string {
 
   return `${d.getDate()} de ${meses[d.getMonth()]} del ${d.getFullYear()}`
 }
-
-/** Etiqueta de cada campo del encabezado de configuración */
-const topbarLabel = 'block mb-1 text-[0.75rem] font-bold text-muted'
 
 /** Celdas de la tabla de datos del informe (CC, DE, ASUNTO) */
 const informeLabelCell = 'py-2 pr-2.5 pl-0 font-bold align-top border-b border-[#eee]'
@@ -566,61 +566,66 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
     ? (typeof selectedSubjectData.name === 'string' ? selectedSubjectData.name : (selectedSubjectData.description || ''))
     : ''
 
-  return (
-    <div className={modalBackdrop}>
-      <div className="w-[750px] max-w-[750px] max-h-[90vh] max-[900px]:w-[95%] flex flex-col rounded-[20px] border border-[#e2e8f0] bg-white! shadow-[0_20px_60px_rgba(0,0,0,0.1)] animate-[modalSlideIn_0.4s_cubic-bezier(0.68,-0.55,0.265,1.55)]">
-        <div className={modalHeader}>
-          <h3 className="m-[18px] text-[20px] font-bold text-primary! [text-shadow:none]!">Crear Reporte de Inasistencias</h3>
-          <button className={modalClose} onClick={onClose}>×</button>
-        </div>
+  const modalFooter = reportResult ? (
+    <Button onClick={onClose}>Cerrar</Button>
+  ) : (
+    <>
+      <Button variant="secondary" onClick={onClose} disabled={generating}>
+        Cancelar
+      </Button>
+      <Button
+        onClick={handleGeneratePDF}
+        loading={generating}
+        disabled={loadingData || !!loadError || !selectedTo || !selectedSubject || !selectedLack}
+      >
+        {generating ? 'Creando reporte…' : 'Crear reporte'}
+      </Button>
+    </>
+  )
 
-        <div className="flex-1 overflow-y-auto p-5 max-h-[75vh] bg-white! text-black!">
-          {loadingData ? (
-            <div className="text-center p-10 text-muted">
-              Cargando datos...
-            </div>
-          ) : loadError ? (
-            <div className="text-center p-10 text-[#dc2626]">
-              {loadError}
-            </div>
-          ) : (
-            <>
-              {/* Topbar de configuración */}
-              <div className="mb-5 grid grid-cols-[1fr_1fr] gap-2.5 rounded-lg bg-surface p-[15px]">
-                {/* Fila 1: Dirigido a y Con copia */}
-                <div>
-                  <label className={topbarLabel}>
-                    Dirigido a:
-                  </label>
-                  <select
-                    value={selectedTo}
-                    onChange={(e) => handleToChange(e.target.value)}
-                    className="w-full rounded py-1.5 px-2 border-none bg-transparent text-content text-[0.8rem]"
-                  >
-                    <option value="">Seleccione...</option>
+  return (
+    <Modal
+      title="Crear reporte de inasistencias"
+      description="Elige el destinatario, el tipo y el rango de fechas antes de crear el informe."
+      onClose={onClose}
+      size="lg"
+      footer={modalFooter}
+    >
+      <div className="flex flex-col gap-5">
+        {loadingData ? (
+          <LoadingState label="Cargando datos…" />
+        ) : loadError ? (
+          <p className="m-0 p-6 text-center text-sm text-danger">{loadError}</p>
+        ) : (
+          <>
+            {/* Configuración del informe (fuera de la hoja) */}
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Destinatarios</h4>
+              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+                <Field label="Dirigido a">
+                  <Select value={selectedTo} onChange={(e) => handleToChange(e.target.value)}>
+                    <option value="">Seleccione una persona</option>
                     {leads.map(lead => {
                       const leadName = `${lead.title || ''} ${lead.name || ''} ${lead.lastname || ''}`.trim()
                       return (
                         <option key={lead.id} value={lead.id}>{leadName}</option>
                       )
                     })}
-                  </select>
-                </div>
+                  </Select>
+                </Field>
 
-                <div>
-                  <label className={topbarLabel}>
-                    Con copia a:
-                  </label>
-                  <div className="max-h-[60px] overflow-y-auto rounded py-1 px-2 text-[0.75rem]">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium text-content-2">Con copia a</span>
+                  <div className="flex max-h-[120px] flex-col gap-2 overflow-y-auto rounded-lg border border-line-strong bg-surface p-3">
                     {leads.filter(l => l.id !== selectedTo).map(lead => {
                       const leadName = `${lead.title || ''} ${lead.name || ''} ${lead.lastname || ''}`.trim()
                       return (
-                        <label key={lead.id} className="flex items-center gap-1 cursor-pointer">
+                        <label key={lead.id} className="flex cursor-pointer items-center gap-2 text-[13px] text-content-2">
                           <input
                             type="checkbox"
                             checked={selectedCc.includes(lead.id)}
                             onChange={() => handleCcChange(lead.id)}
-                            className="size-3"
+                            className="size-4 accent-primary"
                           />
                           {leadName}
                         </label>
@@ -628,84 +633,73 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                     })}
                   </div>
                 </div>
+              </div>
+            </section>
 
-                {/* Fila 2: Asunto y Falta (valores fijos) */}
-                <div>
-                  <label className={topbarLabel}>
-                    Asunto:
-                  </label>
-                  <div className="w-full rounded py-1.5 px-2 text-content text-[0.75rem]">
-                    Conductas relacionadas con el cumplimiento del horario y asistencia
-                  </div>
-                </div>
+            <section className="flex flex-col gap-4 border-t border-line pt-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Datos del informe</h4>
+              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+                <Field label="Asunto" className="col-span-2 max-md:col-span-1">
+                  <Input readOnly value="Conductas relacionadas con el cumplimiento del horario y asistencia" />
+                </Field>
 
-                <div>
-                  <label className={topbarLabel}>
-                    Falta:
-                  </label>
-                  <div className="w-full rounded py-1.5 px-2 text-content text-[0.8rem]">
-                    Inasistencia
-                  </div>
-                </div>
+                <Field label="Falta">
+                  <Input readOnly value="Inasistencia" />
+                </Field>
 
-                {/* Fila 3: Tipo de inasistencia y Rango de fechas */}
-                <div>
-                  <label className={topbarLabel}>
-                    Tipo:
-                  </label>
-                  <div className="flex gap-[15px]">
-                    <label className="flex items-center gap-1 cursor-pointer text-[0.8rem]">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium text-content-2">Tipo</span>
+                  <div className="flex h-[38px] items-center gap-5">
+                    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-content-2">
                       <input
                         type="radio"
                         name="mode"
                         value="UNJUSTIFIED"
                         checked={selectedMode === 'UNJUSTIFIED'}
                         onChange={(e) => setSelectedMode(e.target.value as Mode)}
+                        className="accent-primary"
                       />
                       Injustificada
                     </label>
-                    <label className="flex items-center gap-1 cursor-pointer text-[0.8rem]">
+                    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-content-2">
                       <input
                         type="radio"
                         name="mode"
                         value="JUSTIFIED"
                         checked={selectedMode === 'JUSTIFIED'}
                         onChange={(e) => setSelectedMode(e.target.value as Mode)}
+                        className="accent-primary"
                       />
                       Justificada
                     </label>
                   </div>
                 </div>
 
-                <div>
-                  <label className={topbarLabel}>
-                    Rango de fechas:
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={dateRange?.start ? `${dateRange.start.getFullYear()}-${String(dateRange.start.getMonth() + 1).padStart(2, '0')}-${String(dateRange.start.getDate()).padStart(2, '0')}` : ''}
-                      onChange={(e) => {
-                        const newDate = new Date(e.target.value + 'T00:00:00')
-                        setDateRange(prev => ({ ...prev, start: newDate }))
-                      }}
-                      className="w-[120px] rounded py-1 px-1.5 border-none bg-transparent text-content text-[0.75rem]"
-                    />
-                    <span className="text-[0.75rem] text-muted">a</span>
-                    <input
-                      type="date"
-                      value={dateRange?.end ? `${dateRange.end.getFullYear()}-${String(dateRange.end.getMonth() + 1).padStart(2, '0')}-${String(dateRange.end.getDate()).padStart(2, '0')}` : ''}
-                      onChange={(e) => {
-                        const newDate = new Date(e.target.value + 'T00:00:00')
-                        setDateRange(prev => ({ ...prev, end: newDate }))
-                      }}
-                      className="w-[120px] rounded py-1 px-1.5 border-none bg-transparent text-content text-[0.75rem]"
-                    />
-                  </div>
-                </div>
-              </div>
+                <Field label="Desde">
+                  <Input
+                    type="date"
+                    value={dateRange?.start ? `${dateRange.start.getFullYear()}-${String(dateRange.start.getMonth() + 1).padStart(2, '0')}-${String(dateRange.start.getDate()).padStart(2, '0')}` : ''}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value + 'T00:00:00')
+                      setDateRange(prev => ({ ...prev, start: newDate }))
+                    }}
+                  />
+                </Field>
 
-              {/* Plantilla del informe */}
+                <Field label="Hasta">
+                  <Input
+                    type="date"
+                    value={dateRange?.end ? `${dateRange.end.getFullYear()}-${String(dateRange.end.getMonth() + 1).padStart(2, '0')}-${String(dateRange.end.getDate()).padStart(2, '0')}` : ''}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value + 'T00:00:00')
+                      setDateRange(prev => ({ ...prev, end: newDate }))
+                    }}
+                  />
+                </Field>
+              </div>
+            </section>
+
+            {/* Plantilla del informe */}
               <div className="bg-white p-[30px] rounded-lg border border-[#ddd] text-black [font-family:Times_New_Roman,serif]">
                 {/* Encabezado con logo */}
                 <div className="flex items-center mb-5 border-b-2 border-[#1e3a5f] pb-[15px]">
@@ -922,31 +916,9 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                   </div>
                 )}
               </div>
-            </>
-          )}
-        </div>
-
-        <div className={modalActions}>
-          {reportResult ? (
-            <button className={btnPrimary} onClick={onClose}>
-              Cerrar
-            </button>
-          ) : (
-            <>
-              <button className={btnSecondary} onClick={onClose} disabled={generating}>
-                Cancelar
-              </button>
-              <button
-                className={btnPrimary}
-                onClick={handleGeneratePDF}
-                disabled={generating || loadingData || !!loadError || !selectedTo || !selectedSubject || !selectedLack}
-              >
-                {generating ? 'Creando...' : 'Crear Reporte'}
-              </button>
-            </>
-          )}
-        </div>
+          </>
+        )}
       </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,435 +1,176 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
+import type { IconType } from 'react-icons'
+import {
+  FiAlertTriangle,
+  FiBarChart2,
+  FiBriefcase,
+  FiChevronsLeft,
+  FiChevronsRight,
+  FiClipboard,
+  FiFileText,
+  FiGrid,
+  FiShield,
+  FiUser,
+  FiUserMinus,
+  FiUserX,
+  FiUsers,
+  FiVideo,
+  FiX,
+} from 'react-icons/fi'
 import type { AppRole } from '@/types'
 import { useAppSelector } from '@/store/hooks'
 import { cn } from '@/utils/classes'
 
-interface MenuItem {
-  path: string
+type NavKey =
+  | 'dashboard'
+  | 'incidencias'
+  | 'inasistencias'
+  | 'bodycam'
+  | 'usuarios'
+  | 'cargos'
+  | 'personal'
+  | 'asuntos'
+  | 'faltas'
+  | 'infractores'
+  | 'estadisticas'
+  | 'auditoria'
+
+interface NavItem {
   label: string
-  svg: React.ReactElement
+  icon: IconType
 }
 
-const menuItems: Record<AppRole, MenuItem[]> = {
-  admin: [
-    {
-      path: '/dashboard/admin',
-      label: 'Dashboard',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/incidencias',
-      label: 'Incidencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/inasistencias',
-      label: 'Inasistencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-1.414 1.414M5.636 18.364l1.414-1.414" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/bodycam',
-      label: 'Dispositivos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <rect x="7" y="2" width="10" height="20" rx="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="12" cy="7" r="2.5"/>
-          <circle cx="12" cy="7" r="1" fill="currentColor"/>
-          <circle cx="9.5" cy="4" r="0.5" fill="currentColor"/>
-          <circle cx="14.5" cy="4" r="0.5" fill="currentColor"/>
-          <line x1="9" y1="13" x2="15" y2="13" strokeLinecap="round"/>
-          <rect x="9.5" y="17" width="5" height="1.5" rx="0.3" strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="9" y1="20" x2="15" y2="20" strokeLinecap="round"/>
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/usuarios',
-      label: 'Usuarios',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/cargos',
-      label: 'Cargos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/personal',
-      label: 'Personal',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/asuntos',
-      label: 'Asuntos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/faltas',
-      label: 'Faltas',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/infractores',
-      label: 'Infractores',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a2 2 0 100-4 2 2 0 000 4z" />
-        </svg>
-      )
-    },
-    /*
-    {
-      path: '/dashboard/admin/supervisores',
-      label: 'Supervisores',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    */
-    /*
-    {
-      path: '/dashboard/admin/alertas',
-      label: 'Alertas',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-      )
-    },
-    */
-    {
-      path: '/dashboard/admin/estadisticas',
-      label: 'Estadísticas',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    },
-   /*
-    {
-      path: '/dashboard/admin/camaras',
-      label: 'Cámaras',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      )
-    },
-    */
-   /*
-    {
-      path: '/dashboard/admin/reportes',
-      label: 'Reportes',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/admin/configuracion',
-      label: 'Configuración',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      )
-    },
-    */
-    {
-      path: '/dashboard/admin/auditoria',
-      label: 'Auditoría',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      )
-    }
-  ],
-  supervisor: [
-    {
-      path: '/dashboard/supervisor',
-      label: 'Dashboard',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/incidencias',
-      label: 'Incidencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/inasistencias',
-      label: 'Inasistencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-1.414 1.414M5.636 18.364l1.414-1.414" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/bodycam',
-      label: 'Dispositivos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <rect x="7" y="2" width="10" height="20" rx="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="12" cy="7" r="2.5"/>
-          <circle cx="12" cy="7" r="1" fill="currentColor"/>
-          <circle cx="9.5" cy="4" r="0.5" fill="currentColor"/>
-          <circle cx="14.5" cy="4" r="0.5" fill="currentColor"/>
-          <line x1="9" y1="13" x2="15" y2="13" strokeLinecap="round"/>
-          <rect x="9.5" y="17" width="5" height="1.5" rx="0.3" strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="9" y1="20" x2="15" y2="20" strokeLinecap="round"/>
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/usuarios',
-      label: 'Usuarios',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/cargos',
-      label: 'Cargos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/personal',
-      label: 'Personal',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/asuntos',
-      label: 'Asuntos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/faltas',
-      label: 'Faltas',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/infractores',
-      label: 'Infractores',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a2 2 0 100-4 2 2 0 000 4z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/supervisor/estadisticas',
-      label: 'Estadísticas',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    }
-  ],
-  centinela: [
-    {
-      path: '/dashboard/centinela',
-      label: 'Dashboard',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/centinela/incidencias',
-      label: 'Incidencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/centinela/inasistencias',
-      label: 'Inasistencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-1.414 1.414M5.636 18.364l1.414-1.414" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/centinela/bodycam',
-      label: 'Dispositivos',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <rect x="7" y="2" width="10" height="20" rx="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="12" cy="7" r="2.5"/>
-          <circle cx="12" cy="7" r="1" fill="currentColor"/>
-          <circle cx="9.5" cy="4" r="0.5" fill="currentColor"/>
-          <circle cx="14.5" cy="4" r="0.5" fill="currentColor"/>
-          <line x1="9" y1="13" x2="15" y2="13" strokeLinecap="round"/>
-          <rect x="9.5" y="17" width="5" height="1.5" rx="0.3" strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="9" y1="20" x2="15" y2="20" strokeLinecap="round"/>
-        </svg>
-      )
-    }
-  ],
-  validator: [
-    {
-      path: '/dashboard/validator/incidencias',
-      label: 'Incidencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/validator/inasistencias',
-      label: 'Inasistencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-1.414 1.414M5.636 18.364l1.414-1.414" />
-        </svg>
-      )
-    }
-  ],
-
-  subgerente: [
-    {
-      path: '/dashboard/subgerente',
-      label: 'Dashboard',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/subgerente/incidencias',
-      label: 'Incidencias',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      path: '/dashboard/subgerente/estadisticas',
-      label: 'Estadísticas',
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    }
-  ]
+/** Un solo catalogo de opciones; cada rol elige cuales ve y en que grupo. */
+const ITEMS: Record<NavKey, NavItem> = {
+  dashboard: { label: 'Inicio', icon: FiGrid },
+  incidencias: { label: 'Incidencias', icon: FiFileText },
+  inasistencias: { label: 'Inasistencias', icon: FiUserMinus },
+  bodycam: { label: 'Dispositivos', icon: FiVideo },
+  usuarios: { label: 'Usuarios', icon: FiUsers },
+  cargos: { label: 'Cargos', icon: FiBriefcase },
+  personal: { label: 'Personal', icon: FiUser },
+  asuntos: { label: 'Asuntos', icon: FiClipboard },
+  faltas: { label: 'Faltas', icon: FiAlertTriangle },
+  infractores: { label: 'Infractores', icon: FiUserX },
+  estadisticas: { label: 'Estadísticas', icon: FiBarChart2 },
+  auditoria: { label: 'Auditoría', icon: FiShield },
 }
 
-/* Enlace del menu: el hover del enlace muestra la etiqueta (group-hover) */
-const navLinkBase =
-  'group relative flex w-full cursor-pointer flex-col items-center justify-center border-l-4 py-[18px] text-[24px] no-underline transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:translate-x-1 [&_svg]:size-7 [&_svg]:stroke-2'
+interface NavGroup {
+  /** Sin titulo cuando el rol solo tiene un grupo */
+  title?: string
+  keys: NavKey[]
+}
 
-const navLinkIdle =
-  'border-l-transparent text-content-2 hover:border-l-primary hover:bg-[rgba(30,58,138,0.05)] hover:text-primary'
+const adminGroups = (withAudit: boolean): NavGroup[] => [
+  { title: 'Operación', keys: ['dashboard', 'incidencias', 'inasistencias'] },
+  { title: 'Administración', keys: ['bodycam', 'usuarios', 'cargos', 'personal', 'asuntos', 'faltas', 'infractores'] },
+  { title: 'Análisis', keys: withAudit ? ['estadisticas', 'auditoria'] : ['estadisticas'] },
+]
 
-const navLinkActive =
-  'border-l-primary bg-[rgba(30,58,138,0.1)] text-primary shadow-[0_4px_15px_var(--shadow-hover)] hover:bg-[rgba(30,58,138,0.1)]'
+const GROUPS: Record<AppRole, NavGroup[]> = {
+  admin: adminGroups(true),
+  supervisor: adminGroups(false),
+  centinela: [{ keys: ['dashboard', 'incidencias', 'inasistencias', 'bodycam'] }],
+  validator: [{ keys: ['incidencias', 'inasistencias'] }],
+  subgerente: [{ keys: ['dashboard', 'incidencias', 'estadisticas'] }],
+}
 
-const navLabel =
-  "absolute left-[90px] z-[1000] hidden pointer-events-none whitespace-nowrap rounded-lg border border-line bg-surface px-4 py-2 text-[14px] font-medium text-content shadow-[0_4px_20px_var(--shadow)] [backdrop-filter:blur(10px)] before:content-[''] before:absolute before:top-1/2 before:left-[-6px] before:h-0 before:w-0 before:-translate-y-1/2 before:border-solid before:border-y-[6px] before:border-r-[6px] before:border-l-0 before:border-t-transparent before:border-b-transparent before:border-l-transparent before:border-r-surface group-hover:block group-hover:animate-[fadeInRight_0.2s_ease-out]"
+const linkBase =
+  'group flex h-10 items-center gap-3 rounded-lg px-3 text-sm no-underline transition-colors duration-150'
+const linkIdle = 'text-content-2 hover:bg-subtle hover:text-content'
+const linkActive = 'bg-[rgba(30,58,138,0.08)] font-medium text-primary'
 
-export default function Sidebar() {
+export interface SidebarProps {
+  collapsed: boolean
+  onToggleCollapse: () => void
+  /** Solo pantallas pequenas: el menu se abre como panel */
+  mobileOpen: boolean
+  onCloseMobile: () => void
+}
+
+export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: SidebarProps) {
   const { role } = useAppSelector((state) => state.auth)
-  const items: MenuItem[] = (role && menuItems[role]) || []
+  const groups: NavGroup[] = (role && GROUPS[role]) || []
+  // En el panel movil siempre se muestran las etiquetas
+  const compact = collapsed && !mobileOpen
+
+  const pathFor = (key: NavKey) => (key === 'dashboard' ? `/dashboard/${role}` : `/dashboard/${role}/${key}`)
 
   return (
-    <aside className="fixed top-[65px] left-0 z-[100] flex h-[calc(100vh-65px)] w-20 flex-col items-center border-r border-line bg-surface py-5 text-content shadow-[4px_0_20px_var(--shadow)] animate-[slideInLeft_0.5s_ease-out] [backdrop-filter:blur(10px)] max-[600px]:z-[1000] max-[600px]:w-[60px]">
-      <nav className="w-full">
-        <ul className="m-0 w-full list-none p-0">
-          {items.map((item) => (
-            <li key={item.path} className="relative w-full">
-              <NavLink
-                to={item.path}
-                end={item.path === `/dashboard/${role}`}
-                className={({ isActive }) => cn(navLinkBase, isActive ? navLinkActive : navLinkIdle)}
-                title={item.label}
-              >
-                {item.svg}
-                <span className={navLabel}>{item.label}</span>
-              </NavLink>
-            </li>
+    <>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-[1400] bg-slate-900/45 md:hidden" onClick={onCloseMobile} aria-hidden />
+      )}
+      <aside
+        aria-label="Menú principal"
+        className={cn(
+          'fixed top-14 bottom-0 left-0 z-[1500] flex flex-col border-r border-line bg-surface transition-[width,transform] duration-200',
+          compact ? 'w-16' : 'w-[232px]',
+          mobileOpen ? 'translate-x-0 shadow-[0_16px_48px_rgba(15,23,42,0.18)]' : 'max-md:-translate-x-full'
+        )}
+      >
+        {mobileOpen && (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Cerrar menú"
+            className="absolute top-2 right-2 flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-lg text-muted hover:bg-subtle md:hidden"
+          >
+            <FiX />
+          </button>
+        )}
+
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+          {groups.map((group, gi) => (
+            <div key={gi} className={cn(gi > 0 && 'mt-4')}>
+              {group.title && !compact && (
+                <p className="m-0 mb-1 px-3 text-xs font-medium text-muted">{group.title}</p>
+              )}
+              {group.title && compact && gi > 0 && <div className="mx-3 mb-2 border-t border-line" />}
+              <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+                {group.keys.map((key) => {
+                  const { label, icon: Icon } = ITEMS[key]
+                  return (
+                    <li key={key}>
+                      <NavLink
+                        to={pathFor(key)}
+                        end={key === 'dashboard'}
+                        title={compact ? label : undefined}
+                        aria-label={label}
+                        onClick={onCloseMobile}
+                        className={({ isActive }) =>
+                          cn(linkBase, compact && 'justify-center px-0', isActive ? linkActive : linkIdle)
+                        }
+                      >
+                        <Icon className="size-[18px] shrink-0" aria-hidden />
+                        {!compact && <span className="truncate">{label}</span>}
+                      </NavLink>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           ))}
-        </ul>
-      </nav>
-    </aside>
+        </nav>
+
+        <div className="hidden border-t border-line p-2 md:block">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expandir menú' : undefined}
+            aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
+            className={cn(
+              'flex h-9 w-full cursor-pointer items-center gap-3 rounded-lg border-none bg-transparent px-3 text-[13px] text-muted transition-colors duration-150 hover:bg-subtle hover:text-content',
+              collapsed && 'justify-center px-0'
+            )}
+          >
+            {collapsed ? <FiChevronsRight className="size-[18px]" /> : <FiChevronsLeft className="size-[18px]" />}
+            {!collapsed && <span>Contraer menú</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }

@@ -10,19 +10,17 @@ import {
   deleteUser,
   deactivateSession
 } from '../../api/user'
-import { FaPlus, FaSearch } from 'react-icons/fa'
+import { FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
 import type { CreateUserDto, ID, Role, User } from '@/types'
-import {
-  btnPrimary,
-  cn,
-  controlsBar,
-  controlsInput,
-  incidenciasPage,
-  pageHeaderIncidencias,
-  pageTitle,
-  tableWrapper
-} from '../../utils/classes'
+import Button from '@/components/UI/Button'
+import { Select } from '@/components/UI/Field'
+import PageHeader from '@/components/UI/PageHeader'
+import Pagination from '@/components/UI/Pagination'
+import SearchInput from '@/components/UI/SearchInput'
+import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
+import { cardClass } from '@/utils/classes'
+import { usePagedList } from '@/hooks/usePagedList'
 
 /** Filtro de rol: 'all' o un rol del backend */
 type RoleFilter = 'all' | Role
@@ -40,18 +38,6 @@ interface MutationError {
 }
 
 const readMutationBody = (body: unknown): MutationBody => body as MutationBody
-
-/** Ajustes de .controls a ancho tablet (<=900px) que no incluyen las constantes compartidas */
-const controlsBarResponsive = cn(controlsBar, 'max-[900px]:flex-wrap max-[900px]:justify-between max-[900px]:gap-2')
-const controlsInputResponsive = cn(controlsInput, 'max-[900px]:flex-[1_1_100%] max-[900px]:min-w-0')
-
-/** Select de filtro por rol (el borde y el padding inline del original anulan el hover/focus de .controls select) */
-const roleSelect = cn(
-  'max-w-[200px] max-[900px]:flex-[1_1_100%] overflow-hidden text-ellipsis whitespace-nowrap',
-  'cursor-pointer rounded-[8px] border border-line [background:var(--bg)] px-3 py-2 min-w-[180px]',
-  'text-[15.2px] text-content! outline-none [backdrop-filter:blur(5px)] transition-all duration-300',
-  'hover:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:-translate-y-0.5 focus:shadow-[0_0_0_4px_rgba(30,58,138,0.15)] dark:text-[#f8fafc]!'
-)
 
 export default function UsuariosPage() {
   const { role: userRole } = useAppSelector((state) => state.auth) // Rol del usuario actual
@@ -242,86 +228,85 @@ export default function UsuariosPage() {
 
   // Los usuarios ya vienen filtrados desde la API, no necesitamos filtrar en el frontend
   const filteredData = users
+  const hasFilters = filters.search.trim() !== '' || filters.roleFilter !== 'all'
+  const paged = usePagedList(filteredData, filters.search + '|' + filters.roleFilter)
 
   return (
-    <div className={incidenciasPage}>
-      <header className={pageHeaderIncidencias}>
-        <div className="flex flex-1 items-center gap-5">
-          <h2 className={pageTitle}>GESTIÓN DE USUARIOS</h2>
-          <div className={controlsBarResponsive}>
-            {/* Filtro por rol */}
-            <select
-              className={roleSelect}
-              value={filters.roleFilter}
-              onChange={e => setFilters(f => ({ ...f, roleFilter: e.target.value as RoleFilter }))}
+    <div className="flex w-full flex-col">
+      <PageHeader
+        title="Usuarios"
+        description="Personas con acceso al sistema y su rol."
+        actions={
+          canCreate && (
+            <Button
+              icon={<FiPlus />}
+              onClick={() => {
+                setEditItem(null)
+                setShowModal(true)
+              }}
             >
-              <option value="all">📋 Todos los roles</option>
-              {userRole === 'admin' && <option value="ADMINISTRATOR">👑 Administradores</option>}
-              {userRole === 'admin' && <option value="SUPERVISOR">👨‍💼 Supervisores</option>}
-              {userRole === 'admin' && <option value="VALIDATOR">✅ Validadores</option>}
-              <option value="SENTINEL">🛡️ Sentinels</option>
-            </select>
-
-            {/* Búsqueda */}
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                className={cn(controlsInputResponsive, 'pl-[35px]!', isSearching ? 'pr-[35px]!' : 'pr-3!')}
-                placeholder="Buscar por nombre, usuario o email"
-                value={filters.search}
-                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-              />
-              {isSearching && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
-                  ⏳
-                </div>
-              )}
-            </div>
-
-            {/* Botón agregar (solo si tiene permisos) */}
-            {canCreate && (
-              <button className={btnPrimary} onClick={() => { setEditItem(null); setShowModal(true) }}>
-                <FaPlus className="mr-2" />
-                Agregar Usuario
-              </button>
-            )}
-          </div>
+              Agregar usuario
+            </Button>
+          )
+        }
+      >
+        <div className="w-52 max-w-full">
+          <Select
+            aria-label="Filtrar por rol"
+            className="h-9"
+            value={filters.roleFilter}
+            onChange={(e) => setFilters((f) => ({ ...f, roleFilter: e.target.value as RoleFilter }))}
+          >
+            <option value="all">Todos los roles</option>
+            {userRole === 'admin' && <option value="ADMINISTRATOR">Administrador</option>}
+            {userRole === 'admin' && <option value="SUPERVISOR">Supervisor</option>}
+            {userRole === 'admin' && <option value="VALIDATOR">Validador</option>}
+            <option value="SENTINEL">Centinela</option>
+          </Select>
         </div>
-      </header>
 
-      {loading ? (
-        <div className="p-10 text-center text-[17.6px] text-muted">
-          Cargando usuarios...
-        </div>
-      ) : (
-        <div className={tableWrapper}>
-          {/* Mensaje informativo según permisos */}
-          {!canCreate && (
-            <div className="mb-[15px] rounded-[8px] border border-[rgba(251,191,36,0.3)] bg-[rgba(251,191,36,0.1)] p-3 text-center">
-              <p className="m-0 text-[14.4px] text-[#f59e0b]">
-                ⚠️ Como Sentinel, solo puedes ver los usuarios registrados
-              </p>
-            </div>
-          )}
+        <SearchInput
+          value={filters.search}
+          onChange={(v) => setFilters((f) => ({ ...f, search: v }))}
+          placeholder="Buscar por nombre, usuario o correo"
+          loading={isSearching}
+        />
+      </PageHeader>
 
-          <UserTable
-            data={filteredData}
-            onToggleStatus={handleToggleStatus}
-            onEdit={handleEdit}
-            onDeactivateSession={userRole === 'admin' ? handleDeactivateSession : null}
-            startIndex={0}
-            canEdit={canEdit}
-            canDelete={canDelete}
-          />
-
-          {/* Contador de usuarios */}
-          <div className="mt-5 flex items-center justify-center rounded-[8px] border border-line p-5">
-            <div className="text-[15.2px] font-medium">
-              Total: {filteredData.length} usuario(s)
-            </div>
-          </div>
-        </div>
-      )}
+      <div className={cardClass}>
+        {loading ? (
+          <LoadingState label="Cargando usuarios…" />
+        ) : filteredData.length === 0 ? (
+          hasFilters ? (
+            <EmptyState
+              title="Sin resultados"
+              description="Ningún usuario coincide con la búsqueda o el rol elegido."
+            />
+          ) : (
+            <EmptyState title="Aún no hay usuarios" description="Cuando se registren usuarios, aparecerán aquí." />
+          )
+        ) : (
+          <>
+            <UserTable
+              data={paged.pageItems}
+              onToggleStatus={handleToggleStatus}
+              onEdit={handleEdit}
+              onDeactivateSession={userRole === 'admin' ? handleDeactivateSession : null}
+              startIndex={paged.from - 1}
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
+            <Pagination
+              page={paged.page}
+              totalPages={paged.totalPages}
+              total={paged.total}
+              from={paged.from}
+              to={paged.to}
+              onPageChange={paged.setPage}
+            />
+          </>
+        )}
+      </div>
 
       {showModal && (
         <ModalUser
