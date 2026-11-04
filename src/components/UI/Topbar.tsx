@@ -72,6 +72,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           type="button"
           onClick={handleLogout}
           title="Cerrar sesión"
+          aria-label="Cerrar sesión"
           className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-white/25 bg-transparent px-3 text-[13px] font-medium text-white transition-colors duration-150 hover:bg-white/10"
         >
           <FiLogOut aria-hidden />
