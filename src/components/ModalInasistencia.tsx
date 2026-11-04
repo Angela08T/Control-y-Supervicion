@@ -3,6 +3,9 @@ import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import AlertModal from './AlertModal'
+import Modal from '@/components/UI/Modal'
+import Button from '@/components/UI/Button'
+import { Field, Input, Select } from '@/components/UI/Field'
 import {
   autocompleteContainer,
   autocompleteError,
@@ -11,28 +14,8 @@ import {
   autocompleteItemDetails,
   autocompleteLoading,
   autocompleteNoResults,
-  autocompleteSuggestions,
-  btnPrimary,
-  btnSecondary,
-  cn,
-  modalActions,
-  modalBackdrop,
-  modalBody,
-  modalCard,
-  modalClose,
-  modalHeader,
-  modalInput,
-  modalLabel,
-  modalTitle
+  autocompleteSuggestions
 } from '@/utils/classes'
-import {
-  FaIdCard,
-  FaClipboardList,
-  FaClock,
-  FaUserTie,
-  FaIdBadge,
-  FaBalanceScale
-} from 'react-icons/fa'
 import type { ID, ISODateString, Jurisdiction, Lead, OffenderDniLookup, SubjectLack } from '@/types'
 
 /** Datos del formulario de inasistencia */
@@ -71,9 +54,6 @@ export interface ModalInasistenciaProps {
   onClose: () => void
   onSave?: (form: InasistenciaForm, leads: Lead[]) => void
 }
-
-/** Input de solo lectura (rellenado automáticamente con el DNI) */
-const readOnlyInput = cn(modalInput, 'cursor-not-allowed')
 
 const defaultState: InasistenciaForm = {
   dni: '',
@@ -313,150 +293,125 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
   }
 
   return (
-    <div className={modalBackdrop}>
-      <div className={cn(modalCard, 'max-[900px]:mx-auto max-[900px]:my-2.5 max-[900px]:max-h-[90vh] max-[900px]:w-[95%] max-[900px]:overflow-y-auto')}>
-        <div className={modalHeader}>
-          <h3 className={modalTitle}>Nueva Inasistencia</h3>
-          <button className={modalClose} onClick={onClose}>×</button>
-        </div>
-        <form className={cn(modalBody, 'max-[900px]:max-h-[calc(90vh-120px)] max-[900px]:overflow-y-auto')} onSubmit={handleSubmit}>
-          <label className={modalLabel}>
-            <FaIdCard className="mr-2" />
-            DNI * (8 dígitos)
-          </label>
-          <div className={autocompleteContainer} ref={dniAutocompleteRef}>
-            <input
-              className={modalInput}
-              value={dniSearchTerm}
-              onChange={handleDNIChange}
-              onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
-              placeholder="Ingresa 8 dígitos del DNI"
-              maxLength={8}
-              pattern="[0-9]{8}"
-              autoComplete="off"
-            />
-            {offenderLoading && (
-              <div className={autocompleteLoading}>Buscando...</div>
-            )}
-            {offenderError && (
-              <div className={autocompleteError}>{offenderError}</div>
-            )}
-            {showOffenderSuggestions && offendersHabilitados.length > 0 && (
-              <div className={autocompleteSuggestions}>
-                {offendersHabilitados.map((offender, index) => (
-                  <div
-                    key={offender.gestionate_id || offender.id || index}
-                    className={autocompleteItem}
-                    onClick={() => handleOffenderSelect(offender)}
-                  >
-                    <div className={autocompleteItemCode}>
-                      DNI: {offender.dni} - {offender.name} {offender.lastname}
+    <>
+      <Modal
+        title="Nueva inasistencia"
+        description="Busca a la persona por DNI. Turno, cargo y régimen se completan solos."
+        onClose={onClose}
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="form-inasistencia">
+              Crear inasistencia
+            </Button>
+          </>
+        }
+      >
+        <form id="form-inasistencia" onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <section className="flex flex-col gap-4">
+            <h4 className="m-0 text-[13px] font-semibold text-content">Personal</h4>
+            <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+              <div className="col-span-2">
+                <div className={autocompleteContainer} ref={dniAutocompleteRef}>
+                  <Field label="DNI" required hint="8 dígitos">
+                    <Input
+                      value={dniSearchTerm}
+                      onChange={handleDNIChange}
+                      onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
+                      placeholder="Ingresa 8 dígitos del DNI"
+                      maxLength={8}
+                      pattern="[0-9]{8}"
+                      autoComplete="off"
+                    />
+                  </Field>
+                  {offenderLoading && <div className={autocompleteLoading}>Buscando…</div>}
+                  {offenderError && <div className={autocompleteError}>{offenderError}</div>}
+                  {showOffenderSuggestions && offendersHabilitados.length > 0 && (
+                    <div className={autocompleteSuggestions}>
+                      {offendersHabilitados.map((offender, index) => (
+                        <div
+                          key={offender.gestionate_id || offender.id || index}
+                          className={autocompleteItem}
+                          onClick={() => handleOffenderSelect(offender)}
+                        >
+                          <div className={autocompleteItemCode}>
+                            DNI: {offender.dni} - {offender.name} {offender.lastname}
+                          </div>
+                          <div className={autocompleteItemDetails}>
+                            {offender.job} | {offender.shift} | {offender.regime}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className={autocompleteItemDetails}>
-                      {offender.job} | {offender.shift} | {offender.regime}
-                    </div>
-                  </div>
-                ))}
+                  )}
+                  {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
+                    <div className={autocompleteNoResults}>No se encontraron registros</div>
+                  )}
+                </div>
               </div>
-            )}
-            {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
-              <div className={autocompleteNoResults}>
-                No se encontraron registros
+
+              <Field label="Turno" required>
+                <Input readOnly value={form.turno} placeholder="Se completa con el DNI" className="cursor-not-allowed bg-subtle text-content-2" />
+              </Field>
+
+              <Field label="Cargo" required>
+                <Input readOnly value={form.cargo} placeholder="Se completa con el DNI" className="cursor-not-allowed bg-subtle text-content-2" />
+              </Field>
+
+              <Field label="Reg. Lab." required>
+                <Input readOnly value={form.regLab} placeholder="Se completa con el DNI" className="cursor-not-allowed bg-subtle text-content-2" />
+              </Field>
+
+              <div className="col-span-2">
+                {jurisdictionsLoading ? (
+                  <p className="m-0 text-sm text-muted">Cargando jurisdicciones…</p>
+                ) : jurisdictionsError ? (
+                  <p className="m-0 text-sm text-danger">{jurisdictionsError}</p>
+                ) : (
+                  <Field label="Jurisdicción" required>
+                    <Select
+                      value={form.jurisdiccion}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                        const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
+                        if (selectedJurisdiction) {
+                          setForm(f => ({
+                            ...f,
+                            jurisdiccion: selectedJurisdiction.name,
+                            jurisdictionId: selectedJurisdiction.id
+                          }))
+                        } else {
+                          setForm(f => ({
+                            ...f,
+                            jurisdiccion: '',
+                            jurisdictionId: null
+                          }))
+                        }
+                      }}
+                    >
+                      <option value="">Selecciona una jurisdicción</option>
+                      {jurisdiccionesHabilitadas.map(jurisdiction => (
+                        <option key={jurisdiction.id} value={jurisdiction.name}>
+                          {jurisdiction.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                )}
               </div>
-            )}
-          </div>
-
-          <label className={modalLabel}>
-            <FaClipboardList className="mr-2" />
-            Asunto
-          </label>
-          <input
-            className={readOnlyInput}
-            value={form.asunto}
-            readOnly
-          />
-
-          <label className={modalLabel}>
-            <FaClock className="mr-2" />
-            Turno *
-          </label>
-          <input
-            className={readOnlyInput}
-            value={form.turno}
-            readOnly
-            placeholder="Se llenará automáticamente con el DNI"
-          />
-
-          <label className={modalLabel}>
-            <FaUserTie className="mr-2" />
-            Cargo *
-          </label>
-          <input
-            className={readOnlyInput}
-            value={form.cargo}
-            readOnly
-            placeholder="Se llenará automáticamente con el DNI"
-          />
-
-          <label className={modalLabel}>
-            <FaIdBadge className="mr-2" />
-            Reg. Lab *
-          </label>
-          <input
-            className={readOnlyInput}
-            value={form.regLab}
-            readOnly
-            placeholder="Se llenará automáticamente con el DNI"
-          />
-
-          <label className={modalLabel}>
-            <FaBalanceScale className="mr-2" />
-            Jurisdicción *
-          </label>
-          {jurisdictionsLoading ? (
-            <div className="p-3 text-center text-muted">
-              Cargando jurisdicciones...
             </div>
-          ) : jurisdictionsError ? (
-            <div className="p-3 text-center text-danger">
-              {jurisdictionsError}
-            </div>
-          ) : (
-            <select
-              className={modalInput}
-              value={form.jurisdiccion}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
-                if (selectedJurisdiction) {
-                  setForm(f => ({
-                    ...f,
-                    jurisdiccion: selectedJurisdiction.name,
-                    jurisdictionId: selectedJurisdiction.id
-                  }))
-                } else {
-                  setForm(f => ({
-                    ...f,
-                    jurisdiccion: '',
-                    jurisdictionId: null
-                  }))
-                }
-              }}
-            >
-              <option value="">Selecciona una jurisdicción</option>
-              {jurisdiccionesHabilitadas.map(jurisdiction => (
-                <option key={jurisdiction.id} value={jurisdiction.name}>
-                  {jurisdiction.name}
-                </option>
-              ))}
-            </select>
-          )}
+          </section>
 
-          <div className={modalActions}>
-            <button type="button" onClick={onClose} className={btnSecondary}>CANCELAR</button>
-            <button type="submit" className={btnPrimary}>CREAR INCIDENCIA</button>
-          </div>
+          <section className="flex flex-col gap-4 border-t border-line pt-4">
+            <h4 className="m-0 text-[13px] font-semibold text-content">Tipo de inasistencia</h4>
+            <Field label="Asunto">
+              <Input readOnly value={form.asunto} className="cursor-not-allowed bg-subtle text-content-2" />
+            </Field>
+          </section>
         </form>
-      </div>
+      </Modal>
 
       {/* Modal de alerta personalizado */}
       <AlertModal
@@ -466,6 +421,6 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
         type={alertModal.type}
         onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
       />
-    </div>
+    </>
   )
 }
