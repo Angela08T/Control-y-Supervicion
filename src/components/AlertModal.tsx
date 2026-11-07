@@ -31,11 +31,11 @@ export default function AlertModal({
 
   const styles = {
     success: {
-      tone: 'bg-[rgba(16,185,129,0.12)] text-success',
+      tone: 'bg-[rgba(142,188,34,0.12)] text-success',
       icon: <FiCheckCircle size={20} aria-hidden />
     },
     error: {
-      tone: 'bg-[rgba(239,68,68,0.10)] text-danger',
+      tone: 'bg-[rgba(199,21,34,0.10)] text-danger',
       icon: <FiAlertCircle size={20} aria-hidden />
     },
     info: {

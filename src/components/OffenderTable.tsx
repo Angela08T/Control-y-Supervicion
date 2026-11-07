@@ -34,7 +34,7 @@ export default function OffenderTable({ data = [], onToggleStatus, onEdit, canEd
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="min-h-0 flex-1 overflow-auto">
       <table className={incTable}>
         <thead>
           <tr>

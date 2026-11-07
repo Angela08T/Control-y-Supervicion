@@ -11,7 +11,7 @@ import { initSocket, onReportStatusChanged, disconnectSocket } from '../../servi
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import { toast } from '../../utils/toast'
 import type { AttendanceItemDto, ID, ISODateString, Lead } from '@/types'
-import { cardClass, incidenciasPage } from '../../utils/classes'
+import { cardClass, fitPage } from '../../utils/classes'
 import PageHeader from '@/components/UI/PageHeader'
 import Button from '@/components/UI/Button'
 import { LoadingState } from '@/components/UI/EmptyState'
@@ -341,7 +341,7 @@ export default function InasistenciasPage() {
   }
 
   return (
-    <div className={incidenciasPage}>
+    <div className={fitPage}>
       <PageHeader
         title="Inasistencias"
         description="Registra y revisa las inasistencias del personal por día."

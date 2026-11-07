@@ -6,7 +6,7 @@ import { getJobs, getJobById, createJob, updateJob, deleteJob, searchJob } from 
 import { getModulePermissions } from '../../utils/permissions'
 import { FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
-import { cardClass } from '../../utils/classes'
+import { fitCard, fitPage } from '../../utils/classes'
 import PageHeader from '@/components/UI/PageHeader'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
@@ -284,7 +284,7 @@ export default function JobsPage() {
   const filteredData = searchResult !== null ? searchPaged.pageItems : jobs
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Cargos"
         description="Puestos de trabajo que se asignan al personal."
@@ -302,7 +302,7 @@ export default function JobsPage() {
         />
       </PageHeader>
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando cargos…" />
         ) : filteredData.length === 0 ? (

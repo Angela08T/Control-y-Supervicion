@@ -34,9 +34,9 @@ type Tone = 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
 
 const TONE_CLASS: Record<Tone, string> = {
   primary: 'bg-[rgba(30,58,138,0.08)] text-primary',
-  success: 'bg-[rgba(16,185,129,0.12)] text-[#047857]',
-  warning: 'bg-[rgba(245,158,11,0.14)] text-[#b45309]',
-  danger: 'bg-[rgba(239,68,68,0.10)] text-[#b91c1c]',
+  success: 'bg-[rgba(142,188,34,0.12)] text-[#3f6212]',
+  warning: 'bg-[rgba(242,165,15,0.14)] text-[#b45309]',
+  danger: 'bg-[rgba(199,21,34,0.10)] text-[#b91c1c]',
   neutral: 'bg-subtle text-content-2',
 }
 
@@ -121,7 +121,7 @@ function TabUsuarios({ start, end }: TabUsuariosProps) {
 
   return (
     <>
-      {error && <div role="alert" className="rounded-lg border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] px-4 py-3 text-sm text-[#b91c1c]">{error}</div>}
+      {error && <div role="alert" className="rounded-lg border border-[rgba(199,21,34,0.3)] bg-[rgba(199,21,34,0.06)] px-4 py-3 text-sm text-[#b91c1c]">{error}</div>}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <StatCard icon={<FiFileText />}   label="Total"      value={general.total}    tone="primary" />
@@ -226,7 +226,7 @@ function TabInfractores({ start, end }: TabInfractoresProps) {
 
   return (
     <>
-      {error && <div role="alert" className="rounded-lg border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] px-4 py-3 text-sm text-[#b91c1c]">{error}</div>}
+      {error && <div role="alert" className="rounded-lg border border-[rgba(199,21,34,0.3)] bg-[rgba(199,21,34,0.06)] px-4 py-3 text-sm text-[#b91c1c]">{error}</div>}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <StatCard icon={<FiFileText />} label="Total infracciones" value={general.totalReports}   tone="primary" />

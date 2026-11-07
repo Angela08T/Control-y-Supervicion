@@ -11,7 +11,8 @@ import { cn } from '../utils/classes'
 import Modal from '@/components/UI/Modal'
 import Button from '@/components/UI/Button'
 import Badge from '@/components/UI/Badge'
-import { FiDownload } from 'react-icons/fi'
+import { Field, Input, Textarea } from '@/components/UI/Field'
+import { FiDownload, FiLoader, FiUpload, FiX } from 'react-icons/fi'
 import type { ID, Incidencia, ReportWithEvidences } from '@/types'
 
 /** Imagen de evidencia del formulario: existente en el backend o nueva (aun sin subir). */
@@ -173,56 +174,32 @@ const articulosPorFalta: Record<string, string> = {
   'Llegó fuera de horario': '72.06'
 }
 
-/* Clases de la vista previa. Es un documento en papel: fondo blanco y texto negro en ambos temas. */
+/* Clases del formulario del informe. El documento final se genera aparte (PDFDocument), asi que aqui
+   se usa el mismo estilo que el resto de los formularios. */
 
-const pdfPreview = 'flex-1 overflow-y-auto bg-[#ffffff]! p-[30px] text-[#000000]!'
+/** Bloque de datos que vienen del sistema y no se editan */
+const readBlock = 'm-0 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg bg-subtle p-4 max-md:grid-cols-1'
+/** Aviso del numero de informe antes de la aprobacion */
+const pendingCode = 'rounded-lg border border-dashed border-line-strong bg-subtle px-3 py-2 text-sm text-muted'
+/** Zona para adjuntar imagenes (el input nativo va oculto) */
+const uploadBox =
+  'flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-line-strong bg-subtle px-4 py-3 text-sm text-content-2 transition-colors duration-150 hover:border-accent focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
+const removeImgBtn =
+  'absolute -top-2 -right-2 flex size-6 cursor-pointer items-center justify-center rounded-full border border-line bg-surface p-0 text-sm text-muted shadow-[0_1px_3px_rgba(15,23,42,0.15)] transition-colors duration-150 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50'
 
-const pdfContent =
-  "mx-auto max-w-[650px] bg-[#ffffff]! text-[11px] leading-[1.6] text-[#000000]! [font-family:'Times_New_Roman',serif]"
+/** Tabla del reporte de inasistencias */
+const th = 'border-b border-line bg-subtle px-3 py-2 text-xs font-medium whitespace-nowrap text-muted'
+const td = 'border-b border-line px-3 py-2 text-content-2'
 
-const pdfHeader = 'mb-[25px] border-b-[3px] border-primary bg-[#ffffff]! pb-[15px] text-center'
-const pdfHeaderTitle = 'm-0 text-[18px] font-bold text-primary!'
-const pdfSubtitle = 'my-1 text-[11px] italic text-[#475569]!'
-const pdfYear = 'mx-0 mt-2.5 mb-0 text-[10px] text-[#64748b]!'
-
-const pdfInfo = 'my-[25px] bg-[#ffffff]!'
-const infoRow = 'mb-2.5 flex items-start gap-2.5 bg-[#ffffff]!'
-/** <strong> de cada fila (.info-row strong), incluido el de la nota de INFORME N° */
-const infoLabel = 'min-w-[90px] font-bold text-primary!'
-const infoInputGroup = 'flex flex-1 flex-col gap-1.5 bg-[#ffffff]!'
-/** Input de una fila de datos (.info-row input) */
-const infoInput =
-  "flex-1 border-0 border-b border-dotted border-[#cbd5e1] bg-transparent px-1.5 py-1 text-[11px] text-[#000000]! [font-family:'Times_New_Roman',serif] transition-all duration-300 ease-[ease] focus:outline-none focus:bg-[#f8fafc] focus:[border-bottom:2px_solid_var(--primary)] disabled:bg-[#f8fafc] disabled:text-[#64748b]!"
-/** Input de INFORME N° aprobado: el color verde va en style inline en el original, por eso no hereda el fondo ni el borde del focus */
-const infoInputApproved =
-  "flex-1 cursor-not-allowed border-0 border-b border-dotted border-[rgba(34,197,94,0.5)] bg-[rgba(34,197,94,0.1)] px-1.5 py-1 text-[11px] font-bold text-[#000000]! [font-family:'Times_New_Roman',serif] transition-all duration-300 ease-[ease] focus:outline-none focus:[border-bottom:2px_solid_rgba(34,197,94,0.5)]"
-
-const pdfSeparator = 'mx-0 my-5 border-0 border-t-[3px] border-double border-primary'
-const pdfBody = 'my-[25px] bg-[#ffffff]!'
-const pdfIntro = 'mb-[18px] text-justify font-medium text-[#000000]!'
-const editableSection = 'mb-4 bg-[#ffffff]!'
-const editLabel = 'mb-1.5 block text-[11px] font-bold uppercase tracking-[0.5px] text-primary!'
-/** Campo editable (.editable-section input / textarea) */
-const editField =
-  'w-full rounded-[6px] border border-[#cbd5e1] bg-[#f8fafc] px-2.5 py-2 text-[11px] text-[#000000]! transition-all duration-300 ease-[ease] focus:border-primary focus:bg-[#ffffff] focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] focus:outline-none'
-const editFont = "[font-family:'Times_New_Roman',serif]"
-const editInput = `${editField} ${editFont}`
-const editInputReadOnly = `${editInput} cursor-not-allowed`
-
-const tableWrap = 'mt-2.5 overflow-x-auto'
-const tableStyle = 'w-full border-collapse border border-[#000] text-[8px]'
-const tableCell = 'border border-[#000] p-1'
-
-const pdfFooter = 'mt-10 border-t-2 border-[#cbd5e1] bg-[#ffffff]! pt-5 text-center text-[10px] text-[#64748b]!'
-
-const imagesPreview = 'mt-3 flex flex-wrap gap-4'
-const imageContainer = 'flex animate-[scaleIn_0.3s_ease-out] flex-col gap-2'
-const imageItem = 'group relative inline-block'
-const imageImg =
-  'h-[110px] w-[110px] rounded-[10px] border-[3px] border-line object-cover transition-all duration-300 ease-[ease] group-hover:border-primary group-hover:shadow-[0_8px_20px_rgba(30,58,138,0.3)] group-hover:[transform:scale(1.05)]'
-const btnRemoveImg =
-  'absolute -top-2.5 -right-2.5 flex size-7 cursor-pointer items-center justify-center rounded-full border-none bg-[linear-gradient(135deg,#ef4444_0%,#dc2626_100%)] text-[18px] leading-none text-white shadow-[0_4px_12px_rgba(239,68,68,0.4)] transition-all duration-300 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] hover:bg-[linear-gradient(135deg,#dc2626_0%,#b91c1c_100%)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.6)] hover:[transform:rotate(90deg)_scale(1.2)]'
-const fileInput = `w-full rounded-[4px] border border-[#ddd] bg-[#f0f0f0] p-2 text-[11px] text-[#000000]! transition-all duration-300 ease-[ease] focus:outline-none focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)] ${editFont}`
+/** Dato de solo lectura: etiqueta pequena y valor */
+function ReadOnlyItem({ label, children }: { label: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="m-0 text-sm font-medium break-words text-content">{children || '—'}</dd>
+    </div>
+  )
+}
 
 export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }: ModalPDFInformeProps) {
   // Obtener usuario logueado de Redux
@@ -939,476 +916,333 @@ Se adjuntan las evidencias:`
       size="lg"
       footer={modalFooter}
     >
-      <div className={pdfPreview}>
-          <div className={pdfContent}>
-            <div className={pdfHeader}>
-              <h2 className={pdfHeaderTitle}>SAN JUAN DE LURIGANCHO</h2>
-              <p className={pdfSubtitle}>es momento de crecer</p>
-              <p className={pdfYear}>"Año de la recuperación y consolidación de la economía peruana"</p>
-            </div>
-
-            <div className={pdfInfo}>
-              <div className={infoRow}>
-                <strong className={infoLabel}>INFORME N°</strong>
-                {incidencia.status === 'approved' ? (
-                  <input
-                    value={formData.numeroInforme}
-                    readOnly
-                    className={infoInputApproved}
-                    title="Código generado automáticamente al aprobar"
-                  />
-                ) : (
-                  <div className="flex-1">
-                    <div className="rounded-[4px] border border-[rgba(245,158,11,0.5)] bg-[rgba(245,158,11,0.1)] px-3 py-2 text-[0.9rem] italic text-[#f59e0b]">
-                      ⏳ Se generará automáticamente al aprobar el informe
-                    </div>
-                    <div className="mt-1.5 rounded-[4px] bg-[rgba(59,130,246,0.1)] px-2 py-1.5 text-[0.75rem] leading-[1.4] text-content-2">
-                      <strong className={infoLabel}>ℹ️ Nota:</strong> El código del informe será asignado automáticamente por el sistema
-                      con el número correlativo y año correspondiente una vez que el informe sea aprobado.
-                      Hasta entonces, no es necesario ingresar ningún código manualmente.
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className={infoRow}>
-                <strong className={infoLabel}>A :</strong>
-                <div className={infoInputGroup}>
-                  <span>Sr.</span>
-                  <input
-                    value={formData.destinatarioNombre}
-                    onChange={e => handleChange('destinatarioNombre', e.target.value.toUpperCase())}
-                    className={cn(infoInput, 'w-full uppercase')}
-                  />
-                  <input
-                    value={formData.destinatarioCargo}
-                    onChange={e => handleChange('destinatarioCargo', e.target.value.toUpperCase())}
-                    placeholder="Cargo"
-                    className={cn(infoInput, 'w-full uppercase')}
-                  />
-                </div>
-              </div>
-
-              {incidencia.cc && incidencia.cc.length > 0 && (
-                <div className={infoRow}>
-                  <strong className={infoLabel}>CC :</strong>
-                  <span>{incidencia.cc.join(', ').toUpperCase()}</span>
-                </div>
-              )}
-
-              <div className={infoRow}>
-                <strong className={infoLabel}>DE :</strong>
-                <span>CONTROL Y SUPERVISIÓN</span>
-              </div>
-
-              <div className={infoRow}>
-                <strong className={infoLabel}>ASUNTO :</strong>
-                <input
-                  value={incidencia.asunto}
-                  disabled
-                  className={cn(infoInput, 'uppercase')}
-                />
-              </div>
-
-              <div className={infoRow}>
-                <strong className={infoLabel}>FECHA :</strong>
-                <input
-                  value={formData.fecha}
-                  onChange={e => handleChange('fecha', e.target.value.toUpperCase())}
-                  className={cn(infoInput, 'uppercase')}
-                />
-              </div>
-            </div>
-
-            <hr className={pdfSeparator} />
-
-            <div className={pdfBody}>
-              {/* Mostrar contenido simplificado para inasistencias (modelo del validador) */}
-              {esInasistencia ? (
-                <>
-                  {/* Párrafo descriptivo del reporte de inasistencias */}
-                  <div className="mt-[15px] text-justify text-[10px] leading-[1.6]">
-                    <p className="m-0 mb-2.5 indent-[40px]">
-                      Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez
-                      informarle sobre el reporte de inasistencias al centro de labores del personal
-                      de la Subgerencia de Serenazgo, correspondiente del turno{' '}
-                      <strong>
-                        {(() => {
-                          // Obtener turnos únicos de los datos de inasistencias
-                          if (attendanceData && attendanceData.length > 0) {
-                            const turnos = [...new Set(attendanceData.map(p => {
-                              if (typeof p.shift === 'object') return p.shift?.name || ''
-                              return p.shift || ''
-                            }).filter(Boolean))]
-                            if (turnos.length === 0) return 'MAÑANA / TARDE / NOCHE'
-                            return turnos.join(' / ')
-                          }
-                          return 'MAÑANA / TARDE / NOCHE'
-                        })()}
-                      </strong>.
-                      Durante el período{' '}
-                      <strong>
-                        {incidencia.absenceStart && incidencia.absenceEnd ? (
-                          <>
-                            {new Date(incidencia.absenceStart).toLocaleDateString('es-PE', { day: '2-digit' })} al{' '}
-                            {new Date(incidencia.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
-                          </>
-                        ) : (
-                          'PERÍODO NO ESPECIFICADO'
-                        )}
-                      </strong>
-                      , se ha registrado un número significativo de inasistencias{' '}
-                      <strong>{incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'justificadas' : 'injustificadas'}</strong>{' '}
-                      por parte del personal mencionado.
-                    </p>
-                  </div>
-
-                  {/* Tabla de inasistencias */}
-                  {loadingAttendance ? (
-                    <div className="p-5 text-center text-[10px] text-[#666]">
-                      Cargando inasistencias...
-                    </div>
-                  ) : attendanceData.length === 0 ? (
-                    <div className="mt-2.5 rounded-[4px] bg-[#f8fafc] p-5 text-center text-[10px] italic text-[#666]">
-                      No hay inasistencias registradas en el período seleccionado
-                    </div>
-                  ) : (
-                    <div className={tableWrap}>
-                      <table className={tableStyle}>
-                        <thead>
-                          <tr className="bg-[#f0f0f0]">
-                            <th className={cn(tableCell, 'text-center')}>N°</th>
-                            <th className={cn(tableCell, 'text-left')}>APELLIDOS Y NOMBRES</th>
-                            <th className={cn(tableCell, 'text-center')}>CARGO</th>
-                            <th className={cn(tableCell, 'text-center')}>REG. LAB.</th>
-                            <th className={cn(tableCell, 'text-center')}>TURNO</th>
-                            <th className={cn(tableCell, 'text-center')}>FECHA</th>
-                            <th className={cn(tableCell, 'text-center')}>TIPO DE INASISTENCIA</th>
-                            <th className={cn(tableCell, 'text-center')}>JURISDICCION</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {attendanceData
-                            .filter(person => {
-                              const validDates = person.dates?.filter(d => !d.delete_at && d.date)
-                              return validDates && validDates.length > 0
-                            })
-                            .map((person, index) => {
-                              // Obtener las fechas de inasistencia
-                              const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-                                const date = new Date(d.date as string)
-                                return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                              }).join(', ') || '-'
-
-                              // Manejar campos que pueden ser objetos
-                              const jobValue = typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-')
-                              const regimeValue = typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-')
-                              const shiftValue = typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-')
-                              const jurisdictionValue = typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-')
-
-                              return (
-                                <tr key={person.id || index}>
-                                  <td className={cn(tableCell, 'text-center')}>{index + 1}</td>
-                                  <td className={tableCell}>
-                                    {person.name && person.lastname
-                                      ? `${person.lastname} ${person.name}`.toUpperCase()
-                                      : person.fullname?.toUpperCase() || '-'}
-                                  </td>
-                                  <td className={cn(tableCell, 'text-center')}>
-                                    {jobValue}
-                                  </td>
-                                  <td className={cn(tableCell, 'text-center')}>
-                                    {regimeValue}
-                                  </td>
-                                  <td className={cn(tableCell, 'text-center')}>
-                                    {shiftValue}
-                                  </td>
-                                  <td className={cn(tableCell, 'text-center text-[7px]')}>
-                                    {fechas}
-                                  </td>
-                                  <td className={cn(tableCell, 'text-center')}>
-                                    {incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'JUSTIFICADA' : 'INJUSTIFICADA'}
-                                  </td>
-                                  <td className={cn(tableCell, 'text-center')}>
-                                    {jurisdictionValue}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className={pdfIntro}>Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:</p>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Hora del incidente:</label>
-                    <input
-                      type="text"
-                      value={formData.horaIncidente}
-                      onChange={e => handleChange('horaIncidente', e.target.value)}
-                      className={editInput}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Fecha del incidente:</label>
-                    <input
-                      type="text"
-                      value={formData.fechaIncidente}
-                      onChange={e => handleChange('fechaIncidente', e.target.value)}
-                      className={editInput}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Ubicación (Dirección):</label>
-                    <input
-                      type="text"
-                      value={formData.ubicacion}
-                      onChange={e => handleChange('ubicacion', e.target.value)}
-                      placeholder="Dirección completa del incidente"
-                      className={editInput}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Jurisdicción:</label>
-                    <input
-                      type="text"
-                      value={formData.jurisdiccion}
-                      onChange={e => handleChange('jurisdiccion', e.target.value)}
-                      className={editInput}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Sereno:</label>
-                    <input
-                      type="text"
-                      value={formData.sereno}
-                      readOnly
-                      className={editInputReadOnly}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>DNI:</label>
-                    <input
-                      type="text"
-                      value={formData.dni}
-                      readOnly
-                      className={editInputReadOnly}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Cargo:</label>
-                    <input
-                      type="text"
-                      value={formData.cargo}
-                      readOnly
-                      className={editInputReadOnly}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Reg. Lab:</label>
-                    <input
-                      type="text"
-                      value={formData.regLab}
-                      readOnly
-                      className={editInputReadOnly}
-                    />
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Falta:</label>
-                    <input
-                      type="text"
-                      value={formData.falta}
-                      readOnly
-                      className={editInputReadOnly}
-                    />
-                  </div>
-                </>
-              )}
-
-              {!esInasistencia && (
-                <>
-                  <div className={editableSection}>
-                    <label className={editLabel}>Artículo:</label>
-                    <input
-                      type="text"
-                      value={formData.articulo}
-                      onChange={e => handleChange('articulo', e.target.value)}
-                      className={editInput}
-                    />
-                  </div>
-
-                  {formData.tipoMedio === 'bodycam' ? (
-                    <>
-                      <div className={editableSection}>
-                        <label className={editLabel}>N° Bodycam:</label>
-                        <input
-                          type="text"
-                          value={formData.bodycam}
-                          readOnly
-                          className={editInputReadOnly}
-                        />
-                      </div>
-
-                      <div className={editableSection}>
-                        <label className={editLabel}>Bodycam asignada a:</label>
-                        <input
-                          type="text"
-                          value={formData.bodycamAsignadaA}
-                          onChange={e => handleChange('bodycamAsignadaA', e.target.value)}
-                          className={editInput}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className={editableSection}>
-                      <label className={editLabel}>N° Cámara:</label>
-                      <input
-                        type="text"
-                        value={formData.numeroCamara}
-                        readOnly
-                        className={editInputReadOnly}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {!esInasistencia && (
-                <div className={editableSection}>
-                  <label className={editLabel}>Supervisor:</label>
-                  <input
-                    type="text"
-                    value={formData.supervisor}
-                    readOnly
-                    className={editInputReadOnly}
-                  />
-                </div>
-              )}
-
-              {!esInasistencia && (
-                <div className={editableSection}>
-                  <label className={editLabel}>CONTENIDO DEL INFORME:</label>
-                  <textarea
-                    value={formData.descripcionAdicional}
-                    onChange={e => handleChange('descripcionAdicional', e.target.value)}
-                    placeholder="Edite el contenido del informe según sea necesario..."
-                    rows={18}
-                    className={cn(editField, 'resize-y min-h-[70px] leading-[1.6] whitespace-pre-wrap [font-family:inherit]')}
-                  />
-                  <div className="mt-2 rounded-[4px] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.1)] p-2 text-[10px] text-content-2">
-                    <strong>💡 Instrucciones:</strong>
-                    <ul className="mt-1 ml-5 leading-[1.5]">
-                      <li>Complete las secciones marcadas con [INSTRUCCIÓN] con los detalles específicos del incidente</li>
-                      <li>Use términos objetivos como "presuntamente", "aparentemente" para describir los hechos</li>
-                      <li>Puede editar cualquier parte del texto según sea necesario</li>
-                      <li>La plantilla se adapta automáticamente según el tipo de incidente</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {/* Historial de inasistencias ya no se muestra porque la tabla principal ya contiene todos los datos */}
-
-              {!esInasistencia && (
-                <>
-                  <div className={editableSection}>
-                    <label className={editLabel}>Adjuntar imágenes:</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      disabled={loadingEvidences || savingReport}
-                      className={fileInput}
-                    />
-
-                    {loadingEvidences && (
-                      <div className="p-3 text-center text-[0.9rem] text-primary">
-                        ⏳ Cargando evidencias existentes...
-                      </div>
-                    )}
-
-                    {formData.imagenes.length > 0 && (
-                      <div className={imagesPreview}>
-                        {formData.imagenes.map((img, index) => (
-                          <div key={index} className={imageContainer}>
-                            <div className={imageItem}>
-                              <img src={img.base64 || img.url} alt={img.name} className={imageImg} />
-                              {img.isExisting && (
-                                <span className="absolute top-[5px] left-[5px] rounded-[4px] bg-[rgba(59,130,246,0.9)] px-2 py-0.5 text-[10px] font-bold text-white">
-                                  GUARDADA
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => removeImage(index)}
-                                className={btnRemoveImg}
-                                disabled={savingReport}
-                              >
-                                ×
-                              </button>
-                            </div>
-                            <div className="mt-2">
-                              <label className="mb-1 block text-[12px] font-bold uppercase tracking-[0.5px] text-primary!">
-                                Anexo {index + 1} (OBLIGATORIO):
-                              </label>
-                              <textarea
-                                value={img.anexo || ''}
-                                onChange={(e) => updateImageAnexo(index, e.target.value)}
-                                placeholder="⚠️ Descripción OBLIGATORIA para esta imagen..."
-                                rows={2}
-                                disabled={savingReport}
-                                className={cn(
-                                  'w-full rounded-[4px] p-1.5 text-[11px] text-[#000000]! min-h-[70px] resize-y [font-family:inherit] transition-all duration-300 ease-[ease] focus:outline-none focus:shadow-[0_0_0_3px_rgba(30,58,138,0.1)]',
-                                  validationErrors.includes(index)
-                                    ? 'border-2 border-[#dc2626] bg-[#fee2e2]'
-                                    : 'border border-[#ddd] bg-white'
-                                )}
-                              />
-                              {validationErrors.includes(index) && (
-                                <span className="mt-1 block text-[11px] font-medium text-[#dc2626]">
-                                  ⚠️ Esta imagen requiere una descripción
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={editableSection}>
-                    <label className={editLabel}>Links de referencia:</label>
-                    <textarea
-                      value={formData.links}
-                      onChange={e => handleChange('links', e.target.value)}
-                      placeholder="https://ejemplo.com&#10;https://otro-link.com"
-                      rows={3}
-                      className={`${editInput} resize-y min-h-[70px]`}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className={pdfFooter}>
-              <p className="my-[3px]">Sede CECOM de la Sub Gerencia de Serenazgo:</p>
-              <p className="my-[3px]">Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427</p>
-            </div>
+      <div className="flex flex-col gap-6">
+        {/* Encabezado del informe */}
+        <section className="flex flex-col gap-4">
+          <h4 className="m-0 text-[13px] font-semibold text-content">Encabezado</h4>
+          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+            {incidencia.status === 'approved' ? (
+              <Field label="Informe N°">
+                <Input value={formData.numeroInforme} readOnly title="Código generado automáticamente al aprobar" />
+              </Field>
+            ) : (
+              <Field
+                label="Informe N°"
+                hint="El sistema asigna el número correlativo y el año cuando el informe se aprueba; no hace falta escribirlo."
+              >
+                <div className={pendingCode}>Se genera al aprobar el informe</div>
+              </Field>
+            )}
+            <Field label="Fecha del informe">
+              <Input value={formData.fecha} onChange={e => handleChange('fecha', e.target.value.toUpperCase())} />
+            </Field>
+            <Field label="Dirigido a (Sr.)">
+              <Input
+                value={formData.destinatarioNombre}
+                onChange={e => handleChange('destinatarioNombre', e.target.value.toUpperCase())}
+              />
+            </Field>
+            <Field label="Cargo del destinatario">
+              <Input
+                value={formData.destinatarioCargo}
+                onChange={e => handleChange('destinatarioCargo', e.target.value.toUpperCase())}
+                placeholder="Cargo"
+              />
+            </Field>
           </div>
-        </div>
+          <dl className={readBlock}>
+            <ReadOnlyItem label="De">Control y Supervisión</ReadOnlyItem>
+            <ReadOnlyItem label="Asunto">{incidencia.asunto}</ReadOnlyItem>
+            {incidencia.cc && incidencia.cc.length > 0 && (
+              <ReadOnlyItem label="Con copia a">{incidencia.cc.join(', ')}</ReadOnlyItem>
+            )}
+          </dl>
+        </section>
+
+        {/* Reporte de inasistencias: resumen y tabla (modelo del validador) */}
+        {esInasistencia && (
+          <section className="flex flex-col gap-4">
+            <h4 className="m-0 text-[13px] font-semibold text-content">Reporte de inasistencias</h4>
+            <p className="m-0 text-sm leading-relaxed text-content-2">
+              Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez informarle sobre el reporte de
+              inasistencias al centro de labores del personal de la Subgerencia de Serenazgo, correspondiente del turno{' '}
+              <strong className="font-semibold text-content">
+                {(() => {
+                  // Obtener turnos únicos de los datos de inasistencias
+                  if (attendanceData && attendanceData.length > 0) {
+                    const turnos = [...new Set(attendanceData.map(p => {
+                      if (typeof p.shift === 'object') return p.shift?.name || ''
+                      return p.shift || ''
+                    }).filter(Boolean))]
+                    if (turnos.length === 0) return 'MAÑANA / TARDE / NOCHE'
+                    return turnos.join(' / ')
+                  }
+                  return 'MAÑANA / TARDE / NOCHE'
+                })()}
+              </strong>
+              . Durante el período{' '}
+              <strong className="font-semibold text-content">
+                {incidencia.absenceStart && incidencia.absenceEnd ? (
+                  <>
+                    {new Date(incidencia.absenceStart).toLocaleDateString('es-PE', { day: '2-digit' })} al{' '}
+                    {new Date(incidencia.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
+                  </>
+                ) : (
+                  'PERÍODO NO ESPECIFICADO'
+                )}
+              </strong>
+              , se ha registrado un número significativo de inasistencias{' '}
+              <strong className="font-semibold text-content">
+                {incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'justificadas' : 'injustificadas'}
+              </strong>{' '}
+              por parte del personal mencionado.
+            </p>
+
+            {loadingAttendance ? (
+              <p className="m-0 flex items-center gap-2 text-sm text-muted" role="status">
+                <FiLoader className="animate-spin" aria-hidden /> Cargando inasistencias…
+              </p>
+            ) : attendanceData.length === 0 ? (
+              <p className="m-0 rounded-lg bg-subtle p-5 text-center text-sm text-muted">
+                No hay inasistencias registradas en el período seleccionado.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-line">
+                <table className="w-full border-separate border-spacing-0 text-[13px]">
+                  <thead>
+                    <tr>
+                      <th className={cn(th, 'text-center')}>N°</th>
+                      <th className={cn(th, 'text-left')}>Apellidos y nombres</th>
+                      <th className={cn(th, 'text-left')}>Cargo</th>
+                      <th className={cn(th, 'text-left')}>Reg. lab.</th>
+                      <th className={cn(th, 'text-left')}>Turno</th>
+                      <th className={cn(th, 'text-left')}>Fechas</th>
+                      <th className={cn(th, 'text-left')}>Tipo</th>
+                      <th className={cn(th, 'text-left')}>Jurisdicción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&_tr:last-child_td]:border-b-0">
+                    {attendanceData
+                      .filter(person => {
+                        const validDates = person.dates?.filter(d => !d.delete_at && d.date)
+                        return validDates && validDates.length > 0
+                      })
+                      .map((person, index) => {
+                        // Obtener las fechas de inasistencia
+                        const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
+                          const date = new Date(d.date as string)
+                          return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        }).join(', ') || '-'
+
+                        // Manejar campos que pueden ser objetos
+                        const jobValue = typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-')
+                        const regimeValue = typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-')
+                        const shiftValue = typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-')
+                        const jurisdictionValue = typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-')
+                        const justificada = incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada'
+
+                        return (
+                          <tr key={person.id || index}>
+                            <td className={cn(td, 'text-center text-muted')}>{index + 1}</td>
+                            <td className={cn(td, 'font-medium text-content')}>
+                              {person.name && person.lastname
+                                ? `${person.lastname} ${person.name}`.toUpperCase()
+                                : person.fullname?.toUpperCase() || '-'}
+                            </td>
+                            <td className={td}>{jobValue}</td>
+                            <td className={td}>{regimeValue}</td>
+                            <td className={td}>{shiftValue}</td>
+                            <td className={td}>{fechas}</td>
+                            <td className={td}>
+                              <Badge tone={justificada ? 'success' : 'danger'}>{justificada ? 'Justificada' : 'Injustificada'}</Badge>
+                            </td>
+                            <td className={td}>{jurisdictionValue}</td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Informe de incidencia: el hecho, el lugar, el personal y el medio */}
+        {!esInasistencia && (
+          <>
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">El hecho</h4>
+              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+                <Field label="Hora del incidente">
+                  <Input value={formData.horaIncidente} onChange={e => handleChange('horaIncidente', e.target.value)} />
+                </Field>
+                <Field label="Fecha del incidente">
+                  <Input value={formData.fechaIncidente} onChange={e => handleChange('fechaIncidente', e.target.value)} />
+                </Field>
+                <Field label="Artículo">
+                  <Input value={formData.articulo} onChange={e => handleChange('articulo', e.target.value)} />
+                </Field>
+              </div>
+              <dl className={readBlock}>
+                <ReadOnlyItem label="Falta">{formData.falta}</ReadOnlyItem>
+              </dl>
+            </section>
+
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Ubicación</h4>
+              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+                <Field label="Dirección" className="col-span-2 max-md:col-span-1">
+                  <Input
+                    value={formData.ubicacion}
+                    onChange={e => handleChange('ubicacion', e.target.value)}
+                    placeholder="Dirección completa del incidente"
+                  />
+                </Field>
+                <Field label="Jurisdicción">
+                  <Input value={formData.jurisdiccion} onChange={e => handleChange('jurisdiccion', e.target.value)} />
+                </Field>
+              </div>
+            </section>
+
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Personal involucrado</h4>
+              <dl className={readBlock}>
+                <ReadOnlyItem label="Sereno">{formData.sereno}</ReadOnlyItem>
+                <ReadOnlyItem label="DNI">{formData.dni}</ReadOnlyItem>
+                <ReadOnlyItem label="Cargo">{formData.cargo}</ReadOnlyItem>
+                <ReadOnlyItem label="Régimen laboral">{formData.regLab}</ReadOnlyItem>
+              </dl>
+            </section>
+
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Medio</h4>
+              {formData.tipoMedio === 'bodycam' && (
+                <Field label="Bodycam asignada a">
+                  <Input
+                    value={formData.bodycamAsignadaA}
+                    onChange={e => handleChange('bodycamAsignadaA', e.target.value)}
+                  />
+                </Field>
+              )}
+              <dl className={readBlock}>
+                {formData.tipoMedio === 'bodycam' ? (
+                  <ReadOnlyItem label="N° de bodycam">{formData.bodycam}</ReadOnlyItem>
+                ) : (
+                  <ReadOnlyItem label="N° de cámara">{formData.numeroCamara}</ReadOnlyItem>
+                )}
+                <ReadOnlyItem label="Supervisor">{formData.supervisor}</ReadOnlyItem>
+              </dl>
+            </section>
+
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Contenido del informe</h4>
+              <Field label="Texto del informe">
+                <Textarea
+                  value={formData.descripcionAdicional}
+                  onChange={e => handleChange('descripcionAdicional', e.target.value)}
+                  placeholder="Edita el contenido del informe según sea necesario…"
+                  rows={16}
+                  className="leading-relaxed whitespace-pre-wrap"
+                />
+              </Field>
+              <div className="rounded-lg bg-subtle p-4 text-[13px] text-content-2">
+                <p className="m-0 font-medium text-content">Cómo completarlo</p>
+                <ul className="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+                  <li>Completa las secciones marcadas con [INSTRUCCIÓN] con los detalles del incidente.</li>
+                  <li>Usa términos objetivos como «presuntamente» o «aparentemente» para describir los hechos.</li>
+                  <li>Puedes editar cualquier parte del texto.</li>
+                  <li>La plantilla se adapta al tipo de incidente.</li>
+                </ul>
+              </div>
+            </section>
+
+            <section className="flex flex-col gap-4">
+              <h4 className="m-0 text-[13px] font-semibold text-content">Evidencia</h4>
+              <label
+                className={cn(
+                  uploadBox,
+                  (loadingEvidences || savingReport) && 'pointer-events-none opacity-50'
+                )}
+              >
+                <FiUpload aria-hidden className="text-lg text-accent" />
+                <span>
+                  <span className="font-medium text-content">Adjuntar imágenes</span>
+                  <span className="block text-xs text-muted">Puedes elegir varias a la vez.</span>
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  disabled={loadingEvidences || savingReport}
+                  className="sr-only"
+                />
+              </label>
+
+              {loadingEvidences && (
+                <p className="m-0 flex items-center gap-2 text-sm text-muted" role="status">
+                  <FiLoader className="animate-spin" aria-hidden /> Cargando evidencias existentes…
+                </p>
+              )}
+
+              {formData.imagenes.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  {formData.imagenes.map((img, index) => (
+                    <div key={index} className="flex gap-4 rounded-lg border border-line p-3 max-sm:flex-col">
+                      <div className="relative size-24 shrink-0">
+                        <img src={img.base64 || img.url} alt={img.name} className="size-full rounded-lg object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          disabled={savingReport}
+                          aria-label={`Quitar imagen ${index + 1}`}
+                          className={removeImgBtn}
+                        >
+                          <FiX aria-hidden />
+                        </button>
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        {img.isExisting && (
+                          <span>
+                            <Badge tone="neutral">Guardada</Badge>
+                          </span>
+                        )}
+                        <Field
+                          label={`Anexo ${index + 1}`}
+                          required
+                          error={validationErrors.includes(index) ? 'Esta imagen requiere una descripción.' : undefined}
+                        >
+                          <Textarea
+                            value={img.anexo || ''}
+                            onChange={e => updateImageAnexo(index, e.target.value)}
+                            placeholder="Describe lo que muestra esta imagen"
+                            rows={2}
+                            disabled={savingReport}
+                            invalid={validationErrors.includes(index)}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Field label="Enlaces de referencia" hint="Uno por línea.">
+                <Textarea
+                  value={formData.links}
+                  onChange={e => handleChange('links', e.target.value)}
+                  placeholder="https://ejemplo.com&#10;https://otro-enlace.com"
+                  rows={3}
+                />
+              </Field>
+            </section>
+          </>
+        )}
+
+        <p className="m-0 border-t border-line pt-4 text-center text-xs text-muted">
+          Sede CECOM de la Subgerencia de Serenazgo · Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427
+        </p>
+      </div>
     </Modal>
   )
 }

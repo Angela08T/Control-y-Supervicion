@@ -28,21 +28,21 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
   const configs = {
     success: {
       icon: <FiCheckCircle size={18} aria-hidden />,
-      iconCls: 'bg-[rgba(16,185,129,0.12)] text-success',
+      iconCls: 'bg-[rgba(142,188,34,0.12)] text-success',
       stripeCls: 'bg-success',
       barCls: 'bg-success',
       title: '¡Éxito!'
     },
     error: {
       icon: <FiXCircle size={18} aria-hidden />,
-      iconCls: 'bg-[rgba(239,68,68,0.10)] text-danger',
+      iconCls: 'bg-[rgba(199,21,34,0.10)] text-danger',
       stripeCls: 'bg-danger',
       barCls: 'bg-danger',
       title: 'Error'
     },
     warning: {
       icon: <FiAlertTriangle size={18} aria-hidden />,
-      iconCls: 'bg-[rgba(245,158,11,0.14)] text-warning',
+      iconCls: 'bg-[rgba(242,165,15,0.14)] text-warning',
       stripeCls: 'bg-warning',
       barCls: 'bg-warning',
       title: 'Advertencia'

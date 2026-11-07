@@ -13,12 +13,28 @@
   /* Colores de marca */
   --primary: #1e3a8a;
   --secondary: #3b82f6;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
+  --success: #6f9a14;
+  --danger: #c71522;
+  --warning: #c97d00;
   --accent: #2563eb;
   --accent-light: #60a5fa;
   --primary-hover: #1d4ed8;
+
+  /* Identidad: tinta oscura y los cinco colores del logo de la municipalidad.
+     Los "-ink" son las versiones con contraste suficiente para texto sobre fondo claro. */
+  /* Banner de pagina: azul institucional con texto blanco */
+  --page-color: #1e3a8a;
+  --page-fg: #ffffff;
+  --ink: #0c1a4b;
+  --ink-2: #16296b;
+  --c-red: #c71522;
+  --c-pink: #d20b80;
+  --c-amber: #f2a50f;
+  --c-lime: #8ebc22;
+  --c-cyan: #31a3b5;
+  --c-amber-ink: #8a5a00;
+  --c-lime-ink: #3f6212;
+  --c-cyan-ink: #176d7e;
 
   /* Superficies */
   --bg: #f0f9ff;
@@ -93,6 +109,19 @@
   --color-content-2: var(--text-secondary);
   --color-muted: var(--text-muted);
   --color-btn: var(--button-text);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-brand-red: var(--c-red);
+  --color-brand-pink: var(--c-pink);
+  --color-brand-amber: var(--c-amber);
+  --color-brand-lime: var(--c-lime);
+  --color-brand-cyan: var(--c-cyan);
+  --color-amber-ink: var(--c-amber-ink);
+  --color-lime-ink: var(--c-lime-ink);
+  --color-cyan-ink: var(--c-cyan-ink);
+
+  --font-display: 'IBM Plex Sans Variable', system-ui, sans-serif;
 }
 
 /* ===== Animaciones ===== */
@@ -328,11 +357,122 @@
   }
 }
 
+/* ===== Animaciones de la identidad (cinta, radar, carga) ===== */
+
+/* Barrido del radar */
+@keyframes radarSweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Anillo que se expande desde un punto del radar */
+@keyframes blipRing {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  80%,
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+/* Puntos de carga: cinco colores en ola */
+@keyframes dotWave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  30% {
+    transform: translateY(-7px);
+    opacity: 1;
+  }
+}
+
+/* Barra de progreso que se llena desde la izquierda */
+@keyframes fillIn {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Fondo cartografico: las lineas de nivel se desplazan y "respiran" muy despacio */
+@keyframes contourDrift {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(46px, -30px) rotate(2.4deg);
+  }
+}
+
+/* Brillo suave que cruza un banner azul y descansa un buen rato */
+@keyframes sheen {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  38%,
+  100% {
+    transform: translateX(330%) skewX(-18deg);
+  }
+}
+
+@keyframes contourBreathe {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.055);
+  }
+}
+
+/* Entrada escalonada de las opciones del menu lateral (una sola vez al cargar) */
+@keyframes navIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.nav-in {
+  animation: navIn 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-in {
+    animation: none;
+  }
+}
+
+/* Cambio de pantalla */
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ===== Estilos base globales ===== */
 @layer base {
   * {
     box-sizing: border-box;
-    font-family: 'Inter', system-ui, -apple-system, Arial;
+    font-family: 'IBM Plex Sans Variable', system-ui, -apple-system, Arial;
   }
 
   html,
@@ -428,4 +568,23 @@
 .leaflet-container .leaflet-interactive:focus,
 .leaflet-container .leaflet-interactive:focus-visible {
   outline: none;
+}
+
+/* Botones dentro del banner de color de cada pagina: se leen sobre cualquier color del logo.
+   Van fuera de las capas para ganarle a las clases de utilidad del kit. */
+.band-actions button[data-variant='primary'] {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: transparent;
+}
+
+.band-actions button[data-variant='secondary'] {
+  background: color-mix(in srgb, #ffffff 24%, transparent);
+  color: var(--page-fg);
+  border-color: color-mix(in srgb, var(--page-fg) 40%, transparent);
+}
+
+.band-actions button[data-variant='secondary']:hover {
+  background: color-mix(in srgb, #ffffff 42%, transparent);
+  color: var(--page-fg);
 }

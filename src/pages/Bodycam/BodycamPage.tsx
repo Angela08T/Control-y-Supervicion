@@ -13,7 +13,7 @@ import Pagination from '@/components/UI/Pagination'
 import Button from '@/components/UI/Button'
 import { Select } from '@/components/UI/Field'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
-import { cardClass } from '@/utils/classes'
+import { fitCard, fitPage } from '@/utils/classes'
 import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 
 /** Tipos de filtro de dispositivo del selector */
@@ -323,7 +323,7 @@ export default function BodycamPage() {
     : 'No hay dispositivos de este tipo.'
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Dispositivos"
         description="Bodycams y cámaras disponibles para asignar a los turnos."
@@ -361,7 +361,7 @@ export default function BodycamPage() {
         </p>
       )}
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando dispositivos…" />
         ) : filteredData.length === 0 ? (

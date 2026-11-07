@@ -1,14 +1,15 @@
 import React from 'react'
 import { cn } from '@/utils/classes'
 
-export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
+export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
 const tones: Record<BadgeTone, { box: string; dot: string }> = {
   neutral: { box: 'bg-subtle text-content-2', dot: 'bg-[#94a3b8]' },
-  info: { box: 'bg-[rgba(30,58,138,0.08)] text-primary', dot: 'bg-secondary' },
-  success: { box: 'bg-[rgba(16,185,129,0.12)] text-[#047857]', dot: 'bg-success' },
-  warning: { box: 'bg-[rgba(245,158,11,0.14)] text-[#b45309]', dot: 'bg-warning' },
-  danger: { box: 'bg-[rgba(239,68,68,0.10)] text-[#b91c1c]', dot: 'bg-danger' },
+  info: { box: 'bg-[rgba(49,163,181,0.14)] text-cyan-ink', dot: 'bg-brand-cyan' },
+  success: { box: 'bg-[rgba(142,188,34,0.2)] text-lime-ink', dot: 'bg-brand-lime' },
+  warning: { box: 'bg-[rgba(242,165,15,0.2)] text-amber-ink', dot: 'bg-brand-amber' },
+  danger: { box: 'bg-[rgba(199,21,34,0.1)] text-brand-red', dot: 'bg-brand-red' },
+  accent: { box: 'bg-[rgba(210,11,128,0.1)] text-brand-pink', dot: 'bg-brand-pink' },
 }
 
 export interface BadgeProps {

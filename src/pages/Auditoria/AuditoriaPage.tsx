@@ -9,7 +9,7 @@ import PageHeader from '@/components/UI/PageHeader';
 import Pagination from '@/components/UI/Pagination';
 import SearchInput from '@/components/UI/SearchInput';
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState';
-import { cardClass } from '@/utils/classes';
+import { fitCard, fitPage } from '@/utils/classes';
 import { PAGE_SIZE } from '@/hooks/usePagedList';
 
 /** Ancho fijo de cada filtro dentro de la barra */
@@ -47,7 +47,7 @@ export default function AuditoriaPage() {
   const to = Math.min(pagination.currentPage * PAGE_SIZE, total);
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader title="Auditoría" description="Registro de acciones realizadas en el sistema.">
         <div className={filterWrap}>
           <Select
@@ -106,7 +106,7 @@ export default function AuditoriaPage() {
         </Button>
       </PageHeader>
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando registros de auditoría…" />
         ) : error ? (

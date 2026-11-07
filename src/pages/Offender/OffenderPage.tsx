@@ -7,7 +7,7 @@ import type { OffenderFormData } from '../../components/ModalOffender'
 import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
 import { FiPlus } from 'react-icons/fi'
-import { cardClass } from '../../utils/classes'
+import { fitCard, fitPage } from '../../utils/classes'
 import { useNotification } from '../../context/NotificationContext'
 import ConfirmModal from '../../components/ConfirmModal'
 import { toast } from '../../utils/toast'
@@ -289,7 +289,7 @@ export default function OffenderPage() {
   const filteredData = searchResult !== null ? searchPaged.pageItems : offenders
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Infractores"
         description="Personas registradas como infractores."
@@ -315,7 +315,7 @@ export default function OffenderPage() {
         </p>
       )}
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando infractores…" />
         ) : filteredData.length === 0 ? (
