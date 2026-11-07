@@ -12,7 +12,9 @@ import {
 } from '../../api/user'
 import { FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
-import type { CreateUserDto, ID, Role, User } from '@/types'
+import { getRoleOptions } from '../../api/role'
+import { getModulePermissions } from '../../utils/permissions'
+import type { CreateUserDto, ID, Role, RoleOption, User } from '@/types'
 import Button from '@/components/UI/Button'
 import { Select } from '@/components/UI/Field'
 import PageHeader from '@/components/UI/PageHeader'
@@ -52,13 +54,18 @@ export default function UsuariosPage() {
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isSearching, setIsSearching] = useState<boolean>(false)
 
-  // Permisos según rol
-  const canCreateSupervisor = userRole === 'admin'
-  const canCreateValidator = userRole === 'admin' // Solo admin puede crear VALIDATOR
-  const canCreateSentinel = userRole === 'admin' || userRole === 'supervisor'
-  const canCreate = canCreateSentinel || canCreateSupervisor
-  const canEdit = userRole === 'admin' || userRole === 'supervisor'
-  const canDelete = userRole === 'admin' || userRole === 'supervisor'
+  // Permisos del rol (se definen en Roles y permisos). Solo el administrador asigna roles distintos de Centinela.
+  const permissions = getModulePermissions(userRole, 'usuarios')
+  const { canCreate, canEdit, canDelete } = permissions
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([])
+  const assignableRoles = userRole === 'admin' ? roleOptions : roleOptions.filter((role) => role.key === 'SENTINEL')
+  const roleNames = Object.fromEntries(roleOptions.map((role) => [role.key, role.name]))
+
+  useEffect(() => {
+    getRoleOptions()
+      .then(setRoleOptions)
+      .catch(() => toast.info('No se pudieron cargar los roles'))
+  }, [])
 
   // Cargar usuarios con filtros aplicados desde la API
   useEffect(() => {
@@ -120,22 +127,12 @@ export default function UsuariosPage() {
       // Crear nuevo usuario
       try {
         // Verificar permisos antes de crear
-        if (data.rol === 'ADMINISTRATOR' && userRole !== 'admin') {
-          toast.warning('No tienes permisos para crear administradores')
+        if (userRole !== 'admin' && data.rol !== 'SENTINEL') {
+          toast.warning('Solo puedes crear centinelas')
           return
         }
 
-        if (data.rol === 'SUPERVISOR' && !canCreateSupervisor) {
-          toast.warning('No tienes permisos para crear supervisores')
-          return
-        }
-
-        if (data.rol === 'VALIDATOR' && !canCreateValidator) {
-          toast.warning('No tienes permisos para crear validadores')
-          return
-        }
-
-        if (!canCreateSentinel) {
+        if (!canCreate) {
           toast.warning('No tienes permisos para crear usuarios')
           return
         }
@@ -258,10 +255,11 @@ export default function UsuariosPage() {
             onChange={(e) => setFilters((f) => ({ ...f, roleFilter: e.target.value as RoleFilter }))}
           >
             <option value="all">Todos los roles</option>
-            {userRole === 'admin' && <option value="ADMINISTRATOR">Administrador</option>}
-            {userRole === 'admin' && <option value="SUPERVISOR">Supervisor</option>}
-            {userRole === 'admin' && <option value="VALIDATOR">Validador</option>}
-            <option value="SENTINEL">Centinela</option>
+            {assignableRoles.map((role) => (
+              <option key={role.key} value={role.key}>
+                {role.name}
+              </option>
+            ))}
           </Select>
         </div>
 
@@ -295,6 +293,7 @@ export default function UsuariosPage() {
               startIndex={paged.from - 1}
               canEdit={canEdit}
               canDelete={canDelete}
+              roleNames={roleNames}
             />
             <Pagination
               page={paged.page}
@@ -314,6 +313,7 @@ export default function UsuariosPage() {
           onClose={() => { setShowModal(false); setEditItem(null) }}
           onSave={handleSave}
           userRole={userRole}
+          roles={assignableRoles}
         />
       )}
     </div>
