@@ -6,7 +6,7 @@ import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodyca
 import { getModulePermissions } from '../../utils/permissions'
 import { FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
-import type { BodycamView, CreateBodycamDto, TablePagination } from '@/types'
+import type { BodycamView, Cam, CreateBodycamDto, TablePagination } from '@/types'
 import PageHeader from '@/components/UI/PageHeader'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
@@ -18,9 +18,6 @@ import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 
 /** Tipos de filtro de dispositivo del selector */
 type DeviceType = 'all' | 'camera' | 'sg' | 'fisca'
-
-/** Tipo de dispositivo detectado por nombre */
-type DeviceKind = 'unknown' | 'sg' | 'fisca' | 'camera' | 'other'
 
 /** Fila de resultado de busqueda */
 type BodycamRow = Pick<BodycamView, 'id' | 'name' | 'serie' | 'cam' | 'deleted_at'>
@@ -39,6 +36,25 @@ interface MutationError {
 
 const readMutationBody = (body: unknown): MutationBody => body as MutationBody
 
+/** Texto que se busca en el servidor cuando se elige un tipo sin escribir nada */
+const TYPE_PREFIX: Record<DeviceType, string> = { all: '', camera: '', sg: 'SG', fisca: 'FISCA' }
+
+/**
+ * Tipo de equipo (`cam`) que le corresponde a cada filtro. Es el dato real: los nombres numericos
+ * no sirven para distinguir, porque las radios (22110...) tambien se llaman con un numero.
+ */
+const TYPE_CAM: Record<DeviceType, Cam | null> = { all: null, camera: 'CAMERA', sg: 'BODYCAM', fisca: 'BODYCAM' }
+
+/** ¿El dispositivo es del tipo elegido? Cámaras por su tipo; SG y FISCA son bodycams que empiezan con ese prefijo */
+const matchesType = (row: BodycamRow, type: DeviceType): boolean => {
+  if (type === 'all') return true
+  if (type === 'camera') return row.cam === 'CAMERA'
+  return row.cam === 'BODYCAM' && row.name.toUpperCase().startsWith(TYPE_PREFIX[type])
+}
+
+const isUUID = (str: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+
 export default function BodycamPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'bodycam')
@@ -51,63 +67,6 @@ export default function BodycamPage() {
     deviceType: 'all' // all, camera, sg, fisca
   })
 
-  // Función para determinar el tipo de dispositivo basado en el nombre
-  const getDeviceType = (name: string): DeviceKind => {
-    if (!name) return 'unknown'
-    const upperName = name.toUpperCase()
-    if (upperName.startsWith('SG')) return 'sg'
-    if (upperName.startsWith('FISCA')) return 'fisca'
-    // Si es numérico o alfanumérico simple (1, 20A, 510, etc.) es cámara
-    if (/^[0-9]+[A-Z]?$/i.test(name.trim())) return 'camera'
-    return 'other'
-  }
-
-  // Efecto para buscar por tipo de dispositivo
-  useEffect(() => {
-    if (filters.deviceType === 'all') {
-      setSearchResult(null)
-      return
-    }
-
-    // Si hay búsqueda activa, no hacer búsqueda por tipo
-    if (filters.search.trim()) return
-
-    const searchByType = async () => {
-      setIsSearching(true)
-      try {
-        let searchPrefix = ''
-        if (filters.deviceType === 'sg') searchPrefix = 'SG'
-        else if (filters.deviceType === 'fisca') searchPrefix = 'FISCA'
-        else if (filters.deviceType === 'camera') {
-          // Para cámaras, cargar todos y filtrar localmente
-          const result = await getBodycams(1, 1000)
-          const cameras = result.data.filter(item => getDeviceType(item.name) === 'camera')
-          setSearchResult(cameras)
-          setIsSearching(false)
-          return
-        }
-
-        if (searchPrefix) {
-          const response = await searchBodycam(searchPrefix)
-          const results = response?.data?.data || []
-          const transformed = results.map(b => ({
-            id: b.id,
-            name: b.name,
-            serie: b.serie,
-            cam: b.cam,
-            deleted_at: b.deleted_at
-          }))
-          setSearchResult(transformed)
-        }
-      } catch (error) {
-        setSearchResult([])
-      } finally {
-        setIsSearching(false)
-      }
-    }
-
-    searchByType()
-  }, [filters.deviceType])
   const [currentPage, setCurrentPage] = useState<number>(1)
   const itemsPerPage = PAGE_SIZE
   const [pagination, setPagination] = useState<TablePagination>({
@@ -143,75 +102,56 @@ export default function BodycamPage() {
     fetchBodycams()
   }, [currentPage, itemsPerPage, refreshTrigger])
 
-  // Verificar si el término de búsqueda es un UUID
-  const isUUID = (str: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    return uuidRegex.test(str)
-  }
-
-  // Buscar bodycam por ID o nombre/serie cuando el usuario escribe
+  // Búsqueda y filtro de tipo trabajan juntos: el texto se busca en el servidor y el tipo se aplica al resultado.
+  // Sin texto, SG y FISCA se buscan por su prefijo; "Cámaras" trae todo y se queda con las cámaras.
   useEffect(() => {
-    const searchTerm = filters.search.trim()
+    const term = filters.search.trim()
+    const { deviceType } = filters
 
-    // Si no hay término de búsqueda, limpiar resultados
-    if (!searchTerm) {
+    if (!term && deviceType === 'all') {
       setSearchResult(null)
+      setIsSearching(false)
       return
     }
 
-    // Si es UUID, buscar por ID
-    if (isUUID(searchTerm)) {
-      const searchById = async () => {
-        setIsSearching(true)
-        try {
-          const result = await getBodycamById(searchTerm)
+    let cancelled = false
 
-          if (result.found && result.data.length > 0) {
-            setSearchResult(result.data)
-          } else {
-            setSearchResult([])
-          }
-        } catch (error) {
-          setSearchResult(null)
-        } finally {
-          setIsSearching(false)
+    const run = async () => {
+      setIsSearching(true)
+      try {
+        let rows: BodycamRow[]
+        if (isUUID(term)) {
+          const result = await getBodycamById(term)
+          rows = result.found ? result.data : []
+        } else {
+          const response = await searchBodycam(term || TYPE_PREFIX[deviceType], 1000, TYPE_CAM[deviceType])
+          rows = (response?.data?.data || []).map(b => ({
+            id: b.id,
+            name: b.name,
+            serie: b.serie,
+            cam: b.cam,
+            deleted_at: b.deleted_at
+          }))
         }
-      }
-
-      searchById()
-    } else {
-      // Si NO es UUID, buscar por nombre/serie en toda la base de datos
-      const searchByNameOrSerie = async () => {
-        setIsSearching(true)
-        try {
-          const response = await searchBodycam(searchTerm)
-
-          // La API devuelve los datos en response.data?.data?.data
-          const results = response?.data?.data || []
-
-          if (results.length > 0) {
-            // Transformar los resultados al formato esperado
-            const transformed = results.map(b => ({
-              id: b.id,
-              name: b.name,
-              serie: b.serie,
-              cam: b.cam,
-              deleted_at: b.deleted_at
-            }))
-            setSearchResult(transformed)
-          } else {
-            setSearchResult([])
-          }
-        } catch (error) {
-          setSearchResult(null)
-        } finally {
-          setIsSearching(false)
+        if (!cancelled) setSearchResult(rows.filter(row => matchesType(row, deviceType)))
+      } catch (error) {
+        if (!cancelled) {
+          setSearchResult([])
+          toast.info('No se pudo completar la búsqueda')
         }
+      } finally {
+        if (!cancelled) setIsSearching(false)
       }
-
-      searchByNameOrSerie()
     }
-  }, [filters.search])
+
+    // Pequeña espera mientras se escribe, para no consultar en cada tecla
+    const timer = setTimeout(run, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+    // refreshTrigger: tras crear, editar o cambiar el estado, la búsqueda vuelve a consultarse
+  }, [filters.search, filters.deviceType, refreshTrigger])
 
   // Crear o editar dispositivo
   async function handleSave(data: Pick<CreateBodycamDto, 'name' | 'serie'>) {
