@@ -38,7 +38,7 @@ const useLogin = (): UseLoginResult => {
       // { message: "Login exitoso", data: { user: "diego", rol: "administrator", token: "..." } }
       // A veces la respuesta viene directa, o dentro de 'data'.
       const data: Partial<LoginData> = response.data || response;
-      const { token, user, rol, nombre, apellido } = data;
+      const { token, user, rol, role_name, permissions, nombre, apellido } = data;
 
       if (token && user && rol) {
         // Normalizar el rol usando la función centralizada
@@ -50,6 +50,9 @@ const useLogin = (): UseLoginResult => {
             id: null, // El backend no devuelve ID, puedes agregarlo después si lo necesitas
             username: user,
             role: normalizedRole,
+            roleKey: rol,
+            roleName: role_name ?? rol,
+            permissions: permissions ?? {},
             nombre: nombre ?? null,
             apellido: apellido ?? null,
           })

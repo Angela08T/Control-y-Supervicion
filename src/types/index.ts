@@ -1,5 +1,6 @@
 export * from './common.types';
 export * from './auth.types';
+export * from './role.types';
 export * from './user.types';
 export * from './report.types';
 export * from './offender.types';
