@@ -415,7 +415,7 @@ export default function DashboardPage() {
           subtitle={stats.asuntoMasFrecuente}
           change="+12%"
           icon={<FiAlertTriangle />}
-          color="#f59e0b"
+          color="#c71522"
         />
 
         <StatCard
@@ -424,7 +424,7 @@ export default function DashboardPage() {
           subtitle={stats.zonaConMas}
           change="+8%"
           icon={<FiMapPin />}
-          color="#10b981"
+          color="#2563eb"
         />
       </div>
 

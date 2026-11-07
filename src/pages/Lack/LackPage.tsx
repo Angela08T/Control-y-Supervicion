@@ -8,7 +8,7 @@ import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
 import { getModulePermissions } from '../../utils/permissions'
 import { FiPlus } from 'react-icons/fi'
 import useNotification from '../../hooks/useNotification'
-import { cardClass } from '../../utils/classes'
+import { fitCard, fitPage } from '../../utils/classes'
 import PageHeader from '../../components/UI/PageHeader'
 import SearchInput from '../../components/UI/SearchInput'
 import Button from '../../components/UI/Button'
@@ -219,7 +219,7 @@ export default function LackPage() {
   const isSearching = filters.search.trim() !== ''
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Faltas"
         description="Conductas que se pueden registrar, con su asunto y su contenido de informe."
@@ -238,7 +238,7 @@ export default function LackPage() {
         />
       </PageHeader>
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando faltas…" />
         ) : isEmpty ? (

@@ -90,7 +90,7 @@ export const formLabel = 'flex items-center gap-2 text-[13px] font-medium text-c
 
 /** Tarjeta que contiene una tabla: borde fino, fondo blanco, esquinas recortadas */
 export const cardClass =
-  'flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_var(--shadow)]'
+  'flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_1px_2px_var(--shadow)]'
 
 /** Contenedor principal de la tabla (scroll vertical) */
 export const tableWrapper = `flex w-full min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto ${scrollbarBox}`
@@ -123,7 +123,7 @@ export const actionBtn =
 
 /** Boton de accion destructiva (eliminar, deshabilitar) */
 export const actionBtnDanger =
-  'inline-flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-[rgba(239,68,68,0.1)] hover:text-danger disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-[rgba(199,21,34,0.1)] hover:text-danger disabled:cursor-not-allowed disabled:opacity-40'
 
 // ==================== Layout ====================
 
@@ -136,6 +136,16 @@ export const mainArea = 'box-border w-full p-6'
 
 export const incidenciasPage = 'flex w-full flex-col'
 
+/**
+ * Pagina de listado que ocupa justo el alto disponible (sin scroll de pagina): el encabezado queda
+ * arriba, la tarjeta de la tabla desplaza por dentro y la paginacion queda al pie. En pantallas muy
+ * bajas el minimo evita aplastar la tabla y es el <main> el que desplaza.
+ */
+export const fitPage = 'flex h-full min-h-[560px] w-full flex-col'
+
+/** Tarjeta de tabla dentro de `fitPage`: puede encogerse; su tabla (min-h-0 flex-1 overflow-auto) desplaza */
+export const fitCard = `${cardClass} min-h-0`
+
 // ==================== Autocompletado (bodycam, DNI) ====================
 
 export const autocompleteContainer = 'relative w-full [&_input]:w-full'
@@ -145,7 +155,7 @@ const autocompleteBox = 'mt-1 rounded-lg border px-3 py-2 text-[13px]'
 
 export const autocompleteLoading = `${autocompleteBox} border-line bg-surface text-content-2`
 
-export const autocompleteError = `${autocompleteBox} border-danger bg-[rgba(239,68,68,0.06)] text-danger`
+export const autocompleteError = `${autocompleteBox} border-danger bg-[rgba(199,21,34,0.06)] text-danger`
 
 export const autocompleteNoResults = `${autocompleteBox} border-line bg-surface text-muted`
 

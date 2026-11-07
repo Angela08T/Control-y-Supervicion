@@ -29,7 +29,7 @@ export default function SessionExpiredModal({ show, onAccept }: SessionExpiredMo
         aria-labelledby="session-expired-title"
         className="flex w-full max-w-[400px] flex-col items-center rounded-xl border border-line bg-surface p-6 text-center shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out]"
       >
-        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(245,158,11,0.14)] text-warning">
+        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(242,165,15,0.14)] text-warning">
           <FiAlertTriangle size={20} aria-hidden />
         </div>
         <h3 id="session-expired-title" className="m-0 text-base font-semibold text-content">

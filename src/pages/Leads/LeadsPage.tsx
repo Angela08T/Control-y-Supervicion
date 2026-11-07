@@ -6,7 +6,7 @@ import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead }
 import { getModulePermissions } from '../../utils/permissions'
 import { FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
-import { cardClass } from '../../utils/classes'
+import { fitCard, fitPage } from '../../utils/classes'
 import PageHeader from '@/components/UI/PageHeader'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
@@ -284,7 +284,7 @@ export default function LeadsPage() {
   const filteredData = searchResult !== null ? searchPaged.pageItems : leads
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Personal"
         description="Personas registradas y el cargo que ocupan."
@@ -302,7 +302,7 @@ export default function LeadsPage() {
         />
       </PageHeader>
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando personal…" />
         ) : filteredData.length === 0 ? (

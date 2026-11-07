@@ -25,7 +25,7 @@ export default function SuccessModal({ show, message, onClose }: SuccessModalPro
         className="flex w-full max-w-[400px] flex-col items-center rounded-xl border border-line bg-surface p-6 text-center shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(16,185,129,0.12)] text-success">
+        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(142,188,34,0.12)] text-success">
           <FiCheckCircle size={20} aria-hidden />
         </div>
         <h3 className="m-0 text-base font-semibold text-content">¡Cambios guardados exitosamente!</h3>

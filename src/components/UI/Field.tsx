@@ -5,7 +5,7 @@ import { cn } from '@/utils/classes'
 export const controlClass =
   'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-[#9fb0c8] focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
 
-const controlError = 'border-danger! focus:shadow-[0_0_0_3px_rgba(239,68,68,0.2)]!'
+const controlError = 'border-danger! focus:shadow-[0_0_0_3px_rgba(199,21,34,0.2)]!'
 
 export interface FieldProps {
   label: React.ReactNode

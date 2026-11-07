@@ -40,11 +40,11 @@ export default function ConfirmModal({
 
   const styles = {
     warning: {
-      tone: 'bg-[rgba(245,158,11,0.14)] text-warning',
+      tone: 'bg-[rgba(242,165,15,0.14)] text-warning',
       icon: <FiAlertTriangle size={20} aria-hidden />
     },
     danger: {
-      tone: 'bg-[rgba(239,68,68,0.10)] text-danger',
+      tone: 'bg-[rgba(199,21,34,0.10)] text-danger',
       icon: <FiAlertTriangle size={20} aria-hidden />
     },
     info: {

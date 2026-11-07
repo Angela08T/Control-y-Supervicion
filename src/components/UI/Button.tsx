@@ -15,7 +15,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const base =
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-medium transition-[background-color,color,transform] duration-150 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
 
 const variants: Record<ButtonVariant, string> = {
   primary: 'border-transparent bg-primary text-btn hover:bg-primary-hover',
@@ -43,6 +43,7 @@ export default function Button({
   return (
     <button
       type={type}
+      data-variant={variant}
       disabled={disabled || loading}
       className={cn(base, variants[variant], sizes[size], className)}
       {...rest}

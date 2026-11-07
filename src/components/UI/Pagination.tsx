@@ -31,7 +31,7 @@ function pageWindow(page: number, totalPages: number): number[] {
 /** Paginacion estandar de las tablas (10 filas por pagina): contador y navegacion. */
 export default function Pagination({ page, totalPages, total, from, to, onPageChange }: PaginationProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3">
       <span className="text-[13px] text-muted">
         {total === 0 ? (
           'Sin registros'
@@ -53,7 +53,7 @@ export default function Pagination({ page, totalPages, total, from, to, onPageCh
               type="button"
               onClick={() => onPageChange(n)}
               aria-current={n === page ? 'page' : undefined}
-              className={cn(navBtn, 'min-w-8 px-2 font-medium', n === page && 'border-primary bg-primary text-btn hover:bg-primary')}
+              className={cn(navBtn, 'min-w-8 px-2 font-medium', n === page && 'border-[var(--page-color)] bg-[var(--page-color)] text-[var(--page-fg)] hover:bg-[var(--page-color)]')}
             >
               {n}
             </button>

@@ -42,7 +42,7 @@ import type {
   StoredIncidencia,
   TablePagination,
 } from '@/types'
-import { cardClass, cn, incidenciasPage } from '../../utils/classes'
+import { cardClass, cn, fitPage } from '../../utils/classes'
 
 /** Forma mínima de un error (axios / NestJS) que lee esta página. */
 interface ApiErrorLike {
@@ -121,12 +121,12 @@ interface SearchReportRecord extends Report {
 }
 
 /** Opciones del control de estado (mismos valores que los antiguos <option> de filters.process) */
-const STATUS_OPTIONS: { value: string; label: string }[] = [
+const STATUS_OPTIONS: { value: string; label: string; dot?: string }[] = [
   { value: '', label: 'Todos' },
-  { value: 'null', label: 'Borrador' },
-  { value: 'PENDING', label: 'Pendiente' },
-  { value: 'APPROVED', label: 'Aprobado' },
-  { value: 'REJECTED', label: 'Rechazado' },
+  { value: 'null', label: 'Borrador', dot: '#94a3b8' },
+  { value: 'PENDING', label: 'Pendiente', dot: 'var(--c-amber)' },
+  { value: 'APPROVED', label: 'Aprobado', dot: 'var(--c-lime)' },
+  { value: 'REJECTED', label: 'Rechazado', dot: 'var(--c-red)' },
 ]
 
 /** Clase de los selects de filtros avanzados (`!w-auto` porque el kit Select fuerza w-full) */
@@ -805,7 +805,9 @@ export default function IncidenciasPage() {
   }
 
   return (
-    <div className={incidenciasPage}>
+    // La página ocupa justo el alto disponible (h-full): solo la tabla desplaza, la paginación queda a la vista.
+    // En pantallas muy bajas el mínimo evita aplastar la tabla y es el <main> el que desplaza.
+    <div className={fitPage}>
       <PageHeader
         title="Incidencias"
         description={`Registra, envía y valida los informes de incidencias del personal. · ${pagination.total} registros`}
@@ -851,10 +853,11 @@ export default function IncidenciasPage() {
                   setCurrentPage(1)
                 }}
                 className={cn(
-                  'h-8 cursor-pointer rounded-md border-none px-3 text-[13px] font-medium transition-colors duration-150',
-                  active ? 'bg-primary text-btn' : 'bg-transparent text-content-2 hover:bg-subtle'
+                  'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border-none px-3 text-[13px] font-medium transition-colors duration-150',
+                  active ? 'bg-[var(--page-color)] text-[var(--page-fg)]' : 'bg-transparent text-content-2 hover:bg-subtle'
                 )}
               >
+                {option.dot && <span aria-hidden className="size-1.5 rounded-full" style={{ background: active ? 'currentColor' : option.dot }} />}
                 {option.label}
               </button>
             )
@@ -1050,9 +1053,10 @@ export default function IncidenciasPage() {
         />
       )}
 
-      {/* Paginación (misma condición que antes: búsqueda con paginación o listado normal) */}
+      {/* Paginación (misma condición que antes: búsqueda con paginación o listado normal).
+          Queda siempre al pie de la pantalla: la tabla de arriba es la que desplaza. */}
       {!loading && (!isSearchMode || searchPagination) && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_var(--shadow)] [&>div]:border-t-0">
+        <div className="mt-3 shrink-0 overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_var(--shadow)] [&>div]:border-t-0">
           <Pagination
             page={currentPage}
             totalPages={paginationData.totalPages}

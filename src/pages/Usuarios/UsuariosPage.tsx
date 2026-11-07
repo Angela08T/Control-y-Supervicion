@@ -19,7 +19,7 @@ import PageHeader from '@/components/UI/PageHeader'
 import Pagination from '@/components/UI/Pagination'
 import SearchInput from '@/components/UI/SearchInput'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
-import { cardClass } from '@/utils/classes'
+import { fitCard, fitPage } from '@/utils/classes'
 import { usePagedList } from '@/hooks/usePagedList'
 
 /** Filtro de rol: 'all' o un rol del backend */
@@ -232,7 +232,7 @@ export default function UsuariosPage() {
   const paged = usePagedList(filteredData, filters.search + '|' + filters.roleFilter)
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Usuarios"
         description="Personas con acceso al sistema y su rol."
@@ -273,7 +273,7 @@ export default function UsuariosPage() {
         />
       </PageHeader>
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando usuarios…" />
         ) : filteredData.length === 0 ? (

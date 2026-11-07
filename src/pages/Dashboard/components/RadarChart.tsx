@@ -98,11 +98,11 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   // Colores para los 6 nuevos asuntos
   const colores: Record<string, string> = {
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia': '#1e3a8a', // Primary
-    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#3b82f6', // Secondary
-    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#10b981', // Success
-    'Conductas relacionadas con la Imagen o Representación Institucional': '#f59e0b', // Warning
-    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#64748b', // Gris
-    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#ef4444' // Danger
+    'Conductas relacionadas con el Cumplimiento de Funciones o Desempeño': '#31a3b5', // Secondary
+    'Conductas relacionadas con el Uso de Recursos o Bienes Municipales': '#8ebc22', // Success
+    'Conductas relacionadas con la Imagen o Representación Institucional': '#f2a50f', // Warning
+    'Conductas relacionadas con la Convivencia y Comportamiento Institucional': '#d20b80', // Gris
+    'Conductas que podrían afectar la Seguridad o la Integridad de Personas': '#c71522' // Danger
   }
 
   // Nombres cortos para mostrar
@@ -189,7 +189,7 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   , { asunto: '', valor: 0 })
 
   return (
-    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-xl border border-line bg-surface p-5">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-surface p-5">
       <div className={chartHeader}>
         <div>
           <h3 className={chartTitle}>{title}</h3>

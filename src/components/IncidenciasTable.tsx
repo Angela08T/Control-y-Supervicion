@@ -89,14 +89,15 @@ export default function IncidenciasTable({
 
   return (
     <>
-      <div className={cardClass}>
+      {/* min-h-0 + scroll interno: si no caben las filas, desplaza la tabla (cabecera fija) y no la pagina */}
+      <div className={cn(cardClass, 'min-h-0')}>
         {data.length === 0 ? (
           <EmptyState
             title="No hay incidencias"
             description="Prueba cambiando los filtros o agrega una nueva con el botón “Nueva incidencia”."
           />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="min-h-0 flex-1 overflow-auto">
             <table className={incTable}>
               <thead>
                 <tr>

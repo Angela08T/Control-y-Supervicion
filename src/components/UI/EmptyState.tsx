@@ -1,5 +1,8 @@
 import React from 'react'
-import { FiInbox, FiLoader } from 'react-icons/fi'
+import { FiInbox } from 'react-icons/fi'
+
+/** Tres azules del sistema para los puntos de carga */
+const DOT_COLORS = ['#1e3a8a', '#2563eb', '#60a5fa']
 
 export interface EmptyStateProps {
   title: string
@@ -21,11 +24,19 @@ export function EmptyState({ title, description, icon, action }: EmptyStateProps
   )
 }
 
-/** Estado de carga con spinner. */
+/** Estado de carga: tres puntos azules en ola. */
 export function LoadingState({ label = 'Cargando…' }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-2 px-6 py-14 text-sm text-muted" role="status">
-      <FiLoader className="animate-spin" aria-hidden />
+      <span className="flex items-end gap-1" aria-hidden>
+        {DOT_COLORS.map((color, i) => (
+          <span
+            key={color}
+            className="size-2 rounded-full"
+            style={{ background: color, animation: `dotWave 1.2s ease-in-out ${i * 110}ms infinite` }}
+          />
+        ))}
+      </span>
       {label}
     </div>
   )

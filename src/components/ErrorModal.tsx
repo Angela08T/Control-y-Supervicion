@@ -25,7 +25,7 @@ export default function ErrorModal({ show, message, onClose }: ErrorModalProps) 
         className="flex w-full max-w-[400px] flex-col items-center rounded-xl border border-line bg-surface p-6 text-center shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(239,68,68,0.10)] text-danger">
+        <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-[rgba(199,21,34,0.10)] text-danger">
           <FiAlertTriangle size={20} aria-hidden />
         </div>
         <h3 className="m-0 text-base font-semibold text-content">Ocurrió un error</h3>

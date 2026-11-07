@@ -5,7 +5,7 @@ import ModalSubject from '../../components/ModalSubject'
 import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject, searchSubject } from '../../api/subject'
 import { getModulePermissions } from '../../utils/permissions'
 import { FiPlus } from 'react-icons/fi'
-import { cardClass } from '../../utils/classes'
+import { fitCard, fitPage } from '../../utils/classes'
 import PageHeader from '../../components/UI/PageHeader'
 import SearchInput from '../../components/UI/SearchInput'
 import Button from '../../components/UI/Button'
@@ -269,7 +269,7 @@ export default function SubjectPage() {
   const isEmpty = filteredData.length === 0
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={fitPage}>
       <PageHeader
         title="Asuntos"
         description="Agrupan las faltas disciplinarias por tipo de conducta."
@@ -289,7 +289,7 @@ export default function SubjectPage() {
         />
       </PageHeader>
 
-      <div className={cardClass}>
+      <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando asuntos…" />
         ) : isEmpty ? (
