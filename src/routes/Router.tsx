@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { logout as logoutAction } from "../store/slices/authSlice";
 import { clearToken, setSessionExpiredCallback } from "../api/config";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import type { AppRole, PermissionModule } from "@/types";
+import { firstAllowedKey } from "../utils/navigation";
 
 // LAYOUTS
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -23,13 +25,48 @@ import SubjectPage from "../pages/Subject/SubjectPage";
 import LackPage from "../pages/Lack/LackPage";
 import OffenderPage from "../pages/Offender/OffenderPage";
 import MetricasPage from "../pages/Metricas/MetricasPage";
+import RolesPage from "../pages/Roles/RolesPage";
 
 // COMPONENTS
 import SessionExpiredModal from "../components/SessionExpiredModal";
 
 import PrivateRoute from "./PrivateRoute";
 import PublicRouter from "./PublicRoute";
-import { mainArea } from "../utils/classes";
+import RequirePermission from "./RequirePermission";
+
+/** Pantallas de la aplicación y el permiso de "ver" que necesita cada una */
+const PAGES: { path: string; module: PermissionModule; element: ReactElement }[] = [
+  { path: "incidencias", module: "incidencias", element: <IncidenciasPage /> },
+  { path: "inasistencias", module: "inasistencias", element: <InasistenciasPage /> },
+  { path: "bodycam", module: "bodycam", element: <BodycamPage /> },
+  { path: "estadisticas", module: "estadisticas", element: <MetricasPage /> },
+  { path: "personal", module: "personal", element: <LeadsPage /> },
+  { path: "cargos", module: "cargos", element: <JobsPage /> },
+  { path: "infractores", module: "offenders", element: <OffenderPage /> },
+  { path: "asuntos", module: "asuntos", element: <SubjectPage /> },
+  { path: "faltas", module: "faltas", element: <LackPage /> },
+  { path: "usuarios", module: "usuarios", element: <UsuariosPage /> },
+  { path: "roles", module: "roles", element: <RolesPage /> },
+  { path: "auditoria", module: "auditoria", element: <AuditoriaPage /> },
+];
+
+/** Rutas base de cada rol. Todas comparten las mismas pantallas: lo que se ve lo deciden los permisos. */
+const ROLE_BASES: { path: string; role: AppRole }[] = [
+  { path: "/dashboard/admin", role: "admin" },
+  { path: "/dashboard/supervisor", role: "supervisor" },
+  { path: "/dashboard/centinela", role: "centinela" },
+  { path: "/dashboard/validator", role: "validator" },
+  { path: "/dashboard/subgerente", role: "subgerente" },
+  { path: "/dashboard/custom", role: "custom" },
+];
+
+/** Inicio de cada rol: el panel si puede verlo; si no, su primera pantalla disponible. */
+function Home() {
+  const permissions = useAppSelector((state) => state.auth.permissions);
+  if (permissions.dashboard?.includes("view")) return <DashboardPage />;
+  const first = firstAllowedKey(permissions);
+  return <Navigate to={first ?? "/unauthorized"} replace />;
+}
 
 export default function Router() {
   const dispatch = useAppDispatch();
@@ -58,101 +95,27 @@ export default function Router() {
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/" element={<Navigate to="/login" />} />
 
-        {/* Rutas protegidas - ADMIN */}
-        <Route
-          path="/dashboard/admin"
-          element={
-            <PrivateRoute requiredRole="admin">
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="incidencias" element={<IncidenciasPage />} />
-          <Route path="inasistencias" element={<InasistenciasPage />} />
-          <Route path="bodycam" element={<BodycamPage />} />
-          <Route path="usuarios" element={<UsuariosPage />} />
-          <Route path="cargos" element={<JobsPage />} />
-          <Route path="personal" element={<LeadsPage />} />
-          <Route path="asuntos" element={<SubjectPage />} />
-          <Route path="faltas" element={<LackPage />} />
-          <Route path="infractores" element={<OffenderPage />} />
-          {/* Placeholder para futuras rutas */}
-          <Route path="supervisores" element={<div className={mainArea}><h1>Supervisores</h1><p>Próximamente...</p></div>} />
-          <Route path="alertas" element={<div className={mainArea}><h1>Alertas</h1><p>Próximamente...</p></div>} />
-          <Route path="estadisticas" element={<MetricasPage />} />
-          <Route path="camaras" element={<div className={mainArea}><h1>Cámaras</h1><p>Próximamente...</p></div>} />
-          <Route path="reportes" element={<div className={mainArea}><h1>Reportes</h1><p>Próximamente...</p></div>} />
-          <Route path="configuracion" element={<div className={mainArea}><h1>Configuración</h1><p>Próximamente...</p></div>} />
-          <Route path="auditoria" element={<AuditoriaPage />} />
-        </Route>
-
-        {/* Rutas protegidas - SUPERVISOR */}
-        <Route
-          path="/dashboard/supervisor"
-          element={
-            <PrivateRoute requiredRole="supervisor">
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="incidencias" element={<IncidenciasPage />} />
-          <Route path="inasistencias" element={<InasistenciasPage />} />
-          <Route path="bodycam" element={<BodycamPage />} />
-          <Route path="usuarios" element={<UsuariosPage />} />
-          <Route path="cargos" element={<JobsPage />} />
-          <Route path="personal" element={<LeadsPage />} />
-          <Route path="asuntos" element={<SubjectPage />} />
-          <Route path="faltas" element={<LackPage />} />
-          <Route path="infractores" element={<OffenderPage />} />
-          <Route path="alertas" element={<div className={mainArea}><h1>Alertas</h1><p>Próximamente...</p></div>} />
-          <Route path="estadisticas" element={<MetricasPage />} />
-          <Route path="reportes" element={<div className={mainArea}><h1>Reportes</h1><p>Próximamente...</p></div>} />
-        </Route>
-
-        {/* Rutas protegidas - CENTINELA */}
-        <Route
-          path="/dashboard/centinela"
-          element={
-            <PrivateRoute requiredRole="centinela">
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="incidencias" element={<IncidenciasPage />} />
-          <Route path="inasistencias" element={<InasistenciasPage />} />
-          <Route path="bodycam" element={<BodycamPage />} />
-        </Route>
-
-        {/* Rutas protegidas - VALIDATOR */}
-        <Route
-          path="/dashboard/validator"
-          element={
-            <PrivateRoute requiredRole="validator">
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index element={<Navigate to="incidencias" replace />} />
-          <Route path="incidencias" element={<IncidenciasPage />} />
-          <Route path="inasistencias" element={<InasistenciasPage />} />
-        </Route>
-
-        {/* Rutas protegidas - SUBGERENTE */}
-        <Route
-          path="/dashboard/subgerente"
-          element={
-            <PrivateRoute requiredRole="subgerente">
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="incidencias" element={<IncidenciasPage />} />
-          <Route path="estadisticas" element={<MetricasPage />} />
-        </Route>
+        {/* Rutas protegidas: una por rol, con las mismas pantallas */}
+        {ROLE_BASES.map(({ path, role }) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <PrivateRoute requiredRole={role}>
+                <DashboardLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<Home />} />
+            {PAGES.map((page) => (
+              <Route
+                key={page.path}
+                path={page.path}
+                element={<RequirePermission module={page.module}>{page.element}</RequirePermission>}
+              />
+            ))}
+          </Route>
+        ))}
 
         {/* Página 404 */}
         <Route path="*" element={<NotFoundPage />} />

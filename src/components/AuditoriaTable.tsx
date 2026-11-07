@@ -32,6 +32,7 @@ export const MODEL_LABELS: Record<string, string> = {
   LEAD: 'Personal',
   OFFENDER: 'Infractores',
   REPORT: 'Incidencias',
+  ROLE: 'Roles',
   SESSION: 'Sesiones',
   SUBJECT: 'Asuntos',
   USER: 'Usuarios'
