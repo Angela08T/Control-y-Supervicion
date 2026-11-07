@@ -1,28 +1,32 @@
 /**
- * Sistema de permisos centralizado para Control y Supervisión
- * Define qué puede hacer cada rol en el sistema
+ * Permisos de Control y Supervisión.
+ *
+ * Qué puede hacer cada rol ya no está escrito aquí: lo define el administrador en "Roles y permisos"
+ * y el backend lo entrega al iniciar sesión (y en GET /auth/me). Estas funciones leen esos permisos
+ * del estado de la sesión.
  */
+import { store } from '@/store'
 import type {
   AppRole,
   ModulePermissions,
   PermissionAction,
-  PermissionMap,
   PermissionModule,
 } from '@/types'
 
-// Definición de roles
+// Definición de roles (ruta base de cada rol en el front)
 export const ROLES = {
   ADMIN: 'admin',
   SUPERVISOR: 'supervisor',
   CENTINELA: 'centinela',
   VALIDATOR: 'validator',
-  SUBGERENTE: 'subgerente'
+  SUBGERENTE: 'subgerente',
+  CUSTOM: 'custom'
 } as const
 
 /**
  * Normaliza el rol del backend al formato del frontend
- * Backend: ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR
- * Frontend: admin, supervisor, centinela, validator
+ * Backend: ADMINISTRATOR, SUPERVISOR, SENTINEL, VALIDATOR, SUBGERENTE o la clave de un rol creado
+ * Frontend: admin, supervisor, centinela, validator, subgerente o custom
  * @param {string} backendRole - Rol del backend
  * @returns {string} Rol normalizado para el frontend
  */
@@ -39,103 +43,13 @@ export function normalizeRole(backendRole: string | null | undefined): AppRole {
     'SUBGERENTE': ROLES.SUBGERENTE
   }
 
-  const normalized: AppRole | undefined = roleMap[backendRole.toUpperCase()]
-  return normalized || ROLES.CENTINELA
-}
-
-// Permisos por módulo y rol
-export const PERMISSIONS: PermissionMap = {
-  // DASHBOARD
-  dashboard: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR, ROLES.SUBGERENTE]
-  },
-
-  // INCIDENCIAS
-  incidencias: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA, ROLES.VALIDATOR, ROLES.SUBGERENTE],
-    create: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA],
-    edit: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    delete: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    send: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA], // Enviar al validador
-    validate: [ROLES.ADMIN, ROLES.VALIDATOR] // Aprobar/Rechazar
-  },
-
-  // BODYCAM
-  bodycam: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.CENTINELA],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // USUARIOS
-  usuarios: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    create: [ROLES.ADMIN, ROLES.SUPERVISOR], // SUPERVISOR solo puede crear CENTINELA
-    edit: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    delete: [ROLES.ADMIN, ROLES.SUPERVISOR]
-  },
-
-  // CARGOS
-  cargos: {
-    view: [ROLES.ADMIN],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // PERSONAL
-  personal: {
-    view: [ROLES.ADMIN],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // ASUNTOS
-  asuntos: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // FALTAS
-  faltas: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // AUDITORÍA
-  auditoria: {
-    view: [ROLES.ADMIN],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // INFRACTORES (OFFENDERS)
-  offenders: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR],
-    create: [ROLES.ADMIN],
-    edit: [ROLES.ADMIN],
-    delete: [ROLES.ADMIN]
-  },
-
-  // ESTADÍSTICAS
-  estadisticas: {
-    view: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.SUBGERENTE]
-  }
+  // Cualquier otra clave es un rol creado por el administrador
+  return roleMap[backendRole.toUpperCase()] ?? ROLES.CUSTOM
 }
 
 /**
- * Verifica si un rol tiene permiso para realizar una acción en un módulo
- * @param {string} role - Rol del usuario (admin, supervisor, centinela)
- * @param {string} module - Módulo del sistema (incidencias, bodycam, etc.)
- * @param {string} action - Acción a realizar (view, create, edit, delete)
- * @returns {boolean}
+ * Verifica si el usuario con sesión iniciada puede realizar una acción en un módulo.
+ * El primer parámetro se mantiene por compatibilidad: los permisos son los de la sesión actual.
  */
 export function hasPermission(
   role: AppRole | null | undefined,
@@ -143,21 +57,12 @@ export function hasPermission(
   action: PermissionAction | null | undefined
 ): boolean {
   if (!role || !module || !action) return false
-
-  const modulePermissions = PERMISSIONS[module]
-  if (!modulePermissions) return false
-
-  const allowedRoles = modulePermissions[action]
-  if (!allowedRoles) return false
-
-  return allowedRoles.includes(role)
+  const { permissions } = store.getState().auth
+  return permissions[module]?.includes(action) ?? false
 }
 
 /**
- * Verifica si un rol puede acceder a un módulo (al menos ver)
- * @param {string} role - Rol del usuario
- * @param {string} module - Módulo del sistema
- * @returns {boolean}
+ * Verifica si el usuario puede acceder a un módulo (al menos ver)
  */
 export function canAccessModule(
   role: AppRole | null | undefined,
@@ -167,9 +72,7 @@ export function canAccessModule(
 }
 
 /**
- * Obtiene todos los permisos de un rol en un módulo
- * @param {string} role - Rol del usuario
- * @param {string} module - Módulo del sistema
+ * Obtiene todos los permisos del usuario en un módulo
  * @returns {object} Objeto con booleanos para cada acción
  */
 export function getModulePermissions(
@@ -200,12 +103,8 @@ export function canManageUser(
     return true // Admin puede hacer todo
   }
 
-  if (currentUserRole === ROLES.SUPERVISOR) {
-    // Supervisor solo puede gestionar centinelas
-    if (action === 'create' && targetUserRole === ROLES.CENTINELA) return true
-    if ((action === 'edit' || action === 'delete') && targetUserRole === ROLES.CENTINELA) return true
-    return false
-  }
+  // Cualquier otro rol que pueda gestionar usuarios solo gestiona centinelas
+  if (targetUserRole === ROLES.CENTINELA && hasPermission(currentUserRole, 'usuarios', action)) return true
 
-  return false // Centinela no puede gestionar usuarios
+  return false
 }

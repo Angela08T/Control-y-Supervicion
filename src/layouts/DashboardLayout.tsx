@@ -4,6 +4,11 @@ import Sidebar from '../components/UI/Sidebar'
 import Topbar from '../components/UI/Topbar'
 import { cn } from '../utils/classes'
 import ContourMap from '../components/UI/ContourMap'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { setSession } from '../store/slices/authSlice'
+import { getMe } from '../api/role'
+import { normalizeRole } from '../utils/permissions'
+import { LoadingState } from '../components/UI/EmptyState'
 
 const STORAGE_KEY = 'centinela-sidebar-collapsed'
 
@@ -23,6 +28,32 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState<boolean>(readCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
+
+  const dispatch = useAppDispatch()
+  const hasPermissions = useAppSelector((state) => Object.keys(state.auth.permissions).length > 0)
+  // Una sesión guardada antes de los roles editables no tiene permisos: se espera a /auth/me para no mostrar "sin acceso"
+  const [ready, setReady] = useState<boolean>(hasPermissions)
+
+  // Al abrir la aplicación se recargan el rol y los permisos vigentes (el administrador pudo cambiarlos)
+  useEffect(() => {
+    getMe()
+      .then((me) =>
+        dispatch(
+          setSession({
+            role: normalizeRole(me.rol),
+            roleKey: me.rol,
+            roleName: me.role_name,
+            permissions: me.permissions,
+            nombre: me.nombre ?? null,
+            apellido: me.apellido ?? null,
+          })
+        )
+      )
+      .catch(() => {
+        // Sin conexión o sesión vencida: se conserva lo que ya hay y la sesión se maneja en el interceptor
+      })
+      .finally(() => setReady(true))
+  }, [dispatch])
 
   // Al navegar, el panel movil se cierra
   useEffect(() => {
@@ -73,7 +104,7 @@ export default function DashboardLayout() {
         {/* Cada pantalla entra con un fundido corto: responde al clic en el menu */}
         {/* h-full: las pantallas que lo piden (ej. tablas con paginacion fija) pueden ocupar justo el alto disponible */}
         <div key={pathname} className="h-full animate-[pageIn_220ms_ease-out]">
-          <Outlet />
+          {ready ? <Outlet /> : <LoadingState label="Cargando tu sesión…" />}
         </div>
       </main>
     </div>

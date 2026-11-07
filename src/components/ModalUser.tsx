@@ -4,7 +4,7 @@ import Button from '@/components/UI/Button'
 import Modal from '@/components/UI/Modal'
 import { Field, Input, Select } from '@/components/UI/Field'
 import { useAppSelector } from '@/store/hooks'
-import type { AppRole, OffenderDniLookup, Role, User } from '@/types'
+import type { AppRole, OffenderDniLookup, Role, RoleOption, User } from '@/types'
 
 /** Estado del formulario de usuario */
 interface UserFormState {
@@ -45,6 +45,8 @@ export interface ModalUserProps {
   onClose: () => void
   onSave: (data: UserSavePayload) => void
   userRole?: AppRole | null
+  /** Roles que se pueden asignar (los que el usuario actual puede elegir) */
+  roles?: RoleOption[]
 }
 
 const defaultState: UserFormState = {
@@ -59,7 +61,7 @@ const defaultState: UserFormState = {
 
 const FORM_ID = 'form-usuario'
 
-export default function ModalUser({ initial, onClose, onSave, userRole }: ModalUserProps) {
+export default function ModalUser({ initial, onClose, onSave, userRole, roles = [] }: ModalUserProps) {
   const [form, setForm] = useState<UserFormState>(defaultState)
   const [errors, setErrors] = useState<UserFormErrors>({})
   const [searchingDni, setSearchingDni] = useState<boolean>(false)
@@ -68,9 +70,8 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
   // Obtener token de autenticación
   const { token } = useAppSelector((state) => state.auth)
 
-  // userRole: el rol del usuario actual (admin o supervisor)
-  const canCreateSupervisor = userRole === 'admin'
-  const canCreateValidator = userRole === 'admin' // Solo admin puede crear VALIDATOR
+  // Solo el administrador asigna roles distintos de Centinela
+  const isAdmin = userRole === 'admin'
 
   // Un administrador no puede cambiar su rol desde este formulario
   const lockedRole = !!initial && (initial.rol === 'ADMINISTRATOR' || initial.role === 'ADMINISTRATOR')
@@ -197,14 +198,9 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
       newErrors.rol = 'No tienes permisos para crear administradores'
     }
 
-    // Si no es admin y está intentando crear supervisor
-    if (!canCreateSupervisor && form.rol === 'SUPERVISOR') {
-      newErrors.rol = 'No tienes permisos para crear supervisores'
-    }
-
-    // Si no es admin y está intentando crear validator
-    if (!canCreateValidator && form.rol === 'VALIDATOR') {
-      newErrors.rol = 'No tienes permisos para crear validadores'
+    // Si no es admin, solo puede asignar el rol Centinela
+    if (!isAdmin && form.rol !== 'SENTINEL') {
+      newErrors.rol = 'Solo puedes crear centinelas'
     }
 
     setErrors(newErrors)
@@ -242,7 +238,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
   // Ayuda bajo el campo Rol (se excluyen entre sí)
   const roleHint = lockedRole
     ? 'No se puede cambiar el rol de un administrador'
-    : !canCreateSupervisor && !initial
+    : !isAdmin && !initial
       ? 'Solo puedes crear centinelas'
       : undefined
 
@@ -354,11 +350,12 @@ export default function ModalUser({ initial, onClose, onSave, userRole }: ModalU
                 invalid={!!errors.rol}
                 disabled={lockedRole}
               >
-                <option value="SENTINEL">Centinela</option>
-                {canCreateSupervisor && <option value="SUPERVISOR">Supervisor</option>}
-                {canCreateValidator && <option value="VALIDATOR">Validador</option>}
-                {canCreateValidator && <option value="SUBGERENTE">Subgerente</option>}
-                {canCreateValidator && <option value="ADMINISTRATOR">Administrador</option>}
+                {roles.length === 0 && <option value={form.rol}>{form.rol}</option>}
+                {roles.map((role) => (
+                  <option key={role.key} value={role.key}>
+                    {role.name}
+                  </option>
+                ))}
               </Select>
             </Field>
           </div>

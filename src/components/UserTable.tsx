@@ -18,9 +18,11 @@ export interface UserTableProps {
   startIndex?: number;
   canEdit?: boolean;
   canDelete?: boolean;
+  /** Nombre de cada rol por su clave (incluye los roles creados por el administrador) */
+  roleNames?: Record<string, string>;
 }
 
-/** Nombre legible de cada rol. Los valores son los que devuelve el backend. */
+/** Nombre legible de cada rol del sistema, si todavía no se cargó la lista de roles. */
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   ADMINISTRATOR: 'Administrador',
@@ -45,7 +47,7 @@ function formatDate(dateString: string | null | undefined): string {
 }
 
 /** Tabla de usuarios. Va dentro de una tarjeta que pone la pagina. */
-export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactivateSession, canEdit = true, canDelete = true }: UserTableProps) {
+export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactivateSession, canEdit = true, canDelete = true, roleNames }: UserTableProps) {
   const showActions = canEdit || canDelete;
 
   if (data.length === 0) {
@@ -68,7 +70,7 @@ export default function UserTable({ data = [], onToggleStatus, onEdit, onDeactiv
           {data.map((item) => {
             const isEnabled = !item.deleted_at;
             const userRole = (item.rol || item.role || '').toUpperCase();
-            const roleLabel = ROLE_LABELS[userRole];
+            const roleLabel = roleNames?.[userRole] ?? ROLE_LABELS[userRole];
 
             return (
               <tr key={item.id} className={cn(incTableTr, !isEnabled && 'opacity-60')}>

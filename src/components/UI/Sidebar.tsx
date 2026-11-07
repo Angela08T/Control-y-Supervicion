@@ -10,6 +10,7 @@ import {
   FiClipboard,
   FiFileText,
   FiGrid,
+  FiKey,
   FiShield,
   FiUser,
   FiUserMinus,
@@ -18,66 +19,33 @@ import {
   FiVideo,
   FiX,
 } from 'react-icons/fi'
-import type { AppRole } from '@/types'
 import { useAppSelector } from '@/store/hooks'
 import { cn } from '@/utils/classes'
 import { formatearRestante, getTurno } from '@/utils/turno'
 import ContourMap from './ContourMap'
 import { useNow } from '@/hooks/useNow'
-
-type NavKey =
-  | 'dashboard'
-  | 'incidencias'
-  | 'inasistencias'
-  | 'bodycam'
-  | 'usuarios'
-  | 'cargos'
-  | 'personal'
-  | 'asuntos'
-  | 'faltas'
-  | 'infractores'
-  | 'estadisticas'
-  | 'auditoria'
+import { NAV_GROUPS, canSee, type NavKey } from '@/utils/navigation'
 
 interface NavItem {
   label: string
   icon: IconType
 }
 
-/** Un solo catalogo de opciones; cada rol elige cuales ve y en que grupo. */
+/** Texto e ícono de cada opción; el permiso que la habilita está en utils/navigation.ts */
 const ITEMS: Record<NavKey, NavItem> = {
   dashboard: { label: 'Inicio', icon: FiGrid },
   incidencias: { label: 'Incidencias', icon: FiFileText },
   inasistencias: { label: 'Inasistencias', icon: FiUserMinus },
   bodycam: { label: 'Dispositivos', icon: FiVideo },
-  usuarios: { label: 'Usuarios', icon: FiUsers },
-  cargos: { label: 'Cargos', icon: FiBriefcase },
+  estadisticas: { label: 'Estadísticas', icon: FiBarChart2 },
   personal: { label: 'Personal', icon: FiUser },
+  cargos: { label: 'Cargos', icon: FiBriefcase },
+  infractores: { label: 'Infractores', icon: FiUserX },
   asuntos: { label: 'Asuntos', icon: FiClipboard },
   faltas: { label: 'Faltas', icon: FiAlertTriangle },
-  infractores: { label: 'Infractores', icon: FiUserX },
-  estadisticas: { label: 'Estadísticas', icon: FiBarChart2 },
+  usuarios: { label: 'Usuarios', icon: FiUsers },
+  roles: { label: 'Roles y permisos', icon: FiKey },
   auditoria: { label: 'Auditoría', icon: FiShield },
-}
-
-interface NavGroup {
-  /** Sin titulo cuando el rol solo tiene un grupo */
-  title?: string
-  keys: NavKey[]
-}
-
-const adminGroups = (withAudit: boolean): NavGroup[] => [
-  { title: 'Operación', keys: ['dashboard', 'incidencias', 'inasistencias'] },
-  { title: 'Administración', keys: ['bodycam', 'usuarios', 'cargos', 'personal', 'asuntos', 'faltas', 'infractores'] },
-  { title: 'Análisis', keys: withAudit ? ['estadisticas', 'auditoria'] : ['estadisticas'] },
-]
-
-const GROUPS: Record<AppRole, NavGroup[]> = {
-  admin: adminGroups(true),
-  supervisor: adminGroups(false),
-  centinela: [{ keys: ['dashboard', 'incidencias', 'inasistencias', 'bodycam'] }],
-  validator: [{ keys: ['incidencias', 'inasistencias'] }],
-  subgerente: [{ keys: ['dashboard', 'incidencias', 'estadisticas'] }],
 }
 
 const linkBase =
@@ -99,8 +67,11 @@ export interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: SidebarProps) {
-  const { role } = useAppSelector((state) => state.auth)
-  const groups: NavGroup[] = (role && GROUPS[role]) || []
+  const { role, permissions } = useAppSelector((state) => state.auth)
+  // Cada rol ve solo las opciones que puede consultar; los grupos sin opciones no se muestran
+  const groups = NAV_GROUPS.map((group) => ({ ...group, keys: group.keys.filter((key) => canSee(permissions, key)) })).filter(
+    (group) => group.keys.length > 0
+  )
   // En el panel movil siempre se muestran las etiquetas
   const compact = collapsed && !mobileOpen
   const turno = getTurno(useNow())

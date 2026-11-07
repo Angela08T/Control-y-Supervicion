@@ -1,7 +1,6 @@
 import React from 'react'
 import { FiLogOut, FiMenu } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
-import type { AppRole } from '@/types'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { cn } from '@/utils/classes'
 import { useNow } from '@/hooks/useNow'
@@ -10,14 +9,6 @@ import { clearToken } from '../../api/config'
 import { logout as logoutApi } from '../../api/auth'
 import userAvatar from '../../assets/user-avatar.png'
 import BrandMark from './BrandMark'
-
-const ROLE_LABEL: Record<AppRole, string> = {
-  admin: 'Administrador',
-  supervisor: 'Supervisor',
-  centinela: 'Centinela',
-  validator: 'Validador',
-  subgerente: 'Subgerente',
-}
 
 export interface TopbarProps {
   /** Abre el menu lateral en pantallas pequenas */
@@ -29,7 +20,7 @@ export interface TopbarProps {
 export default function Topbar({ onMenuClick, collapsed = false }: TopbarProps) {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { username, role, nombre, apellido } = useAppSelector((state) => state.auth)
+  const { username, roleName, nombre, apellido } = useAppSelector((state) => state.auth)
 
   const displayName = [nombre, apellido].filter(Boolean).join(' ') || username || 'Usuario'
 
@@ -85,7 +76,7 @@ export default function Topbar({ onMenuClick, collapsed = false }: TopbarProps) 
           <img src={userAvatar} alt="" className="size-8 rounded-full border border-line object-cover" />
           <div className="flex flex-col leading-tight max-sm:hidden">
             <span className="text-[13px] font-semibold text-content">{displayName}</span>
-            {role && <span className="text-xs text-muted">{ROLE_LABEL[role]}</span>}
+            {roleName && <span className="text-xs text-muted">{roleName}</span>}
           </div>
         </div>
         <button

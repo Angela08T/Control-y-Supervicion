@@ -64,7 +64,7 @@ interface RequestError {
 
 export default function InasistenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
-  const permissions = getModulePermissions(userRole, 'incidencias')
+  const permissions = getModulePermissions(userRole, 'inasistencias')
 
   const [inasistencias, setInasistencias] = useState<InasistenciaRow[]>([])
   const [showModal, setShowModal] = useState<boolean>(false)
