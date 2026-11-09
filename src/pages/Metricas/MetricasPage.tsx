@@ -24,11 +24,18 @@ const TH_RIGHT = `${incTableTh} [text-align:right]`
 const TD_RIGHT = `${incTableTd} text-right tabular-nums`
 
 const TABLE_WRAP = 'overflow-x-auto'
+// Pestañas como control segmentado (mismo estilo que el filtro de estado de Incidencias)
 const TABS = {
-  base: 'inline-flex -mb-px cursor-pointer items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors duration-150',
-  on: 'border-primary text-primary',
-  off: 'border-transparent text-muted hover:text-content',
+  group: 'inline-flex max-w-full items-center rounded-lg border border-line-strong bg-surface p-0.5',
+  base: 'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border-none px-3 text-[13px] font-medium transition-colors duration-150',
+  on: 'bg-[var(--page-color)] text-[var(--page-fg)]',
+  off: 'bg-transparent text-content-2 hover:bg-subtle',
 }
+
+const TAB_OPTIONS: { key: 'usuarios' | 'infractores'; label: string; icon: React.ReactNode }[] = [
+  { key: 'usuarios', label: 'Usuarios', icon: <FiUsers aria-hidden /> },
+  { key: 'infractores', label: 'Infractores', icon: <FiUserX aria-hidden /> },
+]
 
 type Tone = 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
 
@@ -318,37 +325,33 @@ export default function MetricasPage() {
         title="Estadísticas"
         description="Incidencias por usuario e infractor en el período elegido."
       >
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Desde" className="w-[160px]">
-            <Input type="date" className="h-9" value={start} onChange={e => setStart(e.target.value)} />
-          </Field>
-          <Field label="Hasta" className="w-[160px]">
-            <Input type="date" className="h-9" value={end} onChange={e => setEnd(e.target.value)} />
-          </Field>
-          <Button onClick={handleApply}>Aplicar</Button>
+        <div className="flex w-full flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Desde" className="w-[160px]">
+              <Input type="date" className="h-9" value={start} onChange={e => setStart(e.target.value)} />
+            </Field>
+            <Field label="Hasta" className="w-[160px]">
+              <Input type="date" className="h-9" value={end} onChange={e => setEnd(e.target.value)} />
+            </Field>
+            <Button onClick={handleApply}>Aplicar</Button>
+          </div>
+
+          <div role="tablist" aria-label="Ver estadísticas por" className={TABS.group}>
+            {TAB_OPTIONS.map(({ key, label, icon }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={cn(TABS.base, tab === key ? TABS.on : TABS.off)}
+              >
+                {icon} {label}
+              </button>
+            ))}
+          </div>
         </div>
       </PageHeader>
-
-      <div role="tablist" className="flex gap-1 border-b border-line">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'usuarios'}
-          className={cn(TABS.base, tab === 'usuarios' ? TABS.on : TABS.off)}
-          onClick={() => setTab('usuarios')}
-        >
-          <FiUsers aria-hidden /> Usuarios
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'infractores'}
-          className={cn(TABS.base, tab === 'infractores' ? TABS.on : TABS.off)}
-          onClick={() => setTab('infractores')}
-        >
-          <FiUserX aria-hidden /> Infractores
-        </button>
-      </div>
 
       <div className="flex flex-col gap-6">
         {tab === 'usuarios'    && <TabUsuarios    start={applied.start} end={applied.end} />}
