@@ -2,17 +2,16 @@ import React, { useEffect, useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
 import CalendarioInasistencias from '../../components/CalendarioInasistencias'
 import ModalInasistencia from '../../components/ModalInasistencia'
-import CalendarModal from '../Dashboard/components/CalendarModal'
+import DateRangeModal from '../Dashboard/components/DateRangeModal'
 import { createReport, getReports, mapFormDataToAPI } from '../../api/report'
 import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
-import { FiCalendar, FiFileText, FiPlus } from 'react-icons/fi'
+import { FiAlertCircle, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiFileText, FiPlus, FiUsers } from 'react-icons/fi'
 import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import { toast } from '../../utils/toast'
 import type { AttendanceItemDto, ID, ISODateString, Lead } from '@/types'
-import { cardClass, fitPage } from '../../utils/classes'
-import PageHeader from '@/components/UI/PageHeader'
+import { cardClass, cn, fitPage } from '../../utils/classes'
 import Button from '@/components/UI/Button'
 import { LoadingState } from '@/components/UI/EmptyState'
 
@@ -161,8 +160,8 @@ export default function InasistenciasPage() {
   }, [refreshTrigger, dateRange])
 
   // Función para manejar la selección de rango de fechas desde el modal
-  function handleDateRangeSelect(start: Date, end: Date) {
-    setDateRange({ start, end })
+  function handleDateRangeSelect(start: Date | null, end: Date | null) {
+    if (start) setDateRange({ start, end: end ?? start })
     setShowCalendarModal(false)
   }
 
@@ -340,37 +339,107 @@ export default function InasistenciasPage() {
     }
   }
 
+  // Resumen del periodo para las tarjetas del encabezado
+  const personasRegistradas = new Set(inasistencias.map(i => i.dni)).size
+  const fechasValidas = savedAttendances.flatMap(p => (p.dates ?? []).filter(d => !d.delete_at && d.date))
+  const injustificadas = fechasValidas.filter(d => d.mode !== 'JUSTIFIED').length
+  const justificadas = fechasValidas.length - injustificadas
+  const personasConFaltas = savedAttendances.filter(p => (p.dates ?? []).some(d => !d.delete_at && d.date)).length
+  const diasPeriodo = Math.round((dateRange.end.getTime() - dateRange.start.getTime()) / 86400000) + 1
+
+  const resumen = [
+    {
+      label: 'Personal registrado',
+      value: personasRegistradas,
+      detail: `${personasConFaltas} con faltas en el periodo`,
+      icon: <FiUsers />,
+      tone: 'bg-primary/10 text-primary dark:bg-primary/25 dark:text-accent-light',
+    },
+    {
+      label: 'Injustificadas',
+      value: injustificadas,
+      detail: fechasValidas.length ? `${Math.round((injustificadas / fechasValidas.length) * 100)}% del total` : 'Sin registros',
+      icon: <FiAlertCircle />,
+      tone: 'bg-danger/10 text-red-ink',
+    },
+    {
+      label: 'Justificadas',
+      value: justificadas,
+      detail: fechasValidas.length ? `${Math.round((justificadas / fechasValidas.length) * 100)}% del total` : 'Sin registros',
+      icon: <FiCheckCircle />,
+      tone: 'bg-success/12 text-lime-ink',
+    },
+    {
+      label: 'Días del periodo',
+      value: diasPeriodo,
+      detail: formatDateRange(),
+      icon: <FiClock />,
+      tone: 'bg-warning/12 text-amber-ink',
+    },
+  ]
+
   return (
     <div className={fitPage}>
-      <PageHeader
-        title="Inasistencias"
-        description="Registra y revisa las inasistencias del personal por día."
-        actions={
-          <>
-            {userRole === 'validator' && (
-              <Button variant="secondary" icon={<FiFileText />} onClick={() => setShowPDFModal(true)}>
-                Generar PDF
-              </Button>
-            )}
-            {permissions.canCreate && (
-              <Button icon={<FiPlus />} onClick={() => setShowModal(true)}>
-                Agregar inasistencia
-              </Button>
-            )}
-          </>
-        }
-      >
-        {/* Filtro: periodo (rango de fechas) con etiqueta visible */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-content-2">Periodo</span>
-          <Button variant="secondary" icon={<FiCalendar />} onClick={() => setShowCalendarModal(true)}>
-            {formatDateRange()}
-          </Button>
+      {/* Encabezado como el de Incidencias: titulo grande a la izquierda, periodo y acciones a la derecha */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Operación · Asistencia</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Inasistencias</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">Registra y revisa las inasistencias del personal por día.</p>
         </div>
-      </PageHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Periodo: boton grande con el rango, abre el selector con atajos */}
+          <button
+            type="button"
+            onClick={() => setShowCalendarModal(true)}
+            className="group inline-flex h-10 cursor-pointer items-center gap-2.5 rounded-xl border border-line-strong bg-surface pr-3 pl-1.5 text-left transition-[border-color,box-shadow] duration-150 hover:border-accent hover:shadow-[0_0_0_3px_var(--focus-ring)]"
+            aria-label={`Cambiar periodo: ${formatDateRange()}`}
+          >
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-sm text-white" aria-hidden>
+              <FiCalendar />
+            </span>
+            <span className="flex flex-col leading-tight">
+              <span className="text-[10px] font-bold tracking-[0.1em] text-muted uppercase">Periodo</span>
+              <span className="text-[13px] font-semibold text-content tabular-nums">{formatDateRange()}</span>
+            </span>
+            <FiChevronDown className="text-muted transition-transform group-hover:translate-y-0.5" aria-hidden />
+          </button>
+          {userRole === 'validator' && (
+            <Button variant="secondary" icon={<FiFileText />} onClick={() => setShowPDFModal(true)}>
+              Generar PDF
+            </Button>
+          )}
+          {permissions.canCreate && (
+            <Button icon={<FiPlus />} onClick={() => setShowModal(true)}>
+              Agregar inasistencia
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {/* Resumen del periodo */}
+      <div className="mb-4 grid shrink-0 grid-cols-4 gap-3 max-lg:grid-cols-2 max-[420px]:grid-cols-1">
+        {resumen.map(r => (
+          <div
+            key={r.label}
+            className="flex items-center gap-3.5 rounded-2xl border border-[#d3dceb] bg-surface px-4 py-3.5 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line"
+          >
+            <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl text-xl', r.tone)} aria-hidden>
+              {r.icon}
+            </span>
+            <div className="min-w-0">
+              <p className="m-0 truncate text-[13px] font-medium text-content-2">{r.label}</p>
+              <p className="m-0 text-[24px] leading-tight font-bold tracking-[-0.02em] text-ink tabular-nums dark:text-content">
+                {loading ? '—' : r.value}
+              </p>
+              <p className="m-0 truncate text-xs text-muted" title={r.detail}>{r.detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {loading ? (
-        <div className={cardClass}>
+        <div className={cn(cardClass, 'flex-1 justify-center')}>
           <LoadingState label="Cargando inasistencias…" />
         </div>
       ) : (
@@ -395,9 +464,11 @@ export default function InasistenciasPage() {
       )}
 
       {showCalendarModal && (
-        <CalendarModal
+        <DateRangeModal
           onClose={() => setShowCalendarModal(false)}
           onApply={handleDateRangeSelect}
+          initialStart={dateRange.start}
+          initialEnd={dateRange.end}
         />
       )}
 

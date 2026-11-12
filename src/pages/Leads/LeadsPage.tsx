@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useAppSelector } from '../../store/hooks'
-import LeadTable from '../../components/LeadTable'
+import LeadTable, { LeadGrid } from '../../components/LeadTable'
 import ModalLead from '../../components/ModalLead'
 import { getLeads, getLeadById, createLead, updateLead, deleteLead, searchLead } from '../../api/lead'
 import { getModulePermissions } from '../../utils/permissions'
-import { FiPlus } from 'react-icons/fi'
+import { FiGrid, FiList, FiLock, FiPlus } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
-import { fitCard, fitPage } from '../../utils/classes'
-import PageHeader from '@/components/UI/PageHeader'
+import { cn, fitCard, fitPage } from '../../utils/classes'
+import ConfirmModal from '@/components/ConfirmModal'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import Button from '@/components/UI/Button'
@@ -45,6 +45,17 @@ const messageOf = (value: unknown): string | undefined => {
   return (value as { message?: string }).message
 }
 
+const VISTA_KEY = 'centinela-personal-vista'
+
+/** Vista recordada por persona (tarjetas o lista); sin dato, tarjetas */
+function leerVista(): 'tarjetas' | 'lista' {
+  try {
+    return localStorage.getItem(VISTA_KEY) === 'lista' ? 'lista' : 'tarjetas'
+  } catch {
+    return 'tarjetas'
+  }
+}
+
 export default function LeadsPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'personal')
@@ -69,6 +80,16 @@ export default function LeadsPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [searchResult, setSearchResult] = useState<Lead[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
+  const [porConfirmar, setPorConfirmar] = useState<Lead | null>(null) // Persona a habilitar/deshabilitar
+  const [vista, setVistaState] = useState<'tarjetas' | 'lista'>(leerVista)
+  const setVista = (v: 'tarjetas' | 'lista') => {
+    setVistaState(v)
+    try {
+      localStorage.setItem(VISTA_KEY, v)
+    } catch {
+      // sin persistencia
+    }
+  }
   // Paginación en el navegador para los resultados de búsqueda (lista completa en memoria)
   const searchPaged = usePagedList(searchResult ?? [], filters.search)
 
@@ -235,14 +256,15 @@ export default function LeadsPage() {
     }
   }
 
-  async function handleToggleStatus(item: Lead) {
+  /** Pide confirmacion en un modal antes de cambiar el estado */
+  function handleToggleStatus(item: Lead) {
+    setPorConfirmar(item)
+  }
+
+  async function confirmarCambioEstado(item: Lead) {
+    setPorConfirmar(null)
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
-    const confirmMessage = isEnabled
-      ? '¿Estás seguro de deshabilitar este personal? Ya no estará disponible para asignación.'
-      : '¿Estás seguro de habilitar este personal? Volverá a estar disponible para asignación.'
-
-    if (!confirm(confirmMessage)) return
 
     try {
       // El endpoint DELETE hace toggle automáticamente
@@ -283,35 +305,80 @@ export default function LeadsPage() {
   // Búsqueda: se muestra la página actual de searchResult; si no, la página del servidor
   const filteredData = searchResult !== null ? searchPaged.pageItems : leads
 
+  const total = searchResult !== null ? searchPaged.total : pagination.total
+  const vistaBtn = (activa: boolean) =>
+    cn(
+      'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border-none px-2.5 text-[13px] font-semibold transition-colors',
+      activa ? 'bg-subtle text-content shadow-[0_1px_2px_rgba(15,23,42,0.12)]' : 'bg-transparent text-muted hover:text-content'
+    )
+
   return (
     <div className={fitPage}>
-      <PageHeader
-        title="Personal"
-        description="Personas registradas y el cargo que ocupan."
-        actions={
+      {/* Encabezado como el de Incidencias: titulo grande a la izquierda y la accion a la derecha */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Organización · Equipo</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Personal</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">
+            Personas registradas y el cargo que ocupan ·{' '}
+            <strong className="font-semibold text-ink tabular-nums dark:text-content">{loading ? '—' : total}</strong>{' '}
+            {searchResult !== null ? 'encontradas' : 'registradas'}
+          </p>
+        </div>
+        {permissions.canCreate && (
           <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
             Agregar personal
           </Button>
-        }
-      >
-        <SearchInput
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="Buscar por nombre o ID"
-          loading={isSearching}
-        />
-      </PageHeader>
+        )}
+      </header>
+
+      {/* Barra: busqueda y tipo de vista */}
+      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-[#d3dceb] bg-surface p-3 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line">
+        <div className="min-w-[240px] flex-1">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+            placeholder="Buscar por nombre o ID"
+            loading={isSearching}
+            className="max-w-none!"
+          />
+        </div>
+        <div role="group" aria-label="Vista" className="inline-flex h-10 items-center gap-0.5 rounded-xl border border-line bg-surface p-1">
+          <button type="button" aria-pressed={vista === 'tarjetas'} onClick={() => setVista('tarjetas')} className={vistaBtn(vista === 'tarjetas')}>
+            <FiGrid aria-hidden /> Tarjetas
+          </button>
+          <button type="button" aria-pressed={vista === 'lista'} onClick={() => setVista('lista')} className={vistaBtn(vista === 'lista')}>
+            <FiList aria-hidden /> Lista
+          </button>
+        </div>
+      </div>
+
+      {!permissions.canEdit && !permissions.canDelete && permissions.canView && (
+        <p className="m-0 mb-3 inline-flex items-center gap-2 self-start rounded-lg bg-subtle px-3 py-1.5 text-[13px] text-content-2">
+          <FiLock className="shrink-0 text-muted" aria-hidden />
+          Tienes permisos de solo lectura: no puedes editar ni deshabilitar personal.
+        </p>
+      )}
 
       <div className={fitCard}>
         {loading ? (
           <LoadingState label="Cargando personal…" />
         ) : filteredData.length === 0 ? (
           searchResult !== null ? (
-            <EmptyState title="Sin resultados" description={`No hay personal que coincidan con “${filters.search}”.`} />
+            <EmptyState title="Sin resultados" description={`No hay personal que coincida con “${filters.search}”.`} />
           ) : (
             <EmptyState title="Aún no hay personal" description="Agrega el primero con el botón “Agregar personal”." />
           )
         ) : (
+          vista === 'tarjetas' ? (
+            <LeadGrid
+              data={filteredData}
+              onToggleStatus={handleToggleStatus}
+              onEdit={handleEdit}
+              canEdit={permissions.canEdit}
+              canDelete={permissions.canDelete}
+            />
+          ) : (
           <LeadTable
             data={filteredData}
             onToggleStatus={handleToggleStatus}
@@ -320,6 +387,7 @@ export default function LeadsPage() {
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
+          )
         )}
 
         {!loading && (searchResult !== null ? (
@@ -344,6 +412,24 @@ export default function LeadsPage() {
           />
         ))}
       </div>
+
+      <ConfirmModal
+        isOpen={!!porConfirmar}
+        type={porConfirmar && !porConfirmar.deleted_at ? 'danger' : 'info'}
+        title={
+          porConfirmar && !porConfirmar.deleted_at
+            ? `¿Deshabilitar a ${porConfirmar.name} ${porConfirmar.lastname}?`
+            : `¿Habilitar a ${porConfirmar?.name ?? ''} ${porConfirmar?.lastname ?? ''}?`
+        }
+        message={
+          porConfirmar && !porConfirmar.deleted_at
+            ? 'Ya no aparecerá como destinatario en las incidencias. Puedes volver a habilitarlo cuando quieras.'
+            : 'Volverá a estar disponible como destinatario en las incidencias.'
+        }
+        confirmText={porConfirmar && !porConfirmar.deleted_at ? 'Deshabilitar' : 'Habilitar'}
+        onConfirm={() => porConfirmar && confirmarCambioEstado(porConfirmar)}
+        onCancel={() => setPorConfirmar(null)}
+      />
 
       {showModal && (
         <ModalLead

@@ -22,7 +22,7 @@ export default function SessionExpiredModal({ show, onAccept }: SessionExpiredMo
   }
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/45 p-4 animate-[fadeInSoft_0.15s_ease-out]">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/45 dark:bg-black/65 p-4 animate-[fadeInSoft_0.15s_ease-out]">
       <div
         role="alertdialog"
         aria-modal="true"

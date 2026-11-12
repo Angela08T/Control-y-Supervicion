@@ -10,6 +10,8 @@
    Superficies planas, bordes finos y una sola sombra suave.
    Los colores de marca (primary, secondary, success, danger, warning) no cambian. */
 :root {
+  color-scheme: light;
+
   /* Colores de marca */
   --primary: #1e3a8a;
   --secondary: #3b82f6;
@@ -35,6 +37,8 @@
   --c-amber-ink: #8a5a00;
   --c-lime-ink: #3f6212;
   --c-cyan-ink: #176d7e;
+  --c-red-ink: #b91c1c;
+  --c-pink-ink: #a3095f;
 
   /* Superficies */
   --bg: #f0f9ff;
@@ -51,6 +55,7 @@
   /* Bordes, sombras y foco */
   --border: #dbe4f0;
   --border-strong: #c3d0e2;
+  --border-hover: #9fb0c8;
   --shadow: rgba(15, 23, 42, 0.08);
   --shadow-hover: rgba(15, 23, 42, 0.14);
   --focus-ring: rgba(37, 99, 235, 0.3);
@@ -63,29 +68,75 @@
 
   /* Gráficos */
   --grid-line-color: rgba(100, 116, 139, 0.15);
+
+  /* Lineas de nivel del fondo */
+  --contour-minor: rgba(30, 58, 138, 0.085);
+  --contour-major: rgba(30, 58, 138, 0.16);
+
+  /* Colores de datos (validados para daltonismo sobre la superficie clara) */
+  --viz-approved: #2f7d32;
+  --viz-pending: #e39a0b;
+  --viz-draft: #94a3b8;
+  --viz-rejected: #c71522;
+  --viz-accent: #2563eb;
+  --viz-muted: #cbd5e1;
 }
 
 [data-theme="dark"] {
-  --bg: #0f172a;
-  --bg-secondary: #1e293b;
-  --card: #1e293b;
-  --card-hover: #263349;
-  --subtle: #182235;
+  /* Controles nativos (calendario, scroll, autocompletado) en oscuro */
+  color-scheme: dark;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #e2e8f0;
-  --text-muted: #94a3b8;
+  /* Marca: en oscuro el azul sube de tono para que botones y tintes se distingan del fondo */
+  --primary: #2563eb;
+  --primary-hover: #3b82f6;
+  --secondary: #60a5fa;
+  --accent: #60a5fa;
+  --accent-light: #93c5fd;
+  --success: #8ebc22;
+  --danger: #ef4444;
+  --warning: #f2a50f;
 
-  --border: #334155;
-  --border-strong: #475569;
-  --shadow: rgba(0, 0, 0, 0.35);
-  --shadow-hover: rgba(0, 0, 0, 0.5);
-  --focus-ring: rgba(96, 165, 250, 0.4);
+  /* Variantes "-ink": en oscuro son tonos claros para leerse sobre las superficies */
+  --c-amber-ink: #fcd34d;
+  --c-lime-ink: #bef264;
+  --c-cyan-ink: #67e8f9;
+  --c-red-ink: #fca5a5;
+  --c-pink-ink: #f9a8d4;
 
-  --topbar-bg: #1e3a8a;
+  /* Superficies: azul marino profundo (la identidad del sistema), no gris neutro.
+     Cada nivel es un poco mas claro: fondo < tarjeta < resaltado. */
+  --bg: #0a1120;
+  --bg-secondary: #111b2e;
+  --card: #111b2e;
+  --card-hover: #18243b;
+  --subtle: #16213a;
+
+  --text-primary: #eef2fb;
+  --text-secondary: #c5d0e4;
+  --text-muted: #8f9dba;
+
+  --border: #223050;
+  --border-strong: #2f4166;
+  --border-hover: #4a5f88;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --shadow-hover: rgba(0, 0, 0, 0.6);
+  --focus-ring: rgba(96, 165, 250, 0.45);
+
+  --topbar-bg: #0f1d45;
   --button-text: #ffffff;
 
-  --grid-line-color: rgba(148, 163, 184, 0.2);
+  --grid-line-color: rgba(143, 157, 186, 0.16);
+
+  --contour-minor: rgba(96, 165, 250, 0.05);
+  --contour-major: rgba(96, 165, 250, 0.1);
+
+  /* Colores de datos: pasos propios para la superficie oscura, no una inversion automatica */
+  --viz-approved: #1d7f3e;
+  --viz-pending: #c98500;
+  --viz-draft: #475569;
+  --viz-rejected: #e5484d;
+  --viz-accent: #3987e5;
+  --viz-muted: #334155;
 }
 
 /* ===== Tokens de Tailwind enlazados a las variables de tema ===== */
@@ -105,6 +156,7 @@
   --color-subtle: var(--subtle);
   --color-line: var(--border);
   --color-line-strong: var(--border-strong);
+  --color-line-hover: var(--border-hover);
   --color-content: var(--text-primary);
   --color-content-2: var(--text-secondary);
   --color-muted: var(--text-muted);
@@ -120,6 +172,15 @@
   --color-amber-ink: var(--c-amber-ink);
   --color-lime-ink: var(--c-lime-ink);
   --color-cyan-ink: var(--c-cyan-ink);
+  --color-red-ink: var(--c-red-ink);
+  --color-pink-ink: var(--c-pink-ink);
+
+  --color-viz-approved: var(--viz-approved);
+  --color-viz-pending: var(--viz-pending);
+  --color-viz-draft: var(--viz-draft);
+  --color-viz-rejected: var(--viz-rejected);
+  --color-viz-accent: var(--viz-accent);
+  --color-viz-muted: var(--viz-muted);
 
   --font-display: 'IBM Plex Sans Variable', system-ui, sans-serif;
 }
@@ -510,14 +571,14 @@
   [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-hour-field,
   [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-minute-field,
   [data-theme="dark"] input[type="time"]::-webkit-datetime-edit-ampm-field {
-    color: #f8fafc !important;
+    color: var(--text-primary) !important;
     background: transparent;
   }
 
   [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
   [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
     background-color: transparent;
-    color: #f8fafc;
+    color: var(--text-primary);
   }
 
   /* Barras de scroll finas y neutras */

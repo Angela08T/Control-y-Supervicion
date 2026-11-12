@@ -4,7 +4,12 @@ import { toast } from '../utils/toast'
 import type { CreateLeadDto, Job, Lead } from '@/types'
 import Modal from '@/components/UI/Modal'
 import Button from '@/components/UI/Button'
-import { Field, Input, Select } from '@/components/UI/Field'
+import { Field, Input } from '@/components/UI/Field'
+import Dropdown from '@/components/UI/Dropdown'
+import { ModalHero } from '@/components/UI/FormSteps'
+import { colorAvatar, iniciales } from '@/utils/incidenciaFormat'
+import { cn } from '@/utils/classes'
+import { FiBriefcase, FiCheckCircle, FiEdit3, FiPlus, FiSave, FiUser, FiUserPlus } from 'react-icons/fi'
 
 export interface ModalLeadProps {
   initial?: Lead | null
@@ -103,63 +108,117 @@ export default function ModalLead({ initial, onClose, onSave }: ModalLeadProps) 
     onSave(dataToSave)
   }
 
+  // Vista previa: como se vera la persona en el directorio
+  const nombreCompleto = `${form.name} ${form.lastname}`.trim()
+  const cargo = jobs.find(j => j.id === form.job_id)?.name
+  const listo = !!form.name.trim() && !!form.lastname.trim() && !!form.job_id
+
   return (
     <Modal
       title={initial ? 'Editar personal' : 'Nuevo personal'}
-      description="Los campos marcados con * son obligatorios."
+      header={
+        <ModalHero
+          icon={initial ? <FiEdit3 /> : <FiUserPlus />}
+          eyebrow={initial ? 'Editar registro' : 'Nuevo registro'}
+          title={initial ? 'Editar personal' : 'Nuevo personal'}
+          subtitle="Los campos marcados con * son obligatorios."
+          onClose={onClose}
+        />
+      }
       onClose={onClose}
       size="md"
+      bodyClassName="bg-page"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" form="form-lead">
-            Guardar cambios
+          <Button type="submit" form="form-lead" icon={initial ? <FiSave /> : <FiPlus />}>
+            {initial ? 'Guardar cambios' : 'Agregar personal'}
           </Button>
         </>
       }
     >
       <form id="form-lead" onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Field label="Nombre" required error={errors.name}>
-          <Input
-            type="text"
-            placeholder="Ej: Diego"
-            value={form.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            invalid={!!errors.name}
-            autoFocus
-          />
-        </Field>
+        {/* Vista previa de la tarjeta del directorio */}
+        <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-[0_1px_2px_var(--shadow)]">
+          <span aria-hidden className="absolute inset-x-0 top-0 h-1 transition-colors" style={{ background: nombreCompleto ? colorAvatar(nombreCompleto) : 'var(--border)' }} />
+          <p className="m-0 mb-3 text-[11px] font-bold tracking-[0.12em] text-muted uppercase">Vista previa</p>
+          <div className="flex items-center gap-3.5">
+            <span
+              className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-base font-bold text-white shadow-sm transition-colors"
+              style={{ background: nombreCompleto ? colorAvatar(nombreCompleto) : 'var(--border-strong)' }}
+              aria-hidden
+            >
+              {nombreCompleto ? iniciales(nombreCompleto) : <FiUser />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className={cn('m-0 truncate text-base font-bold', nombreCompleto ? 'text-content' : 'text-muted')}>
+                {nombreCompleto || 'Nombre y apellido'}
+              </p>
+              <span
+                className={cn(
+                  'mt-1 inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
+                  cargo ? 'bg-primary/8 text-primary dark:bg-primary/20 dark:text-accent-light' : 'bg-subtle text-muted'
+                )}
+              >
+                <FiBriefcase className="shrink-0" aria-hidden />
+                <span className="truncate">{cargo || 'Cargo por elegir'}</span>
+              </span>
+            </div>
+          </div>
+        </div>
 
-        <Field label="Apellido" required error={errors.lastname}>
-          <Input
-            type="text"
-            placeholder="Ej: Matute Espino"
-            value={form.lastname}
-            onChange={(e) => handleChange('lastname', e.target.value)}
-            invalid={!!errors.lastname}
-          />
-        </Field>
+        <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_var(--shadow)] max-sm:p-4">
+          <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+            <Field label="Nombre" required error={errors.name}>
+              <Input
+                type="text"
+                placeholder="Ej.: Diego"
+                value={form.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                invalid={!!errors.name}
+                autoFocus
+              />
+            </Field>
 
-        <Field
-          label="Cargo"
-          required
-          error={errors.job_id}
-          hint={!loadingJobs && jobs.length === 0 ? 'No hay cargos disponibles. Crea un cargo primero.' : undefined}
-        >
-          <Select
-            value={form.job_id}
-            onChange={(e) => handleChange('job_id', e.target.value)}
-            invalid={!!errors.job_id}
-            disabled={loadingJobs}
+            <Field label="Apellido" required error={errors.lastname}>
+              <Input
+                type="text"
+                placeholder="Ej.: Matute Espino"
+                value={form.lastname}
+                onChange={(e) => handleChange('lastname', e.target.value)}
+                invalid={!!errors.lastname}
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="Cargo"
+            required
+            error={errors.job_id}
+            hint={!loadingJobs && jobs.length === 0 ? 'No hay cargos disponibles. Crea un cargo primero.' : undefined}
           >
-            <option value="">{loadingJobs ? 'Cargando cargos…' : 'Selecciona un cargo'}</option>
-            {jobs.map(job => (
-              <option key={job.id} value={job.id}>{job.name}</option>
-            ))}
-          </Select>
-        </Field>
+            <Dropdown
+              aria-label="Cargo"
+              value={String(form.job_id || '')}
+              onChange={(v) => handleChange('job_id', v)}
+              loading={loadingJobs}
+              invalid={!!errors.job_id}
+              placeholder="Selecciona un cargo"
+              emptyText="No hay cargos disponibles"
+              icon={<FiBriefcase />}
+              options={jobs.map(job => ({ value: String(job.id), label: job.name }))}
+            />
+          </Field>
+
+          {listo && (
+            <p className="m-0 flex items-center gap-2 text-xs font-medium text-lime-ink">
+              <FiCheckCircle aria-hidden />
+              Todo listo para guardar.
+            </p>
+          )}
+        </div>
       </form>
     </Modal>
   )

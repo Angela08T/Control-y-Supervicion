@@ -6,7 +6,6 @@ import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import AlertModal, { type AlertModalType } from '../../components/AlertModal'
 import ConfirmModal, { type ConfirmModalType } from '../../components/ConfirmModal'
 import Button from '@/components/UI/Button'
-import PageHeader from '@/components/UI/PageHeader'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import { PAGE_SIZE } from '@/hooks/usePagedList'
@@ -21,7 +20,7 @@ import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { useAppSelector } from '../../store/hooks'
-import { FiDownload, FiFilter, FiPlus } from 'react-icons/fi'
+import { FiDownload, FiFilter, FiPlus, FiX } from 'react-icons/fi'
 import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
 import type {
   ISODateString,
@@ -369,6 +368,33 @@ export default function IncidenciasPage() {
 
     fetchIncidencias()
   }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
+
+  // Cantidad por estado para los chips de la barra (respeta los demas filtros)
+  const [conteos, setConteos] = useState<Record<string, number | null>>({})
+  useEffect(() => {
+    let vigente = true
+    const base: ReportFilters = {}
+    if (filters.lackId) base.lackId = filters.lackId
+    if (filters.subjectId) base.subjectId = filters.subjectId
+    if (filters.jurisdictionId) base.jurisdictionId = filters.jurisdictionId
+    if (filters.turno) base.shift = filters.turno as Shift
+    if (filters.subgerencia) base.subgerencia = filters.subgerencia
+    Promise.all(
+      STATUS_OPTIONS.map(async ({ value }) => {
+        try {
+          const r = await getReports(1, 1, value ? { ...base, process: value as Process } : base)
+          return [value, r.pagination.total] as const
+        } catch {
+          return [value, null] as const
+        }
+      })
+    ).then(pares => {
+      if (vigente) setConteos(Object.fromEntries(pares))
+    })
+    return () => {
+      vigente = false
+    }
+  }, [refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.subgerencia])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -808,81 +834,104 @@ export default function IncidenciasPage() {
     // La página ocupa justo el alto disponible (h-full): solo la tabla desplaza, la paginación queda a la vista.
     // En pantallas muy bajas el mínimo evita aplastar la tabla y es el <main> el que desplaza.
     <div className={fitPage}>
-      <PageHeader
-        title="Incidencias"
-        description={`Registra, envía y valida los informes de incidencias del personal. · ${pagination.total} registros`}
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              icon={<FiDownload />}
-              onClick={handleExportExcel}
-              loading={exporting}
-              title="Exportar lista a Excel con los filtros actuales"
-            >
-              Exportar a Excel
+      {/* Encabezado como el de Inicio: titulo grande a la izquierda y acciones a la derecha */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Operación · Informes</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Incidencias</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">
+            Registra, envía y valida los informes del personal ·{' '}
+            <strong className="font-semibold text-ink dark:text-content">{pagination.total}</strong> registros
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            icon={<FiDownload />}
+            onClick={handleExportExcel}
+            loading={exporting}
+            title="Exportar lista a Excel con los filtros actuales"
+          >
+            Exportar a Excel
+          </Button>
+          {permissions.canCreate && (
+            <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
+              Nueva incidencia
             </Button>
+          )}
+        </div>
+      </header>
 
-            {permissions.canCreate && (
-              <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
-                Nueva incidencia
-              </Button>
-            )}
-          </>
-        }
-      >
-        <SearchInput
-          value={filters.search}
-          onChange={v => setFilters(f => ({ ...f, search: v }))}
-          placeholder="Buscar por DNI, nombre o código"
-          loading={isSearching}
-        />
+      {/* Barra: busqueda, estados con su cantidad y mas filtros */}
+      <div className="mb-4 flex shrink-0 flex-col gap-3 rounded-2xl border border-[#d3dceb] bg-surface p-3 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[240px] flex-1">
+            <SearchInput
+              value={filters.search}
+              onChange={v => setFilters(f => ({ ...f, search: v }))}
+              placeholder="Buscar por DNI, nombre o código"
+              loading={isSearching}
+            />
+          </div>
 
-        {/* Estado del informe: mismos valores que el antiguo select de estado */}
-        <div role="tablist" aria-label="Filtrar por estado" className="inline-flex max-w-full items-center overflow-x-auto rounded-lg border border-line-strong bg-surface p-0.5">
-          {STATUS_OPTIONS.map(option => {
-            const active = filters.process === option.value
-            return (
-              <button
-                key={option.value || 'todos'}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => {
-                  setFilters(f => ({ ...f, process: option.value }))
-                  setCurrentPage(1)
-                }}
-                className={cn(
-                  'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border-none px-3 text-[13px] font-medium transition-colors duration-150',
-                  active ? 'bg-[var(--page-color)] text-[var(--page-fg)]' : 'bg-transparent text-content-2 hover:bg-subtle'
-                )}
-              >
-                {option.dot && <span aria-hidden className="size-1.5 rounded-full" style={{ background: active ? 'currentColor' : option.dot }} />}
-                {option.label}
-              </button>
-            )
-          })}
+          <div role="tablist" aria-label="Filtrar por estado" className="flex flex-wrap items-center gap-1.5">
+            {STATUS_OPTIONS.map(option => {
+              const active = filters.process === option.value
+              const n = conteos[option.value]
+              return (
+                <button
+                  key={option.value || 'todos'}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    setFilters(f => ({ ...f, process: option.value }))
+                    setCurrentPage(1)
+                  }}
+                  className={cn(
+                    'inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border px-3 text-[13.5px] font-semibold transition-colors duration-150',
+                    active
+                      ? 'border-primary bg-primary text-white shadow-[0_6px_14px_-8px_rgba(30,58,138,0.9)]'
+                      : 'border-line bg-surface text-content hover:border-line-strong hover:bg-subtle'
+                  )}
+                >
+                  {option.dot && <span aria-hidden className="size-2 rounded-full" style={{ background: option.dot }} />}
+                  {option.label}
+                  {typeof n === 'number' && (
+                    <span
+                      className={cn(
+                        'min-w-6 rounded-md px-1.5 py-px text-center text-xs font-bold tabular-nums',
+                        active ? 'bg-white/20 text-white' : 'bg-subtle text-content-2'
+                      )}
+                    >
+                      {n}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          <Button
+            variant="secondary"
+            icon={<FiFilter />}
+            onClick={() => setShowAdvanced(v => !v)}
+            aria-expanded={showAdvanced}
+            aria-controls={showAdvanced ? 'incidencias-filtros-avanzados' : undefined}
+          >
+            Más filtros
+            {advancedCount > 0 && <Badge tone="info" dot={false}>{advancedCount}</Badge>}
+          </Button>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" icon={<FiX />} onClick={handleClearFilters}>
+              Limpiar
+            </Button>
+          )}
         </div>
 
-        <Button
-          variant="secondary"
-          icon={<FiFilter />}
-          onClick={() => setShowAdvanced(v => !v)}
-          aria-expanded={showAdvanced}
-          aria-controls={showAdvanced ? 'incidencias-filtros-avanzados' : undefined}
-        >
-          Más filtros
-          {advancedCount > 0 && <Badge tone="info" dot={false}>{advancedCount}</Badge>}
-        </Button>
-
-        {hasActiveFilters && (
-          <Button variant="ghost" onClick={handleClearFilters}>
-            Limpiar filtros
-          </Button>
-        )}
-
         {showAdvanced && (
-          <div id="incidencias-filtros-avanzados" className="flex w-full flex-wrap items-center gap-2">
+          <div id="incidencias-filtros-avanzados" className="flex w-full flex-wrap items-center gap-2 border-t border-line pt-3">
             {/* Filtro por Asunto (Subject) - Usando datos de la API */}
             {subjectsLoading ? (
               <Select disabled aria-label="Asunto" className={advancedSelect}>
@@ -1015,17 +1064,17 @@ export default function IncidenciasPage() {
             </Select>
           </div>
         )}
-      </PageHeader>
+      </div>
 
       {/* Aviso para CENTINELA: solo puede crear */}
       {!permissions.canDelete && permissions.canCreate && (
-        <p className="m-0 mb-3 rounded-lg border border-line bg-subtle px-4 py-2.5 text-[13px] text-content-2">
+        <p className="m-0 mb-3 shrink-0 rounded-xl border border-line bg-surface px-4 py-2.5 text-[13px] font-medium text-content-2">
           Solo puedes crear incidencias. No puedes eliminar incidencias existentes.
         </p>
       )}
 
       {loading ? (
-        <div className={cardClass}>
+        <div className={cn(cardClass, 'rounded-2xl')}>
           <LoadingState label="Cargando incidencias..." />
         </div>
       ) : filteredData.length === 0 && hasActiveFilters ? (
@@ -1050,22 +1099,19 @@ export default function IncidenciasPage() {
           canDelete={permissions.canDelete}
           canSend={permissions.canSend}
           canValidate={permissions.canValidate}
+          footer={
+            (!isSearchMode || searchPagination) && (
+              <Pagination
+                page={currentPage}
+                totalPages={paginationData.totalPages}
+                total={paginationData.total}
+                from={paginationData.from}
+                to={paginationData.to}
+                onPageChange={handlePageChange}
+              />
+            )
+          }
         />
-      )}
-
-      {/* Paginación (misma condición que antes: búsqueda con paginación o listado normal).
-          Queda siempre al pie de la pantalla: la tabla de arriba es la que desplaza. */}
-      {!loading && (!isSearchMode || searchPagination) && (
-        <div className="mt-3 shrink-0 overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_var(--shadow)] [&>div]:border-t-0">
-          <Pagination
-            page={currentPage}
-            totalPages={paginationData.totalPages}
-            total={paginationData.total}
-            from={paginationData.from}
-            to={paginationData.to}
-            onPageChange={handlePageChange}
-          />
-        </div>
       )}
 
       {showModal && (

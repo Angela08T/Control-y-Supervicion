@@ -4,16 +4,15 @@ import BodycamTable, { type BodycamTableRow } from '../../components/BodycamTabl
 import ModalBodycam from '../../components/ModalBodycam'
 import { getBodycams, getBodycamById, createBodycam, updateBodycam, deleteBodycam, searchBodycam } from '../../api/bodycam'
 import { getModulePermissions } from '../../utils/permissions'
-import { FiPlus } from 'react-icons/fi'
+import { FiCamera, FiGrid, FiLock, FiPlus, FiShield, FiVideo } from 'react-icons/fi'
 import { toast } from '../../utils/toast'
 import type { BodycamView, Cam, CreateBodycamDto, TablePagination } from '@/types'
-import PageHeader from '@/components/UI/PageHeader'
 import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import Button from '@/components/UI/Button'
-import { Select } from '@/components/UI/Field'
+import ConfirmModal from '@/components/ConfirmModal'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
-import { fitCard, fitPage } from '@/utils/classes'
+import { cn, fitCard, fitPage } from '@/utils/classes'
 import { PAGE_SIZE, usePagedList } from '@/hooks/usePagedList'
 
 /** Tipos de filtro de dispositivo del selector */
@@ -52,6 +51,14 @@ const matchesType = (row: BodycamRow, type: DeviceType): boolean => {
   return row.cam === 'BODYCAM' && row.name.toUpperCase().startsWith(TYPE_PREFIX[type])
 }
 
+/** Pestañas del filtro por tipo, con su icono */
+const TIPOS: Array<{ value: DeviceType; label: string; icon: React.ReactNode }> = [
+  { value: 'all', label: 'Todos', icon: <FiGrid /> },
+  { value: 'camera', label: 'Cámaras', icon: <FiCamera /> },
+  { value: 'sg', label: 'Bodycam SG', icon: <FiVideo /> },
+  { value: 'fisca', label: 'Bodycam FISCA', icon: <FiShield /> },
+]
+
 const isUUID = (str: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
 
@@ -80,6 +87,7 @@ export default function BodycamPage() {
   const [loading, setLoading] = useState<boolean>(false)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [searchResult, setSearchResult] = useState<BodycamRow[] | null>(null)
+  const [porConfirmar, setPorConfirmar] = useState<BodycamTableRow | null>(null) // Dispositivo a habilitar/deshabilitar
   const [isSearching, setIsSearching] = useState<boolean>(false)
   // Resultados de búsqueda: paginación en navegador (vuelve a la página 1 al cambiar búsqueda o tipo)
   const searchPaged = usePagedList(searchResult ?? [], `${filters.search}|${filters.deviceType}`)
@@ -208,14 +216,15 @@ export default function BodycamPage() {
     }
   }
 
-  async function handleToggleStatus(item: BodycamTableRow) {
+  /** Pide confirmacion en un modal antes de cambiar el estado */
+  function handleToggleStatus(item: BodycamTableRow) {
+    setPorConfirmar(item)
+  }
+
+  async function confirmarCambioEstado(item: BodycamTableRow) {
+    setPorConfirmar(null)
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
-    const confirmMessage = isEnabled
-      ? '¿Estás seguro de deshabilitar este dispositivo? Ya no estará disponible para asignación.'
-      : '¿Estás seguro de habilitar este dispositivo? Volverá a estar disponible para asignación.'
-
-    if (!confirm(confirmMessage)) return
 
     try {
       // El endpoint DELETE hace toggle automáticamente
@@ -262,42 +271,70 @@ export default function BodycamPage() {
     ? `No hay dispositivos que coincidan con “${filters.search}”.`
     : 'No hay dispositivos de este tipo.'
 
+  const total = searchResult !== null ? searchPaged.total : pagination.total
+
   return (
     <div className={fitPage}>
-      <PageHeader
-        title="Dispositivos"
-        description="Bodycams y cámaras disponibles para asignar a los turnos."
-        actions={
-          permissions.canCreate && (
-            <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
-              Agregar dispositivo
-            </Button>
-          )
-        }
-      >
-        <Select
-          aria-label="Filtrar por tipo de dispositivo"
-          className="md:w-[200px]"
-          value={filters.deviceType}
-          onChange={e => setFilters(f => ({ ...f, deviceType: e.target.value as DeviceType }))}
-        >
-          <option value="all">Todos los tipos</option>
-          <option value="camera">Cámaras</option>
-          <option value="sg">Bodycam SG</option>
-          <option value="fisca">Bodycam FISCA</option>
-        </Select>
+      {/* Encabezado como el de Incidencias: titulo grande a la izquierda y la accion a la derecha */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Recursos · Equipos</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Dispositivos</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">
+            Bodycams y cámaras disponibles para asignar a los turnos ·{' '}
+            <strong className="font-semibold text-ink tabular-nums dark:text-content">{loading ? '—' : total}</strong>{' '}
+            {searchResult !== null ? 'encontrados' : 'registrados'}
+          </p>
+        </div>
+        {permissions.canCreate && (
+          <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
+            Agregar dispositivo
+          </Button>
+        )}
+      </header>
 
-        <SearchInput
-          value={filters.search}
-          onChange={(v) => setFilters(f => ({ ...f, search: v }))}
-          placeholder="Buscar por nombre, serie o ID"
-          loading={isSearching}
-        />
-      </PageHeader>
+      {/* Barra: busqueda y tipo de dispositivo */}
+      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-[#d3dceb] bg-surface p-3 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line">
+        <div className="min-w-[240px] flex-1">
+          <SearchInput
+            value={filters.search}
+            onChange={(v) => setFilters(f => ({ ...f, search: v }))}
+            placeholder="Buscar por nombre, serie o ID"
+            loading={isSearching}
+            className="max-w-none!"
+          />
+        </div>
+        <div role="tablist" aria-label="Filtrar por tipo de dispositivo" className="flex flex-wrap items-center gap-1.5">
+          {TIPOS.map(t => {
+            const active = filters.deviceType === t.value
+            return (
+              <button
+                key={t.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFilters(f => ({ ...f, deviceType: t.value }))}
+                className={cn(
+                  'inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border px-3 text-[13.5px] font-semibold transition-colors duration-150',
+                  active
+                    ? 'border-primary bg-primary text-white shadow-[0_6px_14px_-8px_rgba(30,58,138,0.9)]'
+                    : 'border-line bg-surface text-content hover:border-line-strong hover:bg-subtle'
+                )}
+              >
+                <span className={active ? 'text-white' : 'text-muted'} aria-hidden>
+                  {t.icon}
+                </span>
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {!permissions.canCreate && permissions.canView && (
-        <p className="m-0 mb-3 text-[13px] text-muted">
-          Tienes permisos de solo lectura. No puedes crear, editar o eliminar dispositivos.
+        <p className="m-0 mb-3 inline-flex items-center gap-2 self-start rounded-lg bg-subtle px-3 py-1.5 text-[13px] text-content-2">
+          <FiLock className="shrink-0 text-muted" aria-hidden />
+          Tienes permisos de solo lectura: no puedes crear, editar ni deshabilitar dispositivos.
         </p>
       )}
 
@@ -350,6 +387,20 @@ export default function BodycamPage() {
           />
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!porConfirmar}
+        type={porConfirmar && !porConfirmar.deleted_at ? 'danger' : 'info'}
+        title={porConfirmar && !porConfirmar.deleted_at ? `¿Deshabilitar ${porConfirmar.name}?` : `¿Habilitar ${porConfirmar?.name ?? ''}?`}
+        message={
+          porConfirmar && !porConfirmar.deleted_at
+            ? 'Ya no estará disponible para asignarlo en las incidencias. Puedes volver a habilitarlo cuando quieras.'
+            : 'Volverá a estar disponible para asignarlo en las incidencias.'
+        }
+        confirmText={porConfirmar && !porConfirmar.deleted_at ? 'Deshabilitar' : 'Habilitar'}
+        onConfirm={() => porConfirmar && confirmarCambioEstado(porConfirmar)}
+        onCancel={() => setPorConfirmar(null)}
+      />
 
       {showModal && (
         <ModalBodycam

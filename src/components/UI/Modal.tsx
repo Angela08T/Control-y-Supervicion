@@ -14,6 +14,10 @@ export interface ModalProps {
   size?: ModalSize
   /** Cerrar al hacer clic fuera. Por defecto NO, para no perder lo escrito en un formulario */
   closeOnBackdrop?: boolean
+  /** Cabecera propia que reemplaza la estandar (debe incluir su propio boton de cerrar) */
+  header?: React.ReactNode
+  /** Clases extra del cuerpo desplazable (fondo, espaciado) */
+  bodyClassName?: string
   children: React.ReactNode
 }
 
@@ -31,6 +35,8 @@ export default function Modal({
   footer,
   size = 'md',
   closeOnBackdrop = false,
+  header,
+  bodyClassName,
   children,
 }: ModalProps) {
   // Cierra con Escape y evita que la pagina de fondo haga scroll
@@ -49,7 +55,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/45 p-4 animate-[fadeInSoft_0.15s_ease-out]"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/45 p-4 animate-[fadeInSoft_0.15s_ease-out] max-sm:items-stretch max-sm:p-0 dark:bg-black/65"
       onMouseDown={(e) => {
         if (closeOnBackdrop && e.target === e.currentTarget) onClose()
       }}
@@ -58,11 +64,14 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          'flex max-h-[calc(100vh-32px)] w-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out]',
+          'flex max-h-[calc(100dvh-32px)] w-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out] dark:shadow-[0_20px_56px_rgba(0,0,0,0.55)]',
+          // En movil el modal ocupa toda la pantalla, como una hoja
+          'max-sm:h-dvh max-sm:max-h-dvh max-sm:max-w-none max-sm:rounded-none max-sm:border-0',
           widths[size]
         )}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
+        {header ?? (
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-6 py-4 max-sm:px-4 max-sm:py-3">
           <div className="min-w-0">
             <h3 className="m-0 text-base font-semibold text-content">{title}</h3>
             {description && <p className="m-0 mt-1 text-[13px] text-muted">{description}</p>}
@@ -76,9 +85,10 @@ export default function Modal({
             <FiX />
           </button>
         </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">{children}</div>
+        )}
+        <div className={cn('flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6 max-sm:p-4', bodyClassName)}>{children}</div>
         {footer && (
-          <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-line bg-subtle px-6 py-3">
+          <footer className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-line bg-subtle px-6 py-3 max-sm:gap-2 max-sm:px-4 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:[&>*]:flex-1">
             {footer}
           </footer>
         )}

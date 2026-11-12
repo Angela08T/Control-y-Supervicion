@@ -23,13 +23,13 @@ export default function CircularProgress({ title, percentage, subtitle }: Circul
   const shown = useCountUp(percentage, 1200)
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5">
+    <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-18px_rgba(30,58,138,0.25)]">
       <div>
         <h3 className="m-0 text-[15px] font-semibold text-content">{title}</h3>
         {subtitle && <p className="m-0 mt-0.5 text-xs text-muted">{subtitle}</p>}
       </div>
 
-      <div className="relative mx-auto size-[160px]">
+      <div className="relative m-auto size-[180px]">
         <svg className="size-full" viewBox="0 0 160 160" aria-hidden>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">

@@ -3,7 +3,7 @@ import { cn } from '@/utils/classes'
 
 /** Clases base de los controles de formulario (input, select, textarea) */
 export const controlClass =
-  'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-[#9fb0c8] focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
+  'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-line-hover focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
 
 const controlError = 'border-danger! focus:shadow-[0_0_0_3px_rgba(199,21,34,0.2)]!'
 

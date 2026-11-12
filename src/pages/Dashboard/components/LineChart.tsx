@@ -50,9 +50,11 @@ export interface LineChartProps {
   defaultPeriod?: string
   onPeriodChange?: (period: string) => void
   onDateRangeChange?: (start: Date, end: Date) => void
+  /** false oculta los botones de periodo propios (cuando la pagina tiene un filtro unico) */
+  showRangeControls?: boolean
 }
 
-export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }: LineChartProps) {
+export default function LineChart({ title, subtitle, data, incidencias, faltasPorAsunto, onOpenDateModal, defaultPeriod = '30D', onPeriodChange, onDateRangeChange, showRangeControls = true }: LineChartProps) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -106,7 +108,8 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
       })
       return suma
     })
-    return Math.max(...valores, 1)
+    // Tope multiplo de 4 para que las 5 marcas del eje Y sean enteros distintos (antes salia 0, 1, 1, 2, 2)
+    return Math.max(4, Math.ceil(Math.max(...valores, 1) / 4) * 4)
   }
 
   const maxValue = getMaxValue()
@@ -160,9 +163,9 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
     return '6 oct - 4 nov'
   }
 
-  const width = 600  // Ancho base para viewBox (se escalará automáticamente)
-  const height = 360  // Aumentado para dar más espacio vertical
-  const paddingTop = 50  // Padding superior aumentado para evitar que los picos choquen arriba
+  const width = 900  // Ancho base para viewBox (se escalará automáticamente); mas ancho que alto para la columna doble del inicio
+  const height = 330  // Alto base del viewBox; en el inicio queda a la par de la columna de turnos y asuntos
+  const paddingTop = 20  // El tope del eje Y ya deja aire sobre los picos
   const paddingBottom = 50  // Reducido para acercar las fechas al borde inferior
   const paddingLeft = 20  // Espacio base izquierdo
   const paddingRight = 30  // Aumentado para dar espacio derecho
@@ -183,7 +186,7 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }
 
   // Calcular valores del eje Y (5 niveles)
-  const yAxisValues = [0, 1, 2, 3, 4].map(i => Math.round((maxValue / 4) * i))
+  const yAxisValues = [0, 1, 2, 3, 4].map(i => (maxValue / 4) * i)
 
   // Crear path con curvas suaves tipo Bezier cúbica para mejor apariencia
   // Siempre empieza desde el borde izquierdo del gráfico en la parte inferior (valor 0)
@@ -251,40 +254,42 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
   }
   
   return (
-    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-surface p-5">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-18px_rgba(30,58,138,0.25)]">
       <div className={chartHeader}>
         <div>
           <h3 className={chartTitle}>{title}</h3>
           <p className={chartSubtitle}>{subtitle}</p>
         </div>
 
-        <div className={timeRangeControls}>
-          <div className={timeRangeButtons}>
-            <button
-              className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
-              onClick={() => handlePeriodChange('7D')}
-            >
-              7D
-            </button>
-            <button
-              className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
-              onClick={() => handlePeriodChange('15D')}
-            >
-              15D
-            </button>
-            <button
-              className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
-              onClick={() => handlePeriodChange('30D')}
-            >
-              30D
+        {showRangeControls && (
+          <div className={timeRangeControls}>
+            <div className={timeRangeButtons}>
+              <button
+                className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
+                onClick={() => handlePeriodChange('7D')}
+              >
+                7D
+              </button>
+              <button
+                className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
+                onClick={() => handlePeriodChange('15D')}
+              >
+                15D
+              </button>
+              <button
+                className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
+                onClick={() => handlePeriodChange('30D')}
+              >
+                30D
+              </button>
+            </div>
+  
+            <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
+              <FiCalendar aria-hidden />
+              <span>{formatDateRange()}</span>
             </button>
           </div>
-
-          <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
-            <FiCalendar aria-hidden />
-            <span>{formatDateRange()}</span>
-          </button>
-        </div>
+        )}
       </div>
       
       <svg className="mb-4 block h-auto w-full max-w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
@@ -391,7 +396,9 @@ export default function LineChart({ title, subtitle, data, incidencias, faltasPo
           else if (totalDias > 10) skipFactor = 2 // Cada 2 días
           else skipFactor = 1 // Mostrar todos
 
-          const shouldShow = i % skipFactor === 0 || i === meses.length - 1 // Siempre mostrar el último
+          // Siempre mostrar el último; se omite una etiqueta regular si queda pegada a él y se encimarían
+          const ultimo = meses.length - 1
+          const shouldShow = i === ultimo || (i % skipFactor === 0 && ultimo - i >= Math.ceil(skipFactor / 2))
 
           if (!shouldShow) return null
 

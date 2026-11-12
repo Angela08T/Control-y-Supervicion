@@ -8,8 +8,8 @@ const tones: Record<BadgeTone, { box: string; dot: string }> = {
   info: { box: 'bg-[rgba(49,163,181,0.14)] text-cyan-ink', dot: 'bg-brand-cyan' },
   success: { box: 'bg-[rgba(142,188,34,0.2)] text-lime-ink', dot: 'bg-brand-lime' },
   warning: { box: 'bg-[rgba(242,165,15,0.2)] text-amber-ink', dot: 'bg-brand-amber' },
-  danger: { box: 'bg-[rgba(199,21,34,0.1)] text-brand-red', dot: 'bg-brand-red' },
-  accent: { box: 'bg-[rgba(210,11,128,0.1)] text-brand-pink', dot: 'bg-brand-pink' },
+  danger: { box: 'bg-[rgba(199,21,34,0.1)] dark:bg-[rgba(239,68,68,0.16)] text-red-ink', dot: 'bg-brand-red' },
+  accent: { box: 'bg-[rgba(210,11,128,0.1)] text-pink-ink', dot: 'bg-brand-pink' },
 }
 
 export interface BadgeProps {

@@ -25,7 +25,7 @@ export default function BrandMark({ compact = false, tone = 'light', className }
       </span>
       {!compact && (
         <span className="min-w-0 leading-none">
-          <span className={cn('block truncate text-[17px] font-semibold tracking-[-0.01em]', dark ? 'text-white' : 'text-primary')}>
+          <span className={cn('block truncate text-[17px] font-semibold tracking-[-0.01em]', dark ? 'text-white' : 'text-primary dark:text-accent-light')}>
             Centinela
           </span>
           <span className={cn('mt-1 block truncate text-[11px] font-medium', dark ? 'text-white/65' : 'text-muted')}>

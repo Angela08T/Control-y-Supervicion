@@ -14,6 +14,13 @@ export const cn = (...parts: Array<string | false | null | undefined>): string =
 const scrollbarBox =
   '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-line-strong [&::-webkit-scrollbar-thumb:hover]:bg-muted'
 
+/**
+ * Scrollbar vertical suave para listas: pildora fina separada del borde, tenue en reposo y mas
+ * visible al pasar por la lista. Sin flechas. En Firefox usa la barra fina estandar.
+ */
+export const scrollSoft =
+  '[&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:my-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-[3px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-line [&::-webkit-scrollbar-thumb]:bg-clip-padding [&:hover::-webkit-scrollbar-thumb]:bg-line-strong [&::-webkit-scrollbar-thumb:hover]:bg-muted supports-[-moz-appearance:none]:[scrollbar-width:thin] supports-[-moz-appearance:none]:[scrollbar-color:var(--border-strong)_transparent]'
+
 // ==================== Botones ====================
 
 const btnBase =
@@ -26,7 +33,7 @@ export const btnSecondary = `${btnBase} border-line-strong bg-surface text-conte
 // ==================== Modales ====================
 
 export const modalBackdrop =
-  'fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 animate-[fadeInSoft_0.15s_ease-out]'
+  'fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-slate-900/45 dark:bg-black/65 p-4 animate-[fadeInSoft_0.15s_ease-out]'
 
 export const modalCard =
   'm-auto w-[480px] max-w-full overflow-hidden rounded-xl border border-line bg-surface shadow-[0_16px_48px_rgba(15,23,42,0.18)] animate-[popIn_0.18s_ease-out] max-[900px]:my-2.5 max-[900px]:max-h-[90vh] max-[900px]:w-[95%] max-[900px]:overflow-y-auto'
@@ -50,7 +57,7 @@ export const modalLabel = 'text-[13px] font-medium text-content-2'
 
 /** <input>, <select> y <textarea> dentro del cuerpo del modal (textarea agrega modalTextarea) */
 export const modalInput =
-  'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-[#9fb0c8] focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
+  'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-line-hover focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
 
 export const modalTextarea = 'min-h-20 resize-y'
 
@@ -74,7 +81,7 @@ export const pageTitle = 'm-0 text-[22px] font-semibold tracking-[-0.01em] text-
 export const controlsBar = 'flex flex-wrap items-center gap-2'
 
 const controlsField =
-  'h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-[#9fb0c8] focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] max-[900px]:min-w-0 max-[900px]:flex-[1_1_100%]'
+  'h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm text-content outline-none transition-colors duration-150 placeholder:text-muted hover:border-line-hover focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)] max-[900px]:min-w-0 max-[900px]:flex-[1_1_100%]'
 
 export const controlsSelect = `${controlsField} max-w-[220px] cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap`
 
@@ -119,11 +126,11 @@ export const actions = 'flex items-center justify-end gap-1'
 
 /** Boton de accion de una fila (ver, editar...). Siempre con title y aria-label */
 export const actionBtn =
-  'inline-flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-[rgba(30,58,138,0.08)] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-primary/8 hover:text-primary dark:hover:text-accent-light disabled:cursor-not-allowed disabled:opacity-40'
 
 /** Boton de accion destructiva (eliminar, deshabilitar) */
 export const actionBtnDanger =
-  'inline-flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-[rgba(199,21,34,0.1)] hover:text-danger disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-base text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40'
 
 // ==================== Layout ====================
 
@@ -151,20 +158,20 @@ export const fitCard = `${cardClass} min-h-0`
 export const autocompleteContainer = 'relative w-full [&_input]:w-full'
 
 /** Avisos de carga/error/sin resultados: van en el flujo para no tapar lo que hay debajo */
-const autocompleteBox = 'mt-1 rounded-lg border px-3 py-2 text-[13px]'
+const autocompleteBox = 'mt-1.5 rounded-xl border px-3 py-2 text-[13px]'
 
 export const autocompleteLoading = `${autocompleteBox} border-line bg-surface text-content-2`
 
-export const autocompleteError = `${autocompleteBox} border-danger bg-[rgba(199,21,34,0.06)] text-danger`
+export const autocompleteError = `${autocompleteBox} border-danger/60 bg-danger/6 text-red-ink`
 
 export const autocompleteNoResults = `${autocompleteBox} border-line bg-surface text-muted`
 
 export const autocompleteSuggestions =
-  'absolute inset-x-0 top-full z-[1000] mt-1 max-h-[250px] overflow-y-auto rounded-lg border border-line bg-surface shadow-[0_4px_12px_var(--shadow-hover)]'
+  'absolute inset-x-0 top-full z-[1000] mt-1.5 flex max-h-[280px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-[0_18px_40px_-12px_rgba(12,26,75,0.35),0_2px_6px_rgba(12,26,75,0.08)] animate-[popIn_0.14s_ease-out] dark:shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]'
 
 export const autocompleteItem =
-  'cursor-pointer border-b border-line px-4 py-2.5 transition-colors duration-150 last:border-b-0 hover:bg-subtle'
+  'cursor-pointer rounded-lg px-2.5 py-2 transition-colors duration-100 hover:bg-subtle'
 
-export const autocompleteItemCode = 'mb-0.5 text-sm font-medium text-primary'
+export const autocompleteItemCode = 'text-sm font-semibold text-content'
 
 export const autocompleteItemDetails = 'text-xs text-muted'

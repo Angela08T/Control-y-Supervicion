@@ -13,7 +13,7 @@ export interface CalendarModalProps {
 const dayClassName = (date: Date, selected: boolean, inRange: boolean): string => cn(
   'flex h-9 w-full cursor-pointer items-center justify-center rounded-md text-[13px] select-none transition-colors duration-150',
   selected && 'bg-primary font-semibold text-btn',
-  !selected && inRange && 'bg-[rgba(30,58,138,0.08)] text-content',
+  !selected && inRange && 'bg-primary/8 text-content',
   !selected && !inRange && 'text-content hover:bg-subtle'
 )
 

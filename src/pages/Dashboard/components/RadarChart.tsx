@@ -50,9 +50,11 @@ export interface RadarChartProps {
   defaultPeriod?: string
   onPeriodChange?: (period: string) => void
   onDateRangeChange?: (start: Date, end: Date) => void
+  /** false oculta los botones de periodo propios (cuando la pagina tiene un filtro unico) */
+  showRangeControls?: boolean
 }
 
-export default function RadarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange, onDateRangeChange }: RadarChartProps) {
+export default function RadarChart({ title, subtitle, data, incidencias, faltasPorAsunto, defaultPeriod = '30D', onPeriodChange, onDateRangeChange, showRangeControls = true }: RadarChartProps) {
   // Nuevos 6 asuntos (deben coincidir exactamente con los nombres de la API)
   const nuevosAsuntos = [
     'Conductas relacionadas con el Cumplimiento del Horario y Asistencia',
@@ -189,44 +191,46 @@ export default function RadarChart({ title, subtitle, data, incidencias, faltasP
   , { asunto: '', valor: 0 })
 
   return (
-    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-surface p-5">
+    <div className="relative box-border flex w-full min-w-0 max-w-full flex-col overflow-visible rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-18px_rgba(30,58,138,0.25)]">
       <div className={chartHeader}>
         <div>
           <h3 className={chartTitle}>{title}</h3>
           <p className={chartSubtitle}>{subtitle}</p>
         </div>
 
-        <div className={timeRangeControls}>
-          <div className={timeRangeButtons}>
-            <button
-              className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
-              onClick={() => handlePeriodChange('7D')}
-            >
-              7D
-            </button>
-            <button
-              className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
-              onClick={() => handlePeriodChange('15D')}
-            >
-              15D
-            </button>
-            <button
-              className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
-              onClick={() => handlePeriodChange('30D')}
-            >
-              30D
+        {showRangeControls && (
+          <div className={timeRangeControls}>
+            <div className={timeRangeButtons}>
+              <button
+                className={cn(timeBtn, rangoTiempo === '7D' ? timeBtnActive : timeBtnIdle)}
+                onClick={() => handlePeriodChange('7D')}
+              >
+                7D
+              </button>
+              <button
+                className={cn(timeBtn, rangoTiempo === '15D' ? timeBtnActive : timeBtnIdle)}
+                onClick={() => handlePeriodChange('15D')}
+              >
+                15D
+              </button>
+              <button
+                className={cn(timeBtn, rangoTiempo === '30D' ? timeBtnActive : timeBtnIdle)}
+                onClick={() => handlePeriodChange('30D')}
+              >
+                30D
+              </button>
+            </div>
+  
+            <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
+              <FiCalendar aria-hidden />
+              <span>{formatDateRange()}</span>
             </button>
           </div>
-
-          <button className={dateRangeBtn} onClick={() => setShowCalendar(true)}>
-            <FiCalendar aria-hidden />
-            <span>{formatDateRange()}</span>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Gráfico de Radar */}
-      <svg className="mb-0 block h-auto w-full max-w-full shrink-0 overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+      <svg className="mb-0 block h-auto max-h-[360px] w-full max-w-full shrink-0 overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
         {/* Círculos concéntricos de fondo */}
         {Array.from({ length: numLevels }, (_, i) => {
           const radius = ((i + 1) / numLevels) * maxRadius

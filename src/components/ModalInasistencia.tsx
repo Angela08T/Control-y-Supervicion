@@ -5,7 +5,12 @@ import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import AlertModal from './AlertModal'
 import Modal from '@/components/UI/Modal'
 import Button from '@/components/UI/Button'
-import { Field, Input, Select } from '@/components/UI/Field'
+import { Field, Input } from '@/components/UI/Field'
+import Dropdown from '@/components/UI/Dropdown'
+import { HeroProgress, ModalHero, StepSection } from '@/components/UI/FormSteps'
+import { ASUNTOS, nombreCorto } from '@/pages/Dashboard/asuntos'
+import { colorAvatar, iniciales } from '@/utils/incidenciaFormat'
+import { FiCalendar, FiCheckCircle, FiInfo, FiLoader, FiMapPin, FiPlus, FiSearch, FiTag, FiUser, FiUserX } from 'react-icons/fi'
 import {
   autocompleteContainer,
   autocompleteError,
@@ -14,7 +19,8 @@ import {
   autocompleteItemDetails,
   autocompleteLoading,
   autocompleteNoResults,
-  autocompleteSuggestions
+  autocompleteSuggestions,
+  cn
 } from '@/utils/classes'
 import type { ID, ISODateString, Jurisdiction, Lead, OffenderDniLookup, SubjectLack } from '@/types'
 
@@ -292,124 +298,207 @@ export default function ModalInasistencia({ onClose, onSave }: ModalInasistencia
     onClose()
   }
 
+  // Pasos completos (barra de progreso de la cabecera)
+  const dniValido = /^\d{8}$/.test(form.dni)
+  const personaCompleta = dniValido && !!form.nombreCompleto && !!form.turno && !!form.cargo && !!form.regLab
+  const jurisdiccionCompleta = !!form.jurisdictionId
+  const pasosHechos = Number(personaCompleta) + Number(jurisdiccionCompleta)
+  const colorAsunto = ASUNTOS[form.asunto]?.color ?? 'var(--primary)'
+
   return (
     <>
       <Modal
         title="Nueva inasistencia"
-        description="Busca a la persona por DNI. Turno, cargo y régimen se completan solos."
+        header={
+          <ModalHero
+            icon={<FiUserX />}
+            eyebrow="Registro de inasistencia"
+            title="Nueva inasistencia"
+            subtitle="Busca a la persona por DNI; turno, cargo y régimen se completan solos."
+            onClose={onClose}
+          >
+            <HeroProgress done={pasosHechos} total={2} />
+          </ModalHero>
+        }
         onClose={onClose}
         size="lg"
+        bodyClassName="bg-page"
         footer={
           <>
-            <Button variant="secondary" onClick={onClose}>
+            <p className="m-0 mr-auto flex items-center gap-2 text-xs text-muted max-sm:hidden">
+              {pasosHechos === 2 ? (
+                <>
+                  <FiCheckCircle className="shrink-0 text-success" aria-hidden />
+                  Todo listo para guardar.
+                </>
+              ) : (
+                <>
+                  <FiInfo className="shrink-0" aria-hidden />
+                  Luego marca los días en el calendario.
+                </>
+              )}
+            </p>
+            <Button variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" form="form-inasistencia">
+            <Button type="submit" form="form-inasistencia" icon={<FiPlus />}>
               Crear inasistencia
             </Button>
           </>
         }
       >
-        <form id="form-inasistencia" onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <section className="flex flex-col gap-4">
-            <h4 className="m-0 text-[13px] font-semibold text-content">Personal</h4>
-            <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-              <div className="col-span-2">
-                <div className={autocompleteContainer} ref={dniAutocompleteRef}>
-                  <Field label="DNI" required hint="8 dígitos">
-                    <Input
-                      value={dniSearchTerm}
-                      onChange={handleDNIChange}
-                      onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
-                      placeholder="Ingresa 8 dígitos del DNI"
-                      maxLength={8}
-                      pattern="[0-9]{8}"
-                      autoComplete="off"
-                    />
-                  </Field>
-                  {offenderLoading && <div className={autocompleteLoading}>Buscando…</div>}
-                  {offenderError && <div className={autocompleteError}>{offenderError}</div>}
-                  {showOffenderSuggestions && offendersHabilitados.length > 0 && (
-                    <div className={autocompleteSuggestions}>
-                      {offendersHabilitados.map((offender, index) => (
-                        <div
-                          key={offender.gestionate_id || offender.id || index}
-                          className={autocompleteItem}
-                          onClick={() => handleOffenderSelect(offender)}
+        <form id="form-inasistencia" onSubmit={handleSubmit} className="flex flex-col gap-4 max-sm:gap-3">
+          <StepSection
+            id="inas-persona"
+            n={1}
+            title="Personal"
+            icon={<FiUser />}
+            description="La persona que faltó al servicio."
+            done={personaCompleta}
+          >
+            <div className={autocompleteContainer} ref={dniAutocompleteRef}>
+              <Field label="DNI" required hint="8 dígitos; elige a la persona de la lista.">
+                <div className="relative">
+                  <FiSearch className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
+                  <Input
+                    value={dniSearchTerm}
+                    onChange={handleDNIChange}
+                    onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
+                    placeholder="Ej.: 45678912"
+                    maxLength={8}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="pl-9 text-[15px] tracking-[0.06em] tabular-nums"
+                  />
+                </div>
+              </Field>
+              {offenderLoading && (
+                <div className={autocompleteLoading}>
+                  <span className="flex items-center gap-2">
+                    <FiLoader className="animate-spin" aria-hidden /> Buscando…
+                  </span>
+                </div>
+              )}
+              {offenderError && <div className={autocompleteError}>{offenderError}</div>}
+              {showOffenderSuggestions && offendersHabilitados.length > 0 && (
+                <div className={autocompleteSuggestions}>
+                  {offendersHabilitados.map((offender, index) => {
+                    const nombre = `${offender.name || ''} ${offender.lastname || ''}`.trim()
+                    return (
+                      <div
+                        key={offender.gestionate_id || offender.id || index}
+                        className={cn(autocompleteItem, 'flex items-center gap-3')}
+                        onClick={() => handleOffenderSelect(offender)}
+                      >
+                        <span
+                          className="flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
+                          style={{ background: colorAvatar(offender.dni || nombre) }}
+                          aria-hidden
                         >
-                          <div className={autocompleteItemCode}>
-                            DNI: {offender.dni} - {offender.name} {offender.lastname}
+                          {iniciales(nombre, offender.dni)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className={cn(autocompleteItemCode, 'truncate')}>
+                            {nombre || 'Sin nombre'} <span className="font-normal text-muted">· DNI {offender.dni}</span>
                           </div>
-                          <div className={autocompleteItemDetails}>
-                            {offender.job} | {offender.shift} | {offender.regime}
+                          <div className={cn(autocompleteItemDetails, 'truncate')}>
+                            {[offender.job, offender.shift, offender.regime].filter(Boolean).join(' · ')}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
-                    <div className={autocompleteNoResults}>No se encontraron registros</div>
-                  )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
+                <div className={autocompleteNoResults}>
+                  <span className="flex items-center gap-2">
+                    <FiSearch aria-hidden /> No se encontraron registros
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {form.nombreCompleto ? (
+              <div className="flex items-center gap-4 rounded-xl border border-line bg-subtle p-4 max-sm:items-start max-sm:p-3">
+                <span
+                  className="flex size-13 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-sm max-sm:size-11 max-sm:text-base"
+                  style={{ background: colorAvatar(form.dni || form.nombreCompleto) }}
+                  aria-hidden
+                >
+                  {iniciales(form.nombreCompleto, form.dni)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 truncate text-[15px] font-bold text-content uppercase" title={form.nombreCompleto}>
+                    {form.nombreCompleto}
+                  </p>
+                  <p className="m-0 text-xs text-muted tabular-nums">DNI {form.dni}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {[
+                      { label: 'Turno', value: form.turno },
+                      { label: 'Cargo', value: form.cargo },
+                      { label: 'Régimen', value: form.regLab },
+                    ].map(d => (
+                      <span key={d.label} className="inline-flex max-w-full items-center gap-1 rounded-md bg-surface px-2 py-0.5 text-xs ring-1 ring-line">
+                        <span className="text-muted">{d.label}:</span>
+                        <span className={cn('truncate font-semibold', d.value ? 'text-content' : 'text-red-ink')}>{d.value || 'Falta'}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong px-4 py-3.5 text-sm text-muted">
+                <FiUser className="shrink-0 text-lg" aria-hidden />
+                Los datos de la persona aparecerán aquí al elegirla.
+              </div>
+            )}
+          </StepSection>
 
-              <Field label="Turno" required>
-                <Input readOnly value={form.turno} placeholder="Se completa con el DNI" className="cursor-not-allowed bg-subtle text-content-2" />
-              </Field>
+          <StepSection
+            id="inas-lugar"
+            n={2}
+            title="Jurisdicción y tipo"
+            icon={<FiMapPin />}
+            description="Dónde presta servicio y bajo qué asunto se registra."
+            done={jurisdiccionCompleta}
+          >
+            <Field label="Jurisdicción" required error={jurisdictionsError || undefined}>
+              <Dropdown
+                aria-label="Jurisdicción"
+                value={form.jurisdiccion}
+                onChange={nombre => {
+                  const selectedJurisdiction = jurisdictions.find(j => j.name === nombre)
+                  setForm(f => ({
+                    ...f,
+                    jurisdiccion: selectedJurisdiction?.name ?? '',
+                    jurisdictionId: selectedJurisdiction?.id ?? null
+                  }))
+                }}
+                loading={jurisdictionsLoading}
+                invalid={!!jurisdictionsError}
+                placeholder="Selecciona una jurisdicción"
+                icon={<FiMapPin />}
+                searchable
+                options={jurisdiccionesHabilitadas.map(j => ({ value: j.name, label: j.name }))}
+              />
+            </Field>
 
-              <Field label="Cargo" required>
-                <Input readOnly value={form.cargo} placeholder="Se completa con el DNI" className="cursor-not-allowed bg-subtle text-content-2" />
-              </Field>
-
-              <Field label="Reg. Lab." required>
-                <Input readOnly value={form.regLab} placeholder="Se completa con el DNI" className="cursor-not-allowed bg-subtle text-content-2" />
-              </Field>
-
-              <div className="col-span-2">
-                {jurisdictionsLoading ? (
-                  <p className="m-0 text-sm text-muted">Cargando jurisdicciones…</p>
-                ) : jurisdictionsError ? (
-                  <p className="m-0 text-sm text-danger">{jurisdictionsError}</p>
-                ) : (
-                  <Field label="Jurisdicción" required>
-                    <Select
-                      value={form.jurisdiccion}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                        const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
-                        if (selectedJurisdiction) {
-                          setForm(f => ({
-                            ...f,
-                            jurisdiccion: selectedJurisdiction.name,
-                            jurisdictionId: selectedJurisdiction.id
-                          }))
-                        } else {
-                          setForm(f => ({
-                            ...f,
-                            jurisdiccion: '',
-                            jurisdictionId: null
-                          }))
-                        }
-                      }}
-                    >
-                      <option value="">Selecciona una jurisdicción</option>
-                      {jurisdiccionesHabilitadas.map(jurisdiction => (
-                        <option key={jurisdiction.id} value={jurisdiction.name}>
-                          {jurisdiction.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                )}
+            <div className="flex items-start gap-3 rounded-xl border border-line bg-subtle px-4 py-3" style={{ borderLeft: `4px solid ${colorAsunto}` }}>
+              <FiTag className="mt-0.5 shrink-0 text-muted" aria-hidden />
+              <div className="min-w-0">
+                <p className="m-0 text-xs font-medium text-muted">Asunto (automático)</p>
+                <p className="m-0 mt-0.5 text-sm font-semibold text-content">
+                  {subjectsLoading ? 'Cargando…' : subjectsError ? 'No se pudo cargar el asunto' : nombreCorto(form.asunto)}
+                </p>
               </div>
             </div>
-          </section>
 
-          <section className="flex flex-col gap-4 border-t border-line pt-4">
-            <h4 className="m-0 text-[13px] font-semibold text-content">Tipo de inasistencia</h4>
-            <Field label="Asunto">
-              <Input readOnly value={form.asunto} className="cursor-not-allowed bg-subtle text-content-2" />
-            </Field>
-          </section>
+            <p className="m-0 flex items-start gap-2 rounded-xl bg-primary/6 px-3.5 py-2.5 text-[13px] text-content-2 dark:bg-primary/15">
+              <FiCalendar className="mt-0.5 shrink-0 text-accent" aria-hidden />
+              Al crearla, la persona aparece en el calendario: ahí marcas los días como justificados o injustificados.
+            </p>
+          </StepSection>
         </form>
       </Modal>
 

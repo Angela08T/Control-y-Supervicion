@@ -1,67 +1,61 @@
 import React from 'react'
-import Badge, { type BadgeTone } from '@/components/UI/Badge'
+import { Link } from 'react-router-dom'
+import { FiChevronRight } from 'react-icons/fi'
 import { useCountUp } from '@/hooks/useCountUp'
+import { cardBase, cardHover } from '../cardStyles'
 
 export interface StatCardProps {
   title: string
   value: number | string
+  /** Texto pegado al numero, por ejemplo "%" */
+  suffix?: string
   subtitle?: string
-  change?: string
   icon: React.ReactNode
-  /** Color del icono (hex), tintado al 12% como fondo. */
+  /** Color de la metrica (hex): fondo del icono */
   color: string
-  onIconClick?: () => void
+  /** Pagina a la que lleva la flecha de la derecha; sin ella no se muestra la flecha */
+  to?: string
 }
 
-/** Variación: "+" sube (verde), "0%" neutra, cualquier otra cosa empeora (rojo). */
-const changeTone = (change: string): BadgeTone => {
-  if (change.startsWith('+')) return 'success'
-  if (change === '0%') return 'neutral'
-  return 'danger'
-}
-
-export default function StatCard({ title, value, subtitle, change, icon, color, onIconClick }: StatCardProps) {
-  const iconStyle = { backgroundColor: `${color}1f`, color }
-  const iconClass = 'flex size-10 shrink-0 items-center justify-center rounded-lg text-xl'
-
+/** Metrica: icono grande de color, titulo, dato grande y una flecha que lleva al detalle. */
+export default function StatCard({ title, value, suffix, subtitle, icon, color, to }: StatCardProps) {
   // Los numeros "cuentan" hasta su valor; un texto se muestra tal cual
   const numeric = typeof value === 'number' && Number.isFinite(value)
   const counted = useCountUp(numeric ? value : 0)
 
   return (
-    <div className="flex flex-col rounded-2xl border border-line bg-surface p-5 transition-colors duration-200 hover:border-line-strong">
-      <div className="flex items-start justify-between gap-3">
-        <p className="m-0 text-[13px] font-medium text-muted">{title}</p>
-        {onIconClick ? (
-          <button
-            type="button"
-            onClick={onIconClick}
-            aria-label={title}
-            title={title}
-            className={`${iconClass} cursor-pointer border-none transition-opacity duration-150 hover:opacity-80`}
-            style={iconStyle}
-          >
-            {icon}
-          </button>
-        ) : (
-          <span className={iconClass} style={iconStyle} aria-hidden>
-            {icon}
-          </span>
-        )}
-      </div>
+    <div className={`relative flex h-full items-center gap-5 px-5 py-4 ${cardBase} ${cardHover}`}>
+      <span
+        className="flex size-[62px] shrink-0 items-center justify-center rounded-2xl text-[28px] text-white"
+        style={{ background: `linear-gradient(135deg, ${color}, ${color}d9)`, boxShadow: `0 10px 20px -10px ${color}` }}
+        aria-hidden
+      >
+        {icon}
+      </span>
 
-      <div className="mt-2 flex flex-wrap items-baseline gap-2.5">
-        <span className="text-[34px] leading-none font-semibold tracking-[-0.02em] text-content tabular-nums">
+      <div className="min-w-0 flex-1">
+        <p className="m-0 truncate text-[14.5px] font-semibold text-ink dark:text-content" title={title}>{title}</p>
+        <p className="m-0 mt-1 text-[30px] leading-none font-bold tracking-[-0.02em] text-ink tabular-nums dark:text-content">
           {numeric ? counted : value}
-        </span>
-        {change && (
-          <Badge tone={changeTone(change)} dot={false}>
-            {change}
-          </Badge>
+          {suffix}
+        </p>
+        {subtitle && (
+          <p className="m-0 mt-1.5 truncate text-[13.5px] font-medium text-[#5b6b8c] dark:text-content-2" title={subtitle}>
+            {subtitle}
+          </p>
         )}
       </div>
 
-      {subtitle && <p className="m-0 mt-2 text-xs text-muted">{subtitle}</p>}
+      {to && (
+        <Link
+          to={to}
+          aria-label={`Ver ${title.toLowerCase()}`}
+          title="Ver detalle"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#eef3fb] text-[20px] text-ink no-underline transition-colors duration-150 hover:bg-primary hover:text-white dark:bg-subtle dark:text-content"
+        >
+          <FiChevronRight aria-hidden />
+        </Link>
+      )}
     </div>
   )
 }

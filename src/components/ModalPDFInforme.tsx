@@ -9,10 +9,32 @@ import InformePDFDocument from './PDFDocument'
 import { toast } from '../utils/toast'
 import { cn } from '../utils/classes'
 import Modal from '@/components/UI/Modal'
+import ImageViewer from '@/components/UI/ImageViewer'
 import Button from '@/components/UI/Button'
-import Badge from '@/components/UI/Badge'
+import Badge, { StatusBadge } from '@/components/UI/Badge'
+import { ModalHero, StepLayout, StepSection, heroChip, useActiveStep, type StepInfo } from '@/components/UI/FormSteps'
+import { ASUNTOS, nombreCorto } from '@/pages/Dashboard/asuntos'
 import { Field, Input, Textarea } from '@/components/UI/Field'
-import { FiDownload, FiLoader, FiUpload, FiX } from 'react-icons/fi'
+import {
+  FiAlertTriangle,
+  FiCalendar,
+  FiChevronDown,
+  FiDownload,
+  FiEdit3,
+  FiFileText,
+  FiHash,
+  FiImage,
+  FiInfo,
+  FiLoader,
+  FiMapPin,
+  FiMaximize2,
+  FiSave,
+  FiTrash2,
+  FiUpload,
+  FiUser,
+  FiVideo,
+  FiX,
+} from 'react-icons/fi'
 import type { ID, Incidencia, ReportWithEvidences } from '@/types'
 
 /** Imagen de evidencia del formulario: existente en el backend o nueva (aun sin subir). */
@@ -178,14 +200,17 @@ const articulosPorFalta: Record<string, string> = {
    se usa el mismo estilo que el resto de los formularios. */
 
 /** Bloque de datos que vienen del sistema y no se editan */
-const readBlock = 'm-0 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg bg-subtle p-4 max-md:grid-cols-1'
+const readBlock = 'm-0 grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg bg-subtle p-4 max-sm:p-3 sm:grid-cols-2'
+/** Rejilla de campos: una columna en movil, dos desde tablet */
+const fieldGrid = 'grid grid-cols-1 gap-4 sm:grid-cols-2'
 /** Aviso del numero de informe antes de la aprobacion */
-const pendingCode = 'rounded-lg border border-dashed border-line-strong bg-subtle px-3 py-2 text-sm text-muted'
+const pendingCode =
+  'flex h-[38px] items-center gap-2 rounded-lg border border-dashed border-line-strong bg-subtle px-3 text-sm text-muted'
 /** Zona para adjuntar imagenes (el input nativo va oculto) */
 const uploadBox =
-  'flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-line-strong bg-subtle px-4 py-3 text-sm text-content-2 transition-colors duration-150 hover:border-accent focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
+  'flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-line-strong bg-subtle px-4 py-4 text-sm text-content-2 transition-colors duration-150 hover:border-accent hover:bg-primary/5 focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
 const removeImgBtn =
-  'absolute -top-2 -right-2 flex size-6 cursor-pointer items-center justify-center rounded-full border border-line bg-surface p-0 text-sm text-muted shadow-[0_1px_3px_rgba(15,23,42,0.15)] transition-colors duration-150 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50'
+  'absolute top-2 right-2 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-slate-900/70 p-0 text-sm text-white backdrop-blur-sm transition-colors duration-150 hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50'
 
 /** Tabla del reporte de inasistencias */
 const th = 'border-b border-line bg-subtle px-3 py-2 text-xs font-medium whitespace-nowrap text-muted'
@@ -240,6 +265,8 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
   })
 
   const [loadingEvidences, setLoadingEvidences] = useState(false)
+  /** Anexo abierto en el visor de imagenes (null = cerrado) */
+  const [visorIndex, setVisorIndex] = useState<number | null>(null)
   const [savingReport, setSavingReport] = useState(false)
   const [validationErrors, setValidationErrors] = useState<number[]>([])
   const [logoBase64, setLogoBase64] = useState('')
@@ -877,28 +904,127 @@ Se adjuntan las evidencias:`
 
   const esInasistencia = incidencia.falta && incidencia.falta.startsWith('Inasistencia')
 
-  // Estado del informe, mostrado como etiqueta de texto en el encabezado del marco
-  const estadoBadge =
-    incidencia.status === 'approved' ? <Badge tone="success">Aprobado</Badge>
-    : incidencia.status === 'pending' ? <Badge tone="warning">Pendiente de aprobación</Badge>
-    : incidencia.status === 'draft' ? <Badge tone="neutral">Borrador</Badge>
-    : incidencia.status === 'rejected' ? <Badge tone="danger">Rechazado</Badge>
-    : null
+  // Filas del reporte de inasistencias, ya normalizadas para la tabla (escritorio) y las tarjetas (movil)
+  const nombreDe = (v: unknown): string =>
+    typeof v === 'object' && v !== null ? ((v as { name?: string }).name || '-') : ((v as string) || '-')
+  const justificadaInforme = incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada'
+  const turnosUnicos = [...new Set(attendanceData.map(p => (p.shift ? nombreDe(p.shift) : '')).filter(t => t && t !== '-'))]
+  const turnosInforme = turnosUnicos.length > 0 ? turnosUnicos.join(' / ') : 'MAÑANA / TARDE / NOCHE'
+  const filasInasistencia = attendanceData
+    .filter(person => person.dates?.some(d => !d.delete_at && d.date))
+    .map((person, index) => ({
+      key: person.id || index,
+      nombre:
+        person.name && person.lastname
+          ? `${person.lastname} ${person.name}`.toUpperCase()
+          : person.fullname?.toUpperCase() || '-',
+      cargo: nombreDe(person.job),
+      regimen: nombreDe(person.regime),
+      turno: nombreDe(person.shift),
+      jurisdiccion: nombreDe(person.jurisdiction),
+      fechas:
+        person.dates
+          ?.filter(d => !d.delete_at)
+          .map(d => new Date(d.date as string).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }))
+          .join(', ') || '-',
+      justificada: justificadaInforme,
+    }))
+
+  // ===== Presentacion =====
+
+  /** Secciones del informe, en orden; alimentan el indice lateral */
+  const secciones: StepInfo[] = esInasistencia
+    ? [
+        { id: 'inf-encabezado', title: 'Encabezado', icon: <FiFileText /> },
+        { id: 'inf-inasistencias', title: 'Inasistencias', icon: <FiCalendar /> },
+      ]
+    : [
+        { id: 'inf-encabezado', title: 'Encabezado', icon: <FiFileText /> },
+        { id: 'inf-hecho', title: 'El hecho', icon: <FiAlertTriangle /> },
+        { id: 'inf-ubicacion', title: 'Ubicación', icon: <FiMapPin /> },
+        { id: 'inf-personal', title: 'Personal', icon: <FiUser /> },
+        { id: 'inf-medio', title: 'Medio', icon: <FiVideo /> },
+        { id: 'inf-contenido', title: 'Contenido', icon: <FiEdit3 /> },
+        { id: 'inf-evidencia', title: 'Evidencia', icon: <FiImage /> },
+      ]
+  const numero = (id: string) => secciones.findIndex(s => s.id === id) + 1
+
+  // Seccion visible: se resalta en el indice mientras se desplaza el informe
+  const [seccionActiva, irA] = useActiveStep(secciones.map(s => s.id))
+
+  const colorAsunto = ASUNTOS[incidencia.asunto]?.color ?? 'var(--accent-light)'
+  const persona = formData.sereno || incidencia.nombreCompleto || ''
+  const tituloInforme = esInasistencia ? 'Reporte de inasistencias' : formData.falta || incidencia.falta || 'Informe de incidencia'
+  const totalEnlaces = formData.links.split('\n').filter(l => l.trim()).length
+  const totalCaracteres = formData.descripcionAdicional.length
+
+  const cabecera = (
+    <ModalHero
+      icon={<FiFileText />}
+      eyebrow="Vista previa del informe"
+      title={<span title={tituloInforme}>{tituloInforme}</span>}
+      subtitle={
+        (persona || incidencia.dni) && (
+          <>
+            {persona && <span className="font-semibold text-white/90">{persona}</span>}
+            {persona && incidencia.dni ? ' · ' : ''}
+            {incidencia.dni && `DNI ${incidencia.dni}`}
+          </>
+        )
+      }
+      onClose={onClose}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        {incidencia.status && (
+          <span className="rounded-full bg-white p-0.5 shadow-sm">
+            <StatusBadge status={incidencia.status} />
+          </span>
+        )}
+        <span className={heroChip}>
+          <FiHash aria-hidden />
+          {formData.numeroInforme || 'N° al aprobar'}
+        </span>
+        {!esInasistencia && formData.fechaIncidente && (
+          <span className={heroChip}>
+            <FiCalendar aria-hidden />
+            {formData.fechaIncidente}
+            {formData.horaIncidente ? ` · ${formData.horaIncidente}` : ''}
+          </span>
+        )}
+        {incidencia.asunto && (
+          <span className={cn(heroChip, 'max-sm:hidden')} title={incidencia.asunto}>
+            <span className="size-2 shrink-0 rounded-full" style={{ background: colorAsunto }} aria-hidden />
+            <span className="truncate">{nombreCorto(incidencia.asunto)}</span>
+          </span>
+        )}
+      </div>
+    </ModalHero>
+  )
 
   const modalFooter = (
     <>
-      <Button variant="secondary" onClick={onClose} disabled={savingReport}>
+      <p className="m-0 mr-auto flex items-center gap-2 text-xs text-muted max-sm:hidden">
+        <FiInfo className="shrink-0" aria-hidden />
+        Guarda los cambios antes de enviarlo a validación.
+      </p>
+      <Button variant="ghost" onClick={onClose} disabled={savingReport}>
         Cancelar
       </Button>
       <Button
         variant="secondary"
+        icon={<FiSave />}
         onClick={guardarCambios}
         loading={savingReport}
         disabled={savingReport || loadingEvidences}
       >
-        {savingReport ? 'Guardando cambios…' : 'Guardar cambios'}
+        {savingReport ? 'Guardando…' : 'Guardar cambios'}
       </Button>
-      <Button icon={<FiDownload />} onClick={generarPDF} disabled={savingReport || loadingEvidences}>
+      <Button
+        icon={<FiDownload />}
+        onClick={generarPDF}
+        disabled={savingReport || loadingEvidences}
+        className="max-sm:order-first max-sm:basis-full"
+      >
         Descargar PDF
       </Button>
     </>
@@ -907,342 +1033,375 @@ Se adjuntan las evidencias:`
   return (
     <Modal
       title="Vista previa del informe"
-      description={
-        <span className="inline-flex flex-wrap items-center gap-2">
-          Revisa el informe antes de descargarlo. {estadoBadge}
-        </span>
-      }
+      header={cabecera}
       onClose={onClose}
-      size="lg"
+      size="xl"
       footer={modalFooter}
+      bodyClassName="bg-page p-0! gap-0!"
     >
-      <div className="flex flex-col gap-6">
-        {/* Encabezado del informe */}
-        <section className="flex flex-col gap-4">
-          <h4 className="m-0 text-[13px] font-semibold text-content">Encabezado</h4>
-          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-            {incidencia.status === 'approved' ? (
-              <Field label="Informe N°">
-                <Input value={formData.numeroInforme} readOnly title="Código generado automáticamente al aprobar" />
-              </Field>
-            ) : (
-              <Field
-                label="Informe N°"
-                hint="El sistema asigna el número correlativo y el año cuando el informe se aprueba; no hace falta escribirlo."
-              >
-                <div className={pendingCode}>Se genera al aprobar el informe</div>
-              </Field>
-            )}
-            <Field label="Fecha del informe">
-              <Input value={formData.fecha} onChange={e => handleChange('fecha', e.target.value.toUpperCase())} />
-            </Field>
-            <Field label="Dirigido a (Sr.)">
-              <Input
-                value={formData.destinatarioNombre}
-                onChange={e => handleChange('destinatarioNombre', e.target.value.toUpperCase())}
-              />
-            </Field>
-            <Field label="Cargo del destinatario">
-              <Input
-                value={formData.destinatarioCargo}
-                onChange={e => handleChange('destinatarioCargo', e.target.value.toUpperCase())}
-                placeholder="Cargo"
-              />
-            </Field>
-          </div>
-          <dl className={readBlock}>
-            <ReadOnlyItem label="De">Control y Supervisión</ReadOnlyItem>
-            <ReadOnlyItem label="Asunto">{incidencia.asunto}</ReadOnlyItem>
-            {incidencia.cc && incidencia.cc.length > 0 && (
-              <ReadOnlyItem label="Con copia a">{incidencia.cc.join(', ')}</ReadOnlyItem>
-            )}
-          </dl>
-        </section>
-
-        {/* Reporte de inasistencias: resumen y tabla (modelo del validador) */}
-        {esInasistencia && (
-          <section className="flex flex-col gap-4">
-            <h4 className="m-0 text-[13px] font-semibold text-content">Reporte de inasistencias</h4>
-            <p className="m-0 text-sm leading-relaxed text-content-2">
-              Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez informarle sobre el reporte de
-              inasistencias al centro de labores del personal de la Subgerencia de Serenazgo, correspondiente del turno{' '}
-              <strong className="font-semibold text-content">
-                {(() => {
-                  // Obtener turnos únicos de los datos de inasistencias
-                  if (attendanceData && attendanceData.length > 0) {
-                    const turnos = [...new Set(attendanceData.map(p => {
-                      if (typeof p.shift === 'object') return p.shift?.name || ''
-                      return p.shift || ''
-                    }).filter(Boolean))]
-                    if (turnos.length === 0) return 'MAÑANA / TARDE / NOCHE'
-                    return turnos.join(' / ')
-                  }
-                  return 'MAÑANA / TARDE / NOCHE'
-                })()}
-              </strong>
-              . Durante el período{' '}
-              <strong className="font-semibold text-content">
-                {incidencia.absenceStart && incidencia.absenceEnd ? (
-                  <>
-                    {new Date(incidencia.absenceStart).toLocaleDateString('es-PE', { day: '2-digit' })} al{' '}
-                    {new Date(incidencia.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
-                  </>
-                ) : (
-                  'PERÍODO NO ESPECIFICADO'
-                )}
-              </strong>
-              , se ha registrado un número significativo de inasistencias{' '}
-              <strong className="font-semibold text-content">
-                {incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada' ? 'justificadas' : 'injustificadas'}
-              </strong>{' '}
-              por parte del personal mencionado.
-            </p>
-
-            {loadingAttendance ? (
-              <p className="m-0 flex items-center gap-2 text-sm text-muted" role="status">
-                <FiLoader className="animate-spin" aria-hidden /> Cargando inasistencias…
-              </p>
-            ) : attendanceData.length === 0 ? (
-              <p className="m-0 rounded-lg bg-subtle p-5 text-center text-sm text-muted">
-                No hay inasistencias registradas en el período seleccionado.
-              </p>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-line">
-                <table className="w-full border-separate border-spacing-0 text-[13px]">
-                  <thead>
-                    <tr>
-                      <th className={cn(th, 'text-center')}>N°</th>
-                      <th className={cn(th, 'text-left')}>Apellidos y nombres</th>
-                      <th className={cn(th, 'text-left')}>Cargo</th>
-                      <th className={cn(th, 'text-left')}>Reg. lab.</th>
-                      <th className={cn(th, 'text-left')}>Turno</th>
-                      <th className={cn(th, 'text-left')}>Fechas</th>
-                      <th className={cn(th, 'text-left')}>Tipo</th>
-                      <th className={cn(th, 'text-left')}>Jurisdicción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="[&_tr:last-child_td]:border-b-0">
-                    {attendanceData
-                      .filter(person => {
-                        const validDates = person.dates?.filter(d => !d.delete_at && d.date)
-                        return validDates && validDates.length > 0
-                      })
-                      .map((person, index) => {
-                        // Obtener las fechas de inasistencia
-                        const fechas = person.dates?.filter(d => !d.delete_at).map(d => {
-                          const date = new Date(d.date as string)
-                          return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                        }).join(', ') || '-'
-
-                        // Manejar campos que pueden ser objetos
-                        const jobValue = typeof person.job === 'object' ? (person.job?.name || '-') : (person.job || '-')
-                        const regimeValue = typeof person.regime === 'object' ? (person.regime?.name || '-') : (person.regime || '-')
-                        const shiftValue = typeof person.shift === 'object' ? (person.shift?.name || '-') : (person.shift || '-')
-                        const jurisdictionValue = typeof person.jurisdiction === 'object' ? (person.jurisdiction?.name || '-') : (person.jurisdiction || '-')
-                        const justificada = incidencia.absenceMode === 'JUSTIFIED' || formData.tipoInasistencia === 'Justificada'
-
-                        return (
-                          <tr key={person.id || index}>
-                            <td className={cn(td, 'text-center text-muted')}>{index + 1}</td>
-                            <td className={cn(td, 'font-medium text-content')}>
-                              {person.name && person.lastname
-                                ? `${person.lastname} ${person.name}`.toUpperCase()
-                                : person.fullname?.toUpperCase() || '-'}
-                            </td>
-                            <td className={td}>{jobValue}</td>
-                            <td className={td}>{regimeValue}</td>
-                            <td className={td}>{shiftValue}</td>
-                            <td className={td}>{fechas}</td>
-                            <td className={td}>
-                              <Badge tone={justificada ? 'success' : 'danger'}>{justificada ? 'Justificada' : 'Injustificada'}</Badge>
-                            </td>
-                            <td className={td}>{jurisdictionValue}</td>
-                          </tr>
-                        )
-                      })}
-                  </tbody>
-                </table>
+      <StepLayout
+        steps={secciones}
+        active={seccionActiva}
+        onSelect={irA}
+        aside={
+          !esInasistencia && (
+            <dl className="m-0 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-subtle px-3 py-2">
+                <dt className="text-[11px] font-medium text-muted">Imágenes</dt>
+                <dd className="m-0 text-lg leading-tight font-bold text-content tabular-nums">{formData.imagenes.length}</dd>
               </div>
-            )}
-          </section>
-        )}
-
-        {/* Informe de incidencia: el hecho, el lugar, el personal y el medio */}
-        {!esInasistencia && (
-          <>
-            <section className="flex flex-col gap-4">
-              <h4 className="m-0 text-[13px] font-semibold text-content">El hecho</h4>
-              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-                <Field label="Hora del incidente">
-                  <Input value={formData.horaIncidente} onChange={e => handleChange('horaIncidente', e.target.value)} />
-                </Field>
-                <Field label="Fecha del incidente">
-                  <Input value={formData.fechaIncidente} onChange={e => handleChange('fechaIncidente', e.target.value)} />
-                </Field>
-                <Field label="Artículo">
-                  <Input value={formData.articulo} onChange={e => handleChange('articulo', e.target.value)} />
-                </Field>
+              <div className="rounded-lg bg-subtle px-3 py-2">
+                <dt className="text-[11px] font-medium text-muted">Enlaces</dt>
+                <dd className="m-0 text-lg leading-tight font-bold text-content tabular-nums">{totalEnlaces}</dd>
               </div>
-              <dl className={readBlock}>
-                <ReadOnlyItem label="Falta">{formData.falta}</ReadOnlyItem>
-              </dl>
-            </section>
-
-            <section className="flex flex-col gap-4">
-              <h4 className="m-0 text-[13px] font-semibold text-content">Ubicación</h4>
-              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-                <Field label="Dirección" className="col-span-2 max-md:col-span-1">
-                  <Input
-                    value={formData.ubicacion}
-                    onChange={e => handleChange('ubicacion', e.target.value)}
-                    placeholder="Dirección completa del incidente"
-                  />
+            </dl>
+          )
+        }
+      >
+          {/* Encabezado del informe */}
+          <StepSection id="inf-encabezado" n={numero('inf-encabezado')} title="Encabezado" icon={<FiFileText />} description="A quién va dirigido el informe.">
+            <div className={fieldGrid}>
+              {incidencia.status === 'approved' ? (
+                <Field label="Informe N°">
+                  <Input value={formData.numeroInforme} readOnly title="Código generado automáticamente al aprobar" />
                 </Field>
-                <Field label="Jurisdicción">
-                  <Input value={formData.jurisdiccion} onChange={e => handleChange('jurisdiccion', e.target.value)} />
-                </Field>
-              </div>
-            </section>
-
-            <section className="flex flex-col gap-4">
-              <h4 className="m-0 text-[13px] font-semibold text-content">Personal involucrado</h4>
-              <dl className={readBlock}>
-                <ReadOnlyItem label="Sereno">{formData.sereno}</ReadOnlyItem>
-                <ReadOnlyItem label="DNI">{formData.dni}</ReadOnlyItem>
-                <ReadOnlyItem label="Cargo">{formData.cargo}</ReadOnlyItem>
-                <ReadOnlyItem label="Régimen laboral">{formData.regLab}</ReadOnlyItem>
-              </dl>
-            </section>
-
-            <section className="flex flex-col gap-4">
-              <h4 className="m-0 text-[13px] font-semibold text-content">Medio</h4>
-              {formData.tipoMedio === 'bodycam' && (
-                <Field label="Bodycam asignada a">
-                  <Input
-                    value={formData.bodycamAsignadaA}
-                    onChange={e => handleChange('bodycamAsignadaA', e.target.value)}
-                  />
+              ) : (
+                <Field label="Informe N°" hint="El sistema asigna el número correlativo al aprobar el informe.">
+                  <div className={pendingCode}>
+                    <FiHash aria-hidden className="shrink-0" />
+                    Se genera al aprobar
+                  </div>
                 </Field>
               )}
-              <dl className={readBlock}>
-                {formData.tipoMedio === 'bodycam' ? (
-                  <ReadOnlyItem label="N° de bodycam">{formData.bodycam}</ReadOnlyItem>
-                ) : (
-                  <ReadOnlyItem label="N° de cámara">{formData.numeroCamara}</ReadOnlyItem>
-                )}
-                <ReadOnlyItem label="Supervisor">{formData.supervisor}</ReadOnlyItem>
-              </dl>
-            </section>
-
-            <section className="flex flex-col gap-4">
-              <h4 className="m-0 text-[13px] font-semibold text-content">Contenido del informe</h4>
-              <Field label="Texto del informe">
-                <Textarea
-                  value={formData.descripcionAdicional}
-                  onChange={e => handleChange('descripcionAdicional', e.target.value)}
-                  placeholder="Edita el contenido del informe según sea necesario…"
-                  rows={16}
-                  className="leading-relaxed whitespace-pre-wrap"
+              <Field label="Fecha del informe">
+                <Input value={formData.fecha} onChange={e => handleChange('fecha', e.target.value.toUpperCase())} />
+              </Field>
+              <Field label="Dirigido a (Sr.)">
+                <Input value={formData.destinatarioNombre} onChange={e => handleChange('destinatarioNombre', e.target.value.toUpperCase())} />
+              </Field>
+              <Field label="Cargo del destinatario">
+                <Input
+                  value={formData.destinatarioCargo}
+                  onChange={e => handleChange('destinatarioCargo', e.target.value.toUpperCase())}
+                  placeholder="Cargo"
                 />
               </Field>
-              <div className="rounded-lg bg-subtle p-4 text-[13px] text-content-2">
-                <p className="m-0 font-medium text-content">Cómo completarlo</p>
-                <ul className="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
-                  <li>Completa las secciones marcadas con [INSTRUCCIÓN] con los detalles del incidente.</li>
-                  <li>Usa términos objetivos como «presuntamente» o «aparentemente» para describir los hechos.</li>
-                  <li>Puedes editar cualquier parte del texto.</li>
-                  <li>La plantilla se adapta al tipo de incidente.</li>
-                </ul>
-              </div>
-            </section>
-
-            <section className="flex flex-col gap-4">
-              <h4 className="m-0 text-[13px] font-semibold text-content">Evidencia</h4>
-              <label
-                className={cn(
-                  uploadBox,
-                  (loadingEvidences || savingReport) && 'pointer-events-none opacity-50'
-                )}
-              >
-                <FiUpload aria-hidden className="text-lg text-accent" />
-                <span>
-                  <span className="font-medium text-content">Adjuntar imágenes</span>
-                  <span className="block text-xs text-muted">Puedes elegir varias a la vez.</span>
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  disabled={loadingEvidences || savingReport}
-                  className="sr-only"
-                />
-              </label>
-
-              {loadingEvidences && (
-                <p className="m-0 flex items-center gap-2 text-sm text-muted" role="status">
-                  <FiLoader className="animate-spin" aria-hidden /> Cargando evidencias existentes…
-                </p>
-              )}
-
-              {formData.imagenes.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  {formData.imagenes.map((img, index) => (
-                    <div key={index} className="flex gap-4 rounded-lg border border-line p-3 max-sm:flex-col">
-                      <div className="relative size-24 shrink-0">
-                        <img src={img.base64 || img.url} alt={img.name} className="size-full rounded-lg object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          disabled={savingReport}
-                          aria-label={`Quitar imagen ${index + 1}`}
-                          className={removeImgBtn}
-                        >
-                          <FiX aria-hidden />
-                        </button>
-                      </div>
-                      <div className="flex min-w-0 flex-1 flex-col gap-2">
-                        {img.isExisting && (
-                          <span>
-                            <Badge tone="neutral">Guardada</Badge>
-                          </span>
-                        )}
-                        <Field
-                          label={`Anexo ${index + 1}`}
-                          required
-                          error={validationErrors.includes(index) ? 'Esta imagen requiere una descripción.' : undefined}
-                        >
-                          <Textarea
-                            value={img.anexo || ''}
-                            onChange={e => updateImageAnexo(index, e.target.value)}
-                            placeholder="Describe lo que muestra esta imagen"
-                            rows={2}
-                            disabled={savingReport}
-                            invalid={validationErrors.includes(index)}
-                          />
-                        </Field>
-                      </div>
-                    </div>
-                  ))}
+            </div>
+            <dl className={readBlock}>
+              <ReadOnlyItem label="De">Control y Supervisión</ReadOnlyItem>
+              <ReadOnlyItem label="Asunto">{incidencia.asunto}</ReadOnlyItem>
+              {incidencia.cc && incidencia.cc.length > 0 && (
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-muted">Con copia a</dt>
+                  <dd className="m-0 mt-1 flex flex-wrap gap-1.5">
+                    {incidencia.cc.map(c => (
+                      <span key={c} className="rounded-md bg-primary/8 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-primary/20 dark:text-accent-light">
+                        {c}
+                      </span>
+                    ))}
+                  </dd>
                 </div>
               )}
+            </dl>
+          </StepSection>
 
-              <Field label="Enlaces de referencia" hint="Uno por línea.">
-                <Textarea
-                  value={formData.links}
-                  onChange={e => handleChange('links', e.target.value)}
-                  placeholder="https://ejemplo.com&#10;https://otro-enlace.com"
-                  rows={3}
-                />
-              </Field>
-            </section>
-          </>
-        )}
+          {/* Reporte de inasistencias: resumen y tabla (modelo del validador) */}
+          {esInasistencia && (
+            <StepSection id="inf-inasistencias" n={numero('inf-inasistencias')} title="Reporte de inasistencias" icon={<FiCalendar />}>
+              <p className="m-0 rounded-xl border-l-4 border-primary bg-subtle px-4 py-3 text-sm leading-relaxed text-content-2 dark:border-accent-light">
+                Tengo el agrado de dirigirme a Ud, con la finalidad de saludarlo, a la vez informarle sobre el reporte de
+                inasistencias al centro de labores del personal de la Subgerencia de Serenazgo, correspondiente del turno{' '}
+                <strong className="font-semibold text-content">{turnosInforme}</strong>. Durante el período{' '}
+                <strong className="font-semibold text-content">
+                  {incidencia.absenceStart && incidencia.absenceEnd ? (
+                    <>
+                      {new Date(incidencia.absenceStart).toLocaleDateString('es-PE', { day: '2-digit' })} al{' '}
+                      {new Date(incidencia.absenceEnd).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
+                    </>
+                  ) : (
+                    'PERÍODO NO ESPECIFICADO'
+                  )}
+                </strong>
+                , se ha registrado un número significativo de inasistencias{' '}
+                <strong className="font-semibold text-content">{justificadaInforme ? 'justificadas' : 'injustificadas'}</strong> por parte
+                del personal mencionado.
+              </p>
 
-        <p className="m-0 border-t border-line pt-4 text-center text-xs text-muted">
-          Sede CECOM de la Subgerencia de Serenazgo · Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427
-        </p>
-      </div>
+              {loadingAttendance ? (
+                <p className="m-0 flex items-center justify-center gap-2 rounded-xl bg-subtle p-6 text-sm text-muted" role="status">
+                  <FiLoader className="animate-spin" aria-hidden /> Cargando inasistencias…
+                </p>
+              ) : filasInasistencia.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line-strong bg-subtle p-8 text-center">
+                  <FiCalendar className="text-3xl text-muted" aria-hidden />
+                  <p className="m-0 text-sm text-muted">No hay inasistencias registradas en el período seleccionado.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Movil: una tarjeta por persona */}
+                  <ul className="m-0 flex list-none flex-col gap-2 p-0 sm:hidden">
+                    {filasInasistencia.map((f, index) => (
+                      <li key={f.key} className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="m-0 min-w-0 text-sm font-semibold break-words text-content">
+                            <span className="mr-1.5 text-muted">{index + 1}.</span>
+                            {f.nombre}
+                          </p>
+                          <Badge tone={f.justificada ? 'success' : 'danger'}>{f.justificada ? 'Justificada' : 'Injustificada'}</Badge>
+                        </div>
+                        <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
+                          <ReadOnlyItem label="Cargo">{f.cargo}</ReadOnlyItem>
+                          <ReadOnlyItem label="Reg. lab.">{f.regimen}</ReadOnlyItem>
+                          <ReadOnlyItem label="Turno">{f.turno}</ReadOnlyItem>
+                          <ReadOnlyItem label="Jurisdicción">{f.jurisdiccion}</ReadOnlyItem>
+                          <div className="col-span-2">
+                            <ReadOnlyItem label="Fechas">{f.fechas}</ReadOnlyItem>
+                          </div>
+                        </dl>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Tablet y escritorio: tabla con scroll horizontal si no cabe */}
+                  <div className="overflow-x-auto rounded-xl border border-line max-sm:hidden">
+                    <table className="w-full min-w-[680px] border-separate border-spacing-0 text-[13px]">
+                      <thead>
+                        <tr>
+                          <th className={cn(th, 'text-center')}>N°</th>
+                          <th className={cn(th, 'text-left')}>Apellidos y nombres</th>
+                          <th className={cn(th, 'text-left')}>Cargo</th>
+                          <th className={cn(th, 'text-left')}>Reg. lab.</th>
+                          <th className={cn(th, 'text-left')}>Turno</th>
+                          <th className={cn(th, 'text-left')}>Fechas</th>
+                          <th className={cn(th, 'text-left')}>Tipo</th>
+                          <th className={cn(th, 'text-left')}>Jurisdicción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="[&_tr:last-child_td]:border-b-0 [&_tr:hover_td]:bg-subtle">
+                        {filasInasistencia.map((f, index) => (
+                          <tr key={f.key}>
+                            <td className={cn(td, 'text-center text-muted tabular-nums')}>{index + 1}</td>
+                            <td className={cn(td, 'font-semibold text-content')}>{f.nombre}</td>
+                            <td className={td}>{f.cargo}</td>
+                            <td className={td}>{f.regimen}</td>
+                            <td className={td}>{f.turno}</td>
+                            <td className={td}>{f.fechas}</td>
+                            <td className={td}>
+                              <Badge tone={f.justificada ? 'success' : 'danger'}>{f.justificada ? 'Justificada' : 'Injustificada'}</Badge>
+                            </td>
+                            <td className={td}>{f.jurisdiccion}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </StepSection>
+          )}
+
+          {/* Informe de incidencia: el hecho, el lugar, el personal y el medio */}
+          {!esInasistencia && (
+            <>
+              <StepSection id="inf-hecho" n={numero('inf-hecho')} title="El hecho" icon={<FiAlertTriangle />} description="Cuándo ocurrió y qué falta se registró.">
+                <div
+                  className="rounded-xl border border-line bg-subtle px-4 py-3"
+                  style={{ borderLeft: `4px solid ${colorAsunto}` }}
+                >
+                  <p className="m-0 text-xs font-medium text-muted">Falta</p>
+                  <p className="m-0 mt-0.5 text-[15px] leading-snug font-bold text-content">{formData.falta || '—'}</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Hora del incidente">
+                    <Input value={formData.horaIncidente} onChange={e => handleChange('horaIncidente', e.target.value)} />
+                  </Field>
+                  <Field label="Fecha del incidente">
+                    <Input value={formData.fechaIncidente} onChange={e => handleChange('fechaIncidente', e.target.value)} />
+                  </Field>
+                  <Field label="Artículo">
+                    <Input value={formData.articulo} onChange={e => handleChange('articulo', e.target.value)} />
+                  </Field>
+                </div>
+              </StepSection>
+
+              <StepSection id="inf-ubicacion" n={numero('inf-ubicacion')} title="Ubicación" icon={<FiMapPin />}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Dirección" className="sm:col-span-2">
+                    <Input
+                      value={formData.ubicacion}
+                      onChange={e => handleChange('ubicacion', e.target.value)}
+                      placeholder="Dirección completa del incidente"
+                    />
+                  </Field>
+                  <Field label="Jurisdicción">
+                    <Input value={formData.jurisdiccion} onChange={e => handleChange('jurisdiccion', e.target.value)} />
+                  </Field>
+                </div>
+              </StepSection>
+
+              <StepSection id="inf-personal" n={numero('inf-personal')} title="Personal involucrado" icon={<FiUser />} description="Datos del sistema; no se editan aquí.">
+                <dl className={readBlock}>
+                  <ReadOnlyItem label="Sereno">{formData.sereno}</ReadOnlyItem>
+                  <ReadOnlyItem label="DNI">{formData.dni}</ReadOnlyItem>
+                  <ReadOnlyItem label="Cargo">{formData.cargo}</ReadOnlyItem>
+                  <ReadOnlyItem label="Régimen laboral">{formData.regLab}</ReadOnlyItem>
+                </dl>
+              </StepSection>
+
+              <StepSection id="inf-medio" n={numero('inf-medio')} title="Medio" icon={<FiVideo />}>
+                {formData.tipoMedio === 'bodycam' && (
+                  <Field label="Bodycam asignada a">
+                    <Input value={formData.bodycamAsignadaA} onChange={e => handleChange('bodycamAsignadaA', e.target.value)} />
+                  </Field>
+                )}
+                <dl className={readBlock}>
+                  {formData.tipoMedio === 'bodycam' ? (
+                    <ReadOnlyItem label="N° de bodycam">{formData.bodycam}</ReadOnlyItem>
+                  ) : (
+                    <ReadOnlyItem label="N° de cámara">{formData.numeroCamara}</ReadOnlyItem>
+                  )}
+                  <ReadOnlyItem label="Supervisor">{formData.supervisor}</ReadOnlyItem>
+                </dl>
+              </StepSection>
+
+              <StepSection id="inf-contenido" n={numero('inf-contenido')} title="Contenido del informe" icon={<FiEdit3 />} description="Texto que aparecerá en el cuerpo del PDF.">
+                <div className="flex flex-col gap-1.5">
+                  <Textarea
+                    aria-label="Texto del informe"
+                    value={formData.descripcionAdicional}
+                    onChange={e => handleChange('descripcionAdicional', e.target.value)}
+                    placeholder="Edita el contenido del informe según sea necesario…"
+                    rows={10}
+                    className="min-h-[260px] px-4 py-3 text-[14.5px] leading-[1.75] whitespace-pre-wrap sm:min-h-[400px]"
+                  />
+                  <p className="m-0 text-right text-xs text-muted tabular-nums">{totalCaracteres.toLocaleString('es-PE')} caracteres</p>
+                </div>
+                <details className="group rounded-xl bg-subtle text-[13px] text-content-2 [&_summary::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-medium text-content select-none">
+                    <FiInfo className="shrink-0 text-accent" aria-hidden />
+                    Cómo completarlo
+                    <FiChevronDown className="ml-auto transition-transform duration-150 group-open:rotate-180" aria-hidden />
+                  </summary>
+                  <ul className="m-0 flex list-disc flex-col gap-1 px-4 pb-3 pl-10">
+                    <li>Completa las secciones marcadas con [INSTRUCCIÓN] con los detalles del incidente.</li>
+                    <li>Usa términos objetivos como «presuntamente» o «aparentemente» para describir los hechos.</li>
+                    <li>Puedes editar cualquier parte del texto.</li>
+                    <li>La plantilla se adapta al tipo de incidente.</li>
+                  </ul>
+                </details>
+              </StepSection>
+
+              <StepSection id="inf-evidencia" n={numero('inf-evidencia')} title="Evidencia" icon={<FiImage />} description="Imágenes con su descripción y enlaces de referencia.">
+                <label className={cn(uploadBox, (loadingEvidences || savingReport) && 'pointer-events-none opacity-50')}>
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl text-primary dark:bg-primary/25 dark:text-accent-light" aria-hidden>
+                    <FiUpload />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-content">Adjuntar imágenes</span>
+                    <span className="block text-xs text-muted">Haz clic para elegir; puedes seleccionar varias a la vez.</span>
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={loadingEvidences || savingReport}
+                    className="sr-only"
+                  />
+                </label>
+
+                {loadingEvidences && (
+                  <p className="m-0 flex items-center gap-2 text-sm text-muted" role="status">
+                    <FiLoader className="animate-spin" aria-hidden /> Cargando evidencias existentes…
+                  </p>
+                )}
+
+                {formData.imagenes.length > 0 && (
+                  <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 md:grid-cols-2">
+                    {formData.imagenes.map((img, index) => (
+                      <li key={index} className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface">
+                        <div className="relative aspect-video bg-subtle">
+                          <button
+                            type="button"
+                            onClick={() => setVisorIndex(index)}
+                            aria-label={`Ver anexo ${index + 1} en detalle`}
+                            className="group/img block size-full cursor-zoom-in border-none bg-transparent p-0"
+                          >
+                            <img
+                              src={img.base64 || img.url}
+                              alt={img.anexo || img.name}
+                              className="size-full object-cover transition-transform duration-300 group-hover/img:scale-[1.03]"
+                            />
+                            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 transition-colors duration-200 group-hover/img:bg-slate-900/35 group-focus-visible/img:bg-slate-900/35">
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-900 opacity-0 shadow-lg transition-opacity duration-200 group-hover/img:opacity-100 group-focus-visible/img:opacity-100">
+                                <FiMaximize2 aria-hidden /> Ver en detalle
+                              </span>
+                            </span>
+                          </button>
+                          <span className="pointer-events-none absolute top-2 left-2 rounded-md bg-slate-900/70 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+                            Anexo {index + 1}
+                            {img.isExisting ? ' · guardada' : ''}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            disabled={savingReport}
+                            aria-label={`Quitar imagen ${index + 1}`}
+                            className={removeImgBtn}
+                          >
+                            <FiTrash2 aria-hidden />
+                          </button>
+                        </div>
+                        <div className="p-3">
+                          <Field
+                            label="Descripción"
+                            required
+                            error={validationErrors.includes(index) ? 'Esta imagen requiere una descripción.' : undefined}
+                          >
+                            <Textarea
+                              value={img.anexo || ''}
+                              onChange={e => updateImageAnexo(index, e.target.value)}
+                              placeholder="Describe lo que muestra esta imagen"
+                              rows={2}
+                              disabled={savingReport}
+                              invalid={validationErrors.includes(index)}
+                            />
+                          </Field>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <Field label="Enlaces de referencia" hint="Uno por línea.">
+                  <Textarea
+                    value={formData.links}
+                    onChange={e => handleChange('links', e.target.value)}
+                    placeholder="https://ejemplo.com&#10;https://otro-enlace.com"
+                    rows={3}
+                  />
+                </Field>
+              </StepSection>
+            </>
+          )}
+
+          <p className="m-0 flex items-center justify-center gap-1.5 px-2 pt-1 pb-2 text-center text-xs leading-relaxed text-muted">
+            <FiMapPin className="shrink-0" aria-hidden />
+            Sede CECOM de la Subgerencia de Serenazgo · Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427
+          </p>
+      </StepLayout>
+      {visorIndex !== null && formData.imagenes.length > 0 && (
+        <ImageViewer
+          startIndex={visorIndex}
+          onClose={() => setVisorIndex(null)}
+          images={formData.imagenes.map((img, i) => ({
+            src: img.base64 || img.url || '',
+            title: `Anexo ${i + 1}`,
+            caption: img.anexo || undefined,
+            fileName: img.name || `anexo-${i + 1}.jpg`,
+          }))}
+        />
+      )}
     </Modal>
   )
 }

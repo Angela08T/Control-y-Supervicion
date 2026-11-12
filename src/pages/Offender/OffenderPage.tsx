@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { useAppSelector } from '../../store/hooks'
-import OffenderTable from '../../components/OffenderTable'
+import OffenderTable, { OffenderMasterDetail } from '../../components/OffenderTable'
 import type { OffenderRow } from '../../components/OffenderTable'
 import ModalOffender from '../../components/ModalOffender'
 import type { OffenderFormData } from '../../components/ModalOffender'
 import { getOffenders, getOffenderByDni, createOffender, updateOffender, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
-import { FiPlus } from 'react-icons/fi'
-import { fitCard, fitPage } from '../../utils/classes'
+import { FiCreditCard, FiEye, FiList, FiPlus, FiSearch, FiX } from 'react-icons/fi'
+import { cn, controlsInput, fitCard, fitPage } from '../../utils/classes'
 import { useNotification } from '../../context/NotificationContext'
 import ConfirmModal from '../../components/ConfirmModal'
 import { toast } from '../../utils/toast'
-import PageHeader from '@/components/UI/PageHeader'
-import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import Button from '@/components/UI/Button'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
@@ -55,6 +53,17 @@ interface ConfirmState {
   action?: string
 }
 
+const VISTA_KEY = 'centinela-infractores-vista'
+
+/** Vista recordada por persona; sin dato, credencial */
+function leerVista(): 'credencial' | 'lista' {
+  try {
+    return localStorage.getItem(VISTA_KEY) === 'lista' ? 'lista' : 'credencial'
+  } catch {
+    return 'credencial'
+  }
+}
+
 export default function OffenderPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'offenders')
@@ -81,6 +90,15 @@ export default function OffenderPage() {
   const [searchResult, setSearchResult] = useState<OffenderRow[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [confirmModal, setConfirmModal] = useState<ConfirmState>({ isOpen: false, item: null })
+  const [vista, setVistaState] = useState<'credencial' | 'lista'>(leerVista)
+  const setVista = (v: 'credencial' | 'lista') => {
+    setVistaState(v)
+    try {
+      localStorage.setItem(VISTA_KEY, v)
+    } catch {
+      // sin persistencia
+    }
+  }
   // Resultados de búsqueda por DNI: paginación en navegador (vuelve a la página 1 al cambiar la búsqueda)
   const searchPaged = usePagedList(searchResult ?? [], filters.search)
 
@@ -231,8 +249,8 @@ export default function OffenderPage() {
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
     const confirmMessage = isEnabled
-      ? '¿Estás seguro de deshabilitar este infractor? Ya no estará disponible para asignación.'
-      : '¿Estás seguro de habilitar este infractor? Volverá a estar disponible para asignación.'
+      ? 'Ya no aparecerá al registrar incidencias ni inasistencias. Puedes volver a habilitarlo cuando quieras.'
+      : 'Volverá a aparecer al registrar incidencias e inasistencias.'
 
     setConfirmModal({
       isOpen: true,
@@ -288,29 +306,82 @@ export default function OffenderPage() {
   // Con búsqueda activa se muestra la página actual de searchResult; si no, la página del servidor
   const filteredData = searchResult !== null ? searchPaged.pageItems : offenders
 
+  const total = searchResult !== null ? searchPaged.total : pagination.total
+  const digitos = filters.search.length
+  const vistaBtn = (activa: boolean) =>
+    cn(
+      'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border-none px-2.5 text-[13px] font-semibold transition-colors',
+      activa ? 'bg-subtle text-content shadow-[0_1px_2px_rgba(15,23,42,0.12)]' : 'bg-transparent text-muted hover:text-content'
+    )
+
   return (
     <div className={fitPage}>
-      <PageHeader
-        title="Infractores"
-        description="Personas registradas como infractores."
-        actions={
-          permissions.canCreate && (
-            <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
-              Agregar infractor
-            </Button>
-          )
-        }
-      >
-        <SearchInput
-          value={filters.search}
-          onChange={(v) => setFilters(f => ({ ...f, search: v.replace(/\D/g, '').slice(0, 8) }))}
-          placeholder="Buscar por DNI (8 dígitos)"
-          loading={isSearching}
-        />
-      </PageHeader>
+      {/* Encabezado como el de Incidencias: titulo grande a la izquierda y la accion a la derecha */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Registro · Personas</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Infractores</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">
+            Personas registradas como infractores ·{' '}
+            <strong className="font-semibold text-ink tabular-nums dark:text-content">{loading ? '—' : total}</strong>{' '}
+            {searchResult !== null ? 'encontrados' : 'registrados'}
+          </p>
+        </div>
+        {permissions.canCreate && (
+          <Button icon={<FiPlus />} onClick={() => { setEditItem(null); setShowModal(true) }}>
+            Agregar infractor
+          </Button>
+        )}
+      </header>
+
+      {/* Barra: busqueda por DNI (con contador de digitos) y tipo de vista */}
+      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-[#d3dceb] bg-surface p-3 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line">
+        <div className="relative min-w-[240px] flex-1">
+          <FiSearch className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
+          <input
+            type="search"
+            inputMode="numeric"
+            value={filters.search}
+            onChange={(e) => setFilters(f => ({ ...f, search: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+            placeholder="Buscar por DNI (8 dígitos)"
+            aria-label="Buscar por DNI"
+            className={cn(controlsInput, 'w-full min-w-0! pr-28 pl-9 font-mono tracking-[0.06em] [&::-webkit-search-cancel-button]:hidden')}
+          />
+          <span className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1.5">
+            {isSearching ? (
+              <span className="text-xs text-muted">Buscando…</span>
+            ) : digitos > 0 && digitos < 8 ? (
+              <span className="rounded-md bg-subtle px-1.5 py-0.5 text-[11px] font-semibold text-content-2 tabular-nums">
+                faltan {8 - digitos}
+              </span>
+            ) : digitos === 8 ? (
+              <span className="rounded-md bg-success/12 px-1.5 py-0.5 text-[11px] font-semibold text-lime-ink">DNI completo</span>
+            ) : null}
+            {digitos > 0 && (
+              <button
+                type="button"
+                aria-label="Limpiar búsqueda"
+                onClick={() => setFilters(f => ({ ...f, search: '' }))}
+                className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted hover:bg-subtle hover:text-content"
+              >
+                <FiX aria-hidden />
+              </button>
+            )}
+          </span>
+        </div>
+        <div role="group" aria-label="Vista" className="inline-flex h-10 items-center gap-0.5 rounded-xl border border-line bg-surface p-1">
+          <button type="button" aria-pressed={vista === 'credencial'} onClick={() => setVista('credencial')} className={vistaBtn(vista === 'credencial')}>
+            <FiCreditCard aria-hidden /> Credencial
+          </button>
+          <button type="button" aria-pressed={vista === 'lista'} onClick={() => setVista('lista')} className={vistaBtn(vista === 'lista')}>
+            <FiList aria-hidden /> Lista
+          </button>
+        </div>
+      </div>
 
       {!permissions.canCreate && (
-        <p className="m-0 mb-3 text-[13px] text-muted">
+        <p className="m-0 mb-3 inline-flex items-center gap-2 self-start rounded-lg bg-subtle px-3 py-1.5 text-[13px] text-content-2">
+          <FiEye className="shrink-0 text-muted" aria-hidden />
           Como supervisor, solo puedes visualizar los infractores registrados.
         </p>
       )}
@@ -333,6 +404,15 @@ export default function OffenderPage() {
             />
           )
         ) : (
+          vista === 'credencial' ? (
+            <OffenderMasterDetail
+              data={filteredData}
+              onToggleStatus={handleToggleStatus}
+              onEdit={handleEdit}
+              canEdit={permissions.canEdit}
+              canDelete={permissions.canDelete}
+            />
+          ) : (
           <OffenderTable
             data={filteredData}
             onToggleStatus={handleToggleStatus}
@@ -341,6 +421,7 @@ export default function OffenderPage() {
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
+          )
         )}
 
         {/* Búsqueda activa: paginación en navegador (sin resultados no hay paginación, como antes) */}
@@ -379,9 +460,13 @@ export default function OffenderPage() {
       {/* Modal de confirmación */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        title={confirmModal.action === 'habilitar' ? 'Confirmar Habilitación' : 'Confirmar Deshabilitación'}
+        title={
+          confirmModal.action === 'habilitar'
+            ? `¿Habilitar a ${confirmModal.item?.name ?? ''} ${confirmModal.item?.lastname ?? ''}?`
+            : `¿Deshabilitar a ${confirmModal.item?.name ?? ''} ${confirmModal.item?.lastname ?? ''}?`
+        }
         message={confirmModal.message ?? ''}
-        type={confirmModal.action === 'habilitar' ? 'info' : 'warning'}
+        type={confirmModal.action === 'habilitar' ? 'info' : 'danger'}
         onConfirm={confirmToggleStatus}
         onCancel={() => setConfirmModal({ isOpen: false, item: null })}
         confirmText={confirmModal.action === 'habilitar' ? 'Habilitar' : 'Deshabilitar'}

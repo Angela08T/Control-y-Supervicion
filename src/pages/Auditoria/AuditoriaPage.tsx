@@ -1,19 +1,23 @@
 import React from 'react';
-import AuditoriaTable, { ACTION_LABELS, MODEL_LABELS } from '../../components/AuditoriaTable';
+import AuditoriaTable, { ACTION_LABELS, ACTION_STYLE, MODEL_LABELS } from '../../components/AuditoriaTable';
 import useAudit from '../../hooks/Audit/useAudit';
 import type { AuditFilterState } from '../../hooks/Audit/useAudit';
-import { FiRotateCcw } from 'react-icons/fi';
+import { FiActivity, FiAlertTriangle, FiCheckCircle, FiGrid, FiLayers, FiRotateCcw, FiSlash, FiXCircle } from 'react-icons/fi';
 import Button from '@/components/UI/Button';
-import { Select } from '@/components/UI/Field';
-import PageHeader from '@/components/UI/PageHeader';
+import Dropdown from '@/components/UI/Dropdown';
 import Pagination from '@/components/UI/Pagination';
 import SearchInput from '@/components/UI/SearchInput';
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState';
-import { fitCard, fitPage } from '@/utils/classes';
+import { cn, fitCard, fitPage } from '@/utils/classes';
 import { PAGE_SIZE } from '@/hooks/usePagedList';
 
-/** Ancho fijo de cada filtro dentro de la barra */
-const filterWrap = 'w-44 max-w-full';
+/** Estados que se pueden filtrar, como pestanas */
+const ESTADOS = [
+  { value: '', label: 'Todos', icon: <FiGrid /> },
+  { value: 'SUCCESS', label: 'Exitosos', icon: <FiCheckCircle /> },
+  { value: 'FAILED', label: 'Fallidos', icon: <FiXCircle /> },
+  { value: 'BLOCKED', label: 'Bloqueados', icon: <FiSlash /> },
+] as const;
 
 /** Acciones que se ofrecen en el filtro */
 const FILTER_ACTIONS = ['LOGIN', 'LOGOUT', 'CREATE', 'UPDATE', 'DELETE', 'GET_ALL', 'GET_ONE'] as const;
@@ -46,65 +50,105 @@ export default function AuditoriaPage() {
   const from = total === 0 ? 0 : (pagination.currentPage - 1) * PAGE_SIZE + 1;
   const to = Math.min(pagination.currentPage * PAGE_SIZE, total);
 
+  // Resumen de la pagina que se esta viendo
+  const fallidos = audits.filter(a => a.status !== 'SUCCESS').length;
+  const usuarios = new Set(audits.map(a => a.user?.username).filter(Boolean)).size;
+
   return (
     <div className={fitPage}>
-      <PageHeader title="Auditoría" description="Registro de acciones realizadas en el sistema.">
-        <div className={filterWrap}>
-          <Select
-            aria-label="Filtrar por acción"
-            className="h-9"
-            value={filters.action}
-            onChange={(e) => handleFilterChange('action', e.target.value)}
-          >
-            <option value="">Todas las acciones</option>
-            {FILTER_ACTIONS.map((value) => (
-              <option key={value} value={value}>
-                {ACTION_LABELS[value]}
-              </option>
-            ))}
-          </Select>
+      {/* Encabezado como el de Incidencias */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Administración · Trazabilidad</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Auditoría</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">
+            Quién hizo qué y cuándo en el sistema ·{' '}
+            <strong className="font-semibold text-ink tabular-nums dark:text-content">{loading ? '—' : total.toLocaleString('es-PE')}</strong> registros
+          </p>
         </div>
+        {!loading && audits.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface px-2.5 py-1.5 font-medium text-content-2 ring-1 ring-line">
+              <FiActivity className="text-muted" aria-hidden />
+              <strong className="font-bold text-content">{usuarios}</strong> {usuarios === 1 ? 'usuario' : 'usuarios'} en esta página
+            </span>
+            {fallidos > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 px-2.5 py-1.5 font-semibold text-red-ink">
+                <FiAlertTriangle aria-hidden />
+                {fallidos} {fallidos === 1 ? 'acción no exitosa' : 'acciones no exitosas'}
+              </span>
+            )}
+          </div>
+        )}
+      </header>
 
-        <div className={filterWrap}>
-          <Select
-            aria-label="Filtrar por módulo"
-            className="h-9"
-            value={filters.model}
-            onChange={(e) => handleFilterChange('model', e.target.value)}
-          >
-            <option value="">Todos los módulos</option>
-            {Object.entries(MODEL_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
+      {/* Filtros: estado en pestanas; accion, modulo y usuario a la derecha */}
+      <div className="mb-4 flex shrink-0 flex-col gap-3 rounded-2xl border border-[#d3dceb] bg-surface p-3 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[220px] flex-1">
+            <SearchInput
+              value={filters.search}
+              onChange={(v) => handleFilterChange('search', v)}
+              placeholder="Buscar por usuario"
+              className="max-w-none!"
+            />
+          </div>
+          <div className="w-[200px] max-sm:w-full">
+            <Dropdown
+              aria-label="Filtrar por acción"
+              value={filters.action}
+              onChange={(v) => handleFilterChange('action', v)}
+              placeholder="Todas las acciones"
+              icon={<FiActivity />}
+              options={[
+                { value: '', label: 'Todas las acciones' },
+                ...FILTER_ACTIONS.map(value => ({ value, label: ACTION_LABELS[value], icon: ACTION_STYLE[value]?.icon })),
+              ]}
+            />
+          </div>
+          <div className="w-[200px] max-sm:w-full">
+            <Dropdown
+              aria-label="Filtrar por módulo"
+              value={filters.model}
+              onChange={(v) => handleFilterChange('model', v)}
+              placeholder="Todos los módulos"
+              icon={<FiLayers />}
+              searchable
+              options={[{ value: '', label: 'Todos los módulos' }, ...Object.entries(MODEL_LABELS).map(([value, label]) => ({ value, label }))]}
+            />
+          </div>
         </div>
-
-        <div className={filterWrap}>
-          <Select
-            aria-label="Filtrar por estado"
-            className="h-9"
-            value={filters.status}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
-          >
-            <option value="">Todos los estados</option>
-            <option value="SUCCESS">Exitoso</option>
-            <option value="BLOCKED">Bloqueado</option>
-            <option value="FAILED">Fallido</option>
-          </Select>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div role="tablist" aria-label="Filtrar por estado" className="flex flex-wrap items-center gap-1.5">
+            {ESTADOS.map(e => {
+              const activo = filters.status === e.value;
+              return (
+                <button
+                  key={e.value || 'todos'}
+                  type="button"
+                  role="tab"
+                  aria-selected={activo}
+                  onClick={() => handleFilterChange('status', e.value)}
+                  className={cn(
+                    'inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border px-3 text-[13px] font-semibold transition-colors duration-150',
+                    activo
+                      ? 'border-primary bg-primary text-white shadow-[0_6px_14px_-8px_rgba(30,58,138,0.9)]'
+                      : 'border-line bg-surface text-content hover:border-line-strong hover:bg-subtle'
+                  )}
+                >
+                  <span className={activo ? 'text-white' : 'text-muted'} aria-hidden>{e.icon}</span>
+                  {e.label}
+                </button>
+              );
+            })}
+          </div>
+          {hasFilters && (
+            <Button variant="ghost" size="sm" icon={<FiRotateCcw />} onClick={resetFilters}>
+              Limpiar filtros
+            </Button>
+          )}
         </div>
-
-        <SearchInput
-          value={filters.search}
-          onChange={(v) => handleFilterChange('search', v)}
-          placeholder="Buscar por usuario"
-        />
-
-        <Button variant="secondary" icon={<FiRotateCcw />} onClick={resetFilters}>
-          Limpiar filtros
-        </Button>
-      </PageHeader>
+      </div>
 
       <div className={fitCard}>
         {loading ? (

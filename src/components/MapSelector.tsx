@@ -4,6 +4,7 @@ import L from 'leaflet'
 import useJurisdiccionDetection from '../hooks/Jurisdiction/useJurisdiccionDetection'
 import type { DetectedJurisdiction } from '@/types'
 import { cn } from '@/utils/classes'
+import { FiAlertTriangle, FiCheck, FiCrosshair, FiMapPin } from 'react-icons/fi'
 
 // Importar CSS de Leaflet
 import 'leaflet/dist/leaflet.css'
@@ -48,7 +49,7 @@ const icon = L.icon({
 })
 
 /** Caja de la leyenda bajo el mapa (coordenadas, dirección, jurisdicción) */
-const mapCoords = 'rounded-lg border border-line bg-subtle px-3 py-2 text-[13px] text-content-2'
+const mapCoords = 'rounded-xl border border-line bg-subtle px-3 py-2.5 text-[13px] text-content-2'
 
 // Función helper para formatear direccion
 const getFormattedAddress = (addr: NominatimAddress): string | null => {
@@ -174,8 +175,8 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
   }
 
   return (
-    <div className="mt-2">
-      <div className="h-[220px] w-full overflow-hidden rounded-lg border border-line">
+    <div>
+      <div className="isolate h-[260px] w-full overflow-hidden rounded-xl border border-line sm:h-[320px]">
         <MapContainer
           center={[-11.9833, -77.0075]}
           zoom={13}
@@ -224,25 +225,43 @@ export default function MapSelector({ value, onChange }: MapSelectorProps) {
           {position && <Marker position={position} icon={icon} />}
         </MapContainer>
       </div>
-      <div className="mt-2 text-xs text-muted">Haz clic en el mapa para seleccionar ubicación</div>
+      {!position && (
+        <p className="m-0 mt-2 flex items-center gap-1.5 text-xs text-muted">
+          <FiCrosshair className="shrink-0" aria-hidden />
+          Haz clic en el mapa para marcar dónde ocurrió el hecho.
+        </p>
+      )}
       {position && (
-        <div className="mt-2 flex flex-col gap-2">
-          <div className={cn(mapCoords, 'font-mono')}>
-            Coordenadas: Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
-          </div>
-          <div className={cn(mapCoords, 'text-content', address === 'Cargando dirección...' && 'italic')}>
-            Dirección: {address || 'Sin dirección'}
-          </div>
-          {jurisdiccionDetectada && (
-            <div className={cn(mapCoords, 'text-content')}>
-              Jurisdicción: {jurisdiccionDetectada.name}
+        <div className={cn(mapCoords, 'mt-2 flex items-start gap-3')}>
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-primary/25 dark:text-accent-light"
+            aria-hidden
+          >
+            <FiMapPin />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={cn('m-0 text-sm font-semibold break-words text-content', address === 'Cargando dirección...' && 'font-normal italic text-muted')}>
+              {address || 'Sin dirección'}
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {jurisdiccionDetectada ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-success/12 px-2 py-0.5 text-xs font-semibold text-lime-ink">
+                  <FiCheck aria-hidden />
+                  {jurisdiccionDetectada.name}
+                </span>
+              ) : (
+                jurisdicciones.length > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-warning/14 px-2 py-0.5 text-xs font-semibold text-amber-ink">
+                    <FiAlertTriangle aria-hidden />
+                    Sin jurisdicción detectada
+                  </span>
+                )
+              )}
+              <span className="font-mono text-[11px] text-muted">
+                {position[0].toFixed(6)}, {position[1].toFixed(6)}
+              </span>
             </div>
-          )}
-          {!jurisdiccionDetectada && jurisdicciones.length > 0 && (
-            <div className={cn(mapCoords, 'text-warning')}>
-              No se detectó jurisdicción para esta ubicación
-            </div>
-          )}
+          </div>
         </div>
       )}
     </div>

@@ -1,10 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { FiChevronLeft, FiChevronRight, FiTrash2 } from 'react-icons/fi'
+import {
+  FiCalendar,
+  FiCheckCircle,
+  FiEdit3,
+  FiEye,
+  FiMousePointer,
+  FiSave,
+  FiSearch,
+  FiTrash2,
+  FiX,
+} from 'react-icons/fi'
 import { toast } from '../utils/toast'
 import type { ID } from '@/types'
 import { actionBtnDanger, cn, fitCard } from '@/utils/classes'
 import Button from '@/components/UI/Button'
 import { EmptyState } from '@/components/UI/EmptyState'
+import Pagination from '@/components/UI/Pagination'
+import { colorAvatar, iniciales } from '@/utils/incidenciaFormat'
 import { PAGE_SIZE } from '@/hooks/usePagedList'
 
 /** Persona con inasistencias tal como llega desde la pagina de inasistencias */
@@ -99,61 +111,70 @@ export interface CalendarioInasistenciasProps {
 }
 
 /** Cabecera de la rejilla: fondo suave, sin lineas verticales */
-const th = 'border-b border-line bg-subtle py-2.5 text-xs font-medium whitespace-nowrap text-muted'
+const th = 'border-b border-line bg-subtle py-2.5 text-xs font-semibold whitespace-nowrap text-muted'
 const thSticky = 'sticky top-0 z-10'
 /** Cabecera de las columnas fijas (cruza el scroll en ambas direcciones) */
 const thFixed = 'sticky top-0 z-20'
 
 /** Celda del cuerpo: solo una linea fina debajo de cada fila */
-const td = 'border-b border-line py-2.5 text-[13px] whitespace-nowrap text-content-2'
+const td = 'border-b border-line py-2 text-[13px] whitespace-nowrap text-content-2'
 
 /** Columnas fijas del cuerpo: se mantienen al desplazar la tabla en horizontal */
-const bodyFixed = 'sticky z-10 bg-surface transition-colors duration-150 group-hover:bg-subtle'
+const bodyFixed = 'sticky z-10 bg-surface transition-colors duration-150 group-hover:bg-card-hover'
 
 /** Fila del cuerpo: solo cambia el fondo al pasar el cursor */
-const bodyRow = 'group transition-colors duration-150 hover:bg-subtle'
+const bodyRow = 'group transition-colors duration-150 hover:bg-card-hover'
 
 /** Sabado y domingo: fondo apenas azulado para leer la semana de un vistazo */
-const weekendCell = 'bg-[rgba(30,58,138,0.035)]'
+const weekendCell = 'bg-primary/4 dark:bg-primary/8'
 /** Columna de hoy */
-const todayCell = 'bg-[rgba(30,58,138,0.07)]'
+const todayCell = 'bg-primary/8 dark:bg-primary/15'
+/** Separador de semana: linea antes de cada lunes */
+const weekStart = 'border-l border-l-line'
 
 /** Celda de dia clicable en modo marcado */
-const clickableDay = 'cursor-pointer transition-colors duration-150 hover:bg-[rgba(30,58,138,0.10)]'
+const clickableDay = 'cursor-pointer transition-colors duration-150 hover:bg-primary/12'
 
-/** Celda de marca guardada en modo edicion */
-const editableDay = 'cursor-pointer transition-colors duration-150 hover:bg-[rgba(242,165,15,0.14)]'
+/** Celda de marca guardada en modo "quitar marcas" */
+const editableDay = 'cursor-pointer transition-colors duration-150 hover:bg-warning/15'
 
-/** Celda seleccionada: fondo tenue del azul de accion */
-const selectedDay = 'bg-[rgba(30,58,138,0.14)]'
+/** Marca de falta: ficha con la letra; color lleno si esta guardada, borde punteado si falta guardar */
+const marcaBase = 'inline-flex size-7 items-center justify-center rounded-lg text-xs font-bold transition-transform duration-150'
+const marcaJustificada = 'bg-success text-white shadow-[0_3px_8px_-3px_rgba(111,154,20,0.7)] dark:text-[#14210a]'
+const marcaInjustificada = 'bg-danger text-white shadow-[0_3px_8px_-3px_rgba(199,21,34,0.6)]'
+const pendienteJustificada = 'border-2 border-dashed border-success bg-success/12 text-lime-ink'
+const pendienteInjustificada = 'border-2 border-dashed border-danger bg-danger/10 text-red-ink'
+/** Marca guardada elegida para quitar */
+const marcaPorQuitar = 'scale-90 line-through opacity-45 ring-2 ring-warning ring-offset-2 ring-offset-surface'
 
-/** Marca de falta: cuadro pequeno con letra y color suave */
-const marcaBase = 'inline-flex size-6 items-center justify-center rounded-md text-xs font-semibold'
-const marcaJustificada = 'bg-[rgba(142,188,34,0.18)] text-[#3f6212]'
-const marcaInjustificada = 'bg-[rgba(199,21,34,0.12)] text-[#b91c1c]'
 /** Anchos de columna (px). "#" y eliminar deben coincidir con los `left-*` de las columnas fijas */
 const COL_NUM = 40
 const COL_DELETE = 48
-const COL_NAME = 260
+const COL_NAME = 270
 const COL_JOB = 170
 const COL_REGIME = 110
 const COL_SHIFT = 90
-const COL_DAY = 40
-const COL_TOTAL = 64
+const COL_DAY = 42
+const COL_TOTAL = 72
 
 /** Muestra pequena de la marca, para la leyenda */
-const legendMark = 'inline-flex size-5 items-center justify-center rounded text-[11px] font-semibold'
-/** Marca temporal (aun sin guardar) */
-const marcaPendiente = 'border border-dashed border-current'
+const legendMark = 'inline-flex size-5 items-center justify-center rounded-md text-[10px] font-bold'
 
-/** Selector de modo de marcado: una sola pieza con tres opciones */
-const segBase = 'inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border-none px-3 text-[13px] font-medium transition-colors duration-150'
-const segIdle = 'bg-transparent text-content-2 hover:text-content'
-const segActive = 'bg-surface text-content shadow-[0_1px_2px_rgba(15,23,42,0.14)]'
-
-/** Paginacion de personas */
-const pageBtn = 'inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border border-line-strong bg-surface px-2 text-[13px] text-content-2 transition-colors duration-150 hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40'
-const pageBtnActive = 'border-primary bg-primary text-btn hover:bg-primary'
+/** Herramientas de marcado: cada una con su color cuando esta activa */
+const toolBase =
+  'inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-[13px] font-semibold transition-[background-color,border-color,color,box-shadow] duration-150'
+const toolIdle = 'border-line bg-surface text-content-2 hover:border-line-strong hover:bg-subtle hover:text-content'
+const toolActivo = {
+  I: 'border-danger bg-danger text-white shadow-[0_8px_18px_-10px_rgba(199,21,34,0.9)]',
+  J: 'border-success bg-success text-white shadow-[0_8px_18px_-10px_rgba(111,154,20,0.9)] dark:text-[#14210a]',
+  E: 'border-warning bg-warning text-white shadow-[0_8px_18px_-10px_rgba(201,125,0,0.9)] dark:text-[#2a1a00]',
+}
+/** Aviso del modo activo, con el color de la herramienta */
+const hintTono = {
+  I: 'border-danger/30 bg-danger/6 text-red-ink',
+  J: 'border-success/35 bg-success/10 text-lime-ink',
+  E: 'border-warning/35 bg-warning/10 text-amber-ink',
+}
 
 export default function CalendarioInasistencias({
   inasistencias = [],
@@ -179,6 +200,7 @@ export default function CalendarioInasistencias({
   const [tempMarks, setTempMarks] = useState<Record<string, TempMark>>({}) // Marcas temporales: { "dni-dia": { tipo: "I"/"J", id: null } }
   const [marksToDelete, setMarksToDelete] = useState<ID[]>([]) // IDs de marcas a eliminar
   const [currentPage, setCurrentPage] = useState(1) // Página actual
+  const [busqueda, setBusqueda] = useState('') // Buscador de personas (solo UI)
   const itemsPerPage = PAGE_SIZE // Límite de personas por página (máx. 10)
 
   // Sincronizar selectedDate cuando cambie dateRange desde el padre
@@ -383,9 +405,10 @@ export default function CalendarioInasistencias({
       // Limpiar selecciones previas
       setSelectedCells({})
       setTempMarks({})
-      // Desactivar modo edición si está activo
+      // Desactivar modo edición si está activo (y descartar lo elegido para quitar)
       if (editMode) {
         setEditMode(false)
+        setMarksToDelete([])
       }
     }
   }
@@ -393,8 +416,9 @@ export default function CalendarioInasistencias({
   function handleToggleEdit() {
     setEditMode(!editMode)
     if (editMode) {
-      // Si se desactiva el modo edición, limpiar selecciones
+      // Si se desactiva el modo edición, limpiar selecciones y lo elegido para quitar
       setSelectedCells({})
+      setMarksToDelete([])
     }
     // Desactivar modo de marcado si está activo
     if (markMode) {
@@ -484,6 +508,7 @@ export default function CalendarioInasistencias({
     // Limpiar todas las selecciones y marcas temporales
     setSelectedCells({})
     setTempMarks({})
+    setMarksToDelete([])
     setMarkMode(null)
     setEditMode(false)
   }
@@ -551,26 +576,26 @@ export default function CalendarioInasistencias({
     years.push(i)
   }
 
+  // Buscador de personas (nombre, DNI o cargo), sin importar tildes
+  const normalizar = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const filtro = normalizar(busqueda.trim())
+  const personasFiltradas = filtro
+    ? personasConInasistencias.filter(p => normalizar(`${p.nombreCompleto} ${p.dni} ${p.cargo}`).includes(filtro))
+    : personasConInasistencias
+
   // Calcular paginación
   const totalPersonas = personasConInasistencias.length
-  const totalPages = Math.ceil(totalPersonas / itemsPerPage)
+  const totalFiltradas = personasFiltradas.length
+  const totalPages = Math.ceil(totalFiltradas / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const personasPaginadas = personasConInasistencias.slice(startIndex, endIndex)
+  const personasPaginadas = personasFiltradas.slice(startIndex, endIndex)
 
   // Funciones de navegación de página
   function handlePageChange(newPage: number) {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage)
     }
-  }
-
-  function handlePreviousPage() {
-    handlePageChange(currentPage - 1)
-  }
-
-  function handleNextPage() {
-    handlePageChange(currentPage + 1)
   }
 
   // Dia de hoy (para resaltar su columna)
@@ -580,9 +605,11 @@ export default function CalendarioInasistencias({
     dia.fecha.getMonth() === hoy.getMonth() &&
     dia.fecha.getDate() === hoy.getDate()
   const esFinDeSemana = (dia: DiaCalendario) => dia.fecha.getDay() === 0 || dia.fecha.getDay() === 6
+  const esLunes = (dia: DiaCalendario, i: number) => i > 0 && dia.fecha.getDay() === 1
 
   // Cambios que el usuario aun no guarda (marcas nuevas + marcas por quitar)
-  const pendingCount = Object.keys(tempMarks).length + marksToDelete.length
+  const nuevas = Object.keys(tempMarks).length
+  const pendingCount = nuevas + marksToDelete.length
 
   // Columnas fijas: "#" (40px) y, si hay eliminar, la columna de eliminar (48px)
   const nameLeft = canDelete ? 'left-[88px]' : 'left-10'
@@ -594,33 +621,64 @@ export default function CalendarioInasistencias({
       ? `${dateRange.start.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })} al ${dateRange.end.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}`
       : `${meses[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`
 
-  const modeHint = editMode
-    ? 'Haz clic en las marcas guardadas para quitarlas.'
-    : markMode
-      ? `Haz clic en los días para marcar ${markMode === 'I' ? 'injustificadas' : 'justificadas'}.`
-      : 'Elige un modo para marcar inasistencias en la tabla.'
+  const modoActivo: 'I' | 'J' | 'E' | null = editMode ? 'E' : markMode
+  const modeHint =
+    modoActivo === 'E'
+      ? 'Toca las marcas guardadas que quieras quitar y luego pulsa «Guardar cambios».'
+      : modoActivo
+        ? `Toca los días de cada persona para marcarlos como ${modoActivo === 'I' ? 'injustificados' : 'justificados'}.`
+        : null
 
   return (
-    <div className={fitCard}>
-      {/* Titulo del periodo y resumen */}
-      <div className="flex flex-wrap items-end justify-between gap-3 px-5 py-4">
-        <div>
-          <h3 className="m-0 text-[15px] font-semibold text-content">Inasistencias de servicio</h3>
-          <p className="m-0 mt-0.5 text-[13px] text-muted">{periodo}</p>
+    <div className={cn(fitCard, 'flex-1')}>
+      {/* Titulo del periodo, resumen y buscador */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 max-sm:px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg text-primary dark:bg-primary/25 dark:text-accent-light"
+            aria-hidden
+          >
+            <FiCalendar />
+          </span>
+          <div className="min-w-0">
+            <h3 className="m-0 text-[15px] font-semibold text-content">Calendario de inasistencias</h3>
+            <p className="m-0 mt-0.5 text-[13px] text-muted">
+              <span className="capitalize">{periodo}</span> · {totalPersonas} {totalPersonas === 1 ? 'persona' : 'personas'}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-5 text-[13px] text-muted">
-          <span>
-            <strong className="font-semibold text-content">{totalPersonas}</strong>{' '}
-            {totalPersonas === 1 ? 'persona' : 'personas'}
-          </span>
-          <span>
-            <strong className="font-semibold text-content">{Object.keys(savedMarks).length}</strong> marcadas
-          </span>
+
+        <div className="flex flex-wrap items-center gap-2 max-sm:w-full">
+          {totalPersonas > 0 && (
+            <div className="relative min-w-[220px] max-sm:min-w-0 max-sm:flex-1">
+              <FiSearch className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
+              <input
+                value={busqueda}
+                onChange={e => {
+                  setBusqueda(e.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Buscar persona o DNI"
+                aria-label="Buscar persona por nombre, DNI o cargo"
+                className="h-9 w-full rounded-xl border border-line-strong bg-surface pr-8 pl-9 text-sm text-content outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted hover:border-line-hover focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)]"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  aria-label="Limpiar búsqueda"
+                  onClick={() => setBusqueda('')}
+                  className="absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted hover:bg-subtle hover:text-content"
+                >
+                  <FiX aria-hidden />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {totalPersonas === 0 ? (
-        <div className="border-t border-line">
+        <div className="flex flex-1 flex-col justify-center border-t border-line">
           <EmptyState
             title="No hay personas con inasistencias en este periodo"
             description="Agrega una inasistencia o cambia el periodo para ver el calendario."
@@ -628,305 +686,353 @@ export default function CalendarioInasistencias({
         </div>
       ) : (
         <>
-          {/* Barra de modo y leyenda */}
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-line px-5 py-3">
-            {!isReadOnly ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <div role="group" aria-label="Modo de marcado" className="inline-flex gap-0.5 rounded-lg bg-subtle p-0.5">
+          {/* Herramientas de marcado y leyenda */}
+          <div className="flex flex-col gap-3 border-t border-line px-5 py-3 max-sm:px-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+              {!isReadOnly ? (
+                <div role="toolbar" aria-label="Herramientas de marcado" className="flex flex-wrap items-center gap-2">
+                  <span className="mr-1 text-xs font-bold tracking-[0.1em] text-muted uppercase max-sm:hidden">Marcar</span>
                   <button
                     type="button"
                     aria-pressed={markMode === 'I'}
-                    className={cn(segBase, markMode === 'I' ? segActive : segIdle)}
+                    className={cn(toolBase, markMode === 'I' ? toolActivo.I : toolIdle)}
                     onClick={() => handleToggleMark('I')}
-                    title={markMode === 'I' ? 'Desactivar modo injustificada' : 'Activar modo injustificada'}
                   >
-                    <span className="size-2 rounded-full bg-brand-red" aria-hidden />
+                    <span className={cn('size-2.5 rounded-full', markMode === 'I' ? 'bg-white' : 'bg-danger')} aria-hidden />
                     Injustificada
                   </button>
                   <button
                     type="button"
                     aria-pressed={markMode === 'J'}
-                    className={cn(segBase, markMode === 'J' ? segActive : segIdle)}
+                    className={cn(toolBase, markMode === 'J' ? toolActivo.J : toolIdle)}
                     onClick={() => handleToggleMark('J')}
-                    title={markMode === 'J' ? 'Desactivar modo justificada' : 'Activar modo justificada'}
                   >
-                    <span className="size-2 rounded-full bg-brand-lime" aria-hidden />
+                    <span className={cn('size-2.5 rounded-full', markMode === 'J' ? 'bg-white dark:bg-[#14210a]' : 'bg-success')} aria-hidden />
                     Justificada
                   </button>
+                  <span className="mx-1 h-6 w-px bg-line max-sm:hidden" aria-hidden />
+                  <button
+                    type="button"
+                    aria-pressed={editMode}
+                    className={cn(toolBase, editMode ? toolActivo.E : toolIdle)}
+                    onClick={handleToggleEdit}
+                  >
+                    <FiEdit3 aria-hidden />
+                    Quitar marcas
+                  </button>
                 </div>
-                <span className="text-[13px] text-muted">{modeHint}</span>
-              </div>
-            ) : (
-              <span className="text-[13px] text-muted">Vista de solo lectura.</span>
-            )}
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-subtle px-3 py-1.5 text-[13px] text-content-2">
+                  <FiEye aria-hidden className="text-muted" />
+                  Vista de solo lectura
+                </span>
+              )}
 
-            {/* Leyenda: el texto acompana al color */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-label="Leyenda">
-              <span className="inline-flex items-center gap-1.5">
-                <span className={cn(legendMark, marcaJustificada)}>J</span>
-                Justificada
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className={cn(legendMark, marcaInjustificada)}>I</span>
-                Injustificada
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className={cn(legendMark, marcaInjustificada, marcaPendiente)} />
-                Sin guardar
-              </span>
+              {/* Leyenda: el texto acompana al color */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted" aria-label="Leyenda">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn(legendMark, marcaInjustificada)}>I</span>
+                  Injustificada
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn(legendMark, marcaJustificada)}>J</span>
+                  Justificada
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn(legendMark, pendienteInjustificada, 'border')}>I</span>
+                  Sin guardar
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-4 w-3 rounded-sm bg-primary/10 dark:bg-primary/20" aria-hidden />
+                  Fin de semana
+                </span>
+              </div>
             </div>
+
+            {modeHint && modoActivo && (
+              <p
+                className={cn(
+                  'm-0 flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-medium animate-[fadeInSoft_0.2s_ease-out]',
+                  hintTono[modoActivo]
+                )}
+                aria-live="polite"
+              >
+                <FiMousePointer className="shrink-0" aria-hidden />
+                {modeHint}
+              </p>
+            )}
           </div>
 
           {/* Tabla calendario */}
           <div className="min-h-0 flex-1 overflow-auto border-t border-line">
-            {/* Layout fijo: las columnas fijas miden exactamente lo que dicen sus desplazamientos (left-*),
-                asi ninguna cubre a la siguiente; solo "Cargo" absorbe el ancho que sobre */}
-            <table
-              className="min-w-full table-fixed border-separate border-spacing-0"
-              style={{ width: tableWidth }}
-            >
-              <colgroup>
-                <col style={{ width: COL_NUM }} />
-                {canDelete && <col style={{ width: COL_DELETE }} />}
-                <col style={{ width: COL_NAME }} />
-                <col style={{ width: COL_JOB }} />
-                <col style={{ width: COL_REGIME }} />
-                <col style={{ width: COL_SHIFT }} />
-                {diasDelMes.map(dia => (
-                  <col key={dia.fecha.getTime()} style={{ width: COL_DAY }} />
-                ))}
-                <col style={{ width: COL_TOTAL }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th className={cn(th, thFixed, 'left-0 px-2 text-center')}>#</th>
-                  {canDelete && <th className={cn(th, thFixed, 'left-10')}></th>}
-                  <th className={cn(th, thFixed, nameLeft, 'border-r px-3 text-left')}>Apellidos y nombres</th>
-                  <th className={cn(th, thSticky, 'px-3 text-left')}>Cargo</th>
-                  <th className={cn(th, thSticky, 'px-3 text-left')}>Régimen</th>
-                  <th className={cn(th, thSticky, 'px-3 text-left')}>Turno</th>
+            {totalFiltradas === 0 ? (
+              <EmptyState title="Nadie coincide con la búsqueda" description="Prueba con otro nombre, DNI o cargo." />
+            ) : (
+              /* Layout fijo: las columnas fijas miden exactamente lo que dicen sus desplazamientos (left-*),
+                 asi ninguna cubre a la siguiente; solo "Cargo" absorbe el ancho que sobre */
+              <table className="min-w-full table-fixed border-separate border-spacing-0" style={{ width: tableWidth }}>
+                <colgroup>
+                  <col style={{ width: COL_NUM }} />
+                  {canDelete && <col style={{ width: COL_DELETE }} />}
+                  <col style={{ width: COL_NAME }} />
+                  <col style={{ width: COL_JOB }} />
+                  <col style={{ width: COL_REGIME }} />
+                  <col style={{ width: COL_SHIFT }} />
                   {diasDelMes.map(dia => (
-                    <th
-                      key={dia.fecha.getTime()}
-                      className={cn(th, thSticky, 'px-0 text-center', esFinDeSemana(dia) && weekendCell, esHoy(dia) && todayCell)}
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-[11px] font-medium text-muted">{dia.diaSemana}</span>
-                        <span
-                          className={cn(
-                            'flex size-6 items-center justify-center rounded-full text-[13px] font-semibold',
-                            esHoy(dia) ? 'bg-primary text-btn' : 'text-content'
-                          )}
-                        >
-                          {dia.numero}
-                        </span>
-                      </div>
-                    </th>
+                    <col key={dia.fecha.getTime()} style={{ width: COL_DAY }} />
                   ))}
-                  <th className={cn(th, thFixed, 'right-0 border-l px-3 text-center')}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {personasPaginadas.map((persona, index) => {
-                  // Total de inasistencias de la persona: marcas guardadas + marcas temporales
-                  const totalInasistencias = diasDelMes.reduce((count, dia) => {
-                    const savedKey = `${persona.dni}-${dia.numero}`
-                    const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
-                    const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
-                    const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
-
-                    if (savedMarks[savedKey] || tempMarks[fullKey]) {
-                      return count + 1
-                    }
-                    return count
-                  }, 0)
-
-                  // Número de fila global (considerando la paginación)
-                  const numeroFila = startIndex + index + 1
-
-                  return (
-                    <tr key={persona.dni} className={bodyRow}>
-                      <td className={cn(td, bodyFixed, 'left-0 px-2 text-center text-muted')}>{numeroFila}</td>
-                      {canDelete && (
-                        <td className={cn(td, bodyFixed, 'left-10 px-2 text-center')}>
-                          <button
-                            type="button"
-                            title="Eliminar persona"
-                            aria-label={`Eliminar a ${persona.nombreCompleto}`}
-                            onClick={() => onDelete && onDelete(persona.id, persona.nombreCompleto)}
-                            className={actionBtnDanger}
-                          >
-                            <FiTrash2 aria-hidden />
-                          </button>
-                        </td>
-                      )}
-                      <td className={cn(td, bodyFixed, nameLeft, 'border-r border-line px-3 text-left whitespace-normal')}>
-                        <div className="font-medium text-content">{persona.nombreCompleto}</div>
-                        <div className="text-xs text-muted">DNI {persona.dni}</div>
-                      </td>
-                      <td className={cn(td, 'px-3 text-left whitespace-normal')}>
-                        {persona.cargo}
-                      </td>
-                      <td className={cn(td, 'px-3 text-left')}>{persona.regimen}</td>
-                      <td className={cn(td, 'px-3 text-left')}>{persona.turno}</td>
-                      {diasDelMes.map(dia => {
-                        // Key para savedMarks (simple)
-                        const savedKey = `${persona.dni}-${dia.numero}`
-                        // Key completa para tempMarks y selectedCells
-                        const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
-                        const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
-                        const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
-
-                        const isSelected = selectedCells[fullKey]
-                        const tempMark = tempMarks[fullKey]
-                        const savedMark = savedMarks[savedKey]
-
-                        // Interaccion: celdas clicables, seleccionadas y editables
-                        const clickable = !!(markMode || editMode)
-                        const editable = editMode && !!savedMark
-
-                        // Marca temporal o guardada; una celda vacia queda limpia (en modo marcado, al pasar el cursor
-                        // muestra como quedaria la marca)
-                        let content: React.ReactNode = null
-
-                        if (tempMark) {
-                          // Marca temporal (nueva, aún no guardada)
-                          const esJustificada = tempMark.tipo === 'justificada'
-                          content = (
-                            <span
-                              title={esJustificada ? 'Justificada (sin guardar)' : 'Injustificada (sin guardar)'}
-                              className={cn(marcaBase, esJustificada ? marcaJustificada : marcaInjustificada, marcaPendiente)}
-                            >
-                              {esJustificada ? 'J' : 'I'}
-                            </span>
-                          )
-                        } else if (savedMark) {
-                          // Marca guardada desde la API
-                          const esJustificada = savedMark.tipo === 'J'
-                          content = (
-                            <span
-                              title={esJustificada ? 'Justificada' : 'Injustificada'}
-                              className={cn(marcaBase, esJustificada ? marcaJustificada : marcaInjustificada)}
-                            >
-                              {savedMark.tipo}
-                            </span>
-                          )
-                        } else if (markMode) {
-                          content = (
-                            <span
-                              className={cn(
-                                marcaBase,
-                                'border border-dashed border-line-strong text-muted opacity-0 transition-opacity duration-150 group-hover/cell:opacity-100'
-                              )}
-                            >
-                              {markMode}
-                            </span>
-                          )
-                        }
-
-                        return (
-                          <td
-                            key={dia.fecha.getTime()}
-                            className={cn(
-                              td,
-                              'group/cell h-12 px-0 text-center',
-                              esFinDeSemana(dia) && weekendCell,
-                              esHoy(dia) && todayCell,
-                              clickable && !editable && clickableDay,
-                              editable && editableDay,
-                              isSelected && selectedDay
-                            )}
-                            onClick={() => handleCellClick(persona.dni, dia.numero, mes, anio)}
-                          >
-                            {content}
-                          </td>
-                        )
-                      })}
-                      <td
+                  <col style={{ width: COL_TOTAL }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th className={cn(th, thFixed, 'left-0 px-2 text-center')}>#</th>
+                    {canDelete && <th className={cn(th, thFixed, 'left-10')}></th>}
+                    <th className={cn(th, thFixed, nameLeft, 'border-r px-3 text-left')}>Personal</th>
+                    <th className={cn(th, thSticky, 'px-3 text-left')}>Cargo</th>
+                    <th className={cn(th, thSticky, 'px-3 text-left')}>Régimen</th>
+                    <th className={cn(th, thSticky, 'px-3 text-left')}>Turno</th>
+                    {diasDelMes.map((dia, i) => (
+                      <th
+                        key={dia.fecha.getTime()}
                         className={cn(
-                          td,
-                          bodyFixed,
-                          'right-0 border-l border-line px-3 text-center font-semibold',
-                          totalInasistencias > 0 ? 'text-content' : 'text-muted'
+                          th,
+                          thSticky,
+                          'px-0 text-center',
+                          esFinDeSemana(dia) && weekendCell,
+                          esHoy(dia) && todayCell,
+                          esLunes(dia, i) && weekStart
                         )}
                       >
-                        {totalInasistencias}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={cn('text-[10px] font-semibold uppercase', esFinDeSemana(dia) ? 'text-muted/80' : 'text-muted')}>
+                            {dia.diaSemana}
+                          </span>
+                          <span
+                            className={cn(
+                              'flex size-7 items-center justify-center rounded-lg text-[13px] font-bold tabular-nums',
+                              esHoy(dia) ? 'bg-primary text-white shadow-[0_4px_10px_-4px_rgba(30,58,138,0.8)]' : 'text-content'
+                            )}
+                          >
+                            {dia.numero}
+                          </span>
+                        </div>
+                      </th>
+                    ))}
+                    <th className={cn(th, thFixed, 'right-0 border-l px-3 text-center')}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {personasPaginadas.map((persona, index) => {
+                    // Total de inasistencias de la persona: marcas guardadas + marcas temporales
+                    const totalInasistencias = diasDelMes.reduce((count, dia) => {
+                      const savedKey = `${persona.dni}-${dia.numero}`
+                      const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
+                      const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
+                      const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
+
+                      if (savedMarks[savedKey] || tempMarks[fullKey]) {
+                        return count + 1
+                      }
+                      return count
+                    }, 0)
+
+                    // Número de fila global (considerando la paginación)
+                    const numeroFila = startIndex + index + 1
+
+                    return (
+                      <tr key={persona.dni} className={bodyRow}>
+                        <td className={cn(td, bodyFixed, 'left-0 px-2 text-center text-xs text-muted tabular-nums')}>{numeroFila}</td>
+                        {canDelete && (
+                          <td className={cn(td, bodyFixed, 'left-10 px-2 text-center')}>
+                            <button
+                              type="button"
+                              title="Eliminar persona"
+                              aria-label={`Eliminar a ${persona.nombreCompleto}`}
+                              onClick={() => onDelete && onDelete(persona.id, persona.nombreCompleto)}
+                              className={actionBtnDanger}
+                            >
+                              <FiTrash2 aria-hidden />
+                            </button>
+                          </td>
+                        )}
+                        <td className={cn(td, bodyFixed, nameLeft, 'border-r border-line px-3 text-left')}>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span
+                              className="flex size-8 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white"
+                              style={{ background: colorAvatar(persona.dni || persona.nombreCompleto) }}
+                              aria-hidden
+                            >
+                              {iniciales(persona.nombreCompleto, persona.dni)}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold text-content" title={persona.nombreCompleto}>
+                                {persona.nombreCompleto || '—'}
+                              </div>
+                              <div className="text-xs text-muted tabular-nums">DNI {persona.dni}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className={cn(td, 'truncate px-3 text-left')} title={persona.cargo}>
+                          {persona.cargo}
+                        </td>
+                        <td className={cn(td, 'px-3 text-left')}>{persona.regimen}</td>
+                        <td className={cn(td, 'px-3 text-left')}>
+                          {persona.turno && persona.turno !== '-' ? (
+                            <span className="inline-flex rounded-md bg-subtle px-2 py-0.5 text-xs font-semibold text-content-2">{persona.turno}</span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        {diasDelMes.map((dia, i) => {
+                          // Key para savedMarks (simple)
+                          const savedKey = `${persona.dni}-${dia.numero}`
+                          // Key completa para tempMarks y selectedCells
+                          const mes = dia.mes !== undefined ? dia.mes + 1 : selectedDate.getMonth() + 1
+                          const anio = dia.anio !== undefined ? dia.anio : selectedDate.getFullYear()
+                          const fullKey = `${persona.dni}-${dia.numero}-${mes}-${anio}`
+
+                          const isSelected = selectedCells[fullKey]
+                          const tempMark = tempMarks[fullKey]
+                          const savedMark = savedMarks[savedKey]
+
+                          // Interaccion: celdas clicables y editables
+                          const clickable = !!(markMode || editMode)
+                          const editable = editMode && !!savedMark
+
+                          // Marca temporal o guardada; una celda vacia queda limpia (en modo marcado, al pasar el cursor
+                          // muestra como quedaria la marca)
+                          let content: React.ReactNode = null
+
+                          if (tempMark) {
+                            const esJustificada = tempMark.tipo === 'justificada'
+                            content = (
+                              <span
+                                title={esJustificada ? 'Justificada (sin guardar)' : 'Injustificada (sin guardar)'}
+                                className={cn(marcaBase, esJustificada ? pendienteJustificada : pendienteInjustificada)}
+                              >
+                                {esJustificada ? 'J' : 'I'}
+                              </span>
+                            )
+                          } else if (savedMark) {
+                            const esJustificada = savedMark.tipo === 'J'
+                            content = (
+                              <span
+                                title={
+                                  editMode && isSelected
+                                    ? 'Se quitará al guardar'
+                                    : esJustificada
+                                      ? 'Justificada'
+                                      : 'Injustificada'
+                                }
+                                className={cn(
+                                  marcaBase,
+                                  esJustificada ? marcaJustificada : marcaInjustificada,
+                                  editMode && isSelected && marcaPorQuitar,
+                                  editable && !isSelected && 'group-hover/cell:scale-110'
+                                )}
+                              >
+                                {savedMark.tipo}
+                              </span>
+                            )
+                          } else if (markMode) {
+                            content = (
+                              <span
+                                className={cn(
+                                  marcaBase,
+                                  'border-2 border-dashed opacity-0 group-hover/cell:opacity-100',
+                                  markMode === 'I' ? 'border-danger/60 text-red-ink' : 'border-success/70 text-lime-ink'
+                                )}
+                              >
+                                {markMode}
+                              </span>
+                            )
+                          }
+
+                          return (
+                            <td
+                              key={dia.fecha.getTime()}
+                              className={cn(
+                                td,
+                                'group/cell h-14 px-0 text-center',
+                                esFinDeSemana(dia) && weekendCell,
+                                esHoy(dia) && todayCell,
+                                esLunes(dia, i) && weekStart,
+                                clickable && !editable && clickableDay,
+                                editable && editableDay
+                              )}
+                              onClick={() => handleCellClick(persona.dni, dia.numero, mes, anio)}
+                            >
+                              {content}
+                            </td>
+                          )
+                        })}
+                        <td className={cn(td, bodyFixed, 'right-0 border-l border-line px-3 text-center')}>
+                          <span
+                            className={cn(
+                              'inline-flex min-w-8 items-center justify-center rounded-lg px-2 py-1 text-[13px] font-bold tabular-nums',
+                              totalInasistencias === 0
+                                ? 'text-muted'
+                                : totalInasistencias >= 3
+                                  ? 'bg-danger/10 text-red-ink'
+                                  : 'bg-subtle text-content'
+                            )}
+                            title={totalInasistencias >= 3 ? '3 o más inasistencias en el periodo' : undefined}
+                          >
+                            {totalInasistencias}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
 
           {/* Controles de paginación */}
           {totalPages > 1 && (
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
-              <span className="text-[13px] text-muted">
-                {totalPersonas} {totalPersonas === 1 ? 'persona' : 'personas'} · Página {currentPage} de {totalPages}
-              </span>
-              <nav className="flex items-center gap-1" aria-label="Paginación">
-                <button
-                  type="button"
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                  className={pageBtn}
-                  aria-label="Página anterior"
-                >
-                  <FiChevronLeft aria-hidden />
-                </button>
-
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum: number
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => handlePageChange(pageNum)}
-                      aria-current={currentPage === pageNum ? 'page' : undefined}
-                      className={cn(pageBtn, 'font-medium', currentPage === pageNum && pageBtnActive)}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-
-                <button
-                  type="button"
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                  className={pageBtn}
-                  aria-label="Página siguiente"
-                >
-                  <FiChevronRight aria-hidden />
-                </button>
-              </nav>
-            </div>
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={totalFiltradas}
+              from={startIndex + 1}
+              to={Math.min(endIndex, totalFiltradas)}
+              onPageChange={handlePageChange}
+            />
           )}
 
           {/* Guardar / cancelar: solo si no es modo solo lectura */}
           {!isReadOnly && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-subtle px-5 py-3">
-              <span className="text-[13px] text-muted" aria-live="polite">
-                {pendingCount === 0
-                  ? 'Sin cambios pendientes.'
-                  : `${pendingCount} ${pendingCount === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}.`}
+            <div
+              className={cn(
+                'flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-5 py-3 transition-colors duration-200 max-sm:px-4',
+                pendingCount > 0 ? 'border-warning/40 bg-warning/10' : 'border-line bg-subtle'
+              )}
+            >
+              <span className="flex items-center gap-2 text-[13px] text-content-2" aria-live="polite">
+                {pendingCount === 0 ? (
+                  <>
+                    <FiCheckCircle className="shrink-0 text-muted" aria-hidden />
+                    Sin cambios pendientes.
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex size-6 items-center justify-center rounded-full bg-warning text-xs font-bold text-white tabular-nums dark:text-[#2a1a00]">
+                      {pendingCount}
+                    </span>
+                    <span>
+                      <strong className="font-semibold text-content">{pendingCount === 1 ? 'Cambio sin guardar' : 'Cambios sin guardar'}</strong>
+                      {nuevas > 0 && ` · ${nuevas} ${nuevas === 1 ? 'marca nueva' : 'marcas nuevas'}`}
+                      {marksToDelete.length > 0 && ` · ${marksToDelete.length} por quitar`}
+                    </span>
+                  </>
+                )}
               </span>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={handleCancel} disabled={pendingCount === 0 && !markMode && !editMode}>
+              <div className="flex gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
+                <Button variant="ghost" onClick={handleCancel} disabled={pendingCount === 0 && !markMode && !editMode}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSave} disabled={pendingCount === 0}>
+                <Button icon={<FiSave />} onClick={handleSave} disabled={pendingCount === 0}>
                   Guardar cambios
                 </Button>
               </div>

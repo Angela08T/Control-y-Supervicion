@@ -9,7 +9,7 @@ import {
   FiChevronsRight,
   FiClipboard,
   FiFileText,
-  FiGrid,
+  FiHome,
   FiKey,
   FiShield,
   FiUser,
@@ -22,7 +22,6 @@ import {
 import { useAppSelector } from '@/store/hooks'
 import { cn } from '@/utils/classes'
 import { formatearRestante, getTurno } from '@/utils/turno'
-import ContourMap from './ContourMap'
 import { useNow } from '@/hooks/useNow'
 import { NAV_GROUPS, canSee, type NavKey } from '@/utils/navigation'
 
@@ -33,7 +32,7 @@ interface NavItem {
 
 /** Texto e ícono de cada opción; el permiso que la habilita está en utils/navigation.ts */
 const ITEMS: Record<NavKey, NavItem> = {
-  dashboard: { label: 'Inicio', icon: FiGrid },
+  dashboard: { label: 'Inicio', icon: FiHome },
   incidencias: { label: 'Incidencias', icon: FiFileText },
   inasistencias: { label: 'Inasistencias', icon: FiUserMinus },
   bodycam: { label: 'Dispositivos', icon: FiVideo },
@@ -49,13 +48,14 @@ const ITEMS: Record<NavKey, NavItem> = {
 }
 
 const linkBase =
-  'nav-in group relative flex h-11 items-center gap-3 overflow-hidden rounded-lg px-3 text-sm no-underline transition-colors duration-150'
-const linkIdle = 'text-content-2 hover:bg-[rgba(30,58,138,0.05)] hover:text-content'
+  'nav-in group relative flex h-12 items-center gap-3 rounded-xl px-2 text-[14.5px] font-medium no-underline transition-[background-color,color,box-shadow] duration-150'
+const linkIdle = 'text-white/85 hover:bg-white/8 hover:text-white'
 const linkActive =
-  'bg-gradient-to-r from-[rgba(30,58,138,0.13)] to-[rgba(30,58,138,0.02)] font-semibold text-primary'
-/** Marca vertical a la izquierda: crece al pasar el mouse y se completa en la opcion activa */
-const markBase =
-  'absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full bg-primary transition-transform duration-200 ease-out'
+  'bg-[linear-gradient(90deg,#2f62d8,#3b74ee)] text-[16px] font-semibold text-white shadow-[0_10px_22px_-10px_rgba(37,99,235,0.9)] ring-1 ring-white/15'
+/** Cuadro del icono: blanco en la opcion activa, translucido en las demas */
+const tileBase = 'flex size-9 shrink-0 items-center justify-center rounded-xl transition-[background-color,color,transform] duration-200'
+const tileIdle = 'bg-white/10 text-white/90 group-hover:scale-105 group-hover:bg-white/16 group-hover:text-white'
+const tileActive = 'bg-white text-[#2f62d8] shadow-[0_4px_10px_-4px_rgba(0,0,0,0.4)]'
 
 
 export interface SidebarProps {
@@ -84,41 +84,63 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
   return (
     <>
       {mobileOpen && (
-        <div className="fixed inset-0 z-[1400] bg-slate-900/45 md:hidden" onClick={onCloseMobile} aria-hidden />
+        <div className="fixed inset-0 z-[1650] bg-slate-900/45 dark:bg-black/65 md:hidden" onClick={onCloseMobile} aria-hidden />
       )}
       <aside
         aria-label="Menú principal"
         className={cn(
-          'fixed top-14 bottom-0 left-0 z-[1500] flex flex-col overflow-hidden border-r border-line bg-gradient-to-b from-surface via-surface to-[rgba(30,58,138,0.05)] transition-[width,transform] duration-200',
+          'fixed top-0 bottom-0 left-0 z-[1700] flex flex-col overflow-hidden bg-[linear-gradient(180deg,#132a6e_0%,#10235d_45%,#0b1a4a_100%)] text-white shadow-[6px_0_24px_-12px_rgba(10,22,61,0.5)] transition-[width,transform] duration-200',
           compact ? 'w-16' : 'w-[232px]',
           mobileOpen ? 'translate-x-0 shadow-[0_16px_48px_rgba(15,23,42,0.18)]' : 'max-md:-translate-x-full'
         )}
       >
-        <ContourMap align="xMinYMid" className="opacity-80" />
+        {/* Ondas suaves de fondo */}
+        <svg aria-hidden className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 232 900" preserveAspectRatio="none">
+          <path d="M0 520 C 80 470 150 560 232 500 V900 H0Z" fill="#ffffff" opacity="0.035" />
+          <path d="M0 640 C 90 590 160 690 232 620 V900 H0Z" fill="#60a5fa" opacity="0.06" />
+          <path d="M0 300 C 70 260 170 340 232 280" fill="none" stroke="#ffffff" strokeOpacity="0.05" strokeWidth="1.5" />
+        </svg>
+
+        {/* Marca: nombre del sistema (con el menu contraido solo queda un espacio) */}
+        {compact ? (
+          <div className="h-4 shrink-0" />
+        ) : (
+          <div className="relative mx-3 mt-4 mb-3 flex shrink-0 items-center gap-3 border-b border-white/10 pb-4 pl-2">
+            {/* Barra de acento a la izquierda del nombre */}
+            <span aria-hidden className="h-10 w-1 shrink-0 rounded-full bg-[linear-gradient(180deg,#60a5fa,#2f62d8)]" />
+            <span className="min-w-0 leading-none">
+              <span className="block truncate text-[22px] font-bold tracking-[-0.01em] text-white">Centinela</span>
+              <span className="mt-1.5 flex items-center gap-1.5 truncate text-[12px] font-semibold tracking-[0.08em] text-[#93c5fd] uppercase">
+                CECOM
+                <span aria-hidden className="size-1 rounded-full bg-white/40" />
+                SJL
+              </span>
+            </span>
+          </div>
+        )}
 
         {mobileOpen && (
           <button
             type="button"
             onClick={onCloseMobile}
             aria-label="Cerrar menú"
-            className="absolute top-2 right-2 z-10 flex size-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-lg text-muted hover:bg-subtle md:hidden"
+            className="absolute top-2 right-2 z-10 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-white/10 p-0 text-lg text-white hover:bg-white/20 md:hidden"
           >
             <FiX />
           </button>
         )}
 
-        <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+        <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 pt-2 pb-4 [scrollbar-color:rgba(255,255,255,0.2)_transparent] [scrollbar-width:thin]">
           {groups.map((group, gi) => {
             return (
               <div key={gi} className={cn(gi > 0 && 'mt-5')}>
                 {group.title && !compact && (
-                  <div className="mb-1 flex items-center gap-2 px-3">
-                    <p className="m-0 text-xs font-medium text-muted">{group.title}</p>
-                    <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-line to-transparent" />
+                  <div className="mb-2 flex items-center gap-2 px-2">
+                    <p className="m-0 text-[12px] font-bold tracking-[0.08em] text-white/60 uppercase">{group.title}</p>
                   </div>
                 )}
-                {group.title && compact && gi > 0 && <div className="mx-3 mb-2 border-t border-line" />}
-                <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+                {group.title && compact && gi > 0 && <div className="mx-2 mb-3 border-t border-white/12" />}
+                <ul className="m-0 flex list-none flex-col gap-1 p-0">
                   {group.keys.map((key) => {
                     const { label, icon: Icon } = ITEMS[key]
                     return (
@@ -131,19 +153,14 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
                           onClick={onCloseMobile}
                           style={{ '--i': orden++ } as React.CSSProperties}
                           className={({ isActive }) =>
-                            cn(linkBase, compact && 'justify-center px-0', isActive ? linkActive : linkIdle)
+                            cn(linkBase, compact && 'justify-center px-0', isActive ? (compact ? 'text-white' : linkActive) : linkIdle)
                           }
                         >
                           {({ isActive }) => (
                             <>
-                              <span
-                                aria-hidden
-                                className={cn(markBase, isActive ? 'scale-y-100' : 'scale-y-0 opacity-50 group-hover:scale-y-50')}
-                              />
-                              <Icon
-                                className="size-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110"
-                                aria-hidden
-                              />
+                              <span className={cn(tileBase, isActive ? tileActive : tileIdle, compact && 'size-10', compact && isActive && 'ring-2 ring-white/80')} aria-hidden>
+                                <Icon className="size-[17px]" />
+                              </span>
                               {!compact && (
                                 <span className="truncate transition-transform duration-200 group-hover:translate-x-0.5">
                                   {label}
@@ -164,8 +181,8 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
         {/* Turno en curso: dato util para quien opera el centro de control */}
         <div
           className={cn(
-            'relative mx-2 mb-2 rounded-lg bg-gradient-to-br from-[rgba(30,58,138,0.08)] to-[rgba(30,58,138,0.02)] ring-1 ring-[rgba(30,58,138,0.12)]',
-            compact ? 'flex justify-center py-3' : 'px-3 py-3'
+            'relative mx-3 mb-3 rounded-2xl bg-white/8 ring-1 ring-white/12 backdrop-blur-sm',
+            compact ? 'flex justify-center py-3' : 'px-4 py-3'
           )}
           title={compact ? `Turno ${turno.nombre.toLowerCase()} en curso` : undefined}
         >
@@ -177,38 +194,40 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
               />
               <span className="relative size-2 rounded-full bg-brand-lime" />
             </span>
-            {!compact && <span className="text-xs text-muted">Turno en curso</span>}
+            {!compact && <span className="text-[11px] font-bold tracking-[0.12em] text-white/60 uppercase">Turno en curso</span>}
           </div>
           {!compact && (
             <>
-              <p className="m-0 mt-1.5 text-sm font-semibold text-content">{turno.nombre}</p>
-              <p className="m-0 text-xs tabular-nums text-muted">{turno.rango}</p>
+              <p className="m-0 mt-1.5 flex items-baseline justify-between gap-2">
+                <span className="text-base font-bold text-white">{turno.nombre}</span>
+                <span className="text-xs font-medium tabular-nums text-white/70">{turno.rango}</span>
+              </p>
               <div
                 role="progressbar"
                 aria-label="Avance del turno"
                 aria-valuenow={Math.round(turno.progreso * 100)}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                className="mt-2.5 h-1 overflow-hidden rounded-full bg-[rgba(30,58,138,0.12)]"
+                className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15"
               >
                 <div
-                  className="h-full origin-left rounded-full bg-primary transition-transform duration-1000"
+                  className="h-full origin-left rounded-full bg-[linear-gradient(90deg,#8ebc22,#b5e04a)] transition-transform duration-1000"
                   style={{ transform: `scaleX(${turno.progreso})` }}
                 />
               </div>
-              <p className="m-0 mt-1.5 text-[11px] tabular-nums text-muted">Termina en {restante}</p>
+              <p className="m-0 mt-1.5 text-xs font-medium tabular-nums text-white/70">Termina en <span className="font-bold text-white">{restante}</span></p>
             </>
           )}
         </div>
 
-        <div className="relative hidden border-t border-line p-2 md:block">
+        <div className="relative hidden border-t border-white/10 p-3 md:block">
           <button
             type="button"
             onClick={onToggleCollapse}
             title={collapsed ? 'Expandir menú' : undefined}
             aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
             className={cn(
-              'flex h-9 w-full cursor-pointer items-center gap-3 rounded-lg border-none bg-transparent px-3 text-[13px] text-muted transition-colors duration-150 hover:bg-subtle hover:text-content',
+              'flex h-10 w-full cursor-pointer items-center gap-3 rounded-xl border-none bg-transparent px-3 text-[13.5px] font-medium text-white/65 transition-colors duration-150 hover:bg-white/8 hover:text-white',
               collapsed && 'justify-center px-0'
             )}
           >

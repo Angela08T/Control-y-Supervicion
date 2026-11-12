@@ -1,4 +1,3 @@
-// ModalIncidencia.jsx
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import MapSelector from './MapSelector'
 import type { MapSelectorValue } from './MapSelector'
@@ -12,11 +11,36 @@ import useSubjects from '../hooks/Subject/useSubjects'
 import useJurisdictions from '../hooks/Jurisdiction/useJurisdictions'
 import Button from '@/components/UI/Button'
 import Modal from '@/components/UI/Modal'
-import { Field, Input, Select } from '@/components/UI/Field'
-import { FiMapPin, FiPlus, FiTrash2 } from 'react-icons/fi'
+import { Field, Input } from '@/components/UI/Field'
+import Dropdown from '@/components/UI/Dropdown'
+import { DatePicker, TimePicker } from '@/components/UI/DateTimePicker'
+import {
+  FiAlertTriangle,
+  FiBriefcase,
+  FiCamera,
+  FiCheckCircle,
+  FiChevronUp,
+  FiEdit3,
+  FiFilePlus,
+  FiInfo,
+  FiLoader,
+  FiMapPin,
+  FiPlus,
+  FiRadio,
+  FiSave,
+  FiSearch,
+  FiSend,
+  FiSmartphone,
+  FiUser,
+  FiUserPlus,
+  FiVideo,
+  FiX,
+} from 'react-icons/fi'
+import { HeroProgress, ModalHero, StepLayout, StepSection, useActiveStep, type StepInfo } from '@/components/UI/FormSteps'
+import { ASUNTOS, nombreCorto } from '@/pages/Dashboard/asuntos'
+import { colorAvatar, iniciales } from '@/utils/incidenciaFormat'
 import { toast } from '../utils/toast'
 import {
-  actionBtnDanger,
   autocompleteContainer,
   autocompleteError,
   autocompleteItem,
@@ -52,33 +76,6 @@ interface OffenderSugerencia extends OffenderDniLookup {
 interface SubjectEntry {
   id: ID;
   lacks: SubjectLack[];
-}
-
-/** Bloque de solo lectura con los datos que se completan con el DNI */
-const autoBlock = 'grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg bg-subtle p-4 max-md:grid-cols-1'
-
-/** Fila de cada persona en copia (CC) */
-const ccRow = 'flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2'
-
-/** Selector de personas para copia, desplegado bajo la lista */
-const ccPicker =
-  'flex max-h-[240px] flex-col gap-0.5 overflow-y-auto rounded-lg border border-line-strong bg-surface p-1.5'
-
-/** Fila del selector de copia */
-const checkboxLabel =
-  'flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-sm text-content-2 transition-colors duration-150 hover:bg-subtle'
-
-/** Casilla del selector de copia */
-const checkboxInput = 'size-4 cursor-pointer accent-primary'
-
-/** Par etiqueta / valor dentro del bloque de datos automáticos */
-function DatoAuto({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-xs text-muted">{label}</span>
-      <span className="break-words text-sm text-content">{value || '—'}</span>
-    </div>
-  )
 }
 
 const defaultState: IncidenciaForm = {
@@ -117,6 +114,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   const [camType, setCamType] = useState<Cam>('BODYCAM') //Tipo de cámara para filtrar: 'BODYCAM' o 'CAMERA'
   const [mostrarMapa, setMostrarMapa] = useState(true) // Visibilidad del mapa (solo UI)
   const [mostrarSelectorCC, setMostrarSelectorCC] = useState(false) // Selector de personas en copia (solo UI)
+  const [ccFiltro, setCcFiltro] = useState('') // Buscador del selector de copia (solo UI)
 
   // Hook para búsqueda de bodycam - filtra por tipo de cámara
   const {
@@ -339,7 +337,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   // Función para manejar selección de persona (lead)
   function handleLeadChange(leadId: string) {
     setSelectedLeadId(leadId) // Guardar ID para el select
-    const selectedLead = leads.find(lead => lead.id === leadId)
+    const selectedLead = leads.find(lead => String(lead.id) === leadId)
     if (selectedLead) {
       const nombreCompleto = `${selectedLead.name} ${selectedLead.lastname}`.trim().toUpperCase()
       setForm(f => ({
@@ -528,191 +526,366 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
 
   const dniValido = /^\d{8}$/.test(form.dni)
 
+  // ===== Presentacion =====
+
+  /** Cambia el tipo de medio: ajusta el filtro de busqueda y limpia los campos de los otros tipos */
+  function cambiarTipoMedio(nuevoTipo: string) {
+    if (nuevoTipo === form.tipoMedio) return
+
+    // Actualizar el tipo de cámara para el filtro de búsqueda primero
+    if (nuevoTipo === 'camara') {
+      setCamType('CAMERA')
+    } else if (nuevoTipo === 'radio') {
+      setCamType('RADIO')
+    } else if (nuevoTipo !== 'Phone') {
+      setCamType('BODYCAM')
+    }
+
+    // Limpiar el término de búsqueda
+    setBodycamSearchTerm('')
+
+    // Actualizar el formulario en un solo batch para evitar re-renders
+    setForm(f => {
+      const newForm = { ...f }
+      newForm.tipoMedio = nuevoTipo as TipoMedio // 'Phone' se usa en la UI pero no está en TIPOS_MEDIO
+      newForm.medio = nuevoTipo
+
+      // Limpiar campos de los otros tipos
+      if (nuevoTipo === 'camara') {
+        newForm.bodycamNumber = ''
+        newForm.bodycamAsignadaA = ''
+        newForm.bodycamId = ''
+        newForm.numeroRadio = ''
+      } else if (nuevoTipo === 'radio') {
+        newForm.bodycamNumber = ''
+        newForm.bodycamAsignadaA = ''
+        newForm.bodycamId = ''
+        newForm.numeroCamara = ''
+      } else if (nuevoTipo === 'Phone') {
+        newForm.bodycamNumber = ''
+        newForm.bodycamAsignadaA = ''
+        newForm.bodycamId = ''
+        newForm.numeroCamara = ''
+        newForm.numeroRadio = ''
+      } else {
+        newForm.numeroCamara = ''
+        newForm.numeroRadio = ''
+        newForm.bodycamId = ''
+      }
+
+      return newForm
+    })
+  }
+
+  // Pasos completos: alimentan el indice y la barra de progreso de la cabecera
+  const medioCompleto =
+    form.tipoMedio === 'bodycam'
+      ? !!(form.bodycamNumber && form.bodycamAsignadaA && form.bodycamId)
+      : form.tipoMedio === 'camara'
+        ? !!(form.numeroCamara && form.bodycamId)
+        : form.tipoMedio === 'radio'
+          ? !!(form.numeroRadio && form.bodycamId)
+          : true
+  const completo = {
+    infractor: dniValido && !!form.nombreCompleto,
+    hecho: !!(form.asunto && form.falta && form.fechaIncidente && form.horaIncidente),
+    ubicacion: !!(form.jurisdiccion && form.ubicacion?.address),
+    medio: medioCompleto,
+    destinatarios: !!(form.dirigidoA && form.destinatario && (form.cc || []).length > 0),
+  }
+
+  const pasos: StepInfo[] = [
+    { id: 'inc-infractor', title: 'Infractor', icon: <FiUser />, done: completo.infractor },
+    { id: 'inc-hecho', title: 'El hecho', icon: <FiAlertTriangle />, done: completo.hecho },
+    { id: 'inc-ubicacion', title: 'Ubicación', icon: <FiMapPin />, done: completo.ubicacion },
+    ...(mostrarCamposBodycam ? [{ id: 'inc-medio', title: 'Medio', icon: <FiVideo />, done: completo.medio }] : []),
+    { id: 'inc-destinatarios', title: 'Destinatarios', icon: <FiSend />, done: completo.destinatarios },
+  ]
+  const numero = (id: string) => pasos.findIndex(p => p.id === id) + 1
+  const pasosHechos = pasos.filter(p => p.done).length
+  const [pasoActivo, irAPaso] = useActiveStep(pasos.map(p => p.id))
+
+  const hoyISO = new Date().toLocaleDateString('en-CA') // 'YYYY-MM-DD' en hora local
+
+  /** Opciones del tipo de medio, mostradas como tarjetas seleccionables */
+  const tiposMedio: { value: string; label: string; icon: React.ReactNode }[] = [
+    { value: 'bodycam', label: 'Bodycam', icon: <FiVideo /> },
+    { value: 'camara', label: 'Cámara', icon: <FiCamera /> },
+    { value: 'radio', label: 'Radio', icon: <FiRadio /> },
+    { value: 'Phone', label: 'Celular', icon: <FiSmartphone /> },
+  ]
+
+  // Personas para copia, filtradas por el buscador del selector
+  const filtroCC = ccFiltro.trim().toLowerCase()
+  const listaCCFiltrada = filtroCC
+    ? listaCC.filter(lead => `${lead.name} ${lead.lastname} ${lead.job?.name || ''}`.toLowerCase().includes(filtroCC))
+    : listaCC
+
+  const cabecera = (
+    <ModalHero
+      icon={initial ? <FiEdit3 /> : <FiFilePlus />}
+      eyebrow={initial ? 'Editar registro' : 'Registro de incidencia'}
+      title={initial ? 'Editar incidencia' : 'Nueva incidencia'}
+      subtitle="Completa cada paso. Los campos con * son obligatorios."
+      onClose={onClose}
+    >
+      <HeroProgress done={pasosHechos} total={pasos.length} />
+    </ModalHero>
+  )
+
+  const pie = (
+    <>
+      <p className="m-0 mr-auto flex items-center gap-2 text-xs text-muted max-sm:hidden">
+        {pasosHechos === pasos.length ? (
+          <>
+            <FiCheckCircle className="shrink-0 text-success" aria-hidden />
+            Todo listo para guardar.
+          </>
+        ) : (
+          <>
+            <FiInfo className="shrink-0" aria-hidden />
+            {pasos.length - pasosHechos === 1 ? 'Falta 1 paso por completar.' : `Faltan ${pasos.length - pasosHechos} pasos por completar.`}
+          </>
+        )}
+      </p>
+      <Button variant="ghost" onClick={onClose}>
+        Cancelar
+      </Button>
+      <Button type="submit" form="form-incidencia" icon={initial ? <FiSave /> : <FiPlus />}>
+        {initial ? 'Actualizar incidencia' : 'Crear incidencia'}
+      </Button>
+    </>
+  )
+
+  /** Avisos de carga / sin resultados de los buscadores */
+  const sinResultados = (texto: string) => (
+    <div className={autocompleteNoResults}>
+      <span className="flex items-center gap-2">
+        <FiSearch aria-hidden /> {texto}
+      </span>
+    </div>
+  )
+  const buscando = (
+    <div className={autocompleteLoading}>
+      <span className="flex items-center gap-2">
+        <FiLoader className="animate-spin" aria-hidden /> Buscando…
+      </span>
+    </div>
+  )
+
   return (
     <Modal
       title={initial ? 'Editar incidencia' : 'Nueva incidencia'}
-      description="Los campos con * son obligatorios."
+      header={cabecera}
       onClose={onClose}
-      size="lg"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="form-incidencia">
-            {initial ? 'Actualizar incidencia' : 'Crear incidencia'}
-          </Button>
-        </>
-      }
+      size="xl"
+      footer={pie}
+      bodyClassName="bg-page p-0! gap-0!"
     >
-      <form id="form-incidencia" className="flex flex-col gap-5" onSubmit={handleSubmit}>
-        {/* Infractor */}
-        <section className="flex flex-col gap-4">
-          <h4 className="m-0 text-[13px] font-semibold text-content">Infractor</h4>
-          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+      <form id="form-incidencia" onSubmit={handleSubmit} noValidate className="flex-1">
+        <StepLayout
+          steps={pasos}
+          active={pasoActivo}
+          onSelect={irAPaso}
+          aside={
+            <div className="rounded-xl bg-subtle p-3 text-xs leading-relaxed text-content-2">
+              <p className="m-0 flex items-center gap-1.5 font-semibold text-content">
+                <FiInfo className="shrink-0 text-accent" aria-hidden />
+                Consejo
+              </p>
+              <p className="m-0 mt-1">
+                Empieza por el DNI: el nombre, cargo, turno y régimen se completan solos.
+              </p>
+            </div>
+          }
+        >
+          {/* Infractor */}
+          <StepSection
+            id="inc-infractor"
+            n={numero('inc-infractor')}
+            title="Infractor"
+            icon={<FiUser />}
+            description="Busca a la persona por su DNI."
+            done={completo.infractor}
+          >
             <div className={autocompleteContainer} ref={dniAutocompleteRef}>
-              <Field label="DNI del infractor" required hint="8 dígitos; al ingresarlo se completan los demás datos">
-                <Input
-                  value={dniSearchTerm}
-                  onChange={handleDNIChange}
-                  onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
-                  placeholder="Ingresa 8 dígitos del DNI"
-                  autoComplete="off"
-                  inputMode="numeric"
-                />
+              <Field label="DNI del infractor" required hint="8 dígitos; al elegirlo de la lista se completan los demás datos.">
+                <div className="relative">
+                  <FiSearch className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
+                  <Input
+                    value={dniSearchTerm}
+                    onChange={handleDNIChange}
+                    onFocus={() => offenderResults.length > 0 && setShowOffenderSuggestions(true)}
+                    placeholder="Ej.: 45678912"
+                    autoComplete="off"
+                    inputMode="numeric"
+                    className="pl-9 text-[15px] tracking-[0.06em] tabular-nums"
+                  />
+                </div>
               </Field>
-              {offenderLoading && (
-                <div className={autocompleteLoading}>Buscando...</div>
-              )}
-              {offenderError && (
-                <div className={autocompleteError}>{offenderError}</div>
-              )}
+              {offenderLoading && buscando}
+              {offenderError && <div className={autocompleteError}>{offenderError}</div>}
               {showOffenderSuggestions && offendersHabilitados.length > 0 && (
                 <div className={autocompleteSuggestions}>
-                  {offendersHabilitados.map((offender, index) => (
-                    <div
-                      key={offender.gestionate_id || offender.id || index}
-                      className={autocompleteItem}
-                      onClick={() => handleOffenderSelect(offender)}
-                    >
-                      <div className={autocompleteItemCode}>
-                        DNI: {offender.dni} - {offender.name} {offender.lastname}
+                  {offendersHabilitados.map((offender, index) => {
+                    const nombre = `${offender.name || ''} ${offender.lastname || ''}`.trim()
+                    return (
+                      <div
+                        key={offender.gestionate_id || offender.id || index}
+                        className={cn(autocompleteItem, 'flex items-center gap-3')}
+                        onClick={() => handleOffenderSelect(offender)}
+                      >
+                        <span
+                          className="flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
+                          style={{ background: colorAvatar(offender.dni || nombre) }}
+                          aria-hidden
+                        >
+                          {iniciales(nombre, offender.dni)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className={cn(autocompleteItemCode, 'truncate')}>
+                            {nombre || 'Sin nombre'} <span className="font-normal text-muted">· DNI {offender.dni}</span>
+                          </div>
+                          <div className={cn(autocompleteItemDetails, 'truncate')}>
+                            {[offender.job, offender.shift, offender.regime].filter(Boolean).join(' · ')}
+                          </div>
+                        </div>
                       </div>
-                      <div className={autocompleteItemDetails}>
-                        {offender.job} | {offender.shift} | {offender.regime}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
-              {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading && (
-                <div className={autocompleteNoResults}>
-                  No se encontraron registros
-                </div>
-              )}
+              {showOffenderSuggestions && offenderResults.length === 0 && dniSearchTerm.length >= 3 && !offenderLoading &&
+                sinResultados('No se encontraron registros')}
             </div>
 
-            {dniValido ? (
-              <div className={cn(autoBlock, 'col-span-2')}>
-                <DatoAuto label="Nombre" value={form.nombreCompleto} />
-                <DatoAuto label="Turno" value={form.turno} />
-                <DatoAuto label="Cargo" value={form.cargo} />
-                <DatoAuto label="Régimen laboral" value={form.regLab} />
+            {dniValido && form.nombreCompleto ? (
+              <div className="flex items-center gap-4 rounded-xl border border-line bg-subtle p-4 max-sm:items-start max-sm:p-3">
+                <span
+                  className="flex size-13 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-sm max-sm:size-11 max-sm:text-base"
+                  style={{ background: colorAvatar(form.dni || form.nombreCompleto) }}
+                  aria-hidden
+                >
+                  {iniciales(form.nombreCompleto, form.dni)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 truncate text-[15px] font-bold text-content" title={form.nombreCompleto}>
+                    {form.nombreCompleto}
+                  </p>
+                  <p className="m-0 text-xs text-muted tabular-nums">DNI {form.dni}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {[
+                      { label: 'Turno', value: form.turno },
+                      { label: 'Cargo', value: form.cargo },
+                      { label: 'Régimen', value: form.regLab },
+                    ].map(d => (
+                      <span key={d.label} className="inline-flex max-w-full items-center gap-1 rounded-md bg-surface px-2 py-0.5 text-xs ring-1 ring-line">
+                        <span className="text-muted">{d.label}:</span>
+                        <span className="truncate font-semibold text-content">{d.value || '—'}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="col-span-2 m-0 text-sm text-muted">Se completará al ingresar el DNI</p>
+              <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong px-4 py-3.5 text-sm text-muted">
+                <FiUser className="shrink-0 text-lg" aria-hidden />
+                {dniValido ? 'Elige a la persona de la lista para completar sus datos.' : 'Los datos de la persona aparecerán aquí al ingresar el DNI.'}
+              </div>
             )}
-          </div>
-        </section>
+          </StepSection>
 
-        {/* El hecho */}
-        <section className="flex flex-col gap-4 border-t border-line pt-5">
-          <h4 className="m-0 text-[13px] font-semibold text-content">El hecho</h4>
-          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-            <Field
-              label="Asunto"
-              required
-              error={subjectsError ? 'Error al cargar asuntos desde el servidor.' : undefined}
-            >
-              <Select
+          {/* El hecho */}
+          <StepSection
+            id="inc-hecho"
+            n={numero('inc-hecho')}
+            title="El hecho"
+            icon={<FiAlertTriangle />}
+            description="Qué falta se cometió y cuándo ocurrió."
+            done={completo.hecho}
+          >
+            <Field label="Asunto" required error={subjectsError ? 'Error al cargar asuntos desde el servidor.' : undefined}>
+              <Dropdown
+                aria-label="Asunto"
                 value={form.asunto}
-                onChange={e => setField('asunto', e.target.value)}
-                disabled={subjectsLoading}
+                onChange={v => setField('asunto', v)}
+                loading={subjectsLoading}
                 invalid={!!subjectsError}
-              >
-                <option value="">{subjectsLoading ? 'Cargando asuntos...' : 'Selecciona'}</option>
-                {Object.keys(subjectMap).map((asuntoName) => (
-                  <option key={subjectMap[asuntoName].id} value={asuntoName}>{asuntoName}</option>
-                ))}
-              </Select>
+                placeholder="Selecciona el asunto"
+                searchable
+                options={Object.keys(subjectMap).map(nombre => ({
+                  value: nombre,
+                  label: nombreCorto(nombre),
+                  description: nombreCorto(nombre) !== nombre ? nombre : undefined,
+                  color: ASUNTOS[nombre]?.color ?? 'var(--accent-light)',
+                }))}
+              />
             </Field>
 
             <Field label="Falta" required>
-              <Select value={form.falta} onChange={e => setField('falta', e.target.value)} disabled={!form.asunto}>
-                <option value="">{form.asunto ? 'Selecciona' : 'Primero elige el asunto'}</option>
-                {lacksDisponibles.map(lack => (
-                  <option key={lack.id} value={lack.name}>{lack.name}</option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field label="Fecha del hecho" required>
-              <Input
-                type="date"
-                value={form.fechaIncidente}
-                onChange={e => setField('fechaIncidente', e.target.value)}
-              />
-            </Field>
-            <Field label="Hora del hecho" required>
-              <Input
-                type="time"
-                value={form.horaIncidente}
-                onChange={e => setField('horaIncidente', e.target.value)}
+              <Dropdown
+                aria-label="Falta"
+                value={form.falta}
+                onChange={v => setField('falta', v)}
+                disabled={!form.asunto}
+                placeholder={form.asunto ? 'Selecciona la falta' : 'Primero elige el asunto'}
+                emptyText="Este asunto no tiene faltas"
+                options={lacksDisponibles.map(lack => ({ value: lack.name, label: lack.name }))}
               />
             </Field>
 
-          </div>
-        </section>
+            <div className="grid grid-cols-2 gap-4 max-[420px]:grid-cols-1">
+              <Field label="Fecha del hecho" required>
+                <DatePicker
+                  aria-label="Fecha del hecho"
+                  value={form.fechaIncidente}
+                  onChange={v => setField('fechaIncidente', v)}
+                  max={hoyISO}
+                />
+              </Field>
+              <Field label="Hora del hecho" required>
+                <TimePicker aria-label="Hora del hecho" value={form.horaIncidente} onChange={v => setField('horaIncidente', v)} />
+              </Field>
+            </div>
 
-        {/* Ubicación */}
-        <section className="flex flex-col gap-4 border-t border-line pt-5">
-          <h4 className="m-0 text-[13px] font-semibold text-content">Ubicación</h4>
-          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-            <Field
-              label="Jurisdicción"
-              required
-              className="col-span-2"
-              hint="Se sugiere según el punto del mapa. Puedes cambiarla."
-            >
-              {jurisdictionsLoading ? (
-                <span className="block text-sm text-muted">Cargando jurisdicciones...</span>
-              ) : jurisdictionsError ? (
-                <span className="block text-sm text-danger">{jurisdictionsError}</span>
-              ) : (
-                <Select
-                  value={form.jurisdiccion}
-                  onChange={e => {
-                    const selectedJurisdiction = jurisdictions.find(j => j.name === e.target.value)
-                    if (selectedJurisdiction) {
-                      setForm(f => ({
-                        ...f,
-                        jurisdiccion: selectedJurisdiction.name,
-                        jurisdictionId: selectedJurisdiction.id
-                      }))
-                    } else {
-                      setForm(f => ({
-                        ...f,
-                        jurisdiccion: '',
-                        jurisdictionId: null
-                      }))
-                    }
-                  }}
-                >
-                  <option value="">Selecciona una jurisdicción</option>
-                  {jurisdiccionesHabilitadas.map(jurisdiction => (
-                    <option key={jurisdiction.id} value={jurisdiction.name}>
-                      {jurisdiction.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
+            {mostrarCamposInasistencia && (
+              <p className="m-0 flex items-start gap-2 rounded-xl bg-primary/6 px-3.5 py-2.5 text-[13px] text-content-2 dark:bg-primary/15">
+                <FiInfo className="mt-0.5 shrink-0 text-accent" aria-hidden />
+                En las inasistencias no se registra el medio: el reporte es la evidencia.
+              </p>
+            )}
+          </StepSection>
 
-            <div className="col-span-2 flex flex-col gap-2">
+          {/* Ubicación */}
+          <StepSection
+            id="inc-ubicacion"
+            n={numero('inc-ubicacion')}
+            title="Ubicación"
+            icon={<FiMapPin />}
+            description="Marca el punto en el mapa; la jurisdicción se sugiere sola."
+            done={completo.ubicacion}
+          >
+            <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-[13px] font-medium text-content-2">
                   Punto en el mapa<span className="ml-0.5 text-danger">*</span>
                 </span>
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
-                  icon={<FiMapPin />}
+                  icon={mostrarMapa ? <FiChevronUp /> : <FiMapPin />}
                   onClick={() => setMostrarMapa(v => !v)}
                   aria-expanded={mostrarMapa}
                 >
-                  {mostrarMapa ? 'Ocultar mapa' : 'Seleccionar en el mapa'}
+                  {mostrarMapa ? 'Ocultar mapa' : 'Mostrar mapa'}
                 </Button>
               </div>
+              {!mostrarMapa && form.ubicacion?.address && (
+                <p className="m-0 flex items-start gap-2 rounded-xl bg-subtle px-3.5 py-2.5 text-sm text-content">
+                  <FiMapPin className="mt-0.5 shrink-0 text-accent" aria-hidden />
+                  {form.ubicacion.address}
+                </p>
+              )}
               {mostrarMapa && (
                 <MapSelector
                   value={form.ubicacion}
@@ -748,129 +921,110 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                 />
               )}
             </div>
-          </div>
-        </section>
 
-        {/* Medio (solo cuando no es inasistencia) */}
-        {mostrarCamposBodycam && (
-          <section className="flex flex-col gap-4 border-t border-line pt-5">
-            <h4 className="m-0 text-[13px] font-semibold text-content">Medio</h4>
-            <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-              <Field label="Tipo de medio" required>
-                <Select
-                  value={form.tipoMedio}
-                  onChange={e => {
-                    const nuevoTipo = e.target.value
-
-                    // Actualizar el tipo de cámara para el filtro de búsqueda primero
-                    if (nuevoTipo === 'camara') {
-                      setCamType('CAMERA')
-                    } else if (nuevoTipo === 'radio') {
-                      setCamType('RADIO')
-                    } else if (nuevoTipo === 'Phone') {
-                      // Phone no necesita tipo de cámara
-                    } else {
-                      setCamType('BODYCAM')
-                    }
-
-                    // Limpiar el término de búsqueda
-                    setBodycamSearchTerm('')
-
-                    // Actualizar el formulario en un solo batch para evitar re-renders
-                    setForm(f => {
-                      const newForm = { ...f }
-                      newForm.tipoMedio = nuevoTipo as TipoMedio // 'Phone' se usa en la UI pero no está en TIPOS_MEDIO
-                      newForm.medio = nuevoTipo
-
-                      // Limpiar campos de los otros tipos
-                      if (nuevoTipo === 'camara') {
-                        newForm.bodycamNumber = ''
-                        newForm.bodycamAsignadaA = ''
-                        newForm.bodycamId = ''
-                        newForm.numeroRadio = ''
-                      } else if (nuevoTipo === 'radio') {
-                        newForm.bodycamNumber = ''
-                        newForm.bodycamAsignadaA = ''
-                        newForm.bodycamId = ''
-                        newForm.numeroCamara = ''
-                      } else if (nuevoTipo === 'Phone') {
-                        // Limpiar todos los campos relacionados a bodycam/cámara/radio
-                        newForm.bodycamNumber = ''
-                        newForm.bodycamAsignadaA = ''
-                        newForm.bodycamId = ''
-                        newForm.numeroCamara = ''
-                        newForm.numeroRadio = ''
-                      } else {
-                        newForm.numeroCamara = ''
-                        newForm.numeroRadio = ''
-                        newForm.bodycamId = ''
-                      }
-
-                      return newForm
-                    })
+            <Field label="Jurisdicción" required hint="Se sugiere según el punto del mapa. Puedes cambiarla.">
+              {jurisdictionsLoading ? (
+                <span className="flex items-center gap-2 text-sm text-muted">
+                  <FiLoader className="animate-spin" aria-hidden /> Cargando jurisdicciones…
+                </span>
+              ) : jurisdictionsError ? (
+                <span className="block text-sm text-danger">{jurisdictionsError}</span>
+              ) : (
+                <Dropdown
+                  aria-label="Jurisdicción"
+                  value={form.jurisdiccion}
+                  onChange={nombre => {
+                    const selectedJurisdiction = jurisdictions.find(j => j.name === nombre)
+                    setForm(f => ({
+                      ...f,
+                      jurisdiccion: selectedJurisdiction?.name ?? '',
+                      jurisdictionId: selectedJurisdiction?.id ?? null
+                    }))
                   }}
-                >
-                  <option value="bodycam">Bodycam</option>
-                  <option value="camara">Cámara</option>
-                  <option value="radio">Radio</option>
-                  <option value="Phone">Celular</option>
-                </Select>
-              </Field>
+                  placeholder="Selecciona una jurisdicción"
+                  icon={<FiMapPin />}
+                  searchable
+                  options={jurisdiccionesHabilitadas.map(j => ({ value: j.name, label: j.name }))}
+                />
+              )}
+            </Field>
+          </StepSection>
+
+          {/* Medio (solo cuando no es inasistencia) */}
+          {mostrarCamposBodycam && (
+            <StepSection
+              id="inc-medio"
+              n={numero('inc-medio')}
+              title="Medio"
+              icon={<FiVideo />}
+              description="Con qué se registró el hecho."
+              done={completo.medio}
+            >
+              <div role="radiogroup" aria-label="Tipo de medio" className="grid grid-cols-4 gap-2 max-sm:grid-cols-2">
+                {tiposMedio.map(t => {
+                  const activo = form.tipoMedio === t.value
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={activo}
+                      onClick={() => cambiarTipoMedio(t.value)}
+                      className={cn(
+                        'flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-[13px] font-semibold transition-colors duration-150',
+                        activo
+                          ? 'border-primary bg-primary/8 text-primary dark:border-accent dark:bg-primary/20 dark:text-accent-light'
+                          : 'border-line bg-surface text-content-2 hover:border-line-hover hover:bg-subtle'
+                      )}
+                    >
+                      <span className="text-xl" aria-hidden>
+                        {t.icon}
+                      </span>
+                      {t.label}
+                    </button>
+                  )
+                })}
+              </div>
 
               {/* Campos de Bodycam */}
               {form.tipoMedio === 'bodycam' && (
-                <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
                     <Field label="N.º de bodycam" required>
                       <Input
                         value={bodycamSearchTerm}
                         onChange={handleBodycamInputChange}
                         onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                        placeholder="Escribe para buscar bodycam (ej: SG004 o FISCA004)"
+                        placeholder="Ej.: SG004 o FISCA004"
                         autoComplete="off"
                       />
                     </Field>
-                    {bodycamLoading && (
-                      <div className={autocompleteLoading}>Buscando...</div>
-                    )}
-                    {bodycamError && (
-                      <div className={autocompleteError}>{bodycamError}</div>
-                    )}
+                    {bodycamLoading && buscando}
+                    {bodycamError && <div className={autocompleteError}>{bodycamError}</div>}
                     {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
                       <div className={autocompleteSuggestions}>
                         {bodycamsHabilitadas.map((bodycam, index) => (
-                          <div
-                            key={bodycam.id || index}
-                            className={autocompleteItem}
-                            onClick={() => handleBodycamSelect(bodycam)}
-                          >
-                            <div className={autocompleteItemCode}>
-                              {bodycam.name || bodycam.id}
-                            </div>
+                          <div key={bodycam.id || index} className={autocompleteItem} onClick={() => handleBodycamSelect(bodycam)}>
+                            <div className={autocompleteItemCode}>{bodycam.name || bodycam.id}</div>
                             {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
-                              <div className={autocompleteItemDetails}>
-                                {bodycam.asignadoA || bodycam.asignado || bodycam.usuario}
-                              </div>
+                              <div className={autocompleteItemDetails}>{bodycam.asignadoA || bodycam.asignado || bodycam.usuario}</div>
                             )}
                           </div>
                         ))}
                       </div>
                     )}
-                    {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading && (
-                      <div className={autocompleteNoResults}>
-                        No se encontraron bodycams
-                      </div>
-                    )}
+                    {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading &&
+                      sinResultados('No se encontraron bodycams')}
                   </div>
 
-                  <Field label="Bodycam asignada a" required className="col-span-2">
+                  <Field label="Bodycam asignada a" required>
                     <Input
                       value={form.bodycamAsignadaA}
                       onChange={e => setField('bodycamAsignadaA', e.target.value)}
-                      placeholder="Se llenará automáticamente al seleccionar DNI"
+                      placeholder="Se completa con el DNI"
                     />
                   </Field>
-                </>
+                </div>
               )}
 
               {/* Campos de Cámara */}
@@ -881,16 +1035,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                       value={bodycamSearchTerm}
                       onChange={handleBodycamInputChange}
                       onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                      placeholder="Escribe para buscar cámara (ej: 104A)"
+                      placeholder="Ej.: 104A"
                       autoComplete="off"
                     />
                   </Field>
-                  {bodycamLoading && (
-                    <div className={autocompleteLoading}>Buscando...</div>
-                  )}
-                  {bodycamError && (
-                    <div className={autocompleteError}>{bodycamError}</div>
-                  )}
+                  {bodycamLoading && buscando}
+                  {bodycamError && <div className={autocompleteError}>{bodycamError}</div>}
                   {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
                     <div className={autocompleteSuggestions}>
                       {bodycamsHabilitadas.map((camera, index) => (
@@ -905,8 +1055,8 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                             setField('bodycamId', camera.id)
                           }}
                         >
-                          <strong>{camera.name}</strong>
-                          {camera.serie && <span className="ml-2 text-muted">Serie: {camera.serie}</span>}
+                          <div className={autocompleteItemCode}>{camera.name}</div>
+                          {camera.serie && <div className={autocompleteItemDetails}>Serie: {camera.serie}</div>}
                         </div>
                       ))}
                     </div>
@@ -922,16 +1072,12 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                       value={bodycamSearchTerm}
                       onChange={handleBodycamInputChange}
                       onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                      placeholder="Escribe para buscar radio (ej: 22110)"
+                      placeholder="Ej.: 22110"
                       autoComplete="off"
                     />
                   </Field>
-                  {bodycamLoading && (
-                    <div className={autocompleteLoading}>Buscando...</div>
-                  )}
-                  {bodycamError && (
-                    <div className={autocompleteError}>{bodycamError}</div>
-                  )}
+                  {bodycamLoading && buscando}
+                  {bodycamError && <div className={autocompleteError}>{bodycamError}</div>}
                   {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
                     <div className={autocompleteSuggestions}>
                       {bodycamsHabilitadas.map((radio, index) => (
@@ -946,139 +1092,201 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                             setField('bodycamId', radio.id)
                           }}
                         >
-                          <strong>{radio.name}</strong>
-                          {radio.serie && <span className="ml-2 text-muted">Serie: {radio.serie}</span>}
+                          <div className={autocompleteItemCode}>{radio.name}</div>
+                          {radio.serie && <div className={autocompleteItemDetails}>Serie: {radio.serie}</div>}
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          </section>
-        )}
 
-        {/* Destinatarios */}
-        <section className="flex flex-col gap-4 border-t border-line pt-5">
-          <h4 className="m-0 text-[13px] font-semibold text-content">Destinatarios</h4>
-          <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-            <Field label="Dirigido a" required>
-              {jobsLoading ? (
-                <span className="block text-sm text-muted">Cargando cargos...</span>
-              ) : jobsError ? (
-                <span className="block text-sm text-danger">{jobsError}</span>
-              ) : (
-                <Select
-                  value={form.dirigidoA}
-                  onChange={e => {
-                    const selectedJob = jobs.find(job => job.name === e.target.value)
-                    if (selectedJob) {
-                      handleJobChange(selectedJob.id, selectedJob.name)
-                    } else {
-                      handleJobChange(null, '')
-                    }
-                  }}
-                >
-                  <option value="">Selecciona</option>
-                  {jobsHabilitados.map(job => (
-                    <option key={job.id} value={job.name}>{job.name}</option>
-                  ))}
-                </Select>
+              {(form.tipoMedio as string) === 'Phone' && (
+                <p className="m-0 flex items-start gap-2 rounded-xl bg-subtle px-3.5 py-2.5 text-[13px] text-content-2">
+                  <FiInfo className="mt-0.5 shrink-0 text-accent" aria-hidden />
+                  Para celular no se necesitan más datos.
+                </p>
               )}
-            </Field>
+            </StepSection>
+          )}
 
-            {form.dirigidoA && (
+          {/* Destinatarios */}
+          <StepSection
+            id="inc-destinatarios"
+            n={numero('inc-destinatarios')}
+            title="Destinatarios"
+            icon={<FiSend />}
+            description="A quién se dirige el informe y quién recibe copia."
+            done={completo.destinatarios}
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Dirigido a" required>
+                {jobsLoading ? (
+                  <span className="flex items-center gap-2 text-sm text-muted">
+                    <FiLoader className="animate-spin" aria-hidden /> Cargando cargos…
+                  </span>
+                ) : jobsError ? (
+                  <span className="block text-sm text-danger">{jobsError}</span>
+                ) : (
+                  <Dropdown
+                    aria-label="Dirigido a"
+                    value={form.dirigidoA}
+                    onChange={nombre => {
+                      const selectedJob = jobs.find(job => job.name === nombre)
+                      if (selectedJob) {
+                        handleJobChange(selectedJob.id, selectedJob.name)
+                      } else {
+                        handleJobChange(null, '')
+                      }
+                    }}
+                    placeholder="Selecciona el cargo"
+                    icon={<FiBriefcase />}
+                    options={jobsHabilitados.map(job => ({ value: job.name, label: job.name }))}
+                  />
+                )}
+              </Field>
+
               <Field label="Persona" required>
                 {leadsLoading ? (
-                  <span className="block text-sm text-muted">Cargando personas...</span>
+                  <span className="flex items-center gap-2 text-sm text-muted">
+                    <FiLoader className="animate-spin" aria-hidden /> Cargando personas…
+                  </span>
                 ) : leadsError ? (
                   <span className="block text-sm text-danger">{leadsError}</span>
                 ) : (
-                  <Select
+                  <Dropdown
+                    aria-label="Persona"
                     value={selectedLeadId}
-                    onChange={e => handleLeadChange(e.target.value)}
-                  >
-                    <option value="">Selecciona</option>
-                    {leadsHabilitados.map(lead => (
-                      <option key={lead.id} value={lead.id}>
-                        {lead.name} {lead.lastname}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={handleLeadChange}
+                    disabled={!form.dirigidoA}
+                    placeholder={form.dirigidoA ? 'Selecciona la persona' : 'Primero elige el cargo'}
+                    emptyText="No hay personas con este cargo"
+                    icon={<FiUser />}
+                    options={leadsHabilitados.map(lead => ({
+                      value: String(lead.id),
+                      label: `${lead.name} ${lead.lastname}`.trim(),
+                      description: lead.job?.name,
+                    }))}
+                  />
                 )}
               </Field>
-            )}
-          </div>
-
-          {/* Con copia (obligatorio: al menos 1 persona) */}
-          {form.conCopia && (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-[13px] font-medium text-content-2">
-                  Con copia a<span className="ml-0.5 text-danger">*</span>
-                </span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={<FiPlus />}
-                  onClick={() => setMostrarSelectorCC(v => !v)}
-                  aria-expanded={mostrarSelectorCC}
-                >
-                  Agregar destinatario
-                </Button>
-              </div>
-              <p className="m-0 text-xs text-muted">Selecciona al menos 1 persona para enviar copia del reporte.</p>
-
-              {(form.cc || []).length === 0 && (
-                <p className="m-0 text-sm text-muted">Aún no hay personas en copia.</p>
-              )}
-              {(form.cc || []).map(nombre => (
-                <div key={nombre} className={ccRow}>
-                  <span className="min-w-0 break-words text-sm text-content">{nombre}</span>
-                  <button
-                    type="button"
-                    aria-label="Quitar destinatario"
-                    title="Quitar destinatario"
-                    className={actionBtnDanger}
-                    onClick={() => setForm(f => ({ ...f, cc: (f.cc || []).filter(p => p !== nombre) }))}
-                  >
-                    <FiTrash2 aria-hidden />
-                  </button>
-                </div>
-              ))}
-
-              {mostrarSelectorCC && (
-                <div className={ccPicker}>
-                  {allLeadsLoading ? (
-                    <span className="block p-3 text-center text-sm text-muted">Cargando personas...</span>
-                  ) : allLeadsError ? (
-                    <span className="block p-3 text-center text-sm text-danger">{allLeadsError}</span>
-                  ) : (
-                    <>
-                      {listaCC.map(lead => {
-                        const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
-                        return (
-                          <label key={lead.id} className={checkboxLabel}>
-                            <input
-                              type="checkbox"
-                              className={checkboxInput}
-                              checked={(form.cc || []).includes(nombreCompleto)}
-                              onChange={() => toggleCC(lead.id)}
-                            />
-                            <span>{nombreCompleto} - {lead.job?.name || 'Sin cargo'}</span>
-                          </label>
-                        )
-                      })}
-                      {listaCC.length === 0 && !allLeadsLoading && (
-                        <span className="block p-3 text-center text-sm text-muted">No hay otras personas disponibles</span>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
             </div>
-          )}
-        </section>
+
+            {/* Con copia (obligatorio: al menos 1 persona) */}
+            {form.conCopia && (
+              <div className="flex flex-col gap-2.5 rounded-xl border border-line bg-subtle p-4 max-sm:p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[13px] font-semibold text-content">
+                      Con copia a<span className="ml-0.5 text-danger">*</span>
+                    </span>
+                    <p className="m-0 text-xs text-muted">Al menos 1 persona recibe copia del reporte.</p>
+                  </div>
+                  <Button
+                    variant={mostrarSelectorCC ? 'ghost' : 'secondary'}
+                    size="sm"
+                    icon={mostrarSelectorCC ? <FiChevronUp /> : <FiUserPlus />}
+                    onClick={() => setMostrarSelectorCC(v => !v)}
+                    aria-expanded={mostrarSelectorCC}
+                  >
+                    {mostrarSelectorCC ? 'Listo' : 'Agregar'}
+                  </Button>
+                </div>
+
+                {(form.cc || []).length === 0 ? (
+                  <p className="m-0 text-sm text-muted">Aún no hay personas en copia.</p>
+                ) : (
+                  <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+                    {(form.cc || []).map(nombre => (
+                      <li
+                        key={nombre}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface py-1 pr-1 pl-1 text-[13px] font-medium text-content ring-1 ring-line"
+                      >
+                        <span
+                          className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                          style={{ background: colorAvatar(nombre) }}
+                          aria-hidden
+                        >
+                          {iniciales(nombre)}
+                        </span>
+                        <span className="truncate">{nombre}</span>
+                        <button
+                          type="button"
+                          aria-label={`Quitar a ${nombre}`}
+                          title="Quitar"
+                          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                          onClick={() => setForm(f => ({ ...f, cc: (f.cc || []).filter(p => p !== nombre) }))}
+                        >
+                          <FiX aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {mostrarSelectorCC && (
+                  <div className="flex flex-col gap-2 rounded-xl border border-line-strong bg-surface p-2">
+                    <div className="relative">
+                      <FiSearch className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
+                      <Input
+                        value={ccFiltro}
+                        onChange={e => setCcFiltro(e.target.value)}
+                        placeholder="Buscar por nombre o cargo"
+                        aria-label="Buscar personas para copia"
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto">
+                      {allLeadsLoading ? (
+                        <span className="flex items-center justify-center gap-2 p-3 text-sm text-muted">
+                          <FiLoader className="animate-spin" aria-hidden /> Cargando personas…
+                        </span>
+                      ) : allLeadsError ? (
+                        <span className="block p-3 text-center text-sm text-danger">{allLeadsError}</span>
+                      ) : listaCCFiltrada.length === 0 ? (
+                        <span className="block p-3 text-center text-sm text-muted">
+                          {filtroCC ? 'Nadie coincide con la búsqueda' : 'No hay otras personas disponibles'}
+                        </span>
+                      ) : (
+                        listaCCFiltrada.map(lead => {
+                          const nombreCompleto = `${lead.name} ${lead.lastname}`.trim()
+                          const marcado = (form.cc || []).includes(nombreCompleto)
+                          return (
+                            <label
+                              key={lead.id}
+                              className={cn(
+                                'flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors duration-150',
+                                marcado ? 'bg-primary/8 dark:bg-primary/20' : 'hover:bg-subtle'
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                className="size-4 shrink-0 cursor-pointer accent-primary"
+                                checked={marcado}
+                                onChange={() => toggleCC(lead.id)}
+                              />
+                              <span
+                                className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                                style={{ background: colorAvatar(nombreCompleto) }}
+                                aria-hidden
+                              >
+                                {iniciales(nombreCompleto)}
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block truncate font-medium text-content">{nombreCompleto}</span>
+                                <span className="block truncate text-xs text-muted">{lead.job?.name || 'Sin cargo'}</span>
+                              </span>
+                            </label>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </StepSection>
+        </StepLayout>
       </form>
     </Modal>
   )

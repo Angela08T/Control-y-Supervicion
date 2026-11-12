@@ -6,10 +6,10 @@ import SuccessModal from '../../components/SuccessModal'
 import ErrorModal from '../../components/ErrorModal'
 import { getLacks, createLack, updateLack, deleteLack } from '../../api/lack'
 import { getModulePermissions } from '../../utils/permissions'
-import { FiPlus } from 'react-icons/fi'
+import { FiLock, FiPlus } from 'react-icons/fi'
 import useNotification from '../../hooks/useNotification'
 import { fitCard, fitPage } from '../../utils/classes'
-import PageHeader from '../../components/UI/PageHeader'
+import ConfirmModal from '../../components/ConfirmModal'
 import SearchInput from '../../components/UI/SearchInput'
 import Button from '../../components/UI/Button'
 import Pagination from '../../components/UI/Pagination'
@@ -63,6 +63,7 @@ export default function LackPage() {
   })
   const [loading, setLoading] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [porConfirmar, setPorConfirmar] = useState<Lack | null>(null) // Falta a habilitar/deshabilitar
 
   // Cargar faltas desde la API con paginación y búsqueda
   useEffect(() => {
@@ -168,14 +169,15 @@ export default function LackPage() {
     }
   }
 
-  async function handleToggleStatus(item: Lack) {
+  /** Pide confirmacion en un modal antes de cambiar el estado */
+  function handleToggleStatus(item: Lack) {
+    setPorConfirmar(item)
+  }
+
+  async function confirmarCambioEstado(item: Lack) {
+    setPorConfirmar(null)
     const isEnabled = !item.deleted_at
     const action = isEnabled ? 'deshabilitar' : 'habilitar'
-    const confirmMessage = isEnabled
-      ? '¿Estás seguro de deshabilitar esta falta? Ya no estará disponible para asignación.'
-      : '¿Estás seguro de habilitar esta falta? Volverá a estar disponible para asignación.'
-
-    if (!confirm(confirmMessage)) return
 
     try {
       // El endpoint DELETE hace toggle automáticamente
@@ -220,23 +222,42 @@ export default function LackPage() {
 
   return (
     <div className={fitPage}>
-      <PageHeader
-        title="Faltas"
-        description="Conductas que se pueden registrar, con su asunto y su contenido de informe."
-        actions={
-          permissions.canCreate && (
-            <Button icon={<FiPlus aria-hidden />} onClick={() => { setEditItem(null); setShowModal(true) }}>
-              Agregar falta
-            </Button>
-          )
-        }
-      >
-        <SearchInput
-          value={filters.search}
-          onChange={(v) => setFilters((f) => ({ ...f, search: v }))}
-          placeholder="Buscar por nombre de la falta"
-        />
-      </PageHeader>
+      {/* Encabezado como el de Incidencias: titulo grande a la izquierda y la accion a la derecha */}
+      <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary/70 uppercase dark:text-accent-light">Normativa · Registro</p>
+          <h2 className="m-0 mt-0.5 text-[30px] leading-tight font-bold tracking-[-0.02em] text-ink dark:text-content">Faltas</h2>
+          <p className="m-0 mt-1 text-sm text-content-2">
+            Conductas que se pueden registrar, con su artículo, asunto y plantilla de informe ·{' '}
+            <strong className="font-semibold text-ink tabular-nums dark:text-content">{loading ? '—' : pagination.total}</strong>{' '}
+            {isSearching ? 'encontradas' : 'registradas'}
+          </p>
+        </div>
+        {permissions.canCreate && (
+          <Button icon={<FiPlus aria-hidden />} onClick={() => { setEditItem(null); setShowModal(true) }}>
+            Agregar falta
+          </Button>
+        )}
+      </header>
+
+      {/* Barra de busqueda */}
+      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-[#d3dceb] bg-surface p-3 shadow-[0_1px_2px_rgba(12,26,75,0.06),0_12px_28px_-14px_rgba(12,26,75,0.28)] dark:border-line">
+        <div className="min-w-[240px] flex-1">
+          <SearchInput
+            value={filters.search}
+            onChange={(v) => setFilters((f) => ({ ...f, search: v }))}
+            placeholder="Buscar por nombre de la falta"
+            loading={loading && isSearching}
+            className="max-w-none!"
+          />
+        </div>
+        {!permissions.canEdit && !permissions.canDelete && (
+          <span className="inline-flex items-center gap-2 rounded-lg bg-subtle px-3 py-1.5 text-[13px] text-content-2">
+            <FiLock className="shrink-0 text-muted" aria-hidden />
+            Solo lectura
+          </span>
+        )}
+      </div>
 
       <div className={fitCard}>
         {loading ? (
@@ -275,6 +296,20 @@ export default function LackPage() {
           />
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!porConfirmar}
+        type={porConfirmar && !porConfirmar.deleted_at ? 'danger' : 'info'}
+        title={porConfirmar && !porConfirmar.deleted_at ? `¿Deshabilitar «${porConfirmar.name}»?` : `¿Habilitar «${porConfirmar?.name ?? ''}»?`}
+        message={
+          porConfirmar && !porConfirmar.deleted_at
+            ? 'Ya no se podrá elegir al registrar incidencias. Las incidencias ya registradas no cambian.'
+            : 'Volverá a estar disponible al registrar incidencias.'
+        }
+        confirmText={porConfirmar && !porConfirmar.deleted_at ? 'Deshabilitar' : 'Habilitar'}
+        onConfirm={() => porConfirmar && confirmarCambioEstado(porConfirmar)}
+        onCancel={() => setPorConfirmar(null)}
+      />
 
       {showModal && (
         <ModalLack

@@ -55,8 +55,8 @@ export interface ContourMapProps {
  */
 export default function ContourMap({ className, tone = 'light', align = 'xMidYMid' }: ContourMapProps) {
   const dark = tone === 'dark'
-  const minor = dark ? 'rgba(191,219,254,0.17)' : 'rgba(30,58,138,0.085)'
-  const major = dark ? 'rgba(191,219,254,0.32)' : 'rgba(30,58,138,0.16)'
+  const minor = dark ? 'rgba(191,219,254,0.17)' : 'var(--contour-minor)'
+  const major = dark ? 'rgba(191,219,254,0.32)' : 'var(--contour-major)'
 
   return (
     <div aria-hidden className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)}>

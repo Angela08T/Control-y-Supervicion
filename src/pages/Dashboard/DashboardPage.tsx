@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useAppSelector } from '../../store/hooks'
 import { ROLES } from '../../utils/permissions'
-import { FiCalendar, FiAlertTriangle, FiMapPin } from 'react-icons/fi'
+import { TbAlertTriangle, TbFileText, TbMapPin, TbMoon, TbSunHigh, TbSunset2 } from 'react-icons/tb'
+import { canSee, type NavKey } from '../../utils/navigation'
 import { loadIncidencias, getPDFDownloadStats } from '../../utils/storage'
 import { getReports } from '../../api/report'
 import { getFieldSupervisionStats, getAllOffenders, getDashboardTrends, getDashboardGeneral } from '../../api/statistics'
@@ -9,12 +10,15 @@ import useSubjects from '../../hooks/Subject/useSubjects'
 import type { DashboardGeneral, DashboardTrends, Incidencia, Offender, StoredIncidencia } from '@/types'
 import StatCard from './components/StatCard'
 import WelcomeCard from './components/WelcomeCard'
-import CircularProgress from './components/CircularProgress'
-import LineChart from './components/LineChart'
-import RadarChart from './components/RadarChart'
+import EvolucionChart from './components/EvolucionChart'
+import TotalHero from './components/TotalHero'
+import ZonaRanking from './components/ZonaRanking'
+import AsuntoRanking from './components/AsuntoRanking'
+import { nombreCorto } from './asuntos'
 import PersonalTable from './components/PersonalTable'
 import TurnoList from './components/TurnoList'
 import DateRangeModal from './components/DateRangeModal'
+import PeriodFilter, { etiquetaPeriodo, periodoDesde, periodoPersonalizado, toISODate, type Periodo } from './components/PeriodFilter'
 
 /** Incidencia en cualquiera de sus formas: legado de localStorage o fila de la API. */
 type IncidenciaItem = StoredIncidencia | Incidencia
@@ -33,15 +37,29 @@ interface FieldSupervisionResponse {
   }
 }
 
+/**
+ * Fecha de una incidencia en formato AAAA-MM-DD. La API la entrega como DD/MM/AAAA y las guardadas
+ * localmente como AAAA-MM-DD (ISO); sin normalizar, el filtro de periodo descartaba todas las de la API.
+ */
+function fechaISO(valor?: string | null): string {
+  const v = String(valor || '').trim()
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(v)
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`
+  return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : ''
+}
+
 export default function DashboardPage() {
   // Obtener el rol del usuario desde Redux
   const userRole = useAppSelector(state => state.auth.role)
   const isAdmin = userRole === ROLES.ADMIN
+  const permissions = useAppSelector(state => state.auth.permissions)
+  // Destino de la flecha de cada metrica, solo si el rol puede ver esa pagina
+  const linkTo = (key: NavKey) => (canSee(permissions, key) ? `/dashboard/${userRole}/${key}` : undefined)
 
   const [incidencias, setIncidencias] = useState<IncidenciaItem[]>(loadIncidencias())
   const [showDateModal, setShowDateModal] = useState(false)
-  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null })
-  const [chartPeriod, setChartPeriod] = useState('30D') // Período para los gráficos (7D, 15D, 30D)
+  // Un solo periodo para toda la pagina (metricas, turnos y graficos); por defecto los ultimos 30 dias
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoDesde('30D'))
   const [serenosActivos, setSerenosActivos] = useState(0)
   const [pdfStats, setPdfStats] = useState(getPDFDownloadStats())
   const [supervisionData, setSupervisionData] = useState({
@@ -118,18 +136,8 @@ export default function DashboardPage() {
   // Cargar datos de tendencias y estadísticas generales cuando cambia el rango de fechas o el período de gráficos
   useEffect(() => {
     const fetchDashboardStats = async () => {
-      let startDate: string, endDate: string
-
-      if (dateRange.start && dateRange.end) {
-        // Usar rango personalizado
-        startDate = dateRange.start.toISOString().split('T')[0]
-        endDate = dateRange.end.toISOString().split('T')[0]
-      } else {
-        // Usar período seleccionado para gráficos (7D, 15D, 30D)
-        endDate = new Date().toISOString().split('T')[0]
-        const daysToSubtract = chartPeriod === '7D' ? 7 : chartPeriod === '15D' ? 15 : 30
-        startDate = new Date(Date.now() - daysToSubtract * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      }
+      const startDate = toISODate(periodo.start)
+      const endDate = toISODate(periodo.end)
 
       // Obtener tendencias (gráficos)
       try {
@@ -153,21 +161,17 @@ export default function DashboardPage() {
     }
 
     fetchDashboardStats()
-  }, [dateRange, chartPeriod])
+  }, [periodo])
 
   // Calcular estadísticas
   const stats = useMemo(() => {
-    let filtered = incidencias
-
-    // Filtrar por rango de fechas si está activo
-    const rangeStart = dateRange.start
-    const rangeEnd = dateRange.end
-    if (rangeStart && rangeEnd) {
-      filtered = incidencias.filter(inc => {
-        const fecha = new Date(inc.fechaIncidente)
-        return fecha >= rangeStart && fecha <= rangeEnd
-      })
-    }
+    // Solo las incidencias del periodo elegido (se compara la fecha YYYY-MM-DD para no depender de la zona horaria)
+    const desde = toISODate(periodo.start)
+    const hasta = toISODate(periodo.end)
+    const filtered = incidencias.filter(inc => {
+      const fecha = fechaISO(inc.fechaIncidente)
+      return fecha !== '' && fecha >= desde && fecha <= hasta
+    })
 
     // Total de incidencias
     const totalIncidencias = filtered.length
@@ -236,7 +240,6 @@ export default function DashboardPage() {
 
     // Evolución por mes - Usando datos de la API de tendencias cuando estén disponibles
     const incidenciasPorMes: Record<string, Record<string, number>> = {}
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
     // Obtener lista de asuntos desde la API (o fallback a lista hardcodeada)
     const nuevosAsuntos = subjects && subjects.length > 0
@@ -287,26 +290,22 @@ export default function DashboardPage() {
 
       Object.assign(incidenciasPorMes, fechasMap)
     } else {
-      // Fallback: usar cálculo local con incidencias filtradas
-      meses.forEach((mes, idx) => {
-        incidenciasPorMes[mes] = {}
+      // Fallback: contar por dia dentro del periodo, con las incidencias locales
+      const etiquetaDia = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`
+      for (const d = new Date(periodo.start); d <= periodo.end; d.setDate(d.getDate() + 1)) {
+        const label = etiquetaDia(d)
+        incidenciasPorMes[label] = {}
         nuevosAsuntos.forEach(asunto => {
-          incidenciasPorMes[mes][asunto] = 0
+          incidenciasPorMes[label][asunto] = 0
         })
-      })
+      }
 
       filtered.forEach(inc => {
-        if (inc.fechaIncidente) {
-          const fecha = new Date(inc.fechaIncidente)
-          const mes = meses[fecha.getMonth()]
-          if (incidenciasPorMes[mes]) {
-            // Si el asunto existe en el mes, incrementar, sino inicializar en 1
-            if (incidenciasPorMes[mes][inc.asunto] !== undefined) {
-              incidenciasPorMes[mes][inc.asunto]++
-            } else {
-              incidenciasPorMes[mes][inc.asunto] = 1
-            }
-          }
+        const [y, m, dd] = fechaISO(inc.fechaIncidente).split('-').map(Number)
+        if (!y || !m || !dd) return
+        const label = etiquetaDia(new Date(y, m - 1, dd))
+        if (incidenciasPorMes[label]) {
+          incidenciasPorMes[label][inc.asunto] = (incidenciasPorMes[label][inc.asunto] || 0) + 1
         }
       })
     }
@@ -371,7 +370,41 @@ export default function DashboardPage() {
       }
     })
 
+    // Ranking de jurisdicciones del periodo (top 3), con las incidencias cargadas
+    const porZona: Record<string, number> = {}
+    filtered.forEach(inc => {
+      if (inc.jurisdiccion) porZona[inc.jurisdiccion] = (porZona[inc.jurisdiccion] || 0) + 1
+    })
+    const zonasRanking = Object.entries(porZona)
+      .map(([nombre, total]) => ({ nombre, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 3)
+
+    // Total por dia (suma de todos los asuntos), para la tendencia y el grafico de evolucion
+    const totalesPorDia = Object.entries(incidenciasPorMes).map(([label, porAsunto]) => ({
+      label,
+      total: Object.values(porAsunto).reduce((a, b) => a + b, 0)
+    }))
+
+    // Turno con mas incidencias
+    const [turnoTop, turnoTopTotal] = Object.entries(incidenciasPorTurno).reduce(
+      (best, cur) => (cur[1] > best[1] ? cur : best),
+      ['', 0] as [string, number]
+    )
+    const totalTurnos = Object.values(incidenciasPorTurno).reduce((a, b) => a + b, 0)
+
+    // La tarjeta "Zona con mas incidencias" usa el mismo ranking que la lista, para que nunca se contradigan
+    if (zonasRanking.length > 0) {
+      zonaConMas = zonasRanking[0].nombre
+      totalZona = zonasRanking[0].total
+    }
+
     return {
+      zonasRanking,
+      totalesPorDia,
+      turnoTop,
+      turnoTopTotal,
+      totalTurnos,
       totalIncidencias,
       cambioIncidencias,
       cambioSerenos,
@@ -385,86 +418,87 @@ export default function DashboardPage() {
       incidenciasPorAsunto,
       faltasPorAsunto
     }
-  }, [incidencias, dateRange, serenosActivos, subjects, trendsData, generalStats])
+  }, [incidencias, periodo, serenosActivos, subjects, trendsData, generalStats])
 
+  // "Limpiar filtro" en el selector personalizado vuelve a los ultimos 30 dias
   const handleDateRangeChange = (start: Date | null, end: Date | null) => {
-    setDateRange({ start, end })
+    setPeriodo(start && end ? periodoPersonalizado(start, end) : periodoDesde('30D'))
     setShowDateModal(false)
   }
 
+  const rangoTexto = etiquetaPeriodo(periodo)
+
   return (
     <div className="flex flex-col gap-5">
-      {/* Encabezado: saludo, fecha y frase corta */}
-      <WelcomeCard
-        message="Revisa el control de las incidencias y el desempeño del equipo"
-      />
+      {/* Titulo y saludo; el filtro de periodo afecta a toda la pagina */}
+      <WelcomeCard>
+        <PeriodFilter variant="inline" periodo={periodo} onChange={setPeriodo} onCustom={() => setShowDateModal(true)} />
+      </WelcomeCard>
 
-      {/* Métricas */}
-      <div className="grid grid-cols-3 gap-4 max-[1100px]:grid-cols-2 max-[600px]:grid-cols-1">
-        <StatCard
-          title="Total de incidencias"
-          value={stats.totalIncidencias}
-          change={stats.cambioIncidencias}
-          icon={<FiCalendar />}
-          color="#1e3a8a"
-        />
+      {/* Mosaico: total grande con su tendencia + cuatro metricas */}
+      <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-5 max-[1100px]:grid-cols-2 max-[600px]:grid-cols-1">
+        <div className="row-span-2 max-[1100px]:col-span-2 max-[1100px]:row-span-1 max-[600px]:col-span-1">
+          <TotalHero
+            total={stats.totalIncidencias}
+            change={stats.cambioIncidencias}
+            periodo={rangoTexto}
+            serie={stats.totalesPorDia.map(d => d.total)}
+          />
+        </div>
 
         <StatCard
-          title="Incidencias críticas"
+          title="Asunto más frecuente"
           value={stats.totalCriticas}
-          subtitle={stats.asuntoMasFrecuente}
-          change="+12%"
-          icon={<FiAlertTriangle />}
-          color="#c71522"
+          subtitle={nombreCorto(stats.asuntoMasFrecuente)}
+          icon={<TbAlertTriangle />}
+          color="#e1303c"
+          to={linkTo('incidencias')}
         />
 
         <StatCard
           title="Zona con más incidencias"
           value={stats.totalZona}
           subtitle={stats.zonaConMas}
-          change="+8%"
-          icon={<FiMapPin />}
-          color="#2563eb"
+          icon={<TbMapPin />}
+          color="#2f6fe0"
+          to={linkTo('incidencias')}
+        />
+
+        <StatCard
+          title="Reportes con PDF generado"
+          value={pdfStats.percentage}
+          suffix="%"
+          icon={<TbFileText />}
+          color="#6aa531"
+          to={linkTo('incidencias')}
+        />
+
+        <StatCard
+          title="Turno con más incidencias"
+          value={stats.turnoTopTotal > 0 ? stats.turnoTop : 'Sin datos'}
+          subtitle={
+            stats.turnoTopTotal > 0
+              ? `${stats.turnoTopTotal} de ${stats.totalTurnos} (${Math.round((stats.turnoTopTotal / stats.totalTurnos) * 100)}%)`
+              : undefined
+          }
+          icon={stats.turnoTop === 'Noche' ? <TbMoon /> : stats.turnoTop === 'Tarde' ? <TbSunset2 /> : <TbSunHigh />}
+          color="#3b82f6"
+          to={linkTo('estadisticas')}
         />
       </div>
 
-      {/* Cumplimiento y turnos */}
-      <div className="grid grid-cols-2 items-stretch gap-4 max-[700px]:grid-cols-1">
-        <CircularProgress
-          title="Cumplimiento de reportes"
-          percentage={pdfStats.percentage}
-          subtitle="de reportes realizados"
-        />
-
-        <TurnoList
-          data={stats.incidenciasPorTurno}
-        />
+      {/* Evolucion + asuntos: misma fila, mismo alto */}
+      <div className="grid grid-cols-[1.9fr_1fr] items-stretch gap-5 max-[1100px]:grid-cols-1">
+        <div className="min-w-0">
+          <EvolucionChart puntos={stats.totalesPorDia} />
+        </div>
+        <AsuntoRanking data={stats.incidenciasPorAsunto} subtitle={rangoTexto} />
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-2 items-stretch gap-4 max-[1100px]:grid-cols-1">
-        <LineChart
-          title="Evolución de incidencias"
-          subtitle="Últimos días registrados"
-          data={stats.incidenciasPorMes}
-          incidencias={incidencias}
-          faltasPorAsunto={stats.faltasPorAsunto}
-          onOpenDateModal={() => setShowDateModal(true)}
-          defaultPeriod={chartPeriod}
-          onPeriodChange={setChartPeriod}
-          onDateRangeChange={handleDateRangeChange}
-        />
-
-        <RadarChart
-          title="Análisis de incidencias asignadas"
-          subtitle="Distribución de incidencias por tipo de asunto"
-          data={stats.incidenciasPorMes}
-          incidencias={incidencias}
-          faltasPorAsunto={stats.faltasPorAsunto}
-          defaultPeriod={chartPeriod}
-          onPeriodChange={setChartPeriod}
-          onDateRangeChange={handleDateRangeChange}
-        />
+      {/* Turnos + zonas */}
+      <div className="grid grid-cols-2 items-stretch gap-5 max-[900px]:grid-cols-1">
+        <TurnoList data={stats.incidenciasPorTurno} subtitle={rangoTexto} />
+        <ZonaRanking zonas={stats.zonasRanking} subtitle={`Top 3 · ${rangoTexto}`} />
       </div>
 
       {/* Tabla de centinelas (solo para ADMIN) */}
@@ -475,6 +509,8 @@ export default function DashboardPage() {
         <DateRangeModal
           onClose={() => setShowDateModal(false)}
           onApply={handleDateRangeChange}
+          initialStart={periodo.preset === 'custom' ? periodo.start : null}
+          initialEnd={periodo.preset === 'custom' ? periodo.end : null}
         />
       )}
     </div>
