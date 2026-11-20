@@ -1,4 +1,6 @@
 import React from 'react'
+import type { ReportWithEvidences } from '../types/report.types'
+import { firmanteInforme } from './FirmaInforme'
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
 
 // Registrar fuente (opcional - @react-pdf/renderer viene con Helvetica por defecto)
@@ -194,7 +196,7 @@ const styles = StyleSheet.create({
 
 /** Imagen de evidencia (base64) con su anexo opcional */
 interface ImagenInforme {
-  base64: string
+  base64: string | Blob
   anexo?: string | null
 }
 
@@ -264,11 +266,8 @@ export interface PDFLinksProps {
   links?: string | null
 }
 
-export interface PDFSignatureProps {
-  nombre?: string | null
-}
-
 export interface InformePDFDocumentProps {
+  approvedReport?: ReportWithEvidences
   formData: InformeFormData
   incidencia: IncidenciaInforme
   inasistenciasHistoricas?: InasistenciaHistorica[]
@@ -506,10 +505,60 @@ const PDFLinks = ({ links }: PDFLinksProps) => {
 }
 
 // Componente para la firma
-const PDFSignature = ({ nombre }: PDFSignatureProps) => (
-  <View style={styles.signatureSection}>
+function ApprovedReportContent({ report, fecha }: { report: ReportWithEvidences; fecha?: string | null }) {
+  const bold = { fontWeight: 'bold' } as const
+  const cc = report.header?.cc || []
+  const to = report.header?.to
+  const subject = [report.subject?.name, report.lack?.name].filter(Boolean).join(', ')
+  const person = report.offender
+  const message = report.message?.trim() || ''
+  const lines = message.split(/\r?\n/)
+  function row(label: string, name?: string, job?: string | null, emphasized = true) {
+    return (
+      <View style={styles.infoRow} wrap={false}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <View style={styles.infoValue}>
+          <Text style={emphasized ? bold : undefined}>{name?.toUpperCase()}</Text>
+          {job && <Text>{job.toUpperCase()}</Text>}
+        </View>
+      </View>
+    )
+  }
+  return (
+    <View>
+      <Text style={{ ...bold, fontSize: 14, textAlign: 'center', textDecoration: 'underline', marginVertical: 20 }}>
+        INFORME N°{report.code}-CS-SS-GOP-MDSJL
+      </Text>
+      {row('A:', to?.name, to?.job)}
+      {cc.map((recipient, i) => <React.Fragment key={i}>{row(i === 0 ? 'CC:' : '', recipient.name, recipient.job)}</React.Fragment>)}
+      {row('DE:', firmanteInforme.nombre, firmanteInforme.cargo)}
+      {row('ASUNTO:', subject)}
+      {row('FECHA:', 'San Juan de Lurigancho, ' + fecha, null, false)}
+      <View style={{ borderBottomWidth: 1, marginBottom: 16 }} />
+      {lines.map((line, i) => {
+        if (!line.trim()) return <View key={i} style={{ height: 6 }} />
+        const label = line.match(/^(\s*(?:Nombres y apellidos|DNI)\s*:)(.*)$/i)
+        const heading = /^(?:[IVX]+[.)]\s*)?IDENTIFICACI[ÓO]N DEL SERENO\s*:?$/i.test(line.trim())
+        return <Text key={i} style={{ textAlign: 'justify', marginBottom: 3, fontWeight: heading ? 'bold' : 'normal' }}>
+          {label ? <><Text style={bold}>{label[1]}</Text>{label[2]}</> : line}
+        </Text>
+      })}
+      {person && !/identificaci[óo]n del sereno/i.test(message) && (
+        <View wrap={false} style={{ marginTop: 14 }}>
+          <Text style={bold}>IDENTIFICACIÓN DEL SERENO</Text>
+          <Text><Text style={bold}>Nombres y apellidos: </Text>{[person.name, person.lastname].filter(Boolean).join(' ')}</Text>
+          <Text><Text style={bold}>DNI: </Text>{person.dni}</Text>
+        </View>
+      )}
+    </View>
+  )
+}
+
+const PDFSignature = () => (
+  <View style={styles.signatureSection} wrap={false}>
     <View style={styles.signatureLine} />
-    <Text style={styles.signatureName}>{nombre || '[NOMBRE DEL FIRMANTE]'}</Text>
+    <Text style={styles.signatureName}>{firmanteInforme.nombre}</Text>
+    <Text style={{ fontSize: 10 }}>{firmanteInforme.cargo}</Text>
   </View>
 )
 
@@ -525,6 +574,7 @@ const PDFFooter = () => (
 const InformePDFDocument = ({
   formData,
   incidencia,
+  approvedReport,
   inasistenciasHistoricas = [],
   logoBase64,
   formatearFecha,
@@ -540,8 +590,12 @@ const InformePDFDocument = ({
     <Document>
       <Page size="A4" style={styles.page}>
         <PDFHeader logoBase64={logoBase64} />
-        <PDFInfoSection formData={formData} incidencia={incidencia} />
-        <PDFBody formData={formData} incidencia={incidencia} />
+        {approvedReport
+          ? <ApprovedReportContent report={approvedReport} fecha={formData.fecha} />
+          : <>
+              <PDFInfoSection formData={formData} incidencia={incidencia} />
+              <PDFBody formData={formData} incidencia={incidencia} />
+            </>}
 
         {isAbsence && inasistenciasHistoricas.length > 0 && (
           <PDFHistorialTable
@@ -550,16 +604,14 @@ const InformePDFDocument = ({
           />
         )}
 
-        {isAbsence && <PDFSignature nombre={formData.supervisor} />}
-
-        {!isAbsence && (
+        {(!isAbsence || approvedReport) && (
           <>
             <PDFImages imagenes={formData.imagenes} />
             <PDFLinks links={formData.links} />
-            <PDFSignature nombre={formData.supervisor} />
           </>
         )}
 
+        <PDFSignature />
         <PDFFooter />
       </Page>
     </Document>

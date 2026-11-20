@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
+import ModalInformeAprobado from '../../components/ModalInformeAprobado'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import AlertModal, { type AlertModalType } from '../../components/AlertModal'
 import ConfirmModal, { type ConfirmModalType } from '../../components/ConfirmModal'
@@ -165,6 +166,7 @@ export default function IncidenciasPage() {
 
   const [incidencias, setIncidencias] = useState<Incidencia[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [approvedReportId, setApprovedReportId] = useState<ID | null>(null)
   const [showPDFModal, setShowPDFModal] = useState(false)
   const [editItem, setEditItem] = useState<Incidencia | null>(null)
   const [filters, setFilters] = useState<IncidenciasFilters>(defaultFilters)
@@ -572,13 +574,8 @@ export default function IncidenciasPage() {
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false })
         try {
-          const response: ActionResponse = await validateReport(reportId, true)
-          setAlertModal({
-            isOpen: true,
-            title: '¡Éxito!',
-            message: response.data?.message || response.message || 'Incidencia aprobada exitosamente',
-            type: 'success'
-          })
+          await validateReport(reportId, true)
+          setApprovedReportId(reportId)
           setRefreshTrigger(prev => prev + 1)
         } catch (error) {
           setAlertModal({
@@ -623,6 +620,10 @@ export default function IncidenciasPage() {
   }
 
   function handleEdit(item: Incidencia) {
+    if (item.status === 'approved') {
+      setApprovedReportId(item.id)
+      return
+    }
     setEditItem(item)
     setShowPDFModal(true)
   }
@@ -1120,6 +1121,10 @@ export default function IncidenciasPage() {
           onClose={() => { setShowModal(false); setEditItem(null) }}
           onSave={handleCreate}
         />
+      )}
+
+      {approvedReportId && (
+        <ModalInformeAprobado key={approvedReportId} id={approvedReportId} onClose={() => setApprovedReportId(null)} />
       )}
 
       {showPDFModal && editItem && (
