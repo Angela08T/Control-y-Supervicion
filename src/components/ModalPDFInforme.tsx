@@ -6,6 +6,7 @@ import { trackPDFDownload } from '../utils/storage'
 import { getReportWithEvidences, updateReportWithEvidences, getEvidenceImageUrl, deleteEvidence } from '../api/report'
 import { getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
+import FirmaInforme from './FirmaInforme'
 import { toast } from '../utils/toast'
 import { cn } from '../utils/classes'
 import Modal from '@/components/UI/Modal'
@@ -1385,6 +1386,7 @@ Se adjuntan las evidencias:`
             </>
           )}
 
+          <FirmaInforme />
           <p className="m-0 flex items-center justify-center gap-1.5 px-2 pt-1 pb-2 text-center text-xs leading-relaxed text-muted">
             <FiMapPin className="shrink-0" aria-hidden />
             Sede CECOM de la Subgerencia de Serenazgo · Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427

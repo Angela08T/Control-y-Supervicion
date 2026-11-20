@@ -7,6 +7,7 @@ import { getSubjects } from '../api/subject'
 import { getLacks } from '../api/lack'
 import { createAbsenceReport, getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
+import FirmaInforme from './FirmaInforme'
 import { toast } from '../utils/toast'
 import type { CreateAbsenceDto, ID, Mode } from '@/types'
 import Modal from '@/components/UI/Modal'
@@ -908,6 +909,8 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                     </table>
                   </div>
                 )}
+
+                <FirmaInforme />
 
                 {/* Mensaje de éxito si existe */}
                 {reportResult && (
