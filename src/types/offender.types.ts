@@ -46,6 +46,7 @@ export interface OffenderDetail extends Omit<Offender, 'id'> {
 
 /** `data` of GET /offender/dni/:dni (Gestionate lookup, verifyPersonal). */
 export interface OffenderDniLookup {
+  service_start?: string | null;
   gestionate_id: number;
   name: string;
   lastname: string;

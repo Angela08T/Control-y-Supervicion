@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import { serviceAssignment } from '../../utils/serviceAssignment'
+import React, { useEffect, useState } from 'react'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
@@ -25,19 +26,16 @@ import { FiDownload, FiFilter, FiPlus, FiX } from 'react-icons/fi'
 import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
 import type {
   ISODateString,
-  Evidence,
   ID,
   Incidencia,
   IncidenciaForm,
   IncidenciaStatus,
   Lead,
   NamedRef,
-  Offender,
   PaginationMeta,
   Process,
   Report,
   ReportFilters,
-  ReportHeader,
   Shift,
   StoredIncidencia,
   TablePagination,
@@ -84,37 +82,6 @@ interface ConfirmModalState {
   onConfirm: (() => void) | null;
 }
 
-/** Reporte tal como llega por WebSocket (campos parciales). */
-interface ReportSocketPayload {
-  id?: ID;
-  report_id?: ID;
-  reportId?: ID;
-  code?: string | null;
-  status?: string;
-  state?: string;
-  process?: string | null;
-  offender?: Partial<Offender> | null;
-  subject?: { name: string } | null;
-  lack?: { name: string } | null;
-  bodycam?: { name: string } | null;
-  bodycam_user?: string | null;
-  camera_number?: string | null;
-  date?: ISODateString;
-  shift?: string | null;
-  jurisdiction?: NamedRef | null;
-  user?: { name: string; lastname: string } | null;
-  header?: ReportHeader | null;
-  address?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  evidences?: Evidence[];
-  message?: string | null;
-  link?: string | null;
-  created_at?: ISODateString;
-  updated_at?: ISODateString;
-  deleted_at?: ISODateString | null;
-}
-
 /** Reporte de búsqueda: el lack puede traer fechas de auditoría. */
 interface SearchReportRecord extends Report {
   lack: NamedRef & { created_at?: ISODateString; updated_at?: ISODateString };
@@ -130,6 +97,7 @@ const STATUS_OPTIONS: { value: string; label: string; dot?: string }[] = [
 ]
 
 /** Clase de los selects de filtros avanzados (`!w-auto` porque el kit Select fuerza w-full) */
+const SENT_STATUS_OPTIONS = STATUS_OPTIONS.filter(option => option.value !== 'null')
 const advancedSelect = 'h-9 !w-auto max-w-[220px]'
 
 /** Convierte incidencias de la API al formato legado de localStorage (utils/storage.ts). */
@@ -151,6 +119,7 @@ function errorMessageOf(error: unknown, fallback: string): string {
 export default function IncidenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'incidencias')
+  const statusOptions = userRole === 'validator' ? SENT_STATUS_OPTIONS : STATUS_OPTIONS
 
   /** Valores iniciales de los filtros; "Limpiar filtros" vuelve a ellos */
   const defaultFilters: IncidenciasFilters = {
@@ -210,138 +179,25 @@ export default function IncidenciasPage() {
     }).catch(() => {})
   }, [])
 
-  // Función para actualizar estado de un reporte específico
-  const updateReportStatus = useCallback(async (reportId: ID, updates: Partial<Incidencia>, fullData: ReportSocketPayload | null = null): Promise<void> => {
-    // Actualizar en la lista principal
-    setIncidencias(prev => {
-      const found = prev.find(i => i.id === reportId)
-
-      // Si el reporte ya está en la lista, actualizarlo
-      if (found) {
-        return prev.map(inc =>
-          inc.id === reportId ? { ...inc, ...updates } : inc
-        )
-      }
-
-      // Si NO está en la lista pero tenemos los datos completos del socket, agregarlo
-      if (fullData && fullData.offender && fullData.subject && fullData.lack) {
-        const newReport = {
-          id: fullData.id,
-          code: fullData.code || null,
-          dni: fullData.offender?.dni || '',
-          asunto: fullData.subject?.name || '',
-          falta: fullData.lack?.name || '',
-          tipoInasistencia: fullData.subject?.name === 'Inasistencia' ? fullData.lack?.name : null,
-          medio: fullData.bodycam ? 'Bodycam' : (fullData.camera_number ? 'Cámara' : 'Otro'),
-          tipoMedio: fullData.bodycam ? 'bodycam' : (fullData.camera_number ? 'camara' : 'bodycam'),
-          numeroCamara: fullData.camera_number || '',
-          fechaIncidente: fullData.date ? fullData.date.substring(0, 10).split('-').reverse().join('/') : '',
-          horaIncidente: fullData.date ? fullData.date.substring(11, 16) : '',
-          turno: fullData.offender?.shift || fullData.shift || '',
-          cargo: fullData.offender?.job || '',
-          regLab: fullData.offender?.regime || '',
-          jurisdiccion: fullData.jurisdiction?.name || '',
-          jurisdictionId: fullData.jurisdiction?.id || null,
-          bodycamNumber: fullData.bodycam?.name || '',
-          bodycamAsignadaA: fullData.bodycam_user || '',
-          encargadoBodycam: fullData.user ? `${fullData.user.name} ${fullData.user.lastname}`.trim() : '',
-          dirigidoA: fullData.header?.to?.job || '',
-          destinatario: fullData.header?.to?.name || '',
-          cargoDestinatario: fullData.header?.to?.job || '',
-          cc: (fullData.header?.cc || []).map(c => c.name),
-          ubicacion: {
-            address: fullData.address || '',
-            coordinates: [fullData.latitude || null, fullData.longitude || null]
-          },
-          nombreCompleto: fullData.offender ? `${fullData.offender.name} ${fullData.offender.lastname}`.trim() : '',
-          status: fullData.process ? fullData.process.toLowerCase() : 'draft',
-          evidences: fullData.evidences || [],
-          message: fullData.message || '',
-          link: fullData.link || '',
-          createdAt: fullData.created_at || fullData.date,
-          updatedAt: fullData.updated_at || fullData.date,
-          deletedAt: fullData.deleted_at || null
-        } as Incidencia
-
-        // Agregar al inicio de la lista
-        return [newReport, ...prev]
-      }
-
-      return prev
-    })
-
-    // Actualizar en searchResult si existe
-    setSearchResult(prev => {
-      if (!prev || prev.length === 0) return prev
-
-      const found = prev.find(i => i.id === reportId)
-      if (found) {
-        return prev.map(inc =>
-          inc.id === reportId ? { ...inc, ...updates } : inc
-        )
-      }
-
-      return prev
-    })
-  }, [])
-
-  // WebSocket: Escuchar cambios de estado de reportes en tiempo real
   useEffect(() => {
-    // Inicializar conexión WebSocket
-    initSocket()
-
-    // Suscribirse al evento de cambio de estado
-    const unsubscribeStatusChanged = onReportStatusChanged<ReportSocketPayload>((data) => {
-      if (!data) return
-
-      const reportId = data.id || data.report_id || data.reportId
-      const newStatus = data.status || data.process || data.state
-
-      if (reportId && newStatus) {
-        updateReportStatus(
-          reportId,
-          {
-            status: newStatus.toLowerCase() as IncidenciaStatus,
-            ...(data.code ? { code: data.code } : {})
-          },
-          data
-        )
-      }
-    })
-
-    // Suscribirse al evento de validación (APPROVED/REJECTED)
-    const unsubscribeStatusValidate = onReportStatusValidate<ReportSocketPayload>((data) => {
-      if (!data) return
-
-      const reportId = data.id || data.report_id || data.reportId
-      const newStatus = data.status || data.process || data.state
-
-      if (reportId) {
-        const updates: Partial<Incidencia> = {}
-
-        if (newStatus) {
-          updates.status = newStatus.toLowerCase() as IncidenciaStatus
-        }
-        if (data.code) {
-          updates.code = data.code
-        }
-
-        if (Object.keys(updates).length > 0) {
-          updateReportStatus(reportId, updates, data)
-        }
-      }
-    })
-
-    // Cleanup: desuscribirse al desmontar
+    const refresh = () => setRefreshTrigger(value => value + 1)
+    const socket = initSocket()
+    socket?.on('connect', refresh)
+    const offSent = onReportStatusChanged(refresh)
+    const offValidated = onReportStatusValidate(refresh)
+    window.addEventListener('focus', refresh)
     return () => {
-      unsubscribeStatusChanged()
-      unsubscribeStatusValidate()
+      offSent()
+      offValidated()
+      socket?.off('connect', refresh)
+      window.removeEventListener('focus', refresh)
       disconnectSocket()
     }
-  }, [updateReportStatus])
+  }, [])
 
   // Cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
+    let active = true
     async function fetchIncidencias() {
       setLoading(true)
       try {
@@ -357,19 +213,20 @@ export default function IncidenciasPage() {
         console.log('🔍 Filtros enviados al backend:', apiFilters)
 
         const result = await getReports(currentPage, itemsPerPage, apiFilters)
+        if (!active) return
         setIncidencias(result.data)
         setPagination(result.pagination)
         saveIncidencias(toStoredList(result.data)) // opcional: respaldo local
       } catch (error) {
-        const localData = loadIncidencias()
-        setIncidencias(fromStoredList(localData))
+        if (active) setIncidencias(userRole === 'validator' ? [] : fromStoredList(loadIncidencias()))
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
+    return () => { active = false }
+  }, [userRole, currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
 
   // Cantidad por estado para los chips de la barra (respeta los demas filtros)
   const [conteos, setConteos] = useState<Record<string, number | null>>({})
@@ -382,7 +239,7 @@ export default function IncidenciasPage() {
     if (filters.turno) base.shift = filters.turno as Shift
     if (filters.subgerencia) base.subgerencia = filters.subgerencia
     Promise.all(
-      STATUS_OPTIONS.map(async ({ value }) => {
+      statusOptions.map(async ({ value }) => {
         try {
           const r = await getReports(1, 1, value ? { ...base, process: value as Process } : base)
           return [value, r.pagination.total] as const
@@ -396,7 +253,7 @@ export default function IncidenciasPage() {
     return () => {
       vigente = false
     }
-  }, [refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.subgerencia])
+  }, [statusOptions, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.subgerencia])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -715,7 +572,7 @@ export default function IncidenciasPage() {
 
               return {
                 id: r.id,
-                dni: r.offender?.dni || '',
+                dni: r.reported_dni ?? r.offender?.dni ?? '',
                 asunto: r.subject?.name || '',
                 falta: r.lack?.name || '',
                 tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
@@ -723,8 +580,8 @@ export default function IncidenciasPage() {
                 fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
                 horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
                 turno: r.offender?.shift || '',
-                cargo: r.offender?.job || '',
-                regLab: r.offender?.regime || '',
+                cargo: r.reported_job ?? r.offender?.job ?? '',
+                regLab: r.reported_regime ?? r.offender?.regime ?? '',
                 subgerencia: r.offender?.subgerencia || '',
                 jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
                 bodycamNumber: r.bodycam?.name || '',
@@ -733,7 +590,9 @@ export default function IncidenciasPage() {
                 registradoPor: r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '',
                 dirigidoA: r.header?.to?.job || '',
                 destinatario: r.header?.to?.name || '',
-                nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
+                media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
+                ...serviceAssignment(r),
+                nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}` : '',
                 status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
                 evidences: r.evidences || [],
                 // Datos específicos de reportes de inasistencias
@@ -779,7 +638,7 @@ export default function IncidenciasPage() {
 
       searchByFields()
     }
-  }, [filters.search, currentPage, itemsPerPage])
+  }, [filters.search, currentPage, itemsPerPage, refreshTrigger])
 
   async function handleExportExcel() {
     setExporting(true)
@@ -876,7 +735,7 @@ export default function IncidenciasPage() {
           </div>
 
           <div role="tablist" aria-label="Filtrar por estado" className="flex flex-wrap items-center gap-1.5">
-            {STATUS_OPTIONS.map(option => {
+            {statusOptions.map(option => {
               const active = filters.process === option.value
               const n = conteos[option.value]
               return (

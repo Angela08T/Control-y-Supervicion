@@ -1,3 +1,6 @@
+import { formatReportMedia } from '../utils/incidenciaFormat'
+import type { ReportMedium } from '../types/report.types'
+import type { ServiceAssignment } from '../types/report.types'
 import React from 'react'
 import type { ReportWithEvidences } from '../types/report.types'
 import { firmanteInforme } from './FirmaInforme'
@@ -196,12 +199,15 @@ const styles = StyleSheet.create({
 
 /** Imagen de evidencia (base64) con su anexo opcional */
 interface ImagenInforme {
-  base64: string | Blob
+  base64: string | Blob | null
   anexo?: string | null
 }
 
 /** Datos del formulario del informe que el PDF lee */
-interface InformeFormData {
+interface InformeFormData extends ServiceAssignment {
+  dni?: string | null
+  cargo?: string | null
+  regLab?: string | null
   numeroInforme?: string | null
   destinatarioNombre?: string | null
   destinatarioCargo?: string | null
@@ -219,6 +225,7 @@ interface InformeFormData {
 
 /** Incidencia que el PDF lee (solo los campos usados aqui) */
 interface IncidenciaInforme {
+  media?: ReportMedium[] | null
   asunto: string
   falta: string
   cc?: string[] | null
@@ -347,6 +354,13 @@ const PDFInfoSection = ({ formData, incidencia }: PDFInfoSectionProps) => (
       </View>
     )}
 
+    {!!incidencia.media?.length && (
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>MEDIOS :</Text>
+        <Text style={styles.infoValue}>{formatReportMedia(incidencia.media)}</Text>
+      </View>
+    )}
+
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>FECHA :</Text>
       <Text style={styles.infoValue}>
@@ -358,10 +372,68 @@ const PDFInfoSection = ({ formData, incidencia }: PDFInfoSectionProps) => (
   </View>
 )
 
+type IdentifiedPerson = ServiceAssignment & {
+  name?: string | null
+  dni?: string | null
+  job?: string | null
+  regime?: string | null
+}
+
+function PersonReportBody({ person, message }: { person: IdentifiedPerson; message: string }) {
+  const reportedName = [person.reported_name, person.reported_lastname].filter(Boolean).join(' ')
+  const lines = message.trim().split(/\r?\n/)
+  const header = /^\s*(?:I[.)]?\s+)?IDENTIFICACI[ÓO]N DEL SERENO\s*:?\s*$/i
+  const description = /^\s*(?:II[.)]?\s+)?DESCRIPCI[ÓO]N DE LOS HECHOS\s*:?\s*$/i
+  const start = lines.findIndex(line => header.test(line))
+  const intro = start >= 0 ? lines.slice(0, start) : []
+  const body = start >= 0 ? lines.slice(start + 1) : [...lines]
+  if (start < 0 && /^Es grato dirigirme/i.test(body[0]?.trim())) intro.push(body.shift()!)
+  const date = person.service_start
+    ? new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(new Date(person.service_start + 'T00:00:00Z')) : ''
+  const fields = [
+    ['Nombres y apellidos', reportedName || person.name], ['DNI', person.reported_dni || person.dni], ['Fecha de inicio', date],
+    ['Cargo', person.reported_job || person.job], ['Régimen laboral', person.reported_regime || person.regime], ['Zona', person.assigned_zone],
+    ['Sector', person.assigned_sector], ['Radio', person.assigned_radio],
+  ]
+  // Recuperar valores de los informes antiguos que guardaban la ficha dentro del texto.
+  if (start >= 0) {
+    while (body.length) {
+      const line = body[0].trim().replace(/^[•*-]\s*/, '')
+      if (!line) { body.shift(); continue }
+      const colon = line.indexOf(':')
+      const field = fields.find(([label]) => label?.toLowerCase() === line.slice(0, colon).trim().toLowerCase())
+      if (colon < 0 || !field) break
+      field[1] ||= line.slice(colon + 1).trim()
+      body.shift()
+    }
+  }
+  while (body.length && !body[0].trim()) body.shift()
+  if (body.length && description.test(body[0])) body.shift()
+  return <View>
+    {intro.join('\n').trim() && <Text style={styles.bodyText}>{intro.join('\n').trim()}</Text>}
+    <View wrap={false} style={{ marginVertical: 8 }}>
+      <Text style={{ fontWeight: 'bold', marginBottom: 6 }}>I. IDENTIFICACIÓN DEL SERENO</Text>
+      {fields.map(([label, value]) => <Text key={label} style={{ marginBottom: 3 }}>
+        {'•  '}<Text style={{ fontWeight: 'bold' }}>{label}: </Text>{value?.trim() || 'No consignado'}
+      </Text>)}
+    </View>
+    {body.join('\n').trim() && <View>
+      <Text minPresenceAhead={24} style={{ fontWeight: 'bold', marginVertical: 8 }}>II. DESCRIPCIÓN DE LOS HECHOS</Text>
+      <Text style={styles.bodyText}>{body.join('\n').trim()}</Text>
+    </View>}
+  </View>
+}
+
 // Componente para el cuerpo del informe
 const PDFBody = ({ formData, incidencia }: PDFBodyProps) => {
   const esInasistencia = incidencia.asunto === 'Conductas relacionadas con el Cumplimiento del Horario y Asistencia' &&
     incidencia.falta && incidencia.falta.startsWith('Inasistencia')
+
+  if (formData.dni || formData.sereno) {
+    return <PersonReportBody person={{ ...formData, name: formData.sereno || formData.nombreCompleto,
+      job: formData.cargo, regime: formData.regLab }} message={formData.descripcionAdicional || ''} />
+  }
 
   return (
     <View>
@@ -478,7 +550,8 @@ const PDFImages = ({ imagenes }: PDFImagesProps) => {
         return (
           <View key={imgIndex} style={styles.imageContainer}>
             <View style={styles.imageWrapper}>
-              <Image src={img.base64} style={styles.evidenceImage} />
+              {img.base64 ? <Image src={img.base64} style={styles.evidenceImage} />
+                : <Text>Anexo {globalIndex + 1}: archivo de evidencia no disponible.</Text>}
             </View>
             {img.anexo && (
               <Text style={styles.imageCaption}>
@@ -512,7 +585,6 @@ function ApprovedReportContent({ report, fecha }: { report: ReportWithEvidences;
   const subject = [report.subject?.name, report.lack?.name].filter(Boolean).join(', ')
   const person = report.offender
   const message = report.message?.trim() || ''
-  const lines = message.split(/\r?\n/)
   function row(label: string, name?: string, job?: string | null, emphasized = true) {
     return (
       <View style={styles.infoRow} wrap={false}>
@@ -533,23 +605,13 @@ function ApprovedReportContent({ report, fecha }: { report: ReportWithEvidences;
       {cc.map((recipient, i) => <React.Fragment key={i}>{row(i === 0 ? 'CC:' : '', recipient.name, recipient.job)}</React.Fragment>)}
       {row('DE:', firmanteInforme.nombre, firmanteInforme.cargo)}
       {row('ASUNTO:', subject)}
+      {!!report.media?.length && row('MEDIOS:', formatReportMedia(report.media), null, false)}
       {row('FECHA:', 'San Juan de Lurigancho, ' + fecha, null, false)}
       <View style={{ borderBottomWidth: 1, marginBottom: 16 }} />
-      {lines.map((line, i) => {
-        if (!line.trim()) return <View key={i} style={{ height: 6 }} />
-        const label = line.match(/^(\s*(?:Nombres y apellidos|DNI)\s*:)(.*)$/i)
-        const heading = /^(?:[IVX]+[.)]\s*)?IDENTIFICACI[ÓO]N DEL SERENO\s*:?$/i.test(line.trim())
-        return <Text key={i} style={{ textAlign: 'justify', marginBottom: 3, fontWeight: heading ? 'bold' : 'normal' }}>
-          {label ? <><Text style={bold}>{label[1]}</Text>{label[2]}</> : line}
-        </Text>
-      })}
-      {person && !/identificaci[óo]n del sereno/i.test(message) && (
-        <View wrap={false} style={{ marginTop: 14 }}>
-          <Text style={bold}>IDENTIFICACIÓN DEL SERENO</Text>
-          <Text><Text style={bold}>Nombres y apellidos: </Text>{[person.name, person.lastname].filter(Boolean).join(' ')}</Text>
-          <Text><Text style={bold}>DNI: </Text>{person.dni}</Text>
-        </View>
-      )}
+      {person
+        ? <PersonReportBody person={{ ...report, ...person, name: [person.name, person.lastname].filter(Boolean).join(' ') }}
+            message={message} />
+        : <Text style={styles.bodyText}>{message}</Text>}
     </View>
   )
 }

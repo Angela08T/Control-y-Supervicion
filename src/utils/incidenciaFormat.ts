@@ -1,4 +1,4 @@
-import type { Incidencia } from '@/types'
+import type { Incidencia, ReportMedium } from '@/types'
 
 /** Formatos compartidos por la bandeja de incidencias y su detalle */
 
@@ -47,9 +47,15 @@ export function formatAbsenceDates(item: Incidencia): string {
   return `${fmtDate(item.absenceStart)} - ${fmtDate(item.absenceEnd)}`
 }
 
+export function formatReportMedia(media: ReportMedium[]) {
+  const labels = { BODYCAM: 'Bodycam', CAMERA: 'Cámara', RADIO: 'Radio', PHONE: 'Celular' }
+  return media.map(m => [labels[m.cam], m.name].filter(Boolean).join(' ')).join(', ')
+}
+
 /** Texto del medio: bodycam asignada o tipo de medio */
 export function medioLabel(item: Incidencia): string {
   if (item.isAbsenceReport) return 'Reporte'
+  if (item.media?.length) return formatReportMedia(item.media)
   if (item.bodycamNumber) return `Bodycam ${item.bodycamNumber}`
   return item.medio || DASH
 }

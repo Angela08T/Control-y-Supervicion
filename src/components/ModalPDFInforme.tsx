@@ -1,3 +1,7 @@
+import { medioLabel } from '../utils/incidenciaFormat'
+import ServiceAssignmentFields from './ServiceAssignmentFields'
+import { identityError, serviceAssignment } from '../utils/serviceAssignment'
+import type { ServiceAssignment } from '../types/report.types'
 import React, { useState, useEffect } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import { useAppSelector } from '@/store/hooks'
@@ -50,7 +54,7 @@ interface ImagenInforme {
 }
 
 /** Campos del estado formData del modal. */
-interface InformeFormData {
+interface InformeFormData extends ServiceAssignment {
   numeroInforme: string
   destinatarioCargo: string
   destinatarioNombre: string
@@ -441,6 +445,7 @@ Se adjuntan las evidencias:`
         fechaIncidente: formatearFecha(incidencia.fechaIncidente),
         ubicacion: obtenerDireccion(), // SOLO DIRECCIÓN
         jurisdiccion: incidencia.jurisdiccion || '',
+        ...serviceAssignment(incidencia),
         sereno: incidencia.nombreCompleto ? incidencia.nombreCompleto.toUpperCase() : '',  // Auto-rellenar con nombre completo
         dni: incidencia.dni || '',
         nombreCompleto: incidencia.nombreCompleto || '',  // Agregar nombre completo
@@ -741,6 +746,10 @@ Se adjuntan las evidencias:`
 
   // Función para guardar cambios sin descargar el PDF
   async function guardarCambios() {
+    if (!isAbsenceReport && incidencia.dni) {
+      const error = identityError(formData)
+      if (error) { toast.warning(error); return }
+    }
     // Validar que todas las imágenes tengan descripción
     const errores: number[] = []
     formData.imagenes.forEach((img, index) => {
@@ -767,7 +776,8 @@ Se adjuntan las evidencias:`
         files,
         descriptions,
         formData.descripcionAdicional,
-        formData.links
+        formData.links,
+        isAbsenceReport ? undefined : serviceAssignment(formData)
       )
 
       toast.success('Cambios guardados exitosamente')
@@ -795,6 +805,10 @@ Se adjuntan las evidencias:`
   }
 
   async function generarPDF() {
+    if (!isAbsenceReport && incidencia.dni) {
+      const error = identityError(formData)
+      if (error) { toast.warning(error); return }
+    }
     // Validar que todas las imágenes tengan descripción
     const errores: number[] = []
     formData.imagenes.forEach((img, index) => {
@@ -812,7 +826,7 @@ Se adjuntan las evidencias:`
     // Si hay imágenes nuevas, actualizar el reporte en el backend
     const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
 
-    if (nuevasImagenes.length > 0 || formData.descripcionAdicional) {
+    if (nuevasImagenes.length > 0 || formData.descripcionAdicional || (!isAbsenceReport && incidencia.dni)) {
       setSavingReport(true)
       try {
         const files = nuevasImagenes.map(img => img.file).filter((file): file is File => Boolean(file))
@@ -823,7 +837,8 @@ Se adjuntan las evidencias:`
           files,
           descriptions,
           formData.descripcionAdicional,
-          formData.links
+          formData.links,
+          isAbsenceReport ? undefined : serviceAssignment(formData)
         )
 
       } catch (error) {
@@ -938,6 +953,7 @@ Se adjuntan las evidencias:`
     ? [
         { id: 'inf-encabezado', title: 'Encabezado', icon: <FiFileText /> },
         { id: 'inf-inasistencias', title: 'Inasistencias', icon: <FiCalendar /> },
+        ...(!isAbsenceReport && incidencia.dni ? [{ id: 'inf-personal', title: 'Personal', icon: <FiUser /> }] : []),
       ]
     : [
         { id: 'inf-encabezado', title: 'Encabezado', icon: <FiFileText /> },
@@ -949,6 +965,13 @@ Se adjuntan las evidencias:`
         { id: 'inf-evidencia', title: 'Evidencia', icon: <FiImage /> },
       ]
   const numero = (id: string) => secciones.findIndex(s => s.id === id) + 1
+
+  const personalStep = (
+    <StepSection id="inf-personal" n={numero('inf-personal')} title="Identificación del sereno" icon={<FiUser />}
+      description="Revisa los datos que aparecerán en este informe.">
+      <ServiceAssignmentFields value={formData} onChange={handleChange} />
+    </StepSection>
+  )
 
   // Seccion visible: se resalta en el indice mientras se desplaza el informe
   const [seccionActiva, irA] = useActiveStep(secciones.map(s => s.id))
@@ -1201,6 +1224,8 @@ Se adjuntan las evidencias:`
             </StepSection>
           )}
 
+          {esInasistencia && !isAbsenceReport && incidencia.dni && personalStep}
+
           {/* Informe de incidencia: el hecho, el lugar, el personal y el medio */}
           {!esInasistencia && (
             <>
@@ -1240,23 +1265,16 @@ Se adjuntan las evidencias:`
                 </div>
               </StepSection>
 
-              <StepSection id="inf-personal" n={numero('inf-personal')} title="Personal involucrado" icon={<FiUser />} description="Datos del sistema; no se editan aquí.">
-                <dl className={readBlock}>
-                  <ReadOnlyItem label="Sereno">{formData.sereno}</ReadOnlyItem>
-                  <ReadOnlyItem label="DNI">{formData.dni}</ReadOnlyItem>
-                  <ReadOnlyItem label="Cargo">{formData.cargo}</ReadOnlyItem>
-                  <ReadOnlyItem label="Régimen laboral">{formData.regLab}</ReadOnlyItem>
-                </dl>
-              </StepSection>
+              {personalStep}
 
               <StepSection id="inf-medio" n={numero('inf-medio')} title="Medio" icon={<FiVideo />}>
-                {formData.tipoMedio === 'bodycam' && (
+                {(incidencia.media?.length ? incidencia.media.some(m => m.cam === 'BODYCAM') : formData.tipoMedio === 'bodycam') && (
                   <Field label="Bodycam asignada a">
                     <Input value={formData.bodycamAsignadaA} onChange={e => handleChange('bodycamAsignadaA', e.target.value)} />
                   </Field>
                 )}
                 <dl className={readBlock}>
-                  {formData.tipoMedio === 'bodycam' ? (
+                  {incidencia.media?.length ? <ReadOnlyItem label="Medios registrados">{medioLabel(incidencia)}</ReadOnlyItem> : formData.tipoMedio === 'bodycam' ? (
                     <ReadOnlyItem label="N° de bodycam">{formData.bodycam}</ReadOnlyItem>
                   ) : (
                     <ReadOnlyItem label="N° de cámara">{formData.numeroCamara}</ReadOnlyItem>

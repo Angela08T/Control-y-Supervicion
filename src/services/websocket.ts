@@ -1,3 +1,4 @@
+import { currentToken } from '../api/config'
 import { io, type Socket } from 'socket.io-client'
 
 const WS_URL: string | undefined = import.meta.env.VITE_WS_URL
@@ -9,7 +10,7 @@ let socket: Socket | null = null
  * @returns {Socket} - Instancia del socket
  */
 export const initSocket = (): Socket | null => {
-  if (socket && socket.connected) {
+  if (socket) {
     return socket
   }
 
@@ -18,6 +19,7 @@ export const initSocket = (): Socket | null => {
   }
 
   socket = io(WS_URL, {
+    auth: callback => callback({ token: currentToken() }),
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,

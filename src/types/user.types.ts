@@ -12,6 +12,7 @@ export interface UserEntity {
   phone: string | null;
   max_ips: number;
   rol: Role;
+  validator_department?: string | null;
   created_at: ISODateString;
   updated_at: ISODateString;
   deleted_at: ISODateString | null;
@@ -27,6 +28,7 @@ export interface User {
   dni: string | null;
   phone: string | null;
   rol: Role;
+  validator_department?: string | null;
   deleted_at: ISODateString | null;
 }
 
@@ -54,6 +56,7 @@ export interface CreateUserDto {
   /** 9 digits */
   phone?: string;
   rol: Role;
+  validator_department?: string | null;
 }
 
 /** Backend `UpdateUserDto` (PartialType). */
