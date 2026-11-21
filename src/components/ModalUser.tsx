@@ -45,6 +45,7 @@ interface UserFormState {
   password: string
   email: string
   rol: Role
+  validator_department: string
 }
 
 /** Errores por campo del formulario */
@@ -60,6 +61,7 @@ export interface UserSavePayload {
   username: string
   email: string
   rol: Role
+  validator_department?: string
   dni?: string
   password?: string
 }
@@ -86,6 +88,7 @@ const defaultState: UserFormState = {
   username: '',
   password: '',
   email: '',
+  validator_department: '',
   rol: 'SENTINEL' // Por defecto SENTINEL
 }
 
@@ -116,6 +119,7 @@ export default function ModalUser({ initial, onClose, onSave, userRole, roles = 
         username: initial.username || '',
         password: '', // No mostrar password existente
         email: initial.email || '',
+        validator_department: initial.validator_department || '',
         rol: initial.rol || initial.role || 'SENTINEL'
       })
     }
@@ -230,6 +234,8 @@ export default function ModalUser({ initial, onClose, onSave, userRole, roles = 
       newErrors.rol = 'Solo puedes crear centinelas'
     }
 
+    if (form.rol === 'VALIDATOR' && !form.validator_department)
+      newErrors.validator_department = 'Seleccione una subgerencia'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -246,7 +252,8 @@ export default function ModalUser({ initial, onClose, onSave, userRole, roles = 
       lastname: form.lastname.trim(),
       username: form.username.trim(),
       email: form.email.trim(),
-      rol: form.rol
+      rol: form.rol,
+      ...(form.rol === 'VALIDATOR' ? { validator_department: form.validator_department } : {})
     }
 
     // Solo incluir dni si tiene valor (el backend falla si se envía string vacío)
@@ -456,6 +463,17 @@ export default function ModalUser({ initial, onClose, onSave, userRole, roles = 
               })}
             </div>
           </Field>
+          {isAdmin && form.rol === 'VALIDATOR' && (
+            <Field label="Subgerencia del validador" required error={errors.validator_department}>
+              <select aria-label="Subgerencia del validador" className="w-full rounded-lg border border-line bg-surface p-2"
+                value={form.validator_department} onChange={e => handleChange('validator_department', e.target.value)}>
+                <option value="">Seleccione una subgerencia</option>
+                <option value="SERENAZGO">Serenazgo</option>
+                <option value="FISCALIZACION">Fiscalización</option>
+                <option value="TRANSPORTE">Transporte (Movilidad Urbana)</option>
+              </select>
+            </Field>
+          )}
         </StepSection>
       </form>
     </Modal>

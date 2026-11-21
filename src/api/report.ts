@@ -1,3 +1,5 @@
+import { assignmentFields, serviceAssignment } from '../utils/serviceAssignment'
+import type { ServiceAssignment } from '../types/report.types'
 import { AxiosError } from 'axios';
 import api from './config';
 import type {
@@ -105,6 +107,7 @@ export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): Report
 
   // Construir el payload base
   const payload: ReportFormPayload = {
+    ...serviceAssignment(form),
     header: { to, cc },
     address: form.ubicacion?.address || '',
     latitude: coords[0] !== null ? parseFloat(String(coords[0])) : null,  // coords[0] es latitude
@@ -116,15 +119,16 @@ export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): Report
     jurisdiction_id: form.jurisdictionId || null
   };
 
-  // Solo agregar campos de bodycam si es tipo bodycam y hay bodycamId
-  if (form.tipoMedio === 'bodycam' && form.bodycamId) {
-    payload.bodycam_id = form.bodycamId;
-    payload.bodycam_dni = form.dni || '';
-  }
-
-  // Si es tipo cámara, guardar el número de cámara en el campo camera_number
-  if (form.tipoMedio === 'camara' && form.numeroCamara) {
-    payload.camera_number = form.numeroCamara;
+  if (!form.falta.startsWith('Inasistencia') && form.media) {
+    payload.media = form.media.map(m => m.id ? { cam: m.cam, bodycam_id: m.id } : { cam: m.cam })
+    const bodycam = form.media.find(m => m.cam === 'BODYCAM')
+    if (bodycam?.id) {
+      payload.bodycam_id = bodycam.id
+      payload.bodycam_dni = form.dni
+    }
+  } else if (!form.media && form.bodycamId) {
+    payload.bodycam_id = form.bodycamId
+    if (form.tipoMedio === 'bodycam') payload.bodycam_dni = form.dni
   }
 
   return payload;
@@ -175,7 +179,7 @@ export const getReports = async (page = 1, limit = 10, filters: ReportFilters = 
       return {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
-        dni: r.offender?.dni || '',
+        dni: r.reported_dni ?? r.offender?.dni ?? '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
@@ -186,8 +190,8 @@ export const getReports = async (page = 1, limit = 10, filters: ReportFilters = 
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
         turno: r.offender?.shift || '',
-        cargo: r.offender?.job || '',
-        regLab: r.offender?.regime || '',
+        cargo: r.reported_job ?? r.offender?.job ?? '',
+        regLab: r.reported_regime ?? r.offender?.regime ?? '',
         subgerencia: r.offender?.subgerencia || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         jurisdictionId: r.jurisdiction?.id || null,
@@ -203,7 +207,9 @@ export const getReports = async (page = 1, limit = 10, filters: ReportFilters = 
           address: r.address || '',
           coordinates: [r.latitude || null, r.longitude || null]
         },
-        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
+        media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
+        ...serviceAssignment(r),
+        nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}`.trim() : '',
         status: r.process ? (r.process.toLowerCase() as IncidenciaStatus) : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
         message: r.message || '', // Mensaje/descripción adicional del reporte
@@ -292,7 +298,7 @@ export const getReportById = async (reportId: ID): Promise<FoundResult<Incidenci
       const transformed: Incidencia = {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
-        dni: r.offender?.dni || '',
+        dni: r.reported_dni ?? r.offender?.dni ?? '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
@@ -303,8 +309,8 @@ export const getReportById = async (reportId: ID): Promise<FoundResult<Incidenci
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
         turno: r.offender?.shift || '',
-        cargo: r.offender?.job || '',
-        regLab: r.offender?.regime || '',
+        cargo: r.reported_job ?? r.offender?.job ?? '',
+        regLab: r.reported_regime ?? r.offender?.regime ?? '',
         subgerencia: r.offender?.subgerencia || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         jurisdictionId: r.jurisdiction?.id || null,
@@ -320,7 +326,9 @@ export const getReportById = async (reportId: ID): Promise<FoundResult<Incidenci
           address: r.address || '',
           coordinates: [r.latitude || null, r.longitude || null]
         },
-        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
+        media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
+        ...serviceAssignment(r),
+        nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}`.trim() : '',
         status: r.process ? (r.process.toLowerCase() as IncidenciaStatus) : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
         message: r.message || '', // Mensaje/descripción adicional del reporte
@@ -385,10 +393,15 @@ export const updateReportWithEvidences = async (
   files: File[] = [],
   descriptions: string[] = [],
   message = '',
-  link = ''
+  link = '',
+  assignment?: ServiceAssignment
 ): Promise<ApiResponse<Report>> => {
   try {
     const formData = new FormData()
+
+    if (assignment) {
+      for (const [key] of assignmentFields) formData.append(key, assignment[key] ?? '')
+    }
 
     // Agregar cada imagen al FormData
     files.forEach((file, index) => {

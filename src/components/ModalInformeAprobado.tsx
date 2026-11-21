@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import React, { useEffect, useState } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import Modal from './UI/Modal'
@@ -39,8 +40,13 @@ async function generarInforme(id: string) {
   const periods = report.absences || []
   const [images, attendance] = await Promise.all([
     Promise.all(report.evidences.map(async evidence => {
-      const response = await api.get<Blob>(evidence.path, { responseType: 'blob' })
-      return { base64: response.data, anexo: evidence.description }
+      try {
+        const response = await api.get<Blob>(evidence.path, { responseType: 'blob' })
+        return { base64: response.data, anexo: evidence.description }
+      } catch (error) {
+        if (!isAxiosError(error) || error.response?.status !== 404) throw error
+        return { base64: null, anexo: evidence.description }
+      }
     })),
     Promise.all(periods.map(filasInasistencia))
   ])
@@ -52,21 +58,21 @@ async function generarInforme(id: string) {
     esInasistencia={periods.length > 0}
     inasistenciasHistoricas={attendance.flat()}
   />
-  return { blob: await pdf(doc).toBlob(), code: report.code }
+  return { blob: await pdf(doc).toBlob(), code: report.code, missing: images.filter(image => !image.base64).length }
 }
 
 export default function ModalInformeAprobado({ id, onClose }: { id: string; onClose: () => void }) {
-  const [file, setFile] = useState<{ url: string; code: string } | null>(null)
+  const [file, setFile] = useState<{ url: string; code: string; missing: number } | null>(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
     let url: string | undefined
-    generarInforme(id).then(({ blob, code }) => {
+    generarInforme(id).then(({ blob, code, missing }) => {
       if (active) {
         url = URL.createObjectURL(blob)
-        setFile({ url, code })
+        setFile({ url, code, missing })
       }
     }).catch(() => {
       if (active) setError('No se pudo cargar el PDF del informe aprobado.')
@@ -84,6 +90,7 @@ export default function ModalInformeAprobado({ id, onClose }: { id: string; onCl
         {file && <a className="font-semibold text-primary" href={file.url} download={'Informe_' + file.code + '.pdf'}
           onClick={() => trackPDFDownload(id)}>Descargar PDF</a>}
       </>}>
+      {file && file.missing > 0 && <p role="status">Archivos de evidencia no disponibles: {file.missing}. Sus anexos están identificados en el PDF.</p>}
       {error ? <p role="alert">{error}</p> : file
         ? <iframe title="Vista previa del informe aprobado" src={file.url} className="h-[70vh] w-full border-0" />
         : <p role="status">Preparando el PDF…</p>}

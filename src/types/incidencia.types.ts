@@ -1,6 +1,6 @@
 import type { ID, ISODateString, Mode } from './common.types';
 import type { Absence } from './offender.types';
-import type { Evidence, ReportHeader } from './report.types';
+import type { Evidence, ReportMedium, ReportHeader, ServiceAssignment } from './report.types';
 
 /** Media type selected in ModalIncidencia. */
 export const TIPOS_MEDIO = ['bodycam', 'camara', 'radio'] as const;
@@ -30,7 +30,7 @@ export interface UbicacionNullable {
 }
 
 /** Form state of ModalIncidencia (`defaultState`). */
-export interface IncidenciaForm {
+export interface IncidenciaForm extends ServiceAssignment {
   dni: string;
   nombreCompleto: string;
   asunto: string;
@@ -38,6 +38,7 @@ export interface IncidenciaForm {
   turno: string;
   medio: string;
   tipoMedio: TipoMedio;
+  media?: ReportMedium[];
   /** "YYYY-MM-DD" */
   fechaIncidente: string;
   /** "HH:mm" */
@@ -67,7 +68,7 @@ export interface IncidenciaForm {
 }
 
 /** Row model produced by getReports/getReportById and consumed by IncidenciasPage/ModalPDFInforme. */
-export interface Incidencia {
+export interface Incidencia extends ServiceAssignment {
   id: ID;
   code: string | null;
   dni: string;
@@ -76,6 +77,7 @@ export interface Incidencia {
   tipoInasistencia: string | null;
   medio: MedioLabel;
   tipoMedio: TipoMedio;
+  media?: ReportMedium[];
   numeroCamara: string;
   /** "DD/MM/YYYY" */
   fechaIncidente: string;
@@ -143,7 +145,8 @@ export interface StoredIncidencia {
  * Looser than CreateReportDto: values may be null and `camera_number`
  * is a front-only field not declared in the backend DTO.
  */
-export interface ReportFormPayload {
+export interface ReportFormPayload extends ServiceAssignment {
+  media?: { cam: ReportMedium['cam']; bodycam_id?: ID }[];
   header: ReportHeader;
   address: string;
   latitude: number | null;

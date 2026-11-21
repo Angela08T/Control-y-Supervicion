@@ -1,5 +1,6 @@
 import type { ReportBodycam } from './bodycam.types';
 import type {
+  Cam,
   ID,
   ISODateString,
   NamedRef,
@@ -47,7 +48,25 @@ export interface EvidenceView {
 }
 
 /** Report as returned by GET /report and GET /report/:id (buildSelectReport relations). */
-export interface Report {
+export interface ServiceAssignment {
+  reported_name?: string | null;
+  reported_lastname?: string | null;
+  reported_dni?: string | null;
+  reported_job?: string | null;
+  reported_regime?: string | null;
+  service_start?: string | null;
+  assigned_zone?: string | null;
+  assigned_sector?: string | null;
+  assigned_radio?: string | null;
+}
+
+export interface ReportMedium {
+  cam: Cam;
+  id: ID | null;
+  name: string | null;
+}
+
+export interface Report extends ServiceAssignment {
   id: ID;
   address: string | null;
   code: string | null;
@@ -66,6 +85,7 @@ export interface Report {
   evidences: Evidence[];
   deleted_at: ISODateString | null;
   absences: Absence[];
+  media?: ReportMedium[] | null;
   bodycam: ReportBodycam | null;
   jurisdiction: NamedRef | null;
   lack: NamedRef;
