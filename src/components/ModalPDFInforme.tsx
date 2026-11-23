@@ -1,3 +1,4 @@
+import { readReportLinks, writeReportLinks } from '../utils/reportOpening'
 import { medioLabel } from '../utils/incidenciaFormat'
 import ServiceAssignmentFields from './ServiceAssignmentFields'
 import { identityError, serviceAssignment } from '../utils/serviceAssignment'
@@ -50,6 +51,7 @@ interface ImagenInforme {
   base64: string
   anexo: string
   file?: File
+  savedCaption?: string
   isExisting: boolean
 }
 
@@ -331,7 +333,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
           tipoInasistencia: incidencia.absenceMode === 'JUSTIFIED' ? 'Justificada' : 'Injustificada',
           fechaFalta: '',
           imagenes: [],
-          links: incidencia.link || ''
+          links: readReportLinks(incidencia.link).references
         })
         return
       }
@@ -463,13 +465,15 @@ Se adjuntan las evidencias:`
         tipoInasistencia: incidencia.tipoInasistencia || '',
         fechaFalta: fechaFaltaFormateada,  // Usar fecha ya formateada
         imagenes: [],
-        links: ''
+        ...readReportLinks(incidencia.link).opening,
+        links: readReportLinks(incidencia.link).references
       })
     }
   }, [incidencia])
 
   // Cargar evidencias existentes del reporte
   useEffect(() => {
+    let active = true
     async function loadExistingEvidences() {
       if (!incidencia || !incidencia.id) return
 
@@ -535,6 +539,7 @@ Se adjuntan las evidencias:`
                   url: ev.imageUrl,
                   base64: base64,
                   anexo: ev.description || '',
+                  savedCaption: ev.description || '',
                   isExisting: true // Marcar como imagen existente
                 }
               } catch (error) {
@@ -546,27 +551,32 @@ Se adjuntan las evidencias:`
           // Filtrar imágenes que se cargaron exitosamente
           const imagenesValidas = imagenesExistentes.filter((img): img is ImagenInforme => img !== null)
 
+          if (!active) return
           setFormData(prev => ({
             ...prev,
             imagenes: imagenesValidas,
             descripcionAdicional: reportData.message || prev.descripcionAdicional,
-            links: reportData.link || prev.links
+            ...readReportLinks(reportData.link).opening,
+            links: readReportLinks(reportData.link).references
           }))
         } else if (reportData) {
           // Si no hay evidencias pero hay datos del reporte, cargar message y link
+          if (!active) return
           setFormData(prev => ({
             ...prev,
             descripcionAdicional: reportData.message || prev.descripcionAdicional,
-            links: reportData.link || prev.links
+            ...readReportLinks(reportData.link).opening,
+            links: readReportLinks(reportData.link).references
           }))
         }
       } catch (error) {
       } finally {
-        setLoadingEvidences(false)
+        if (active) setLoadingEvidences(false)
       }
     }
 
     loadExistingEvidences()
+    return () => { active = false }
   }, [incidencia])
 
   // Cargar datos de attendance para reportes de inasistencias
@@ -681,29 +691,54 @@ Se adjuntan las evidencias:`
     })
   }
 
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files: File[] = Array.from(e.target.files ?? [])
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    try {
+      const selected = await Promise.all(files.map(async file => {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(file)
+        })
+        return { name: file.name, url: base64, base64, anexo: '', file, isExisting: false }
+      }))
+      setFormData(prev => {
+        const images = [...prev.imagenes]
+        for (const img of selected) {
+          if (!images.some(existing => existing.base64 === img.base64)) images.push(img)
+        }
+        return { ...prev, imagenes: images }
+      })
+      setValidationErrors([])
+    } catch {
+      toast.error('No se pudo leer la imagen seleccionada.')
+    }
+  }
 
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setFormData(prev => ({
-          ...prev,
-          imagenes: [...prev.imagenes, {
-            name: file.name,
-            url: URL.createObjectURL(file),
-            base64: event.target?.result as string,
-            anexo: '',
-            file: file, // Guardar el archivo File para poder subirlo
-            isExisting: false // Marcar como imagen nueva
-          }]
-        }))
-      }
-      reader.readAsDataURL(file)
+  async function persistReport() {
+    const added = formData.imagenes.filter((img): img is ImagenInforme & { file: File } => !img.isExisting && !!img.file)
+    const captions = Object.fromEntries(formData.imagenes.filter(img => img.id && img.anexo !== img.savedCaption)
+      .map(img => [img.id!, img.anexo]))
+    const response = await updateReportWithEvidences(incidencia.id, added.map(img => img.file), added.map(img => img.anexo),
+      formData.descripcionAdicional, isAbsenceReport ? formData.links : writeReportLinks(formData.links, formData),
+      isAbsenceReport ? undefined : serviceAssignment(formData), captions)
+    const existingIds = new Set(formData.imagenes.map(img => img.id))
+    const returned = response.data.evidences.filter(e => !existingIds.has(e.id))
+    const saved = new Map<File, string>()
+    added.forEach((img, index) => {
+      // Las versiones anteriores devuelven la lista completa, sin los IDs de la carga.
+      const pos = returned.findIndex(e => e.size === img.file.size && e.description === img.anexo)
+      const legacyId = pos >= 0 ? returned.splice(pos, 1)[0].id : undefined
+      const id = response.data.uploadedEvidenceIds?.[index] ?? legacyId
+      if (id) saved.set(img.file, id)
     })
-
-    // Limpiar validación al agregar imágenes
-    setValidationErrors([])
+    setFormData(prev => ({ ...prev, imagenes: prev.imagenes.map(img => {
+      const id = img.file && saved.get(img.file)
+      if (id) return { ...img, id, file: undefined, isExisting: true, savedCaption: img.anexo }
+      return img.id && img.id in captions ? { ...img, savedCaption: captions[img.id] } : img
+    }) }))
   }
 
   function updateImageAnexo(index: number, anexo: string) {
@@ -766,19 +801,7 @@ Se adjuntan las evidencias:`
 
     setSavingReport(true)
     try {
-      // Obtener imágenes nuevas para subir
-      const nuevasImagenes = formData.imagenes.filter(img => !img.isExisting)
-      const files = nuevasImagenes.map(img => img.file).filter((file): file is File => Boolean(file))
-      const descriptions = nuevasImagenes.map(img => img.anexo)
-
-      await updateReportWithEvidences(
-        incidencia.id,
-        files,
-        descriptions,
-        formData.descripcionAdicional,
-        formData.links,
-        isAbsenceReport ? undefined : serviceAssignment(formData)
-      )
+      await persistReport()
 
       toast.success('Cambios guardados exitosamente')
 
@@ -829,18 +852,7 @@ Se adjuntan las evidencias:`
     if (nuevasImagenes.length > 0 || formData.descripcionAdicional || (!isAbsenceReport && incidencia.dni)) {
       setSavingReport(true)
       try {
-        const files = nuevasImagenes.map(img => img.file).filter((file): file is File => Boolean(file))
-        const descriptions = nuevasImagenes.map(img => img.anexo)
-
-        await updateReportWithEvidences(
-          incidencia.id,
-          files,
-          descriptions,
-          formData.descripcionAdicional,
-          formData.links,
-          isAbsenceReport ? undefined : serviceAssignment(formData)
-        )
-
+        await persistReport()
       } catch (error) {
 
         const apiError = error as ApiErrorLike
@@ -969,7 +981,8 @@ Se adjuntan las evidencias:`
   const personalStep = (
     <StepSection id="inf-personal" n={numero('inf-personal')} title="Identificación del sereno" icon={<FiUser />}
       description="Revisa los datos que aparecerán en este informe.">
-      <ServiceAssignmentFields value={formData} onChange={handleChange} />
+      <ServiceAssignmentFields value={formData} onChange={handleChange}
+        onOmissionChange={keys => setFormData(prev => ({ ...prev, omitted_assignment_fields: keys }))} />
     </StepSection>
   )
 

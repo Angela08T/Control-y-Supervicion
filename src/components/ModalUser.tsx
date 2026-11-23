@@ -12,6 +12,7 @@ import { cn } from '@/utils/classes'
 const ROL_AYUDA: Record<string, string> = {
   ADMINISTRATOR: 'Acceso total: usuarios, roles y configuración.',
   SUPERVISOR: 'Revisa y registra incidencias de su equipo.',
+  TAREAJE: 'Registra las inasistencias del personal.',
   VALIDATOR: 'Aprueba o rechaza los informes enviados.',
   SENTINEL: 'Registra incidencias e inasistencias en campo.',
 }

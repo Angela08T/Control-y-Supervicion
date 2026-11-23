@@ -1,3 +1,4 @@
+import { readReportLinks } from '../utils/reportOpening'
 import { isAxiosError } from 'axios'
 import React, { useEffect, useState } from 'react'
 import { pdf } from '@react-pdf/renderer'
@@ -32,10 +33,32 @@ async function filasInasistencia(period: Absence) {
   )
 }
 
+class MissingSignatureError extends Error {}
+
+async function uniqueAttachments(images: { base64: Blob | null; anexo: string }[]) {
+  const kept: typeof images = []
+  const seen = new Map<string, Uint8Array[]>()
+  for (const image of images) {
+    if (image.base64) {
+      const key = JSON.stringify([image.base64.size, image.anexo.trim()])
+      const group = seen.get(key) || []
+      const bytes = new Uint8Array(await image.base64.arrayBuffer())
+      if (group.some(previous => previous.every((byte, index) => byte === bytes[index]))) continue
+      group.push(bytes)
+      seen.set(key, group)
+    }
+    kept.push(image)
+  }
+  return kept
+}
+
 async function generarInforme(id: string) {
   const report = await getReportWithEvidences(id)
   if (report?.process !== 'APPROVED' || !report.code) {
     throw new Error('El informe aún no tiene un código de aprobación.')
+  }
+  if (!report.signature?.startsWith('data:image/png;base64,')) {
+    throw new MissingSignatureError('El servidor no entregó la firma del jefe. Revisa que el backend actualizado esté en ejecución y vuelve a intentar.')
   }
   const periods = report.absences || []
   const [images, attendance] = await Promise.all([
@@ -50,10 +73,12 @@ async function generarInforme(id: string) {
     })),
     Promise.all(periods.map(filasInasistencia))
   ])
+  const { opening, references } = readReportLinks(report.link)
   const doc = <InformePDFDocument
     approvedReport={report}
+    signature={report.signature}
     incidencia={{ asunto: report.subject.name, falta: report.lack?.name || '' }}
-    formData={{ fecha: fechaLarga(report.date), imagenes: images, links: report.link }}
+    formData={{ fecha: fechaLarga(report.date), imagenes: await uniqueAttachments(images), ...opening, links: references }}
     logoBase64={logoSJL}
     esInasistencia={periods.length > 0}
     inasistenciasHistoricas={attendance.flat()}
@@ -74,8 +99,8 @@ export default function ModalInformeAprobado({ id, onClose }: { id: string; onCl
         url = URL.createObjectURL(blob)
         setFile({ url, code, missing })
       }
-    }).catch(() => {
-      if (active) setError('No se pudo cargar el PDF del informe aprobado.')
+    }).catch(error => {
+      if (active) setError(error instanceof MissingSignatureError ? error.message : 'No se pudo cargar el PDF del informe aprobado.')
     })
     return () => {
       active = false

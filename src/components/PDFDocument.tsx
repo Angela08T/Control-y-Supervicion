@@ -1,10 +1,12 @@
+import { assignmentFields, isOptionalAssignmentField } from '../utils/serviceAssignment'
+import type { Opening } from '../utils/reportOpening'
 import { formatReportMedia } from '../utils/incidenciaFormat'
-import type { ReportMedium } from '../types/report.types'
+import type { ReportMedium, Recipient } from '../types/report.types'
 import type { ServiceAssignment } from '../types/report.types'
 import React from 'react'
 import type { ReportWithEvidences } from '../types/report.types'
 import { firmanteInforme } from './FirmaInforme'
-import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 
 // Registrar fuente (opcional - @react-pdf/renderer viene con Helvetica por defecto)
 // Font.register({
@@ -18,7 +20,7 @@ import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/
 // Estilos para el PDF
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 80,        // Margen superior aumentado para evitar solapamiento con header
+    paddingTop: 91,        // Margen superior aumentado para evitar solapamiento con header
     paddingBottom: 60,
     paddingLeft: 40,
     paddingRight: 40,
@@ -42,8 +44,9 @@ const styles = StyleSheet.create({
     marginBottom: 0
   },
   logo: {
-    width: 150,
-    height: 50,
+    width: 178,
+    height: 56,
+    objectFit: 'contain',
     marginBottom: 5
   },
   headerText: {
@@ -82,8 +85,8 @@ const styles = StyleSheet.create({
   bodyText: {
     fontSize: 11,
     textAlign: 'justify',
-    marginBottom: 15,
-    lineHeight: 1.8
+    marginBottom: 8,
+    lineHeight: 1.65
   },
   introText: {
     fontSize: 11,
@@ -146,7 +149,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 450,
+    width: '100%',
     height: 250,
     backgroundColor: '#f5f5f5',
     border: '1px solid #e0e0e0',
@@ -205,6 +208,9 @@ interface ImagenInforme {
 
 /** Datos del formulario del informe que el PDF lee */
 interface InformeFormData extends ServiceAssignment {
+  horaIncidente?: string
+  fechaIncidente?: string
+  ubicacion?: string
   dni?: string | null
   cargo?: string | null
   regLab?: string | null
@@ -228,6 +234,7 @@ interface IncidenciaInforme {
   media?: ReportMedium[] | null
   asunto: string
   falta: string
+  copias?: Recipient[]
   cc?: string[] | null
 }
 
@@ -274,6 +281,7 @@ export interface PDFLinksProps {
 }
 
 export interface InformePDFDocumentProps {
+  signature?: string
   approvedReport?: ReportWithEvidences
   formData: InformeFormData
   incidencia: IncidenciaInforme
@@ -295,8 +303,8 @@ const PDFHeader = ({ logoBase64 }: PDFHeaderProps) => {
       {/* Año */}
       <Text style={[styles.headerText, {
         fontSize: 9,
-        fontStyle: 'italic',
-        marginTop: -5,
+        fontWeight: 'normal',
+        marginTop: -3,
         color: '#444'
       }]}>"Año de la Esperanza y el Fortalecimiento de la Democracia"
       </Text>
@@ -379,7 +387,9 @@ type IdentifiedPerson = ServiceAssignment & {
   regime?: string | null
 }
 
-function PersonReportBody({ person, message }: { person: IdentifiedPerson; message: string }) {
+function PersonReportBody({ person, message, date, time, place }: {
+  person: IdentifiedPerson; message: string; date?: string | null; time?: string; place?: string | null
+}) {
   const reportedName = [person.reported_name, person.reported_lastname].filter(Boolean).join(' ')
   const lines = message.trim().split(/\r?\n/)
   const header = /^\s*(?:I[.)]?\s+)?IDENTIFICACI[ÓO]N DEL SERENO\s*:?\s*$/i
@@ -388,14 +398,18 @@ function PersonReportBody({ person, message }: { person: IdentifiedPerson; messa
   const intro = start >= 0 ? lines.slice(0, start) : []
   const body = start >= 0 ? lines.slice(start + 1) : [...lines]
   if (start < 0 && /^Es grato dirigirme/i.test(body[0]?.trim())) intro.push(body.shift()!)
-  const date = person.service_start
+  const greeting = /^Es grato dirigirme/i.test(intro[0]?.trim())
+    ? intro.shift()!.trim() : 'Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:'
+  const startDate = person.service_start
     ? new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' })
         .format(new Date(person.service_start + 'T00:00:00Z')) : ''
   const fields = [
-    ['Nombres y apellidos', reportedName || person.name], ['DNI', person.reported_dni || person.dni], ['Fecha de inicio', date],
+    ['Nombres y apellidos', reportedName || person.name], ['DNI', person.reported_dni || person.dni], ['Fecha de inicio', startDate],
     ['Cargo', person.reported_job || person.job], ['Régimen laboral', person.reported_regime || person.regime], ['Zona', person.assigned_zone],
     ['Sector', person.assigned_sector], ['Radio', person.assigned_radio],
   ]
+  const omittedLabels = new Set<string>(assignmentFields.filter(([key]) =>
+    isOptionalAssignmentField(key) && person.omitted_assignment_fields?.includes(key)).map(([, label]) => label))
   // Recuperar valores de los informes antiguos que guardaban la ficha dentro del texto.
   if (start >= 0) {
     while (body.length) {
@@ -411,17 +425,26 @@ function PersonReportBody({ person, message }: { person: IdentifiedPerson; messa
   while (body.length && !body[0].trim()) body.shift()
   if (body.length && description.test(body[0])) body.shift()
   return <View>
-    {intro.join('\n').trim() && <Text style={styles.bodyText}>{intro.join('\n').trim()}</Text>}
+    <Text style={{ textAlign: 'center', marginBottom: 12 }}>
+      {greeting}
+    </Text>
+    {intro.join('\n').trim() ? <Text style={styles.bodyText}>{intro.join('\n').trim()}</Text> :
+      <Text style={styles.bodyText}>
+        {time && date ? `Siendo alrededor de las ${time} del día ${date}` : 'Durante las labores de supervisión'}
+        {place && <Text>, en <Text style={{ fontWeight: 'bold' }}>{place}</Text></Text>}
+        {'. Se identificó al siguiente personal durante las labores de monitoreo efectuadas por el Área de Supervisión y Control:'}
+      </Text>}
+
     <View wrap={false} style={{ marginVertical: 8 }}>
-      <Text style={{ fontWeight: 'bold', marginBottom: 6 }}>I. IDENTIFICACIÓN DEL SERENO</Text>
-      {fields.map(([label, value]) => <Text key={label} style={{ marginBottom: 3 }}>
+      <Text style={{ fontWeight: 'bold', marginBottom: 6 }}>I.       IDENTIFICACIÓN DEL SERENO</Text>
+      {fields.filter(([label]) => !omittedLabels.has(label!)).map(([label, value]) => <Text key={label} style={{ marginBottom: 5 }}>
         {'•  '}<Text style={{ fontWeight: 'bold' }}>{label}: </Text>{value?.trim() || 'No consignado'}
       </Text>)}
     </View>
-    {body.join('\n').trim() && <View>
-      <Text minPresenceAhead={24} style={{ fontWeight: 'bold', marginVertical: 8 }}>II. DESCRIPCIÓN DE LOS HECHOS</Text>
-      <Text style={styles.bodyText}>{body.join('\n').trim()}</Text>
-    </View>}
+    {body.join('\n').trim() && <Text style={styles.bodyText} orphans={3}>
+      <Text style={{ fontWeight: 'bold' }}>II. DESCRIPCIÓN DE LOS HECHOS</Text>{'\n'}
+      {body.join('\n').trim()}
+    </Text>}
   </View>
 }
 
@@ -432,7 +455,7 @@ const PDFBody = ({ formData, incidencia }: PDFBodyProps) => {
 
   if (formData.dni || formData.sereno) {
     return <PersonReportBody person={{ ...formData, name: formData.sereno || formData.nombreCompleto,
-      job: formData.cargo, regime: formData.regLab }} message={formData.descripcionAdicional || ''} />
+      job: formData.cargo, regime: formData.regLab }} date={formData.fechaIncidente} time={formData.horaIncidente} place={formData.ubicacion} message={formData.descripcionAdicional || ''} />
   }
 
   return (
@@ -551,13 +574,12 @@ const PDFImages = ({ imagenes }: PDFImagesProps) => {
           <View key={imgIndex} style={styles.imageContainer}>
             <View style={styles.imageWrapper}>
               {img.base64 ? <Image src={img.base64} style={styles.evidenceImage} />
-                : <Text>Anexo {globalIndex + 1}: archivo de evidencia no disponible.</Text>}
+                : <Text>Archivo de evidencia no disponible.</Text>}
             </View>
-            {img.anexo && (
-              <Text style={styles.imageCaption}>
-                Anexo {globalIndex + 1}: {img.anexo}
-              </Text>
-            )}
+            <Text style={styles.imageCaption}>
+              <Text style={{ fontWeight: 'bold' }}>ANEXO N°{String(globalIndex + 1).padStart(2, '0')}</Text>
+              {img.anexo ? `: ${img.anexo}` : ''}
+            </Text>
           </View>
         )
       })}
@@ -578,18 +600,28 @@ const PDFLinks = ({ links }: PDFLinksProps) => {
 }
 
 // Componente para la firma
-function ApprovedReportContent({ report, fecha }: { report: ReportWithEvidences; fecha?: string | null }) {
-  const bold = { fontWeight: 'bold' } as const
-  const cc = report.header?.cc || []
-  const to = report.header?.to
-  const subject = [report.subject?.name, report.lack?.name].filter(Boolean).join(', ')
+function ApprovedReportContent({ report, fecha, opening }: { report: ReportWithEvidences; fecha?: string | null; opening: Partial<Opening> }) {
   const person = report.offender
-  const message = report.message?.trim() || ''
+  return <>
+    <ReportHeading code={report.code} to={report.header?.to} cc={report.header?.cc || []}
+      subject={[report.subject?.name, report.lack?.name].filter(Boolean).join(', ')} fecha={fecha} />
+    {person
+      ? <PersonReportBody person={{ ...report, ...person, name: [person.name, person.lastname].filter(Boolean).join(' ') }}
+          date={opening.fechaIncidente ?? fecha} time={opening.horaIncidente ?? report.date.slice(11, 16)} place={opening.ubicacion ?? report.address} message={report.message || ''} />
+      : <Text style={styles.bodyText}>{report.message}</Text>}
+    {!!report.media?.length && <Text style={styles.bodyText}>Medios: {formatReportMedia(report.media)}</Text>}
+  </>
+}
+
+function ReportHeading({ code, to, cc, subject, fecha }: {
+  code?: string | null; to?: Recipient; cc: Recipient[]; subject: string; fecha?: string | null
+}) {
+  const bold = { fontWeight: 'bold' } as const
   function row(label: string, name?: string, job?: string | null, emphasized = true) {
     return (
-      <View style={styles.infoRow} wrap={false}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <View style={styles.infoValue}>
+      <View style={{ flexDirection: 'row', marginBottom: 5, lineHeight: 1.15 }} wrap={false}>
+        <Text style={{ width: 70, ...bold }}>{label}</Text>
+        <View style={{ flex: 1, lineHeight: 1.15 }}>
           <Text style={emphasized ? bold : undefined}>{name?.toUpperCase()}</Text>
           {job && <Text>{job.toUpperCase()}</Text>}
         </View>
@@ -598,26 +630,23 @@ function ApprovedReportContent({ report, fecha }: { report: ReportWithEvidences;
   }
   return (
     <View>
-      <Text style={{ ...bold, fontSize: 14, textAlign: 'center', textDecoration: 'underline', marginVertical: 20 }}>
-        INFORME N°{report.code}-CS-SS-GOP-MDSJL
+      <Text style={{ ...bold, fontSize: 12, textAlign: 'center', textDecoration: 'underline', marginTop: 8, marginBottom: 14 }}>
+        INFORME{code ? ` N°${code}-CS-SS-GOP-MDSJL` : ''}
       </Text>
       {row('A:', to?.name, to?.job)}
       {cc.map((recipient, i) => <React.Fragment key={i}>{row(i === 0 ? 'CC:' : '', recipient.name, recipient.job)}</React.Fragment>)}
       {row('DE:', firmanteInforme.nombre, firmanteInforme.cargo)}
       {row('ASUNTO:', subject)}
-      {!!report.media?.length && row('MEDIOS:', formatReportMedia(report.media), null, false)}
       {row('FECHA:', 'San Juan de Lurigancho, ' + fecha, null, false)}
       <View style={{ borderBottomWidth: 1, marginBottom: 16 }} />
-      {person
-        ? <PersonReportBody person={{ ...report, ...person, name: [person.name, person.lastname].filter(Boolean).join(' ') }}
-            message={message} />
-        : <Text style={styles.bodyText}>{message}</Text>}
+
     </View>
   )
 }
 
-const PDFSignature = () => (
+const PDFSignature = ({ signature }: { signature?: string }) => (
   <View style={styles.signatureSection} wrap={false}>
+    {signature && <Image src={signature} style={{ width: 110, height: 87, objectFit: 'contain' }} />}
     <View style={styles.signatureLine} />
     <Text style={styles.signatureName}>{firmanteInforme.nombre}</Text>
     <Text style={{ fontSize: 10 }}>{firmanteInforme.cargo}</Text>
@@ -627,8 +656,8 @@ const PDFSignature = () => (
 // Componente para footer
 const PDFFooter = () => (
   <View style={styles.footer} fixed>
-    <Text>Sede CECOM de la Sub Gerencia de Serenazgo:</Text>
-    <Text>Av. Sta. Rosa de Lima, San Juan de Lurigancho 15427</Text>
+    <Text>Sede Siglo XXI de la Sub Gerencia de Serenazgo</Text>
+    <Text>Av. Próceres de la Independencia 1568 SJL</Text>
   </View>
 )
 
@@ -637,6 +666,7 @@ const InformePDFDocument = ({
   formData,
   incidencia,
   approvedReport,
+  signature,
   inasistenciasHistoricas = [],
   logoBase64,
   formatearFecha,
@@ -650,13 +680,17 @@ const InformePDFDocument = ({
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={isAbsence ? styles.page : [styles.page, { paddingLeft: 100, paddingRight: 55 }]}>
         <PDFHeader logoBase64={logoBase64} />
         {approvedReport
-          ? <ApprovedReportContent report={approvedReport} fecha={formData.fecha} />
+          ? <ApprovedReportContent report={approvedReport} fecha={formData.fecha} opening={formData} />
           : <>
-              <PDFInfoSection formData={formData} incidencia={incidencia} />
+              {isAbsence ? <PDFInfoSection formData={formData} incidencia={incidencia} /> :
+                <ReportHeading code={formData.numeroInforme} to={{ name: formData.destinatarioNombre || '', job: formData.destinatarioCargo || '' }}
+                  cc={incidencia.copias || (incidencia.cc || []).map(name => ({ name, job: '' }))}
+                  subject={[incidencia.asunto, incidencia.falta].filter(Boolean).join(', ')} fecha={formData.fecha} />}
               <PDFBody formData={formData} incidencia={incidencia} />
+              {!isAbsence && !!incidencia.media?.length && <Text style={styles.bodyText}>Medios: {formatReportMedia(incidencia.media)}</Text>}
             </>}
 
         {isAbsence && inasistenciasHistoricas.length > 0 && (
@@ -673,7 +707,11 @@ const InformePDFDocument = ({
           </>
         )}
 
-        <PDFSignature />
+        {!isAbsence && <View wrap={false} minPresenceAhead={75}>
+          <Text style={styles.bodyText}>Sin otro en particular, es todo lo que informo a usted, para los fines que estima determinar.</Text>
+          <Text style={{ textAlign: 'right', marginVertical: 5 }}>Atentamente.</Text>
+        </View>}
+        <PDFSignature signature={signature} />
         <PDFFooter />
       </Page>
     </Document>

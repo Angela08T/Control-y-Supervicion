@@ -1,4 +1,4 @@
-import type { ServiceAssignment } from '../types/report.types'
+import type { OptionalAssignmentField, ServiceAssignment } from '../types/report.types'
 
 export const assignmentFields = [
   ['reported_name', 'Nombres'],
@@ -12,8 +12,13 @@ export const assignmentFields = [
   ['assigned_radio', 'Radio'],
 ] as const
 
+export function isOptionalAssignmentField(key: string): key is OptionalAssignmentField {
+  return key === 'assigned_zone' || key === 'assigned_sector' || key === 'assigned_radio'
+}
+
 export function serviceAssignment(person: ServiceAssignment & { offender?: Partial<Record<'name' | 'lastname' | 'dni' | 'job' | 'regime', string>> | null }) {
   return {
+    omitted_assignment_fields: person.omitted_assignment_fields ?? [],
     reported_name: (person.reported_name ?? person.offender?.name ?? '').trim(),
     reported_lastname: (person.reported_lastname ?? person.offender?.lastname ?? '').trim(),
     reported_dni: (person.reported_dni ?? person.offender?.dni ?? '').trim(),

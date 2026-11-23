@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import IncomingReportNotice from '../components/IncomingReportNotice'
+import { disconnectSocket } from '../services/websocket'
 import Sidebar from '../components/UI/Sidebar'
 import Topbar from '../components/UI/Topbar'
 import { cn } from '../utils/classes'
@@ -61,7 +63,9 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState<boolean>(readCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [zoom, setZoomState] = useState<number>(readZoom)
-  const { pathname } = useLocation()
+  const { pathname, key: navigationKey, state } = useLocation()
+  const auth = useAppSelector(store => store.auth)
+  useEffect(() => () => disconnectSocket(), [auth.token])
   // Inicio (/dashboard/<rol>) e Incidencias, Inasistencias, Dispositivos y Estadisticas usan el fondo de
   // reticula con su color; las demas paginas conservan las lineas de nivel
   const enInicio = /^\/dashboard\/[^/]+\/?$/.test(pathname)
@@ -123,6 +127,8 @@ export default function DashboardLayout() {
 
   return (
     <div>
+      {ready && auth.role === 'validator' && auth.permissions.incidencias?.includes('view') &&
+        <IncomingReportNotice key={auth.username} />}
       <Topbar
         onMenuClick={() => setMobileOpen(true)}
         collapsed={collapsed}
@@ -160,7 +166,7 @@ export default function DashboardLayout() {
         {/* Cada pantalla entra con un fundido corto: responde al clic en el menu */}
         {/* h-full: las pantallas que lo piden (ej. tablas con paginacion fija) pueden ocupar justo el alto disponible */}
         {/* zoom: tamano del contenido elegido con los botones - y + de la barra superior */}
-        <div key={pathname} className="h-full animate-[pageIn_220ms_ease-out]" style={zoom !== 1 ? { zoom } : undefined}>
+        <div key={state?.openPendingInbox ? navigationKey : pathname} className="h-full animate-[pageIn_220ms_ease-out]" style={zoom !== 1 ? { zoom } : undefined}>
           {ready ? <Outlet /> : <LoadingState label="Cargando tu sesión…" />}
         </div>
       </main>
