@@ -652,7 +652,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             {dniValido && form.nombreCompleto ? (
               <div className="space-y-3">
                 <p className="text-sm text-muted">Revisa los datos de la persona seleccionada. Las correcciones se guardan en este informe.</p>
-                <ServiceAssignmentFields value={form} onChange={setField} />
+                <ServiceAssignmentFields value={form} onChange={setField} onOmissionChange={keys => setField('omitted_assignment_fields', keys)} />
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong px-4 py-3.5 text-sm text-muted">

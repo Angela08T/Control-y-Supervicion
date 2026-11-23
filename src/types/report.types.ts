@@ -48,7 +48,10 @@ export interface EvidenceView {
 }
 
 /** Report as returned by GET /report and GET /report/:id (buildSelectReport relations). */
+export type OptionalAssignmentField = 'assigned_zone' | 'assigned_sector' | 'assigned_radio';
+
 export interface ServiceAssignment {
+  omitted_assignment_fields?: OptionalAssignmentField[];
   reported_name?: string | null;
   reported_lastname?: string | null;
   reported_dni?: string | null;
@@ -80,6 +83,8 @@ export interface Report extends ServiceAssignment {
   link: string | null;
   message: string | null;
   /** null = draft (not sent to validator yet). */
+  destination_department?: string | null;
+  rejection_reason?: string | null;
   process: Process | null;
   shift: Shift | null;
   evidences: Evidence[];
@@ -103,6 +108,7 @@ export interface Report extends ServiceAssignment {
 
 /** Report returned by getReportWithEvidences (evidences mapped, message defaulted). */
 export interface ReportWithEvidences extends Omit<Report, 'evidences' | 'message'> {
+  signature?: string;
   evidences: EvidenceView[];
   message: string;
 }
@@ -142,6 +148,7 @@ export interface UpdateReportEvidencesInput {
 
 /** Body of PATCH /report/:id/validate. */
 export interface ValidateReportDto {
+  rejection_reason?: string;
   approved: boolean;
 }
 

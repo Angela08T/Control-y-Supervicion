@@ -1,5 +1,6 @@
 import { serviceAssignment } from '../../utils/serviceAssignment'
-import React, { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
@@ -12,7 +13,8 @@ import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import { PAGE_SIZE } from '@/hooks/usePagedList'
 import Badge from '@/components/UI/Badge'
-import { Select } from '@/components/UI/Field'
+import Modal from '@/components/UI/Modal'
+import { Select, Field, Textarea } from '@/components/UI/Field'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport, exportReportsExcel } from '../../api/report'
@@ -23,7 +25,7 @@ import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { useAppSelector } from '../../store/hooks'
 import { FiDownload, FiFilter, FiPlus, FiX } from 'react-icons/fi'
-import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
+import { initSocket, onReportStatusChanged, onReportStatusValidate } from '../../services/websocket'
 import type {
   ISODateString,
   ID,
@@ -138,7 +140,9 @@ export default function IncidenciasPage() {
   const [approvedReportId, setApprovedReportId] = useState<ID | null>(null)
   const [showPDFModal, setShowPDFModal] = useState(false)
   const [editItem, setEditItem] = useState<Incidencia | null>(null)
-  const [filters, setFilters] = useState<IncidenciasFilters>(defaultFilters)
+  const location = useLocation()
+  const [filters, setFilters] = useState<IncidenciasFilters>(() =>
+    location.state?.openPendingInbox ? { ...defaultFilters, process: 'PENDING' } : defaultFilters)
   const [showAdvanced, setShowAdvanced] = useState(false) // Panel de filtros avanzados (asunto, falta, jurisdicción, subgerencia, turno)
   const [subgerencias, setSubgerencias] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -151,6 +155,8 @@ export default function IncidenciasPage() {
     from: 0,
     to: 0
   })
+  const lastLoadedQuery = useRef('')
+  const fetchingList = useRef(false)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger para forzar recarga
@@ -161,6 +167,14 @@ export default function IncidenciasPage() {
 
   // Estados para modales personalizados
   const [alertModal, setAlertModal] = useState<AlertModalState>({ isOpen: false, title: '', message: '', type: 'success' })
+  const [sendId, setSendId] = useState<ID | null>(null)
+  const [department, setDepartment] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
+  const [rejectId, setRejectId] = useState<ID | null>(null)
+  const [reason, setReason] = useState('')
+  const [rejectError, setRejectError] = useState('')
+  const [rejecting, setRejecting] = useState(false)
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null })
 
   const { subjects, loading: subjectsLoading } = useSubjects()
@@ -185,21 +199,29 @@ export default function IncidenciasPage() {
     socket?.on('connect', refresh)
     const offSent = onReportStatusChanged(refresh)
     const offValidated = onReportStatusValidate(refresh)
+    // IIS puede servir la API aunque el canal de notificaciones esté desconectado.
+    const fallback = userRole === 'validator' ? window.setInterval(() => {
+      if (!document.hidden && !socket?.connected && !fetchingList.current) refresh()
+    }, 8000) : undefined
     window.addEventListener('focus', refresh)
     return () => {
+      window.clearInterval(fallback)
       offSent()
       offValidated()
       socket?.off('connect', refresh)
       window.removeEventListener('focus', refresh)
-      disconnectSocket()
     }
-  }, [])
+  }, [userRole])
 
   // Cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
     let active = true
     async function fetchIncidencias() {
-      setLoading(true)
+      const query = JSON.stringify([userRole, currentPage, itemsPerPage, filters.lackId, filters.subjectId,
+        filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
+      const background = lastLoadedQuery.current === query
+      fetchingList.current = true
+      setLoading(!background)
       try {
         // Construir objeto de filtros solo con valores no vacíos
         const apiFilters: ReportFilters = {}
@@ -214,13 +236,14 @@ export default function IncidenciasPage() {
 
         const result = await getReports(currentPage, itemsPerPage, apiFilters)
         if (!active) return
+        lastLoadedQuery.current = query
         setIncidencias(result.data)
         setPagination(result.pagination)
         saveIncidencias(toStoredList(result.data)) // opcional: respaldo local
       } catch (error) {
-        if (active) setIncidencias(userRole === 'validator' ? [] : fromStoredList(loadIncidencias()))
+        if (active && !background) setIncidencias(userRole === 'validator' ? [] : fromStoredList(loadIncidencias()))
       } finally {
-        if (active) setLoading(false)
+        if (active) { fetchingList.current = false; setLoading(false) }
       }
     }
 
@@ -391,34 +414,25 @@ export default function IncidenciasPage() {
     }
   }
 
-  async function handleSendToValidator(reportId: ID): Promise<void> {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Enviar a validador',
-      message: '¿Enviar esta incidencia al validador?\n\nDebe tener al menos una imagen adjunta.',
-      type: 'info',
-      confirmText: 'Sí, enviar',
-      onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false })
-        try {
-          const response: ActionResponse = await sendToValidator(reportId)
-          setAlertModal({
-            isOpen: true,
-            title: '¡Éxito!',
-            message: response.data?.message || response.message || 'Incidencia enviada al validador exitosamente',
-            type: 'success'
-          })
-          setRefreshTrigger(prev => prev + 1)
-        } catch (error) {
-          setAlertModal({
-            isOpen: true,
-            title: 'Error',
-            message: errorMessageOf(error, 'Error al enviar incidencia'),
-            type: 'error'
-          })
-        }
-      }
-    })
+  function handleSendToValidator(reportId: ID) {
+    setDepartment('')
+    setSendError('')
+    setSendId(reportId)
+  }
+
+  async function confirmSend() {
+    if (!sendId || !department || sending) return
+    setSending(true)
+    try {
+      await sendToValidator(sendId, department)
+      setSendId(null)
+      setRefreshTrigger(prev => prev + 1)
+      setAlertModal({ isOpen: true, title: 'Informe enviado', message: 'La subgerencia seleccionada ya puede revisar el informe.', type: 'success' })
+    } catch (error) {
+      setSendError(errorMessageOf(error, 'Error al enviar el informe'))
+    } finally {
+      setSending(false)
+    }
   }
 
   async function handleApprove(reportId: ID): Promise<void> {
@@ -446,34 +460,26 @@ export default function IncidenciasPage() {
     })
   }
 
-  async function handleReject(reportId: ID): Promise<void> {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Rechazar incidencia',
-      message: '¿Rechazar esta incidencia?\n\nEl informe no se aprobará y no se generará código oficial.',
-      type: 'warning',
-      confirmText: 'Sí, rechazar',
-      onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false })
-        try {
-          const response: ActionResponse = await validateReport(reportId, false)
-          setAlertModal({
-            isOpen: true,
-            title: 'Incidencia rechazada',
-            message: response.data?.message || response.message || 'Incidencia rechazada exitosamente',
-            type: 'info'
-          })
-          setRefreshTrigger(prev => prev + 1)
-        } catch (error) {
-          setAlertModal({
-            isOpen: true,
-            title: 'Error',
-            message: errorMessageOf(error, 'Error al rechazar incidencia'),
-            type: 'error'
-          })
-        }
-      }
-    })
+  function handleReject(reportId: ID) {
+    setReason('')
+    setRejectError('')
+    setRejectId(reportId)
+  }
+
+  async function confirmRejection() {
+    if (!rejectId || rejecting || !reason.trim()) return
+    setRejecting(true)
+    try {
+      await validateReport(rejectId, false, reason.trim())
+      setSearchResult(null)
+      setRejectId(null)
+      setRefreshTrigger(prev => prev + 1)
+      setAlertModal({ isOpen: true, title: 'Incidencia rechazada', message: 'La observación quedó guardada en el informe.', type: 'info' })
+    } catch (error) {
+      setRejectError(errorMessageOf(error, 'Error al rechazar la incidencia'))
+    } finally {
+      setRejecting(false)
+    }
   }
 
   function handleEdit(item: Incidencia) {
@@ -593,6 +599,8 @@ export default function IncidenciasPage() {
                 media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
                 ...serviceAssignment(r),
                 nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}` : '',
+                destination_department: r.destination_department,
+                rejection_reason: r.rejection_reason,
                 status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
                 evidences: r.evidences || [],
                 // Datos específicos de reportes de inasistencias
@@ -1003,6 +1011,38 @@ export default function IncidenciasPage() {
             onSave={() => setRefreshTrigger(prev => prev + 1)}
           />
         )
+      )}
+
+      {sendId && (
+        <Modal title="Enviar a validación" onClose={() => { if (!sending) setSendId(null) }}
+          footer={<>
+            <Button variant="secondary" disabled={sending} onClick={() => setSendId(null)}>Cancelar</Button>
+            <Button disabled={!department} loading={sending} onClick={confirmSend}>Confirmar envío</Button>
+          </>}>
+          <Field label="Subgerencia de destino" required error={sendError}>
+            <Select autoFocus required value={department} disabled={sending} onChange={e => setDepartment(e.target.value)}>
+              <option value="">Selecciona una subgerencia</option>
+              <option value="SERENAZGO">Serenazgo</option>
+              <option value="FISCALIZACION">Fiscalización</option>
+              <option value="TRANSPORTE">Transporte</option>
+            </Select>
+          </Field>
+        </Modal>
+      )}
+
+      {rejectId && (
+        <Modal title="Rechazar informe" onClose={() => { if (!rejecting) setRejectId(null) }}
+          footer={<>
+            <Button variant="secondary" disabled={rejecting} onClick={() => setRejectId(null)}>Cancelar</Button>
+            <Button variant="danger" disabled={rejecting || !reason.trim()} onClick={confirmRejection}>
+              {rejecting ? 'Guardando…' : 'Rechazar informe'}
+            </Button>
+          </>}>
+          <Field label="Observación del rechazo" required hint="Quien registró el informe podrá leer esta observación." error={rejectError}>
+            <Textarea required autoFocus rows={4} maxLength={2000} value={reason} disabled={rejecting}
+              placeholder="Explica por qué rechazas el informe." onChange={e => setReason(e.target.value)} />
+          </Field>
+        </Modal>
       )}
 
       {/* Modales personalizados */}

@@ -7,7 +7,7 @@ import { createReport, getReports, mapFormDataToAPI } from '../../api/report'
 import { createOffender, mapFormDataToOffenderAPI, getOffenders, createAttendances, getAttendances, deleteAttendance, deleteOffender } from '../../api/offender'
 import { getModulePermissions } from '../../utils/permissions'
 import { FiAlertCircle, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiFileText, FiPlus, FiUsers } from 'react-icons/fi'
-import { initSocket, onReportStatusChanged, disconnectSocket } from '../../services/websocket'
+import { initSocket, onReportStatusChanged } from '../../services/websocket'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import { toast } from '../../utils/toast'
 import type { AttendanceItemDto, ID, ISODateString, Lead } from '@/types'
@@ -62,8 +62,10 @@ interface RequestError {
 }
 
 export default function InasistenciasPage() {
-  const { role: userRole } = useAppSelector((state) => state.auth)
+  const { role: userRole, roleKey } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'inasistencias')
+
+  const canGenerateReport = permissions.canCreate && roleKey !== 'TAREAJE'
 
   const [inasistencias, setInasistencias] = useState<InasistenciaRow[]>([])
   const [showModal, setShowModal] = useState<boolean>(false)
@@ -94,7 +96,6 @@ export default function InasistenciasPage() {
 
     return () => {
       unsubscribe()
-      disconnectSocket()
     }
   }, [])
 
@@ -404,7 +405,7 @@ export default function InasistenciasPage() {
             </span>
             <FiChevronDown className="text-muted transition-transform group-hover:translate-y-0.5" aria-hidden />
           </button>
-          {userRole === 'validator' && (
+          {canGenerateReport && (
             <Button variant="secondary" icon={<FiFileText />} onClick={() => setShowPDFModal(true)}>
               Generar PDF
             </Button>
@@ -451,7 +452,7 @@ export default function InasistenciasPage() {
           onDeleteMarks={handleDeleteMarks}
           onMonthChange={handleMonthChange}
           dateRange={dateRange}
-          isReadOnly={userRole === 'validator'}
+          isReadOnly={!permissions.canCreate}
           canDelete={userRole === 'admin'}
         />
       )}
@@ -472,7 +473,7 @@ export default function InasistenciasPage() {
         />
       )}
 
-      {showPDFModal && (
+      {canGenerateReport && showPDFModal && (
         <ModalPDFInasistencias
           onClose={() => setShowPDFModal(false)}
           inasistencias={inasistencias}

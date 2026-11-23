@@ -69,6 +69,8 @@ export interface IncidenciaForm extends ServiceAssignment {
 
 /** Row model produced by getReports/getReportById and consumed by IncidenciasPage/ModalPDFInforme. */
 export interface Incidencia extends ServiceAssignment {
+  destination_department?: string | null;
+  rejection_reason?: string | null;
   id: ID;
   code: string | null;
   dni: string;
@@ -96,6 +98,7 @@ export interface Incidencia extends ServiceAssignment {
   dirigidoA: string;
   destinatario: string;
   cargoDestinatario: string;
+  copias?: ReportHeader['cc'];
   cc: string[];
   ubicacion: UbicacionNullable;
   nombreCompleto: string;
