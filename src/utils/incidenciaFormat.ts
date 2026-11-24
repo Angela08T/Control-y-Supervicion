@@ -52,6 +52,16 @@ export function formatReportMedia(media: ReportMedium[]) {
   return media.map(m => [labels[m.cam], m.name].filter(Boolean).join(' ')).join(', ')
 }
 
+/** Como se nombra cada medio en el texto del informe */
+const MEDIO_DOC = { BODYCAM: 'la BODYCAM', CAMERA: 'la CÁMARA', RADIO: 'la RADIO', PHONE: 'un CELULAR' } as const
+
+/** Frase para el informe: "la BODYCAM SG004, la CÁMARA 104A y un CELULAR" */
+export function describeReportMedia(media: ReportMedium[]): string {
+  const partes = media.map(m => (m.name ? `${MEDIO_DOC[m.cam]} ${m.name}` : MEDIO_DOC[m.cam]))
+  if (partes.length <= 1) return partes[0] ?? ''
+  return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`
+}
+
 /** Texto del medio: bodycam asignada o tipo de medio */
 export function medioLabel(item: Incidencia): string {
   if (item.isAbsenceReport) return 'Reporte'
