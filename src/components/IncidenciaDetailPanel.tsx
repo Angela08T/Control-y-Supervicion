@@ -6,6 +6,7 @@ import {
   FiClock,
   FiFileText,
   FiHash,
+  FiHelpCircle,
   FiMapPin,
   FiPaperclip,
   FiRotateCcw,
@@ -76,6 +77,8 @@ export default function IncidenciaDetailPanel({
   onClose,
   titleId,
 }: IncidenciaDetailPanelProps) {
+  const hasImage = item.evidences?.some(evidence => evidence.mimetype?.startsWith('image/'))
+  const helpId = React.useId()
   const isDisabled = !!item.deletedAt
   const isAbsence = item.isAbsenceReport
   const colorAsunto = ASUNTOS[item.asunto]?.color ?? 'var(--primary)'
@@ -144,6 +147,13 @@ export default function IncidenciaDetailPanel({
           </p>
         )}
 
+        {item.status === 'rejected' && item.rejection_reason && (
+          <section className="rounded-xl border border-danger/25 bg-danger/6 px-4 py-3">
+            <Titulo>Observación del rechazo</Titulo>
+            <p className="m-0 whitespace-pre-wrap break-words text-sm text-content">{item.rejection_reason}</p>
+          </section>
+        )}
+
         {/* El hecho, destacado */}
         <section>
           <Titulo>El hecho</Titulo>
@@ -158,6 +168,7 @@ export default function IncidenciaDetailPanel({
 
         <section>
           <Titulo>Detalles</Titulo>
+          {item.destination_department && <p className="mb-2 text-sm text-content">Subgerencia de destino: <strong>{item.destination_department}</strong></p>}
           <dl className="m-0 grid grid-cols-2 gap-2.5 max-[560px]:grid-cols-1">
             {isAbsence ? (
               <>
@@ -216,9 +227,19 @@ export default function IncidenciaDetailPanel({
         </Button>
 
         {canSendToValidator && (
-          <Button icon={<FiSend />} onClick={run(() => onSend(item.id))}>
-            Enviar a validación
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button icon={<FiSend />} disabled={!hasImage} aria-describedby={!hasImage ? helpId : undefined} onClick={run(() => onSend(item.id))}>
+              Enviar a validación
+            </Button>
+            {!hasImage && <span className="group relative inline-flex">
+              <button type="button" className="cursor-help rounded p-1 text-muted" aria-label="¿Por qué está deshabilitado el envío?" aria-describedby={helpId}>
+                <FiHelpCircle aria-hidden />
+              </button>
+              <span id={helpId} role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-10 mb-1 hidden w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white group-hover:block group-focus-within:block">
+                Adjunta y guarda al menos una imagen en el borrador para enviarlo a validación.
+              </span>
+            </span>}
+          </div>
         )}
 
         {canValidateReport && (

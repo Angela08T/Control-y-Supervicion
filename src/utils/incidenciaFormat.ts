@@ -1,5 +1,4 @@
-import type { Incidencia } from '@/types'
-import { etiquetaMedios } from './medios'
+import type { Incidencia, ReportMedium } from '@/types'
 
 /** Formatos compartidos por la bandeja de incidencias y su detalle */
 
@@ -48,10 +47,25 @@ export function formatAbsenceDates(item: Incidencia): string {
   return `${fmtDate(item.absenceStart)} - ${fmtDate(item.absenceEnd)}`
 }
 
-/** Texto del medio: todos los medios ("Bodycam SG004 · Cámara 104A"), la bodycam o el tipo */
+export function formatReportMedia(media: ReportMedium[]) {
+  const labels = { BODYCAM: 'Bodycam', CAMERA: 'Cámara', RADIO: 'Radio', PHONE: 'Celular' }
+  return media.map(m => [labels[m.cam], m.name].filter(Boolean).join(' ')).join(', ')
+}
+
+/** Como se nombra cada medio en el texto del informe */
+const MEDIO_DOC = { BODYCAM: 'la BODYCAM', CAMERA: 'la CÁMARA', RADIO: 'la RADIO', PHONE: 'un CELULAR' } as const
+
+/** Frase para el informe: "la BODYCAM SG004, la CÁMARA 104A y un CELULAR" */
+export function describeReportMedia(media: ReportMedium[]): string {
+  const partes = media.map(m => (m.name ? `${MEDIO_DOC[m.cam]} ${m.name}` : MEDIO_DOC[m.cam]))
+  if (partes.length <= 1) return partes[0] ?? ''
+  return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`
+}
+
+/** Texto del medio: bodycam asignada o tipo de medio */
 export function medioLabel(item: Incidencia): string {
   if (item.isAbsenceReport) return 'Reporte'
-  if (item.medios?.length) return etiquetaMedios(item.medios)
+  if (item.media?.length) return formatReportMedia(item.media)
   if (item.bodycamNumber) return `Bodycam ${item.bodycamNumber}`
   return item.medio || DASH
 }

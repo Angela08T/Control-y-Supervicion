@@ -68,7 +68,7 @@ export default function IncidenciasTable({
   const flagsOf = (item: Incidencia) => {
     const itemStatus = item.status ? item.status.toLowerCase() : 'draft'
     return {
-      canSendToValidator: !item.deletedAt && canSend && item.evidences?.length > 0 && itemStatus === 'draft',
+      canSendToValidator: !item.deletedAt && canSend && itemStatus === 'draft',
       canValidateReport: !item.deletedAt && canValidate && itemStatus === 'pending',
     }
   }

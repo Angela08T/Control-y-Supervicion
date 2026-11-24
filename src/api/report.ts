@@ -1,6 +1,7 @@
+import { assignmentFields, isOptionalAssignmentField, serviceAssignment } from '../utils/serviceAssignment'
+import type { ServiceAssignment } from '../types/report.types'
 import { AxiosError } from 'axios';
 import api from './config';
-import { mediosDeReporte, tiposDeMedios } from '../utils/medios';
 import type {
   ApiMessageResponse,
   ApiResponse,
@@ -106,6 +107,7 @@ export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): Report
 
   // Construir el payload base
   const payload: ReportFormPayload = {
+    ...serviceAssignment(form),
     header: { to, cc },
     address: form.ubicacion?.address || '',
     latitude: coords[0] !== null ? parseFloat(String(coords[0])) : null,  // coords[0] es latitude
@@ -117,16 +119,19 @@ export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): Report
     jurisdiction_id: form.jurisdictionId || null
   };
 
-  // Medios (uno o varios). El principal (bodycam_id) es la bodycam o, si no hay, el primer dispositivo.
-  const medios = form.medios || [];
-  if (medios.length > 0) {
-    payload.media = medios.map(m => (m.id ? { cam: m.cam, bodycam_id: m.id } : { cam: m.cam }));
-    const principal = medios.find(m => m.cam === 'BODYCAM' && m.id) ?? medios.find(m => m.id);
-    if (principal?.id) payload.bodycam_id = principal.id;
-    // DNI de quien porta la bodycam (el backend arma "bodycam asignada a")
-    if (medios.some(m => m.cam === 'BODYCAM')) payload.bodycam_dni = form.dni || '';
+  if (!form.falta.startsWith('Inasistencia') && form.media) {
+    payload.media = form.media.map(m => m.id ? { cam: m.cam, bodycam_id: m.id } : { cam: m.cam })
+    const bodycam = form.media.find(m => m.cam === 'BODYCAM')
+    if (bodycam?.id) {
+      payload.bodycam_id = bodycam.id
+      payload.bodycam_dni = form.dni
+    }
+  } else if (!form.media && form.bodycamId) {
+    payload.bodycam_id = form.bodycamId
+    if (form.tipoMedio === 'bodycam') payload.bodycam_dni = form.dni
   }
 
+  for (const key of payload.omitted_assignment_fields ?? []) delete payload[key]
   return payload;
 }
 
@@ -137,6 +142,11 @@ export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): Report
  * @param {Object} filters - Filtros opcionales { lackId, subjectId, jurisdictionId, shift, process }
  * @returns {Promise<Object>} - Objeto con data (reportes) y pagination (metadata)
  */
+export async function getPendingInbox() {
+  const result = await api.get<ApiResponse<{ department: string | null; ids: string[] }>>('/report/pending-inbox')
+  return result.data.data
+}
+
 export const getReports = async (page = 1, limit = 10, filters: ReportFilters = {}): Promise<TableResult<Incidencia>> => {
   try {
     // Construir parámetros de consulta
@@ -175,20 +185,19 @@ export const getReports = async (page = 1, limit = 10, filters: ReportFilters = 
       return {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
-        dni: r.offender?.dni || '',
+        dni: r.reported_dni ?? r.offender?.dni ?? '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: tiposDeMedios(mediosDeReporte(r)) || (r.camera_number ? 'Cámara' : 'Otro'),
+        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
         tipoMedio: tipoMedio,
-        medios: mediosDeReporte(r),
         numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
         turno: r.offender?.shift || '',
-        cargo: r.offender?.job || '',
-        regLab: r.offender?.regime || '',
+        cargo: r.reported_job ?? r.offender?.job ?? '',
+        regLab: r.reported_regime ?? r.offender?.regime ?? '',
         subgerencia: r.offender?.subgerencia || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         jurisdictionId: r.jurisdiction?.id || null,
@@ -199,12 +208,17 @@ export const getReports = async (page = 1, limit = 10, filters: ReportFilters = 
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
         cargoDestinatario: r.header?.to?.job || '',
+        copias: r.header?.cc || [],
         cc: (r.header?.cc || []).map(c => c.name),
         ubicacion: {
           address: r.address || '',
           coordinates: [r.latitude || null, r.longitude || null]
         },
-        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
+        media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
+        ...serviceAssignment(r),
+        nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}`.trim() : '',
+        destination_department: r.destination_department,
+        rejection_reason: r.rejection_reason,
         status: r.process ? (r.process.toLowerCase() as IncidenciaStatus) : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
         message: r.message || '', // Mensaje/descripción adicional del reporte
@@ -293,20 +307,19 @@ export const getReportById = async (reportId: ID): Promise<FoundResult<Incidenci
       const transformed: Incidencia = {
         id: r.id,
         code: r.code || null, // Código del informe (solo si está aprobado)
-        dni: r.offender?.dni || '',
+        dni: r.reported_dni ?? r.offender?.dni ?? '',
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: tiposDeMedios(mediosDeReporte(r)) || (r.camera_number ? 'Cámara' : 'Otro'),
+        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
         tipoMedio: tipoMedio,
-        medios: mediosDeReporte(r),
         numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
         horaIncidente: r.date ? r.date.substring(11, 16) : '',
         turno: r.offender?.shift || '',
-        cargo: r.offender?.job || '',
-        regLab: r.offender?.regime || '',
+        cargo: r.reported_job ?? r.offender?.job ?? '',
+        regLab: r.reported_regime ?? r.offender?.regime ?? '',
         subgerencia: r.offender?.subgerencia || '',
         jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
         jurisdictionId: r.jurisdiction?.id || null,
@@ -317,12 +330,17 @@ export const getReportById = async (reportId: ID): Promise<FoundResult<Incidenci
         dirigidoA: r.header?.to?.job || '',
         destinatario: r.header?.to?.name || '',
         cargoDestinatario: r.header?.to?.job || '',
+        copias: r.header?.cc || [],
         cc: (r.header?.cc || []).map(c => c.name),
         ubicacion: {
           address: r.address || '',
           coordinates: [r.latitude || null, r.longitude || null]
         },
-        nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}`.trim() : '',
+        media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
+        ...serviceAssignment(r),
+        nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}`.trim() : '',
+        destination_department: r.destination_department,
+        rejection_reason: r.rejection_reason,
         status: r.process ? (r.process.toLowerCase() as IncidenciaStatus) : 'draft', // process: PENDING/APPROVED/REJECTED
         evidences: r.evidences || [],
         message: r.message || '', // Mensaje/descripción adicional del reporte
@@ -387,10 +405,22 @@ export const updateReportWithEvidences = async (
   files: File[] = [],
   descriptions: string[] = [],
   message = '',
-  link = ''
-): Promise<ApiResponse<Report>> => {
+  link = '',
+  assignment?: ServiceAssignment,
+  captions: Record<string, string> = {}
+): Promise<ApiResponse<Report & { uploadedEvidenceIds?: string[] }>> => {
   try {
     const formData = new FormData()
+
+    if (Object.keys(captions).length) formData.append('captions', JSON.stringify(captions))
+    if (assignment) {
+      const omitted = assignment.omitted_assignment_fields ?? []
+      formData.append('omitted_assignment_fields', omitted.join(','))
+      for (const [key] of assignmentFields) {
+        if (isOptionalAssignmentField(key) && omitted.includes(key)) continue
+        formData.append(key, assignment[key] ?? '')
+      }
+    }
 
     // Agregar cada imagen al FormData
     files.forEach((file, index) => {
@@ -537,9 +567,9 @@ export const deleteEvidence = async (evidenceId: ID): Promise<ApiMessageResponse
  * @param {string} reportId - ID de la incidencia
  * @returns {Promise<Object>} - Respuesta del servidor
  */
-export const sendToValidator = async (reportId: ID): Promise<ApiResponse<Report>> => {
+export const sendToValidator = async (reportId: ID, destination_department: string): Promise<ApiResponse<Report>> => {
   try {
-    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}/send`)
+    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}/send`, { destination_department })
     return response.data
   } catch (error) {
     if (error instanceof AxiosError && error.response) {
@@ -558,9 +588,9 @@ export const sendToValidator = async (reportId: ID): Promise<ApiResponse<Report>
  * @param {boolean} approved - true para aprobar, false para rechazar
  * @returns {Promise<Object>} - Respuesta del servidor
  */
-export const validateReport = async (reportId: ID, approved: boolean): Promise<ApiResponse<Report>> => {
+export const validateReport = async (reportId: ID, approved: boolean, rejection_reason?: string): Promise<ApiResponse<Report>> => {
   try {
-    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}/validate`, { approved })
+    const response = await api.patch<ApiResponse<Report>>(`/report/${reportId}/validate`, { approved, rejection_reason })
     return response.data
   } catch (error) {
     if (error instanceof AxiosError && error.response) {

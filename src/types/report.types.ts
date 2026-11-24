@@ -1,5 +1,6 @@
 import type { ReportBodycam } from './bodycam.types';
 import type {
+  Cam,
   ID,
   ISODateString,
   NamedRef,
@@ -47,7 +48,28 @@ export interface EvidenceView {
 }
 
 /** Report as returned by GET /report and GET /report/:id (buildSelectReport relations). */
-export interface Report {
+export type OptionalAssignmentField = 'assigned_zone' | 'assigned_sector' | 'assigned_radio';
+
+export interface ServiceAssignment {
+  omitted_assignment_fields?: OptionalAssignmentField[];
+  reported_name?: string | null;
+  reported_lastname?: string | null;
+  reported_dni?: string | null;
+  reported_job?: string | null;
+  reported_regime?: string | null;
+  service_start?: string | null;
+  assigned_zone?: string | null;
+  assigned_sector?: string | null;
+  assigned_radio?: string | null;
+}
+
+export interface ReportMedium {
+  cam: Cam;
+  id: ID | null;
+  name: string | null;
+}
+
+export interface Report extends ServiceAssignment {
   id: ID;
   address: string | null;
   code: string | null;
@@ -61,14 +83,15 @@ export interface Report {
   link: string | null;
   message: string | null;
   /** null = draft (not sent to validator yet). */
+  destination_department?: string | null;
+  rejection_reason?: string | null;
   process: Process | null;
   shift: Shift | null;
   evidences: Evidence[];
   deleted_at: ISODateString | null;
   absences: Absence[];
+  media?: ReportMedium[] | null;
   bodycam: ReportBodycam | null;
-  /** Medios del reporte: [{ cam, id, name }] (puede faltar en reportes antiguos). */
-  media?: { cam: ReportBodycam['cam']; id: ID | null; name: string | null }[] | null;
   jurisdiction: NamedRef | null;
   lack: NamedRef;
   offender: Offender | null;
@@ -85,6 +108,7 @@ export interface Report {
 
 /** Report returned by getReportWithEvidences (evidences mapped, message defaulted). */
 export interface ReportWithEvidences extends Omit<Report, 'evidences' | 'message'> {
+  signature?: string;
   evidences: EvidenceView[];
   message: string;
 }
@@ -124,6 +148,7 @@ export interface UpdateReportEvidencesInput {
 
 /** Body of PATCH /report/:id/validate. */
 export interface ValidateReportDto {
+  rejection_reason?: string;
   approved: boolean;
 }
 

@@ -7,6 +7,7 @@ import { getSubjects } from '../api/subject'
 import { getLacks } from '../api/lack'
 import { createAbsenceReport, getAttendances } from '../api/offender'
 import InformePDFDocument from './PDFDocument'
+import FirmaInforme from './FirmaInforme'
 import { toast } from '../utils/toast'
 import type { CreateAbsenceDto, ID, Mode } from '@/types'
 import Modal from '@/components/UI/Modal'
@@ -56,6 +57,8 @@ interface AttendancePerson {
 
 /** Campos de la respuesta de createAbsenceReport que lee este modal. */
 interface AbsenceReportData {
+  code?: string
+  signature?: string
   report_id?: string
 }
 
@@ -440,7 +443,13 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
 
       // Obtener el code del reporte de la respuesta (ejemplo: "042-2025")
       // createAbsenceReport ya devuelve response.data, por lo que response.code es el correcto
-      const reportCode = response.code || '---'
+      const reportCode = response.data?.code || response.code || '---'
+      if (!response.data?.signature?.startsWith('data:image/png;base64,')) {
+        setReportResult({ message: 'Reporte creado', data: response.data, toLead, ccLeads })
+        onReportCreated?.(response.data)
+        toast.warning('El reporte se creó, pero el servidor no entregó la firma. Abre el informe aprobado desde Incidencias después de actualizar el backend.')
+        return
+      }
 
       // Preparar datos para el PDF usando el formato que espera InformePDFDocument
       // Mapear inasistencias al formato de inasistenciasHistoricas
@@ -492,6 +501,7 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
       // Crear el documento PDF usando InformePDFDocument
       const doc = (
         <InformePDFDocument
+          signature={response.data?.signature}
           formData={formData}
           incidencia={incidencia}
           inasistenciasHistoricas={inasistenciasHistoricas}
@@ -908,6 +918,8 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
                     </table>
                   </div>
                 )}
+
+                <FirmaInforme />
 
                 {/* Mensaje de éxito si existe */}
                 {reportResult && (

@@ -1,7 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import { serviceAssignment } from '../../utils/serviceAssignment'
+import { useLocation } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
 import IncidenciasTable from '../../components/IncidenciasTable'
 import ModalIncidencia from '../../components/ModalIncidencia'
 import ModalPDFInforme from '../../components/ModalPDFInforme'
+import ModalInformeAprobado from '../../components/ModalInformeAprobado'
 import ModalPDFInasistencias from '../../components/ModalPDFInasistencias'
 import AlertModal, { type AlertModalType } from '../../components/AlertModal'
 import ConfirmModal, { type ConfirmModalType } from '../../components/ConfirmModal'
@@ -10,7 +13,8 @@ import SearchInput from '@/components/UI/SearchInput'
 import Pagination from '@/components/UI/Pagination'
 import { PAGE_SIZE } from '@/hooks/usePagedList'
 import Badge from '@/components/UI/Badge'
-import { Select } from '@/components/UI/Field'
+import Modal from '@/components/UI/Modal'
+import { Select, Field, Textarea } from '@/components/UI/Field'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport, exportReportsExcel } from '../../api/report'
@@ -21,28 +25,24 @@ import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { useAppSelector } from '../../store/hooks'
 import { FiDownload, FiFilter, FiPlus, FiX } from 'react-icons/fi'
-import { initSocket, onReportStatusChanged, onReportStatusValidate, disconnectSocket } from '../../services/websocket'
+import { initSocket, onReportStatusChanged, onReportStatusValidate } from '../../services/websocket'
 import type {
   ISODateString,
-  Evidence,
   ID,
   Incidencia,
   IncidenciaForm,
   IncidenciaStatus,
   Lead,
   NamedRef,
-  Offender,
   PaginationMeta,
   Process,
   Report,
   ReportFilters,
-  ReportHeader,
   Shift,
   StoredIncidencia,
   TablePagination,
 } from '@/types'
 import { cardClass, cn, fitPage } from '../../utils/classes'
-import { mediosDeReporte, tiposDeMedios } from '../../utils/medios'
 
 /** Forma mínima de un error (axios / NestJS) que lee esta página. */
 interface ApiErrorLike {
@@ -84,37 +84,6 @@ interface ConfirmModalState {
   onConfirm: (() => void) | null;
 }
 
-/** Reporte tal como llega por WebSocket (campos parciales). */
-interface ReportSocketPayload {
-  id?: ID;
-  report_id?: ID;
-  reportId?: ID;
-  code?: string | null;
-  status?: string;
-  state?: string;
-  process?: string | null;
-  offender?: Partial<Offender> | null;
-  subject?: { name: string } | null;
-  lack?: { name: string } | null;
-  bodycam?: { name: string } | null;
-  bodycam_user?: string | null;
-  camera_number?: string | null;
-  date?: ISODateString;
-  shift?: string | null;
-  jurisdiction?: NamedRef | null;
-  user?: { name: string; lastname: string } | null;
-  header?: ReportHeader | null;
-  address?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  evidences?: Evidence[];
-  message?: string | null;
-  link?: string | null;
-  created_at?: ISODateString;
-  updated_at?: ISODateString;
-  deleted_at?: ISODateString | null;
-}
-
 /** Reporte de búsqueda: el lack puede traer fechas de auditoría. */
 interface SearchReportRecord extends Report {
   lack: NamedRef & { created_at?: ISODateString; updated_at?: ISODateString };
@@ -130,6 +99,7 @@ const STATUS_OPTIONS: { value: string; label: string; dot?: string }[] = [
 ]
 
 /** Clase de los selects de filtros avanzados (`!w-auto` porque el kit Select fuerza w-full) */
+const SENT_STATUS_OPTIONS = STATUS_OPTIONS.filter(option => option.value !== 'null')
 const advancedSelect = 'h-9 !w-auto max-w-[220px]'
 
 /** Convierte incidencias de la API al formato legado de localStorage (utils/storage.ts). */
@@ -151,6 +121,7 @@ function errorMessageOf(error: unknown, fallback: string): string {
 export default function IncidenciasPage() {
   const { role: userRole } = useAppSelector((state) => state.auth)
   const permissions = getModulePermissions(userRole, 'incidencias')
+  const statusOptions = userRole === 'validator' ? SENT_STATUS_OPTIONS : STATUS_OPTIONS
 
   /** Valores iniciales de los filtros; "Limpiar filtros" vuelve a ellos */
   const defaultFilters: IncidenciasFilters = {
@@ -166,9 +137,12 @@ export default function IncidenciasPage() {
 
   const [incidencias, setIncidencias] = useState<Incidencia[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [approvedReportId, setApprovedReportId] = useState<ID | null>(null)
   const [showPDFModal, setShowPDFModal] = useState(false)
   const [editItem, setEditItem] = useState<Incidencia | null>(null)
-  const [filters, setFilters] = useState<IncidenciasFilters>(defaultFilters)
+  const location = useLocation()
+  const [filters, setFilters] = useState<IncidenciasFilters>(() =>
+    location.state?.openPendingInbox ? { ...defaultFilters, process: 'PENDING' } : defaultFilters)
   const [showAdvanced, setShowAdvanced] = useState(false) // Panel de filtros avanzados (asunto, falta, jurisdicción, subgerencia, turno)
   const [subgerencias, setSubgerencias] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -181,6 +155,8 @@ export default function IncidenciasPage() {
     from: 0,
     to: 0
   })
+  const lastLoadedQuery = useRef('')
+  const fetchingList = useRef(false)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger para forzar recarga
@@ -191,6 +167,14 @@ export default function IncidenciasPage() {
 
   // Estados para modales personalizados
   const [alertModal, setAlertModal] = useState<AlertModalState>({ isOpen: false, title: '', message: '', type: 'success' })
+  const [sendId, setSendId] = useState<ID | null>(null)
+  const [department, setDepartment] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
+  const [rejectId, setRejectId] = useState<ID | null>(null)
+  const [reason, setReason] = useState('')
+  const [rejectError, setRejectError] = useState('')
+  const [rejecting, setRejecting] = useState(false)
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null })
 
   const { subjects, loading: subjectsLoading } = useSubjects()
@@ -209,141 +193,35 @@ export default function IncidenciasPage() {
     }).catch(() => {})
   }, [])
 
-  // Función para actualizar estado de un reporte específico
-  const updateReportStatus = useCallback(async (reportId: ID, updates: Partial<Incidencia>, fullData: ReportSocketPayload | null = null): Promise<void> => {
-    // Actualizar en la lista principal
-    setIncidencias(prev => {
-      const found = prev.find(i => i.id === reportId)
-
-      // Si el reporte ya está en la lista, actualizarlo
-      if (found) {
-        return prev.map(inc =>
-          inc.id === reportId ? { ...inc, ...updates } : inc
-        )
-      }
-
-      // Si NO está en la lista pero tenemos los datos completos del socket, agregarlo
-      if (fullData && fullData.offender && fullData.subject && fullData.lack) {
-        const newReport = {
-          id: fullData.id,
-          code: fullData.code || null,
-          dni: fullData.offender?.dni || '',
-          asunto: fullData.subject?.name || '',
-          falta: fullData.lack?.name || '',
-          tipoInasistencia: fullData.subject?.name === 'Inasistencia' ? fullData.lack?.name : null,
-          medio: tiposDeMedios(mediosDeReporte(fullData)) || (fullData.camera_number ? 'Cámara' : 'Otro'),
-          medios: mediosDeReporte(fullData),
-          tipoMedio: fullData.bodycam ? 'bodycam' : (fullData.camera_number ? 'camara' : 'bodycam'),
-          numeroCamara: fullData.camera_number || '',
-          fechaIncidente: fullData.date ? fullData.date.substring(0, 10).split('-').reverse().join('/') : '',
-          horaIncidente: fullData.date ? fullData.date.substring(11, 16) : '',
-          turno: fullData.offender?.shift || fullData.shift || '',
-          cargo: fullData.offender?.job || '',
-          regLab: fullData.offender?.regime || '',
-          jurisdiccion: fullData.jurisdiction?.name || '',
-          jurisdictionId: fullData.jurisdiction?.id || null,
-          bodycamNumber: fullData.bodycam?.name || '',
-          bodycamAsignadaA: fullData.bodycam_user || '',
-          encargadoBodycam: fullData.user ? `${fullData.user.name} ${fullData.user.lastname}`.trim() : '',
-          dirigidoA: fullData.header?.to?.job || '',
-          destinatario: fullData.header?.to?.name || '',
-          cargoDestinatario: fullData.header?.to?.job || '',
-          cc: (fullData.header?.cc || []).map(c => c.name),
-          ubicacion: {
-            address: fullData.address || '',
-            coordinates: [fullData.latitude || null, fullData.longitude || null]
-          },
-          nombreCompleto: fullData.offender ? `${fullData.offender.name} ${fullData.offender.lastname}`.trim() : '',
-          status: fullData.process ? fullData.process.toLowerCase() : 'draft',
-          evidences: fullData.evidences || [],
-          message: fullData.message || '',
-          link: fullData.link || '',
-          createdAt: fullData.created_at || fullData.date,
-          updatedAt: fullData.updated_at || fullData.date,
-          deletedAt: fullData.deleted_at || null
-        } as Incidencia
-
-        // Agregar al inicio de la lista
-        return [newReport, ...prev]
-      }
-
-      return prev
-    })
-
-    // Actualizar en searchResult si existe
-    setSearchResult(prev => {
-      if (!prev || prev.length === 0) return prev
-
-      const found = prev.find(i => i.id === reportId)
-      if (found) {
-        return prev.map(inc =>
-          inc.id === reportId ? { ...inc, ...updates } : inc
-        )
-      }
-
-      return prev
-    })
-  }, [])
-
-  // WebSocket: Escuchar cambios de estado de reportes en tiempo real
   useEffect(() => {
-    // Inicializar conexión WebSocket
-    initSocket()
-
-    // Suscribirse al evento de cambio de estado
-    const unsubscribeStatusChanged = onReportStatusChanged<ReportSocketPayload>((data) => {
-      if (!data) return
-
-      const reportId = data.id || data.report_id || data.reportId
-      const newStatus = data.status || data.process || data.state
-
-      if (reportId && newStatus) {
-        updateReportStatus(
-          reportId,
-          {
-            status: newStatus.toLowerCase() as IncidenciaStatus,
-            ...(data.code ? { code: data.code } : {})
-          },
-          data
-        )
-      }
-    })
-
-    // Suscribirse al evento de validación (APPROVED/REJECTED)
-    const unsubscribeStatusValidate = onReportStatusValidate<ReportSocketPayload>((data) => {
-      if (!data) return
-
-      const reportId = data.id || data.report_id || data.reportId
-      const newStatus = data.status || data.process || data.state
-
-      if (reportId) {
-        const updates: Partial<Incidencia> = {}
-
-        if (newStatus) {
-          updates.status = newStatus.toLowerCase() as IncidenciaStatus
-        }
-        if (data.code) {
-          updates.code = data.code
-        }
-
-        if (Object.keys(updates).length > 0) {
-          updateReportStatus(reportId, updates, data)
-        }
-      }
-    })
-
-    // Cleanup: desuscribirse al desmontar
+    const refresh = () => setRefreshTrigger(value => value + 1)
+    const socket = initSocket()
+    socket?.on('connect', refresh)
+    const offSent = onReportStatusChanged(refresh)
+    const offValidated = onReportStatusValidate(refresh)
+    // IIS puede servir la API aunque el canal de notificaciones esté desconectado.
+    const fallback = userRole === 'validator' ? window.setInterval(() => {
+      if (!document.hidden && !socket?.connected && !fetchingList.current) refresh()
+    }, 8000) : undefined
+    window.addEventListener('focus', refresh)
     return () => {
-      unsubscribeStatusChanged()
-      unsubscribeStatusValidate()
-      disconnectSocket()
+      window.clearInterval(fallback)
+      offSent()
+      offValidated()
+      socket?.off('connect', refresh)
+      window.removeEventListener('focus', refresh)
     }
-  }, [updateReportStatus])
+  }, [userRole])
 
   // Cargar incidencias desde la API con paginación y filtros
   useEffect(() => {
+    let active = true
     async function fetchIncidencias() {
-      setLoading(true)
+      const query = JSON.stringify([userRole, currentPage, itemsPerPage, filters.lackId, filters.subjectId,
+        filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
+      const background = lastLoadedQuery.current === query
+      fetchingList.current = true
+      setLoading(!background)
       try {
         // Construir objeto de filtros solo con valores no vacíos
         const apiFilters: ReportFilters = {}
@@ -357,19 +235,21 @@ export default function IncidenciasPage() {
         console.log('🔍 Filtros enviados al backend:', apiFilters)
 
         const result = await getReports(currentPage, itemsPerPage, apiFilters)
+        if (!active) return
+        lastLoadedQuery.current = query
         setIncidencias(result.data)
         setPagination(result.pagination)
         saveIncidencias(toStoredList(result.data)) // opcional: respaldo local
       } catch (error) {
-        const localData = loadIncidencias()
-        setIncidencias(fromStoredList(localData))
+        if (active && !background) setIncidencias(userRole === 'validator' ? [] : fromStoredList(loadIncidencias()))
       } finally {
-        setLoading(false)
+        if (active) { fetchingList.current = false; setLoading(false) }
       }
     }
 
     fetchIncidencias()
-  }, [currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
+    return () => { active = false }
+  }, [userRole, currentPage, itemsPerPage, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.process, filters.subgerencia])
 
   // Cantidad por estado para los chips de la barra (respeta los demas filtros)
   const [conteos, setConteos] = useState<Record<string, number | null>>({})
@@ -382,7 +262,7 @@ export default function IncidenciasPage() {
     if (filters.turno) base.shift = filters.turno as Shift
     if (filters.subgerencia) base.subgerencia = filters.subgerencia
     Promise.all(
-      STATUS_OPTIONS.map(async ({ value }) => {
+      statusOptions.map(async ({ value }) => {
         try {
           const r = await getReports(1, 1, value ? { ...base, process: value as Process } : base)
           return [value, r.pagination.total] as const
@@ -396,7 +276,7 @@ export default function IncidenciasPage() {
     return () => {
       vigente = false
     }
-  }, [refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.subgerencia])
+  }, [statusOptions, refreshTrigger, filters.lackId, filters.subjectId, filters.jurisdictionId, filters.turno, filters.subgerencia])
 
   // Mantener sincronizado localStorage si cambian las incidencias
   useEffect(() => {
@@ -534,34 +414,25 @@ export default function IncidenciasPage() {
     }
   }
 
-  async function handleSendToValidator(reportId: ID): Promise<void> {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Enviar a validador',
-      message: '¿Enviar esta incidencia al validador?\n\nDebe tener al menos una imagen adjunta.',
-      type: 'info',
-      confirmText: 'Sí, enviar',
-      onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false })
-        try {
-          const response: ActionResponse = await sendToValidator(reportId)
-          setAlertModal({
-            isOpen: true,
-            title: '¡Éxito!',
-            message: response.data?.message || response.message || 'Incidencia enviada al validador exitosamente',
-            type: 'success'
-          })
-          setRefreshTrigger(prev => prev + 1)
-        } catch (error) {
-          setAlertModal({
-            isOpen: true,
-            title: 'Error',
-            message: errorMessageOf(error, 'Error al enviar incidencia'),
-            type: 'error'
-          })
-        }
-      }
-    })
+  function handleSendToValidator(reportId: ID) {
+    setDepartment('')
+    setSendError('')
+    setSendId(reportId)
+  }
+
+  async function confirmSend() {
+    if (!sendId || !department || sending) return
+    setSending(true)
+    try {
+      await sendToValidator(sendId, department)
+      setSendId(null)
+      setRefreshTrigger(prev => prev + 1)
+      setAlertModal({ isOpen: true, title: 'Informe enviado', message: 'La subgerencia seleccionada ya puede revisar el informe.', type: 'success' })
+    } catch (error) {
+      setSendError(errorMessageOf(error, 'Error al enviar el informe'))
+    } finally {
+      setSending(false)
+    }
   }
 
   async function handleApprove(reportId: ID): Promise<void> {
@@ -574,13 +445,8 @@ export default function IncidenciasPage() {
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false })
         try {
-          const response: ActionResponse = await validateReport(reportId, true)
-          setAlertModal({
-            isOpen: true,
-            title: '¡Éxito!',
-            message: response.data?.message || response.message || 'Incidencia aprobada exitosamente',
-            type: 'success'
-          })
+          await validateReport(reportId, true)
+          setApprovedReportId(reportId)
           setRefreshTrigger(prev => prev + 1)
         } catch (error) {
           setAlertModal({
@@ -594,37 +460,33 @@ export default function IncidenciasPage() {
     })
   }
 
-  async function handleReject(reportId: ID): Promise<void> {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Rechazar incidencia',
-      message: '¿Rechazar esta incidencia?\n\nEl informe no se aprobará y no se generará código oficial.',
-      type: 'warning',
-      confirmText: 'Sí, rechazar',
-      onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false })
-        try {
-          const response: ActionResponse = await validateReport(reportId, false)
-          setAlertModal({
-            isOpen: true,
-            title: 'Incidencia rechazada',
-            message: response.data?.message || response.message || 'Incidencia rechazada exitosamente',
-            type: 'info'
-          })
-          setRefreshTrigger(prev => prev + 1)
-        } catch (error) {
-          setAlertModal({
-            isOpen: true,
-            title: 'Error',
-            message: errorMessageOf(error, 'Error al rechazar incidencia'),
-            type: 'error'
-          })
-        }
-      }
-    })
+  function handleReject(reportId: ID) {
+    setReason('')
+    setRejectError('')
+    setRejectId(reportId)
+  }
+
+  async function confirmRejection() {
+    if (!rejectId || rejecting || !reason.trim()) return
+    setRejecting(true)
+    try {
+      await validateReport(rejectId, false, reason.trim())
+      setSearchResult(null)
+      setRejectId(null)
+      setRefreshTrigger(prev => prev + 1)
+      setAlertModal({ isOpen: true, title: 'Incidencia rechazada', message: 'La observación quedó guardada en el informe.', type: 'info' })
+    } catch (error) {
+      setRejectError(errorMessageOf(error, 'Error al rechazar la incidencia'))
+    } finally {
+      setRejecting(false)
+    }
   }
 
   function handleEdit(item: Incidencia) {
+    if (item.status === 'approved') {
+      setApprovedReportId(item.id)
+      return
+    }
     setEditItem(item)
     setShowPDFModal(true)
   }
@@ -716,17 +578,16 @@ export default function IncidenciasPage() {
 
               return {
                 id: r.id,
-                dni: r.offender?.dni || '',
+                dni: r.reported_dni ?? r.offender?.dni ?? '',
                 asunto: r.subject?.name || '',
                 falta: r.lack?.name || '',
                 tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-                medio: tiposDeMedios(mediosDeReporte(r)) || 'Otro',
-                medios: mediosDeReporte(r),
+                medio: r.bodycam ? 'Bodycam' : 'Otro',
                 fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
                 horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
                 turno: r.offender?.shift || '',
-                cargo: r.offender?.job || '',
-                regLab: r.offender?.regime || '',
+                cargo: r.reported_job ?? r.offender?.job ?? '',
+                regLab: r.reported_regime ?? r.offender?.regime ?? '',
                 subgerencia: r.offender?.subgerencia || '',
                 jurisdiccion: r.jurisdiction?.name || r.offender?.subgerencia || '',
                 bodycamNumber: r.bodycam?.name || '',
@@ -735,7 +596,11 @@ export default function IncidenciasPage() {
                 registradoPor: r.user ? `${r.user.name} ${r.user.lastname}`.trim() : '',
                 dirigidoA: r.header?.to?.job || '',
                 destinatario: r.header?.to?.name || '',
-                nombreCompleto: r.offender ? `${r.offender.name} ${r.offender.lastname}` : '',
+                media: r.media?.length ? r.media : r.bodycam ? [r.bodycam] : [],
+                ...serviceAssignment(r),
+                nombreCompleto: r.offender ? `${r.reported_name ?? r.offender.name} ${r.reported_lastname ?? r.offender.lastname}` : '',
+                destination_department: r.destination_department,
+                rejection_reason: r.rejection_reason,
                 status: r.process ? r.process.toLowerCase() : 'draft', // process: PENDING/APPROVED/REJECTED
                 evidences: r.evidences || [],
                 // Datos específicos de reportes de inasistencias
@@ -781,7 +646,7 @@ export default function IncidenciasPage() {
 
       searchByFields()
     }
-  }, [filters.search, currentPage, itemsPerPage])
+  }, [filters.search, currentPage, itemsPerPage, refreshTrigger])
 
   async function handleExportExcel() {
     setExporting(true)
@@ -878,7 +743,7 @@ export default function IncidenciasPage() {
           </div>
 
           <div role="tablist" aria-label="Filtrar por estado" className="flex flex-wrap items-center gap-1.5">
-            {STATUS_OPTIONS.map(option => {
+            {statusOptions.map(option => {
               const active = filters.process === option.value
               const n = conteos[option.value]
               return (
@@ -1125,6 +990,10 @@ export default function IncidenciasPage() {
         />
       )}
 
+      {approvedReportId && (
+        <ModalInformeAprobado key={approvedReportId} id={approvedReportId} onClose={() => setApprovedReportId(null)} />
+      )}
+
       {showPDFModal && editItem && (
         // Mostrar modal diferente según el tipo de incidencia
         editItem.asunto === 'Inasistencia' ? (
@@ -1142,6 +1011,38 @@ export default function IncidenciasPage() {
             onSave={() => setRefreshTrigger(prev => prev + 1)}
           />
         )
+      )}
+
+      {sendId && (
+        <Modal title="Enviar a validación" onClose={() => { if (!sending) setSendId(null) }}
+          footer={<>
+            <Button variant="secondary" disabled={sending} onClick={() => setSendId(null)}>Cancelar</Button>
+            <Button disabled={!department} loading={sending} onClick={confirmSend}>Confirmar envío</Button>
+          </>}>
+          <Field label="Subgerencia de destino" required error={sendError}>
+            <Select autoFocus required value={department} disabled={sending} onChange={e => setDepartment(e.target.value)}>
+              <option value="">Selecciona una subgerencia</option>
+              <option value="SERENAZGO">Serenazgo</option>
+              <option value="FISCALIZACION">Fiscalización</option>
+              <option value="TRANSPORTE">Transporte</option>
+            </Select>
+          </Field>
+        </Modal>
+      )}
+
+      {rejectId && (
+        <Modal title="Rechazar informe" onClose={() => { if (!rejecting) setRejectId(null) }}
+          footer={<>
+            <Button variant="secondary" disabled={rejecting} onClick={() => setRejectId(null)}>Cancelar</Button>
+            <Button variant="danger" disabled={rejecting || !reason.trim()} onClick={confirmRejection}>
+              {rejecting ? 'Guardando…' : 'Rechazar informe'}
+            </Button>
+          </>}>
+          <Field label="Observación del rechazo" required hint="Quien registró el informe podrá leer esta observación." error={rejectError}>
+            <Textarea required autoFocus rows={4} maxLength={2000} value={reason} disabled={rejecting}
+              placeholder="Explica por qué rechazas el informe." onChange={e => setReason(e.target.value)} />
+          </Field>
+        </Modal>
       )}
 
       {/* Modales personalizados */}

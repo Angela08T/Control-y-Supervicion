@@ -1,9 +1,11 @@
+import ServiceAssignmentFields from './ServiceAssignmentFields'
+import { identityError, serviceAssignment } from '../utils/serviceAssignment'
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import MapSelector from './MapSelector'
 import type { MapSelectorValue } from './MapSelector'
-import type { Cam, ID, ISODateString, Incidencia, IncidenciaForm, Lead, MedioItem, OffenderDniLookup, SubjectLack, TipoMedio, Ubicacion } from '@/types'
-import BuscadorDispositivo from './BuscadorDispositivo'
-import { MEDIO_INFO, ORDEN_MEDIOS } from '@/utils/medios'
+import type { Cam, ID, ISODateString, Incidencia, IncidenciaForm, Lead, OffenderDniLookup, SubjectLack, Ubicacion } from '@/types'
+import { getBodycams } from '../api/bodycam'
+import type { BodycamView } from '@/types'
 import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useJobs from '../hooks/Job/useJobs'
 import useLeads from '../hooks/Job/useLeads'
@@ -19,7 +21,6 @@ import {
   FiAlertTriangle,
   FiBriefcase,
   FiCamera,
-  FiCheck,
   FiCheckCircle,
   FiChevronUp,
   FiEdit3,
@@ -61,7 +62,6 @@ export interface ModalIncidenciaProps {
   onSave?: (data: IncidenciaForm, allLeads: Lead[]) => void | Promise<void>;
 }
 
-
 /** Campos que la búsqueda por DNI devuelve y que no están en `OffenderDniLookup`. */
 interface OffenderSugerencia extends OffenderDniLookup {
   id?: ID;
@@ -81,8 +81,8 @@ const defaultState: IncidenciaForm = {
   falta: '',
   turno: '',
   medio: 'bodycam',
+  media: [{ cam: 'BODYCAM', id: null, name: null }],
   tipoMedio: 'bodycam', // Tipo de medio: 'bodycam', 'camara' o 'radio'
-  medios: [{ cam: 'BODYCAM', id: null, name: null }], // Uno o varios medios
   fechaIncidente: '',
   horaIncidente: '',
   bodycamNumber: '',
@@ -104,31 +104,24 @@ const defaultState: IncidenciaForm = {
   lackId: null      // ID de la falta para la API
 }
 
-/**
- * Mantiene los campos antiguos de un solo medio (tipoMedio, bodycamId, numeroCamara...) a partir de la
- * lista de medios, para el codigo que todavia los lee.
- */
-function sincronizarMedios(f: IncidenciaForm): IncidenciaForm {
-  const medios = f.medios || []
-  const de = (cam: Cam) => medios.find(m => m.cam === cam)
-  const primero = medios[0]?.cam
-  const tipo: Record<Cam, string> = { BODYCAM: 'bodycam', CAMERA: 'camara', RADIO: 'radio', PHONE: 'Phone' }
-  const principal = de('BODYCAM') ?? medios.find(m => m.id)
-  return {
-    ...f,
-    tipoMedio: (primero ? tipo[primero] : 'bodycam') as TipoMedio,
-    medio: primero ? tipo[primero] : f.medio,
-    bodycamId: principal?.id ?? '',
-    bodycamNumber: de('BODYCAM')?.name ?? '',
-    numeroCamara: de('CAMERA')?.name ?? '',
-    numeroRadio: de('RADIO')?.name ?? '',
-  }
-}
-
 export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncidenciaProps) {
   const [form, setForm] = useState<IncidenciaForm>(defaultState)
   const [selectedJobId, setSelectedJobId] = useState<ID | null>(null) // ID del job seleccionado
   const [selectedLeadId, setSelectedLeadId] = useState<string>('') // ID del lead seleccionado
+  const [devices, setDevices] = useState<BodycamView[]>([])
+  const [loadingDevices, setLoadingDevices] = useState(true)
+  const [deviceError, setDeviceError] = useState(false)
+  const [deviceAttempt, setDeviceAttempt] = useState(0)
+  useEffect(() => {
+    let active = true
+    setLoadingDevices(true)
+    setDeviceError(false)
+    getBodycams(0).then(result => {
+      if (active) setDevices(result.data.filter(device => !device.deleted_at))
+    }).catch(() => { if (active) setDeviceError(true) })
+      .finally(() => { if (active) setLoadingDevices(false) })
+    return () => { active = false }
+  }, [deviceAttempt])
   const [mostrarMapa, setMostrarMapa] = useState(true) // Visibilidad del mapa (solo UI)
   const [mostrarSelectorCC, setMostrarSelectorCC] = useState(false) // Selector de personas en copia (solo UI)
   const [ccFiltro, setCcFiltro] = useState('') // Buscador del selector de copia (solo UI)
@@ -247,6 +240,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   useEffect(() => {
     if (initial) {
       setForm({ ...defaultState, ...(initial as Partial<IncidenciaForm>) })
+      // Si estamos editando, establecer los searchTerms existentes
       if (initial.dni) {
         setDniSearchTerm(initial.dni)
       }
@@ -273,6 +267,7 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   function setField<K extends keyof IncidenciaForm>(k: K, v: IncidenciaForm[K]) {
     setForm(f => {
       const newForm: IncidenciaForm = { ...f, [k]: v }
+      if (k === 'dni' && f.dni !== v) Object.assign(newForm, serviceAssignment({}), { nombreCompleto: '', cargo: '', regLab: '', turno: '' })
 
       // Si cambia el asunto, resetear falta y campos relacionados
       if (k === 'asunto') {
@@ -361,6 +356,13 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
 
     setForm(f => ({
       ...f,
+      ...(f.dni !== offender.dni ? serviceAssignment({}) : {}),
+      service_start: f.dni === offender.dni && f.service_start ? f.service_start : offender.service_start ?? '',
+      reported_name: offender.name || '',
+      reported_lastname: offender.lastname || '',
+      reported_dni: offender.dni || '',
+      reported_job: offender.job || '',
+      reported_regime: offender.regime || '',
       dni: offender.dni || '',
       nombreCompleto: nombreCompleto,
       turno: (offender.shift || '').toUpperCase(),
@@ -400,13 +402,16 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
       return;
     }
 
+    const identificationError = identityError(form)
+    if (identificationError) { toast.warning(identificationError); return }
+
     // Si es numérico, debe tener 8 dígitos (DNI)
     if (/^\d+$/.test(form.dni) && form.dni.length !== 8) {
       toast.warning('El DNI debe tener exactamente 8 dígitos');
       return;
     }
 
-    if (!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario || !form.cargo || !form.regLab) {
+    if (!form.asunto || !form.falta || !form.turno || !form.fechaIncidente || !form.horaIncidente || !form.jurisdiccion || !form.dirigidoA || !form.destinatario) {
       toast.warning('Completa todos los campos obligatorios');
       return;
     }
@@ -439,28 +444,14 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
       return;
     }
 
-    // Medios: al menos uno, y cada bodycam / cámara / radio elegida de la lista
-    if (!(form.falta && form.falta.startsWith('Inasistencia'))) {
-      const medios = form.medios || []
-      if (medios.length === 0) {
-        toast.warning('Elige al menos un medio con el que se registró el hecho')
-        return
-      }
-      const sinDispositivo = medios.find(m => m.cam !== 'PHONE' && !m.id)
-      if (sinDispositivo) {
-        toast.warning(`Elige ${MEDIO_INFO[sinDispositivo.cam].doc.toLowerCase()} de la lista de sugerencias`)
-        return
-      }
-      if (medios.some(m => m.cam === 'BODYCAM') && !form.bodycamAsignadaA) {
-        toast.warning('Indica a quién está asignada la bodycam')
-        return
-      }
+    if (mostrarCamposBodycam && !medioCompleto) {
+      toast.warning('Elige al menos un medio y selecciona el equipo de cada tipo marcado.')
+      return
     }
 
     // Notificar al padre con los datos del formulario y allLeads
     if (onSave) {
-      // Las inasistencias no llevan medio
-      onSave(form.falta && form.falta.startsWith('Inasistencia') ? { ...form, medios: [] } : form, allLeads);
+      onSave(form, allLeads);
     }
 
     // Cerrar modal
@@ -474,30 +465,17 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
 
   // ===== Presentacion =====
 
-  /** Marca o desmarca un medio (pueden elegirse varios). Mantiene los campos antiguos al dia. */
-  function alternarMedio(cam: Cam) {
-    setForm(f => {
-      const actuales = f.medios || []
-      const medios: MedioItem[] = actuales.some(m => m.cam === cam)
-        ? actuales.filter(m => m.cam !== cam)
-        : ORDEN_MEDIOS.filter(c => c === cam || actuales.some(m => m.cam === c)).map(
-            c => actuales.find(m => m.cam === c) ?? { cam: c, id: null, name: null }
-          )
-      return sincronizarMedios({ ...f, medios })
+  const media = form.media ?? []
+  function toggleMedium(cam: Cam) {
+    setForm(previous => {
+      const selected = previous.media ?? []
+      return { ...previous, media: selected.some(m => m.cam === cam)
+        ? selected.filter(m => m.cam !== cam)
+        : [...selected, { cam, id: null, name: null }] }
     })
   }
 
-  /** Guarda el dispositivo elegido para un medio */
-  function elegirDispositivo(cam: Cam, valor: { id: ID | null; name: string | null }) {
-    setForm(f => sincronizarMedios({ ...f, medios: (f.medios || []).map(m => (m.cam === cam ? { ...m, ...valor } : m)) }))
-  }
-
-    // Pasos completos: alimentan el indice y la barra de progreso de la cabecera
-  const mediosForm = form.medios || []
-  const medioCompleto =
-    mediosForm.length > 0 &&
-    mediosForm.every(m => m.cam === 'PHONE' || !!m.id) &&
-    (!mediosForm.some(m => m.cam === 'BODYCAM') || !!form.bodycamAsignadaA)
+  const medioCompleto = media.length > 0 && media.every(m => m.cam === 'PHONE' || !!m.id)
   const completo = {
     infractor: dniValido && !!form.nombreCompleto,
     hecho: !!(form.asunto && form.falta && form.fechaIncidente && form.horaIncidente),
@@ -672,32 +650,9 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
             </div>
 
             {dniValido && form.nombreCompleto ? (
-              <div className="flex items-center gap-4 rounded-xl border border-line bg-subtle p-4 max-sm:items-start max-sm:p-3">
-                <span
-                  className="flex size-13 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-sm max-sm:size-11 max-sm:text-base"
-                  style={{ background: colorAvatar(form.dni || form.nombreCompleto) }}
-                  aria-hidden
-                >
-                  {iniciales(form.nombreCompleto, form.dni)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="m-0 truncate text-[15px] font-bold text-content" title={form.nombreCompleto}>
-                    {form.nombreCompleto}
-                  </p>
-                  <p className="m-0 text-xs text-muted tabular-nums">DNI {form.dni}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {[
-                      { label: 'Turno', value: form.turno },
-                      { label: 'Cargo', value: form.cargo },
-                      { label: 'Régimen', value: form.regLab },
-                    ].map(d => (
-                      <span key={d.label} className="inline-flex max-w-full items-center gap-1 rounded-md bg-surface px-2 py-0.5 text-xs ring-1 ring-line">
-                        <span className="text-muted">{d.label}:</span>
-                        <span className="truncate font-semibold text-content">{d.value || '—'}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
+              <div className="space-y-3">
+                <p className="text-sm text-muted">Revisa los datos de la persona seleccionada. Las correcciones se guardan en este informe.</p>
+                <ServiceAssignmentFields value={form} onChange={setField} onOmissionChange={keys => setField('omitted_assignment_fields', keys)} />
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong px-4 py-3.5 text-sm text-muted">
@@ -869,37 +824,25 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               n={numero('inc-medio')}
               title="Medio"
               icon={<FiVideo />}
-              description="Con qué se registró el hecho."
+              description="Selecciona todos los medios con los que se registró el hecho."
               done={completo.medio}
             >
-              <p className="m-0 -mt-1 text-xs text-muted">Puedes elegir más de uno.</p>
-              <div role="group" aria-label="Medios con que se registró el hecho" className="grid grid-cols-4 gap-2 max-sm:grid-cols-2">
+              <div role="group" aria-label="Medios utilizados" className="grid grid-cols-4 gap-2 max-sm:grid-cols-2">
                 {tiposMedio.map(t => {
-                  const activo = mediosForm.some(m => m.cam === t.value)
+                  const activo = media.some(m => m.cam === t.value)
                   return (
                     <button
                       key={t.value}
                       type="button"
-                      role="checkbox"
-                      aria-checked={activo}
-                      onClick={() => alternarMedio(t.value)}
+                      aria-pressed={activo}
+                      onClick={() => toggleMedium(t.value)}
                       className={cn(
-                        'relative flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-[13px] font-semibold transition-colors duration-150',
+                        'flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-[13px] font-semibold transition-colors duration-150',
                         activo
                           ? 'border-primary bg-primary/8 text-primary dark:border-accent dark:bg-primary/20 dark:text-accent-light'
                           : 'border-line bg-surface text-content-2 hover:border-line-hover hover:bg-subtle'
                       )}
                     >
-                      {/* Casilla: deja claro que se pueden marcar varias */}
-                      <span
-                        className={cn(
-                          'absolute top-2 right-2 flex size-4 items-center justify-center rounded-[5px] border-2 text-[10px] transition-colors',
-                          activo ? 'border-primary bg-primary text-white dark:border-accent dark:bg-accent' : 'border-line-strong bg-surface text-transparent'
-                        )}
-                        aria-hidden
-                      >
-                        <FiCheck strokeWidth={4} />
-                      </span>
                       <span className="text-xl" aria-hidden>
                         {t.icon}
                       </span>
@@ -909,43 +852,24 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                 })}
               </div>
 
-              {mediosForm.length === 0 && (
-                <p className="m-0 flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5 text-[13px] text-amber-ink">
-                  <FiInfo className="mt-0.5 shrink-0" aria-hidden />
-                  Elige al menos un medio.
-                </p>
-              )}
-
-              {/* Un bloque por medio elegido, en el mismo orden que las tarjetas */}
-              {mediosForm.map(m => (
-                <div key={m.cam} className="flex flex-col gap-3 rounded-xl border border-line bg-subtle/50 p-3.5">
-                  <p className="m-0 flex items-center gap-2 text-[13px] font-semibold text-content">
-                    <span className="text-base text-primary dark:text-accent-light" aria-hidden>
-                      {tiposMedio.find(t => t.value === m.cam)?.icon}
-                    </span>
-                    {MEDIO_INFO[m.cam].label}
-                  </p>
-                  {m.cam === 'PHONE' ? (
-                    <p className="m-0 flex items-start gap-2 text-[13px] text-content-2">
-                      <FiInfo className="mt-0.5 shrink-0 text-accent" aria-hidden />
-                      Para celular no se necesitan más datos.
-                    </p>
-                  ) : (
-                    <div className={cn('grid grid-cols-1 gap-4', m.cam === 'BODYCAM' && 'sm:grid-cols-2')}>
-                      <BuscadorDispositivo cam={m.cam} value={m} onChange={v => elegirDispositivo(m.cam, v)} />
-                      {m.cam === 'BODYCAM' && (
-                        <Field label="Bodycam asignada a" required>
-                          <Input
-                            value={form.bodycamAsignadaA}
-                            onChange={e => setField('bodycamAsignadaA', e.target.value)}
-                            placeholder="Se completa con el DNI"
-                          />
-                        </Field>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {media.filter(m => m.cam !== 'PHONE').map(m => {
+                const label = tiposMedio.find(t => t.value === m.cam)!.label
+                const options = devices.filter(d => d.cam === m.cam).map(d => ({
+                  value: d.id, label: d.name, description: d.serie ?? undefined,
+                }))
+                return <Field key={m.cam} label={'N.º de ' + label.toLowerCase()} required>
+                  <Dropdown aria-label={'Seleccionar ' + label} value={m.id ?? ''} options={options}
+                    loading={loadingDevices} searchable placeholder={'Seleccionar ' + label}
+                    onChange={id => setField('media', media.map(item => item.cam === m.cam
+                      ? { ...item, id, name: options.find(d => d.value === id)?.label ?? null } : item))} />
+                </Field>
+              })}
+              {deviceError && media.some(m => m.cam !== 'PHONE') && <p role="alert">
+                No se pudo cargar el catálogo de equipos. <button type="button" onClick={() => setDeviceAttempt(n => n + 1)}>Reintentar</button>
+              </p>}
+              {media.some(m => m.cam === 'BODYCAM') && <Field label="Bodycam asignada a">
+                <Input readOnly value={form.bodycamAsignadaA} placeholder="Se completa con el DNI" />
+              </Field>}
             </StepSection>
           )}
 
