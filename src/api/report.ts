@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import api from './config';
+import { mediosDeReporte, tiposDeMedios } from '../utils/medios';
 import type {
   ApiMessageResponse,
   ApiResponse,
@@ -116,15 +117,14 @@ export function mapFormDataToAPI(form: IncidenciaForm, allLeads: Lead[]): Report
     jurisdiction_id: form.jurisdictionId || null
   };
 
-  // Solo agregar campos de bodycam si es tipo bodycam y hay bodycamId
-  if (form.tipoMedio === 'bodycam' && form.bodycamId) {
-    payload.bodycam_id = form.bodycamId;
-    payload.bodycam_dni = form.dni || '';
-  }
-
-  // Si es tipo cámara, guardar el número de cámara en el campo camera_number
-  if (form.tipoMedio === 'camara' && form.numeroCamara) {
-    payload.camera_number = form.numeroCamara;
+  // Medios (uno o varios). El principal (bodycam_id) es la bodycam o, si no hay, el primer dispositivo.
+  const medios = form.medios || [];
+  if (medios.length > 0) {
+    payload.media = medios.map(m => (m.id ? { cam: m.cam, bodycam_id: m.id } : { cam: m.cam }));
+    const principal = medios.find(m => m.cam === 'BODYCAM' && m.id) ?? medios.find(m => m.id);
+    if (principal?.id) payload.bodycam_id = principal.id;
+    // DNI de quien porta la bodycam (el backend arma "bodycam asignada a")
+    if (medios.some(m => m.cam === 'BODYCAM')) payload.bodycam_dni = form.dni || '';
   }
 
   return payload;
@@ -179,8 +179,9 @@ export const getReports = async (page = 1, limit = 10, filters: ReportFilters = 
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
+        medio: tiposDeMedios(mediosDeReporte(r)) || (r.camera_number ? 'Cámara' : 'Otro'),
         tipoMedio: tipoMedio,
+        medios: mediosDeReporte(r),
         numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',
@@ -296,8 +297,9 @@ export const getReportById = async (reportId: ID): Promise<FoundResult<Incidenci
         asunto: r.subject?.name || '',
         falta: r.lack?.name || '',
         tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-        medio: r.bodycam ? 'Bodycam' : (r.camera_number ? 'Cámara' : 'Otro'),
+        medio: tiposDeMedios(mediosDeReporte(r)) || (r.camera_number ? 'Cámara' : 'Otro'),
         tipoMedio: tipoMedio,
+        medios: mediosDeReporte(r),
         numeroCamara: numeroCamara,
         // Parsear la fecha ISO sin conversión de zona horaria
         fechaIncidente: r.date ? r.date.substring(0, 10).split('-').reverse().join('/') : '',

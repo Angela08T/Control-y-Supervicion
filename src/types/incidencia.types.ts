@@ -1,4 +1,4 @@
-import type { ID, ISODateString, Mode } from './common.types';
+import type { Cam, ID, ISODateString, Mode } from './common.types';
 import type { Absence } from './offender.types';
 import type { Evidence, ReportHeader } from './report.types';
 
@@ -6,8 +6,15 @@ import type { Evidence, ReportHeader } from './report.types';
 export const TIPOS_MEDIO = ['bodycam', 'camara', 'radio'] as const;
 export type TipoMedio = (typeof TIPOS_MEDIO)[number];
 
+/** Uno de los medios con que se registro el hecho (Report.media). id/name null para celular. */
+export interface MedioItem {
+  cam: Cam;
+  id: ID | null;
+  name: string | null;
+}
+
 /** Media label shown in the table (api/report.ts). */
-export type MedioLabel = 'Bodycam' | 'Cámara' | 'Otro';
+export type MedioLabel = string;
 
 /** Lowercased `process` or 'draft' when process is null. */
 export type IncidenciaStatus = 'draft' | 'pending' | 'approved' | 'rejected';
@@ -38,6 +45,8 @@ export interface IncidenciaForm {
   turno: string;
   medio: string;
   tipoMedio: TipoMedio;
+  /** Medios elegidos (uno o varios). */
+  medios: MedioItem[];
   /** "YYYY-MM-DD" */
   fechaIncidente: string;
   /** "HH:mm" */
@@ -76,6 +85,8 @@ export interface Incidencia {
   tipoInasistencia: string | null;
   medio: MedioLabel;
   tipoMedio: TipoMedio;
+  /** Todos los medios del reporte (uno o varios). */
+  medios: MedioItem[];
   numeroCamara: string;
   /** "DD/MM/YYYY" */
   fechaIncidente: string;
@@ -156,4 +167,6 @@ export interface ReportFormPayload {
   bodycam_id?: ID;
   bodycam_dni?: string;
   camera_number?: string;
+  /** Uno o varios medios; el backend resuelve el nombre de cada dispositivo. */
+  media?: { cam: Cam; bodycam_id?: ID }[];
 }

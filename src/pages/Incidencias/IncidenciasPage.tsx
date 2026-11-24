@@ -42,6 +42,7 @@ import type {
   TablePagination,
 } from '@/types'
 import { cardClass, cn, fitPage } from '../../utils/classes'
+import { mediosDeReporte, tiposDeMedios } from '../../utils/medios'
 
 /** Forma mínima de un error (axios / NestJS) que lee esta página. */
 interface ApiErrorLike {
@@ -230,7 +231,8 @@ export default function IncidenciasPage() {
           asunto: fullData.subject?.name || '',
           falta: fullData.lack?.name || '',
           tipoInasistencia: fullData.subject?.name === 'Inasistencia' ? fullData.lack?.name : null,
-          medio: fullData.bodycam ? 'Bodycam' : (fullData.camera_number ? 'Cámara' : 'Otro'),
+          medio: tiposDeMedios(mediosDeReporte(fullData)) || (fullData.camera_number ? 'Cámara' : 'Otro'),
+          medios: mediosDeReporte(fullData),
           tipoMedio: fullData.bodycam ? 'bodycam' : (fullData.camera_number ? 'camara' : 'bodycam'),
           numeroCamara: fullData.camera_number || '',
           fechaIncidente: fullData.date ? fullData.date.substring(0, 10).split('-').reverse().join('/') : '',
@@ -718,7 +720,8 @@ export default function IncidenciasPage() {
                 asunto: r.subject?.name || '',
                 falta: r.lack?.name || '',
                 tipoInasistencia: r.subject?.name === 'Inasistencia' ? r.lack?.name : null,
-                medio: r.bodycam ? 'Bodycam' : 'Otro',
+                medio: tiposDeMedios(mediosDeReporte(r)) || 'Otro',
+                medios: mediosDeReporte(r),
                 fechaIncidente: new Date(r.date).toLocaleDateString('es-PE'),
                 horaIncidente: new Date(r.date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
                 turno: r.offender?.shift || '',

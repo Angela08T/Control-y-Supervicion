@@ -1,4 +1,5 @@
 import type { Incidencia } from '@/types'
+import { etiquetaMedios } from './medios'
 
 /** Formatos compartidos por la bandeja de incidencias y su detalle */
 
@@ -47,9 +48,10 @@ export function formatAbsenceDates(item: Incidencia): string {
   return `${fmtDate(item.absenceStart)} - ${fmtDate(item.absenceEnd)}`
 }
 
-/** Texto del medio: bodycam asignada o tipo de medio */
+/** Texto del medio: todos los medios ("Bodycam SG004 · Cámara 104A"), la bodycam o el tipo */
 export function medioLabel(item: Incidencia): string {
   if (item.isAbsenceReport) return 'Reporte'
+  if (item.medios?.length) return etiquetaMedios(item.medios)
   if (item.bodycamNumber) return `Bodycam ${item.bodycamNumber}`
   return item.medio || DASH
 }

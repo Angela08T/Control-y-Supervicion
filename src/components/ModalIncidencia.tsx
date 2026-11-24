@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import MapSelector from './MapSelector'
 import type { MapSelectorValue } from './MapSelector'
-import type { Bodycam, Cam, ID, ISODateString, Incidencia, IncidenciaForm, Lead, OffenderDniLookup, SubjectLack, TipoMedio, Ubicacion } from '@/types'
-import useBodycamSearch from '../hooks/Bodycam/useBodycamSearch'
+import type { Cam, ID, ISODateString, Incidencia, IncidenciaForm, Lead, MedioItem, OffenderDniLookup, SubjectLack, TipoMedio, Ubicacion } from '@/types'
+import BuscadorDispositivo from './BuscadorDispositivo'
+import { MEDIO_INFO, ORDEN_MEDIOS } from '@/utils/medios'
 import useOffenderSearch from '../hooks/Offender/useOffenderSearch'
 import useJobs from '../hooks/Job/useJobs'
 import useLeads from '../hooks/Job/useLeads'
@@ -18,6 +19,7 @@ import {
   FiAlertTriangle,
   FiBriefcase,
   FiCamera,
+  FiCheck,
   FiCheckCircle,
   FiChevronUp,
   FiEdit3,
@@ -59,12 +61,6 @@ export interface ModalIncidenciaProps {
   onSave?: (data: IncidenciaForm, allLeads: Lead[]) => void | Promise<void>;
 }
 
-/** Campos de asignación que el API de bodycam devuelve y que no están en el modelo `Bodycam`. */
-interface BodycamSugerencia extends Bodycam {
-  asignadoA?: string;
-  asignado?: string;
-  usuario?: string;
-}
 
 /** Campos que la búsqueda por DNI devuelve y que no están en `OffenderDniLookup`. */
 interface OffenderSugerencia extends OffenderDniLookup {
@@ -86,6 +82,7 @@ const defaultState: IncidenciaForm = {
   turno: '',
   medio: 'bodycam',
   tipoMedio: 'bodycam', // Tipo de medio: 'bodycam', 'camara' o 'radio'
+  medios: [{ cam: 'BODYCAM', id: null, name: null }], // Uno o varios medios
   fechaIncidente: '',
   horaIncidente: '',
   bodycamNumber: '',
@@ -107,26 +104,34 @@ const defaultState: IncidenciaForm = {
   lackId: null      // ID de la falta para la API
 }
 
+/**
+ * Mantiene los campos antiguos de un solo medio (tipoMedio, bodycamId, numeroCamara...) a partir de la
+ * lista de medios, para el codigo que todavia los lee.
+ */
+function sincronizarMedios(f: IncidenciaForm): IncidenciaForm {
+  const medios = f.medios || []
+  const de = (cam: Cam) => medios.find(m => m.cam === cam)
+  const primero = medios[0]?.cam
+  const tipo: Record<Cam, string> = { BODYCAM: 'bodycam', CAMERA: 'camara', RADIO: 'radio', PHONE: 'Phone' }
+  const principal = de('BODYCAM') ?? medios.find(m => m.id)
+  return {
+    ...f,
+    tipoMedio: (primero ? tipo[primero] : 'bodycam') as TipoMedio,
+    medio: primero ? tipo[primero] : f.medio,
+    bodycamId: principal?.id ?? '',
+    bodycamNumber: de('BODYCAM')?.name ?? '',
+    numeroCamara: de('CAMERA')?.name ?? '',
+    numeroRadio: de('RADIO')?.name ?? '',
+  }
+}
+
 export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncidenciaProps) {
   const [form, setForm] = useState<IncidenciaForm>(defaultState)
   const [selectedJobId, setSelectedJobId] = useState<ID | null>(null) // ID del job seleccionado
   const [selectedLeadId, setSelectedLeadId] = useState<string>('') // ID del lead seleccionado
-  const [camType, setCamType] = useState<Cam>('BODYCAM') //Tipo de cámara para filtrar: 'BODYCAM' o 'CAMERA'
   const [mostrarMapa, setMostrarMapa] = useState(true) // Visibilidad del mapa (solo UI)
   const [mostrarSelectorCC, setMostrarSelectorCC] = useState(false) // Selector de personas en copia (solo UI)
   const [ccFiltro, setCcFiltro] = useState('') // Buscador del selector de copia (solo UI)
-
-  // Hook para búsqueda de bodycam - filtra por tipo de cámara
-  const {
-    searchTerm: bodycamSearchTerm,
-    setSearchTerm: setBodycamSearchTerm,
-    results: bodycamResults,
-    loading: bodycamLoading,
-    error: bodycamError,
-    showSuggestions: showBodycamSuggestions,
-    setShowSuggestions: setShowBodycamSuggestions,
-    selectBodycam
-  } = useBodycamSearch(camType)
 
   // Hook para búsqueda de offender (DNI)
   const {
@@ -225,12 +230,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
     return leads.filter(lead => !lead.deleted_at)
   }, [leads])
 
-  // Filtrar solo bodycams habilitadas (deleted_at === null)
-  const bodycamsHabilitadas = useMemo<BodycamSugerencia[]>(() => {
-    if (!bodycamResults || bodycamResults.length === 0) return []
-    return bodycamResults.filter(bodycam => !bodycam.deleted_at)
-  }, [bodycamResults])
-
   // Filtrar solo jurisdicciones habilitadas (deleted_at === null)
   const jurisdiccionesHabilitadas = useMemo(() => {
     if (!jurisdictions || jurisdictions.length === 0) return []
@@ -243,16 +242,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
     return offenderResults.filter(offender => !(offender as OffenderSugerencia).deleted_at)
   }, [offenderResults])
 
-  const bodycamAutocompleteRef = useRef<HTMLDivElement | null>(null)
   const dniAutocompleteRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (initial) {
       setForm({ ...defaultState, ...(initial as Partial<IncidenciaForm>) })
-      // Si estamos editando, establecer los searchTerms existentes
-      if (initial.bodycamNumber) {
-        setBodycamSearchTerm(initial.bodycamNumber)
-      }
       if (initial.dni) {
         setDniSearchTerm(initial.dni)
       }
@@ -268,9 +262,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   // Cerrar sugerencias al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (bodycamAutocompleteRef.current && !bodycamAutocompleteRef.current.contains(event.target as Node)) {
-        setShowBodycamSuggestions(false)
-      }
       if (dniAutocompleteRef.current && !dniAutocompleteRef.current.contains(event.target as Node)) {
         setShowOffenderSuggestions(false)
       }
@@ -400,30 +391,6 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
     })
   }
 
-  function handleBodycamSelect(bodycam: Bodycam) {
-    // Seleccionar bodycam usando el hook
-    selectBodycam(bodycam)
-
-    // Rellenar el formulario con los datos de la bodycam
-    // Campos del API: id, name
-    setForm(f => ({
-      ...f,
-      bodycamId: bodycam.id || '',  // Guardar ID para la API
-      bodycamNumber: bodycam.name || bodycam.id || ''
-      // NO sobrescribir bodycamAsignadaA ni encargadoBodycam
-      // Estos campos ya se llenaron con handleOffenderSelect
-    }))
-
-    // Actualizar también el searchTerm
-    setBodycamSearchTerm(bodycam.name || bodycam.id || '')
-  }
-
-  function handleBodycamInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value
-    setBodycamSearchTerm(value)
-    setField('bodycamNumber', value)
-  }
-
   async function handleSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
 
@@ -472,49 +439,28 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
       return;
     }
 
-    // Validaciones específicas para inasistencia
-    if (form.falta && form.falta.startsWith('Inasistencia')) {
-      // Para inasistencia no se requiere bodycam ni cámara ni radio
-    } else if ((form.tipoMedio as string) === 'Phone') {
-      // Para celular no se requieren campos adicionales
-    } else {
-      // Validaciones para otras faltas (requieren bodycam, cámara o radio)
-      if (form.tipoMedio === 'bodycam') {
-        if (!form.bodycamNumber || !form.bodycamAsignadaA) {
-          toast.warning('Completa los campos de bodycam');
-          return;
-        }
-
-        if (!form.bodycamId) {
-          toast.error('Error: No se pudo obtener el ID de la bodycam. Por favor, selecciona una bodycam de la lista.');
-          return;
-        }
-      } else if (form.tipoMedio === 'camara') {
-        if (!form.numeroCamara) {
-          toast.warning('Ingresa el número de cámara');
-          return;
-        }
-
-        if (!form.bodycamId) {
-          toast.error('Error: No se pudo obtener el ID de la cámara. Por favor, selecciona una cámara de la lista.');
-          return;
-        }
-      } else if (form.tipoMedio === 'radio') {
-        if (!form.numeroRadio) {
-          toast.warning('Ingresa el número de radio');
-          return;
-        }
-
-        if (!form.bodycamId) {
-          toast.error('Error: No se pudo obtener el ID del radio. Por favor, selecciona un radio de la lista.');
-          return;
-        }
+    // Medios: al menos uno, y cada bodycam / cámara / radio elegida de la lista
+    if (!(form.falta && form.falta.startsWith('Inasistencia'))) {
+      const medios = form.medios || []
+      if (medios.length === 0) {
+        toast.warning('Elige al menos un medio con el que se registró el hecho')
+        return
+      }
+      const sinDispositivo = medios.find(m => m.cam !== 'PHONE' && !m.id)
+      if (sinDispositivo) {
+        toast.warning(`Elige ${MEDIO_INFO[sinDispositivo.cam].doc.toLowerCase()} de la lista de sugerencias`)
+        return
+      }
+      if (medios.some(m => m.cam === 'BODYCAM') && !form.bodycamAsignadaA) {
+        toast.warning('Indica a quién está asignada la bodycam')
+        return
       }
     }
 
     // Notificar al padre con los datos del formulario y allLeads
     if (onSave) {
-      onSave(form, allLeads);
+      // Las inasistencias no llevan medio
+      onSave(form.falta && form.falta.startsWith('Inasistencia') ? { ...form, medios: [] } : form, allLeads);
     }
 
     // Cerrar modal
@@ -528,64 +474,30 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
 
   // ===== Presentacion =====
 
-  /** Cambia el tipo de medio: ajusta el filtro de busqueda y limpia los campos de los otros tipos */
-  function cambiarTipoMedio(nuevoTipo: string) {
-    if (nuevoTipo === form.tipoMedio) return
-
-    // Actualizar el tipo de cámara para el filtro de búsqueda primero
-    if (nuevoTipo === 'camara') {
-      setCamType('CAMERA')
-    } else if (nuevoTipo === 'radio') {
-      setCamType('RADIO')
-    } else if (nuevoTipo !== 'Phone') {
-      setCamType('BODYCAM')
-    }
-
-    // Limpiar el término de búsqueda
-    setBodycamSearchTerm('')
-
-    // Actualizar el formulario en un solo batch para evitar re-renders
+  /** Marca o desmarca un medio (pueden elegirse varios). Mantiene los campos antiguos al dia. */
+  function alternarMedio(cam: Cam) {
     setForm(f => {
-      const newForm = { ...f }
-      newForm.tipoMedio = nuevoTipo as TipoMedio // 'Phone' se usa en la UI pero no está en TIPOS_MEDIO
-      newForm.medio = nuevoTipo
-
-      // Limpiar campos de los otros tipos
-      if (nuevoTipo === 'camara') {
-        newForm.bodycamNumber = ''
-        newForm.bodycamAsignadaA = ''
-        newForm.bodycamId = ''
-        newForm.numeroRadio = ''
-      } else if (nuevoTipo === 'radio') {
-        newForm.bodycamNumber = ''
-        newForm.bodycamAsignadaA = ''
-        newForm.bodycamId = ''
-        newForm.numeroCamara = ''
-      } else if (nuevoTipo === 'Phone') {
-        newForm.bodycamNumber = ''
-        newForm.bodycamAsignadaA = ''
-        newForm.bodycamId = ''
-        newForm.numeroCamara = ''
-        newForm.numeroRadio = ''
-      } else {
-        newForm.numeroCamara = ''
-        newForm.numeroRadio = ''
-        newForm.bodycamId = ''
-      }
-
-      return newForm
+      const actuales = f.medios || []
+      const medios: MedioItem[] = actuales.some(m => m.cam === cam)
+        ? actuales.filter(m => m.cam !== cam)
+        : ORDEN_MEDIOS.filter(c => c === cam || actuales.some(m => m.cam === c)).map(
+            c => actuales.find(m => m.cam === c) ?? { cam: c, id: null, name: null }
+          )
+      return sincronizarMedios({ ...f, medios })
     })
   }
 
-  // Pasos completos: alimentan el indice y la barra de progreso de la cabecera
+  /** Guarda el dispositivo elegido para un medio */
+  function elegirDispositivo(cam: Cam, valor: { id: ID | null; name: string | null }) {
+    setForm(f => sincronizarMedios({ ...f, medios: (f.medios || []).map(m => (m.cam === cam ? { ...m, ...valor } : m)) }))
+  }
+
+    // Pasos completos: alimentan el indice y la barra de progreso de la cabecera
+  const mediosForm = form.medios || []
   const medioCompleto =
-    form.tipoMedio === 'bodycam'
-      ? !!(form.bodycamNumber && form.bodycamAsignadaA && form.bodycamId)
-      : form.tipoMedio === 'camara'
-        ? !!(form.numeroCamara && form.bodycamId)
-        : form.tipoMedio === 'radio'
-          ? !!(form.numeroRadio && form.bodycamId)
-          : true
+    mediosForm.length > 0 &&
+    mediosForm.every(m => m.cam === 'PHONE' || !!m.id) &&
+    (!mediosForm.some(m => m.cam === 'BODYCAM') || !!form.bodycamAsignadaA)
   const completo = {
     infractor: dniValido && !!form.nombreCompleto,
     hecho: !!(form.asunto && form.falta && form.fechaIncidente && form.horaIncidente),
@@ -608,11 +520,11 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
   const hoyISO = new Date().toLocaleDateString('en-CA') // 'YYYY-MM-DD' en hora local
 
   /** Opciones del tipo de medio, mostradas como tarjetas seleccionables */
-  const tiposMedio: { value: string; label: string; icon: React.ReactNode }[] = [
-    { value: 'bodycam', label: 'Bodycam', icon: <FiVideo /> },
-    { value: 'camara', label: 'Cámara', icon: <FiCamera /> },
-    { value: 'radio', label: 'Radio', icon: <FiRadio /> },
-    { value: 'Phone', label: 'Celular', icon: <FiSmartphone /> },
+  const tiposMedio: { value: Cam; label: string; icon: React.ReactNode }[] = [
+    { value: 'BODYCAM', label: 'Bodycam', icon: <FiVideo /> },
+    { value: 'CAMERA', label: 'Cámara', icon: <FiCamera /> },
+    { value: 'RADIO', label: 'Radio', icon: <FiRadio /> },
+    { value: 'PHONE', label: 'Celular', icon: <FiSmartphone /> },
   ]
 
   // Personas para copia, filtradas por el buscador del selector
@@ -960,23 +872,34 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
               description="Con qué se registró el hecho."
               done={completo.medio}
             >
-              <div role="radiogroup" aria-label="Tipo de medio" className="grid grid-cols-4 gap-2 max-sm:grid-cols-2">
+              <p className="m-0 -mt-1 text-xs text-muted">Puedes elegir más de uno.</p>
+              <div role="group" aria-label="Medios con que se registró el hecho" className="grid grid-cols-4 gap-2 max-sm:grid-cols-2">
                 {tiposMedio.map(t => {
-                  const activo = form.tipoMedio === t.value
+                  const activo = mediosForm.some(m => m.cam === t.value)
                   return (
                     <button
                       key={t.value}
                       type="button"
-                      role="radio"
+                      role="checkbox"
                       aria-checked={activo}
-                      onClick={() => cambiarTipoMedio(t.value)}
+                      onClick={() => alternarMedio(t.value)}
                       className={cn(
-                        'flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-[13px] font-semibold transition-colors duration-150',
+                        'relative flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-[13px] font-semibold transition-colors duration-150',
                         activo
                           ? 'border-primary bg-primary/8 text-primary dark:border-accent dark:bg-primary/20 dark:text-accent-light'
                           : 'border-line bg-surface text-content-2 hover:border-line-hover hover:bg-subtle'
                       )}
                     >
+                      {/* Casilla: deja claro que se pueden marcar varias */}
+                      <span
+                        className={cn(
+                          'absolute top-2 right-2 flex size-4 items-center justify-center rounded-[5px] border-2 text-[10px] transition-colors',
+                          activo ? 'border-primary bg-primary text-white dark:border-accent dark:bg-accent' : 'border-line-strong bg-surface text-transparent'
+                        )}
+                        aria-hidden
+                      >
+                        <FiCheck strokeWidth={4} />
+                      </span>
                       <span className="text-xl" aria-hidden>
                         {t.icon}
                       </span>
@@ -986,127 +909,43 @@ export default function ModalIncidencia({ initial, onClose, onSave }: ModalIncid
                 })}
               </div>
 
-              {/* Campos de Bodycam */}
-              {form.tipoMedio === 'bodycam' && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
-                    <Field label="N.º de bodycam" required>
-                      <Input
-                        value={bodycamSearchTerm}
-                        onChange={handleBodycamInputChange}
-                        onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                        placeholder="Ej.: SG004 o FISCA004"
-                        autoComplete="off"
-                      />
-                    </Field>
-                    {bodycamLoading && buscando}
-                    {bodycamError && <div className={autocompleteError}>{bodycamError}</div>}
-                    {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                      <div className={autocompleteSuggestions}>
-                        {bodycamsHabilitadas.map((bodycam, index) => (
-                          <div key={bodycam.id || index} className={autocompleteItem} onClick={() => handleBodycamSelect(bodycam)}>
-                            <div className={autocompleteItemCode}>{bodycam.name || bodycam.id}</div>
-                            {(bodycam.asignadoA || bodycam.asignado || bodycam.usuario) && (
-                              <div className={autocompleteItemDetails}>{bodycam.asignadoA || bodycam.asignado || bodycam.usuario}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {showBodycamSuggestions && bodycamResults.length === 0 && bodycamSearchTerm.length >= 2 && !bodycamLoading &&
-                      sinResultados('No se encontraron bodycams')}
-                  </div>
-
-                  <Field label="Bodycam asignada a" required>
-                    <Input
-                      value={form.bodycamAsignadaA}
-                      onChange={e => setField('bodycamAsignadaA', e.target.value)}
-                      placeholder="Se completa con el DNI"
-                    />
-                  </Field>
-                </div>
-              )}
-
-              {/* Campos de Cámara */}
-              {form.tipoMedio === 'camara' && (
-                <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
-                  <Field label="N.º de cámara" required>
-                    <Input
-                      value={bodycamSearchTerm}
-                      onChange={handleBodycamInputChange}
-                      onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                      placeholder="Ej.: 104A"
-                      autoComplete="off"
-                    />
-                  </Field>
-                  {bodycamLoading && buscando}
-                  {bodycamError && <div className={autocompleteError}>{bodycamError}</div>}
-                  {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                    <div className={autocompleteSuggestions}>
-                      {bodycamsHabilitadas.map((camera, index) => (
-                        <div
-                          key={camera.id || index}
-                          className={autocompleteItem}
-                          onClick={() => {
-                            selectBodycam(camera)
-                            setShowBodycamSuggestions(false)
-                            setBodycamSearchTerm(camera.name)
-                            setField('numeroCamara', camera.name)
-                            setField('bodycamId', camera.id)
-                          }}
-                        >
-                          <div className={autocompleteItemCode}>{camera.name}</div>
-                          {camera.serie && <div className={autocompleteItemDetails}>Serie: {camera.serie}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Campos de Radio */}
-              {form.tipoMedio === 'radio' && (
-                <div className={autocompleteContainer} ref={bodycamAutocompleteRef}>
-                  <Field label="N.º de radio" required>
-                    <Input
-                      value={bodycamSearchTerm}
-                      onChange={handleBodycamInputChange}
-                      onFocus={() => bodycamResults.length > 0 && setShowBodycamSuggestions(true)}
-                      placeholder="Ej.: 22110"
-                      autoComplete="off"
-                    />
-                  </Field>
-                  {bodycamLoading && buscando}
-                  {bodycamError && <div className={autocompleteError}>{bodycamError}</div>}
-                  {showBodycamSuggestions && bodycamsHabilitadas.length > 0 && (
-                    <div className={autocompleteSuggestions}>
-                      {bodycamsHabilitadas.map((radio, index) => (
-                        <div
-                          key={radio.id || index}
-                          className={autocompleteItem}
-                          onClick={() => {
-                            selectBodycam(radio)
-                            setShowBodycamSuggestions(false)
-                            setBodycamSearchTerm(radio.name)
-                            setField('numeroRadio', radio.name)
-                            setField('bodycamId', radio.id)
-                          }}
-                        >
-                          <div className={autocompleteItemCode}>{radio.name}</div>
-                          {radio.serie && <div className={autocompleteItemDetails}>Serie: {radio.serie}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {(form.tipoMedio as string) === 'Phone' && (
-                <p className="m-0 flex items-start gap-2 rounded-xl bg-subtle px-3.5 py-2.5 text-[13px] text-content-2">
-                  <FiInfo className="mt-0.5 shrink-0 text-accent" aria-hidden />
-                  Para celular no se necesitan más datos.
+              {mediosForm.length === 0 && (
+                <p className="m-0 flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5 text-[13px] text-amber-ink">
+                  <FiInfo className="mt-0.5 shrink-0" aria-hidden />
+                  Elige al menos un medio.
                 </p>
               )}
+
+              {/* Un bloque por medio elegido, en el mismo orden que las tarjetas */}
+              {mediosForm.map(m => (
+                <div key={m.cam} className="flex flex-col gap-3 rounded-xl border border-line bg-subtle/50 p-3.5">
+                  <p className="m-0 flex items-center gap-2 text-[13px] font-semibold text-content">
+                    <span className="text-base text-primary dark:text-accent-light" aria-hidden>
+                      {tiposMedio.find(t => t.value === m.cam)?.icon}
+                    </span>
+                    {MEDIO_INFO[m.cam].label}
+                  </p>
+                  {m.cam === 'PHONE' ? (
+                    <p className="m-0 flex items-start gap-2 text-[13px] text-content-2">
+                      <FiInfo className="mt-0.5 shrink-0 text-accent" aria-hidden />
+                      Para celular no se necesitan más datos.
+                    </p>
+                  ) : (
+                    <div className={cn('grid grid-cols-1 gap-4', m.cam === 'BODYCAM' && 'sm:grid-cols-2')}>
+                      <BuscadorDispositivo cam={m.cam} value={m} onChange={v => elegirDispositivo(m.cam, v)} />
+                      {m.cam === 'BODYCAM' && (
+                        <Field label="Bodycam asignada a" required>
+                          <Input
+                            value={form.bodycamAsignadaA}
+                            onChange={e => setField('bodycamAsignadaA', e.target.value)}
+                            placeholder="Se completa con el DNI"
+                          />
+                        </Field>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </StepSection>
           )}
 

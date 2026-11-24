@@ -67,6 +67,8 @@ export interface Report {
   deleted_at: ISODateString | null;
   absences: Absence[];
   bodycam: ReportBodycam | null;
+  /** Medios del reporte: [{ cam, id, name }] (puede faltar en reportes antiguos). */
+  media?: { cam: ReportBodycam['cam']; id: ID | null; name: string | null }[] | null;
   jurisdiction: NamedRef | null;
   lack: NamedRef;
   offender: Offender | null;

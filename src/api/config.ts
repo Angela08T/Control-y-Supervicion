@@ -107,6 +107,13 @@ const handleUnauthorizedError = (error: unknown): Promise<never> => {
       }
     }
   }
+  // 403 generico del backend ("Forbidden resource"): el rol no tiene permiso para esa accion
+  if (error instanceof AxiosError && error.response?.status === 403) {
+    const data = error.response.data as { message?: unknown } | undefined;
+    if (data && typeof data === 'object' && (!data.message || data.message === 'Forbidden resource')) {
+      data.message = 'Tu rol no tiene permiso para realizar esta acción. Pide a un administrador que te lo habilite.';
+    }
+  }
   return Promise.reject(error);
 };
 
