@@ -12,7 +12,8 @@ import { toast } from '../utils/toast'
 import type { CreateAbsenceDto, ID, Mode } from '@/types'
 import Modal from '@/components/UI/Modal'
 import Button from '@/components/UI/Button'
-import { Field, Input, Select } from '@/components/UI/Field'
+import { Field, Input } from '@/components/UI/Field'
+import Dropdown from '@/components/UI/Dropdown'
 import { LoadingState } from '@/components/UI/EmptyState'
 
 /** Texto o relación `{ name }`: el backend a veces devuelve un objeto y a veces un string. */
@@ -613,15 +614,17 @@ export default function ModalPDFInasistencias({ onClose, inasistencias, savedAtt
               <h4 className="m-0 text-[13px] font-semibold text-content">Destinatarios</h4>
               <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
                 <Field label="Dirigido a">
-                  <Select value={selectedTo} onChange={(e) => handleToChange(e.target.value)}>
-                    <option value="">Seleccione una persona</option>
-                    {leads.map(lead => {
-                      const leadName = `${lead.title || ''} ${lead.name || ''} ${lead.lastname || ''}`.trim()
-                      return (
-                        <option key={lead.id} value={lead.id}>{leadName}</option>
-                      )
-                    })}
-                  </Select>
+                  <Dropdown
+                    aria-label="Dirigido a"
+                    placeholder="Selecciona una persona"
+                    value={selectedTo}
+                    onChange={handleToChange}
+                    options={leads.map(lead => ({
+                      value: lead.id,
+                      label: `${lead.title || ''} ${lead.name || ''} ${lead.lastname || ''}`.trim(),
+                      description: (typeof lead.job === 'string' ? lead.job : lead.job?.name) || undefined,
+                    }))}
+                  />
                 </Field>
 
                 <div className="flex flex-col gap-1.5">
