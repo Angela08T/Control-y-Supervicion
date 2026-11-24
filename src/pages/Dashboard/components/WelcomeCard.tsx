@@ -6,6 +6,8 @@ import loboImage from '../../../assets/lobo.png'
 export interface WelcomeCardProps {
   /** Controles a la derecha del saludo (el filtro de periodo) */
   children?: React.ReactNode
+  /** Linea pequena sobre el saludo; por defecto "Inicio · Panel de control" */
+  eyebrow?: string
 }
 
 const saludoDe = (hora: number): string => {
@@ -18,7 +20,7 @@ const saludoDe = (hora: number): string => {
  * Encabezado de Inicio, sin banner: el lobo y el saludo grande (nombre en degradado) a la izquierda,
  * el filtro a la derecha. La fecha ya esta en la barra superior.
  */
-export default function WelcomeCard({ children }: WelcomeCardProps) {
+export default function WelcomeCard({ children, eyebrow = 'Inicio · Panel de control' }: WelcomeCardProps) {
   const { username, nombre } = useAppSelector((state) => state.auth)
   const hora = new Date().getHours()
   // Solo el primer nombre, para que el saludo sea corto
@@ -33,7 +35,7 @@ export default function WelcomeCard({ children }: WelcomeCardProps) {
         </span>
 
         <div className="min-w-0">
-          <p className="m-0 text-[13px] font-semibold tracking-[0.04em] text-ink/80 uppercase dark:text-content-2">Inicio · Panel de control</p>
+          <p className="m-0 text-[13px] font-semibold tracking-[0.04em] text-ink/80 uppercase dark:text-content-2">{eyebrow}</p>
           <h2 className="m-0 mt-0.5 text-[34px] leading-[1.15] font-bold tracking-[-0.02em] text-ink max-sm:text-[25px] dark:text-content">
             {saludoDe(hora)}, <span className="text-[#2f62d8] uppercase dark:text-accent-light">{primerNombre}</span>
           </h2>
