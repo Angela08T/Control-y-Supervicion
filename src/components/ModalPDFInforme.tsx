@@ -1,8 +1,8 @@
 import { readReportLinks, writeReportLinks } from '../utils/reportOpening'
-import { medioLabel } from '../utils/incidenciaFormat'
+import { describeReportMedia, medioLabel } from '../utils/incidenciaFormat'
 import ServiceAssignmentFields from './ServiceAssignmentFields'
 import { identityError, serviceAssignment } from '../utils/serviceAssignment'
-import type { ServiceAssignment } from '../types/report.types'
+import type { ReportMedium, ServiceAssignment } from '../types/report.types'
 import React, { useState, useEffect } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import { useAppSelector } from '@/store/hooks'
@@ -233,6 +233,44 @@ function ReadOnlyItem({ label, children }: { label: string; children?: React.Rea
   )
 }
 
+/** Medios de la incidencia; en reportes sin lista, el medio unico de los campos antiguos */
+function mediosDe(incidencia: Incidencia): ReportMedium[] {
+  if (incidencia.media?.length) return incidencia.media
+  if (incidencia.tipoMedio === 'camara') return [{ cam: 'CAMERA', id: null, name: incidencia.numeroCamara || 'N/A' }]
+  return [{ cam: 'BODYCAM', id: null, name: incidencia.bodycamNumber || 'N/A' }]
+}
+
+/** Texto del informe que nombra el medio o los medios ("la BODYCAM SG004 y la CÁMARA 104A") */
+function plantillaConMedios(d: {
+  nombreCompleto: string
+  regLab: string
+  cargoPersona: string
+  turno: string
+  falta: string
+  direccion: string
+  fecha: string
+  hora: string
+  medios: ReportMedium[]
+}): string {
+  const frase = describeReportMedia(d.medios)
+  const capturas = d.medios.length > 1 ? 'de los medios indicados' : `de ${describeReportMedia([{ ...d.medios[0], name: null }])}`
+  return `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
+
+Para conocimiento, informo que el personal ${d.nombreCompleto}, con régimen ${d.regLab}, ${d.cargoPersona} del turno ${d.turno}, donde presuntamente...
+
+[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
+
+...incurriendo presuntamente en la falta disciplinaria establecida como "${d.falta}", registrada a través de ${frase}, en el lugar ubicado en ${d.direccion}, el día ${d.fecha} a las ${d.hora}.
+
+[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
+
+Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por ${frase}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
+
+Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes ${capturas}. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
+
+Se adjuntan las evidencias:`
+}
+
 export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = [], onClose, onSave }: ModalPDFInformeProps) {
   // Obtener usuario logueado de Redux
   const { username, nombre, apellido } = useAppSelector((state) => state.auth)
@@ -372,10 +410,7 @@ export default function ModalPDFInforme({ incidencia, inasistenciasHistoricas = 
         const regLab = incidencia.regLab || 'N/A'
         const turno = incidencia.turno || 'N/A'
         const falta = incidencia.falta || 'Falta no especificada'
-        const bodycamNum = incidencia.bodycamNumber || 'N/A'
         const tipoInasistencia = incidencia.tipoInasistencia || 'Injustificada'
-        const tipoMedio = incidencia.tipoMedio || 'bodycam'
-        const numeroCamara = incidencia.numeroCamara || 'N/A'
 
         // Si es una inasistencia, usar plantilla específica
         if (falta.startsWith('Inasistencia')) {
@@ -396,41 +431,8 @@ Finalmente, se deja constancia de que la situación descrita constituye un incum
 Se adjuntan las evidencias:`
         }
 
-        // Para otras faltas - verificar si es bodycam o cámara
-        if (tipoMedio === 'camara') {
-          return `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
-
-Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
-
-[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
-
-...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la CÁMARA ${numeroCamara}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
-
-[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
-
-Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la CÁMARA ${numeroCamara}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
-
-Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la CÁMARA. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
-
-Se adjuntan las evidencias:`
-        }
-
-        // Para otras faltas (con bodycam)
-        return `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
-
-Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
-
-[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
-
-...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la BODYCAM ${bodycamNum}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
-
-[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
-
-Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la BODYCAM ${bodycamNum}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
-
-Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la BODYCAM. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
-
-Se adjuntan las evidencias:`
+        // Otras faltas: nombra todos los medios con que se registró el hecho
+        return plantillaConMedios({ nombreCompleto, regLab, cargoPersona, turno, falta, direccion, fecha, hora, medios: mediosDe(incidencia) })
       }
 
       // Formatear fechaFalta antes de guardarla
@@ -642,47 +644,12 @@ Se adjuntan las evidencias:`
         const regLab = incidencia.regLab || 'N/A'
         const turno = incidencia.turno || 'N/A'
         const falta = incidencia.falta || 'Falta no especificada'
-        const tipoMedio = incidencia.tipoMedio || prev.tipoMedio || 'bodycam'
-
-        let nuevaPlantilla
-
-        if (tipoMedio === 'camara') {
-          const numeroCamara = field === 'numeroCamara' ? value : (prev.numeroCamara || 'N/A')
-
-          nuevaPlantilla = `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
-
-Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
-
-[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
-
-...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la CÁMARA ${numeroCamara}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
-
-[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
-
-Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la CÁMARA ${numeroCamara}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
-
-Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la CÁMARA. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
-
-Se adjuntan las evidencias:`
-        } else {
-          const bodycamNum = field === 'bodycam' ? value : (prev.bodycam || 'N/A')
-
-          nuevaPlantilla = `Es grato dirigirme a Ud. con la finalidad de informarle lo siguiente:
-
-Para conocimiento, informo que el personal ${nombreCompleto}, con régimen ${regLab}, ${cargoPersona} del turno ${turno}, donde presuntamente...
-
-[INSTRUCCIÓN: Describa aquí de manera objetiva lo ocurrido, utilizando términos como "presuntamente", "aparentemente", u otros similares que denoten objetividad y eviten afirmaciones categóricas. Detalle la situación observada de forma clara y precisa.]
-
-...incurriendo presuntamente en la falta disciplinaria establecida como "${falta}", registrada a través de la BODYCAM ${bodycamNum}, en el lugar ubicado en ${direccion}, el día ${fecha} a las ${hora}.
-
-[INSTRUCCIÓN: Si desea agregar observaciones adicionales sobre el contexto o circunstancias del incidente, puede incluirlas aquí.]
-
-Como medida inmediata, se realizó el registro documental del incidente y se adjuntó evidencia fotográfica y audiovisual obtenida por la BODYCAM ${bodycamNum}, con la finalidad de que sea evaluada conforme al proceso administrativo correspondiente.
-
-Finalmente, se deja constancia de que la situación descrita constituye un incumplimiento de las obligaciones del personal, motivo por el cual se adjunta la información del involucrado y las capturas correspondientes de la BODYCAM. Se remite la presente comunicación a la Subgerencia de Serenazgo para su conocimiento y fines correspondientes.
-
-Se adjuntan las evidencias:`
-        }
+        // Reemplaza el numero editado en la lista de medios
+        const medios = mediosDe(incidencia).map(m =>
+          field === 'bodycam' && m.cam === 'BODYCAM' ? { ...m, name: value } :
+          field === 'numeroCamara' && m.cam === 'CAMERA' ? { ...m, name: value } : m
+        )
+        const nuevaPlantilla = plantillaConMedios({ nombreCompleto, regLab, cargoPersona, turno, falta, direccion, fecha, hora, medios })
 
         newData.descripcionAdicional = nuevaPlantilla
       }

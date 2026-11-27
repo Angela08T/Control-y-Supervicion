@@ -174,23 +174,40 @@ export default function InasistenciasPage() {
     return `${startStr} - ${endStr}`
   }
 
-  // Crear inasistencia
-  async function handleCreate(data: AttendanceFormInput, allLeads: Lead[] = []) {
-    try {
-      // 🔹 NUEVO: Usar endpoint de offender para inasistencias
-      const offenderData = mapFormDataToOffenderAPI(data)
-      const response = await createOffender(offenderData)
+  /** Rango del calendario en formato AAAA-MM-DD */
+  function rangoActual(): [string, string] {
+    const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return [f(dateRange.start), f(dateRange.end)]
+  }
 
-      toast.success('Inasistencia creada exitosamente')
+  /** ¿La API ya devuelve a esta persona en el calendario del periodo? */
+  async function estaEnCalendario(dni: string): Promise<boolean> {
+    const [start, end] = rangoActual()
+    const result = await getAttendances(start, end)
+    return (result.data || []).some(p => p.dni === dni)
+  }
+
+  // Crear inasistencia (registrar a la persona en el calendario).
+  // El backend (POST /offender) marca a la persona para asistencia y, si estaba eliminada, la restaura.
+  async function handleCreate(data: AttendanceFormInput) {
+    const dni = data.dni || ''
+    try {
+      await createOffender(mapFormDataToOffenderAPI(data))
+
+      // Comprobar que de verdad aparece antes de decir que salio bien
+      const visible = await estaEnCalendario(dni)
 
       setShowModal(false)
+      setRefreshTrigger(prev => prev + 1)
 
-      // Esperar un momento antes de recargar para asegurar que la API procesó el cambio
-      setTimeout(() => {
-        setRefreshTrigger(prev => {
-          return prev + 1
-        })
-      }, 500)
+      if (visible) {
+        toast.success(`${data.nombreCompleto || 'La persona'} se agregó al calendario`)
+      } else {
+        toast.warning(
+          `El servidor aceptó el registro, pero ${data.nombreCompleto || 'la persona'} (DNI ${dni}) no aparece en el calendario. ` +
+          'Si fue eliminada antes, el servidor necesita la versión que la restaura.'
+        )
+      }
     } catch (error) {
       const apiError = error as RequestError
 
@@ -291,9 +308,10 @@ export default function InasistenciasPage() {
       toast.warning('No se pudo identificar a la persona')
       return
     }
-    const confirmMsg = nombre
-      ? `¿Eliminar a ${nombre} del registro de inasistencias?`
-      : '¿Eliminar esta persona del registro de inasistencias?'
+    // DELETE /offender elimina a la persona del sistema y el backend no permite volver a registrarla
+    const confirmMsg =
+      `¿Eliminar a ${nombre || 'esta persona'}?\n\n` +
+      'Se eliminará del sistema (también de Infractores). Podrás volver a agregarla con «Agregar inasistencia».'
     if (!window.confirm(confirmMsg)) return
     try {
       await deleteOffender(offenderId)

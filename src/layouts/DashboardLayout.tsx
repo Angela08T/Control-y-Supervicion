@@ -11,6 +11,8 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { setSession } from '../store/slices/authSlice'
 import { getMe } from '../api/role'
 import { normalizeRole } from '../utils/permissions'
+import { canSee, firstAllowedKey } from '../utils/navigation'
+import WelcomeCard from '../pages/Dashboard/components/WelcomeCard'
 import { LoadingState } from '../components/UI/EmptyState'
 
 const STORAGE_KEY = 'centinela-sidebar-collapsed'
@@ -70,6 +72,11 @@ export default function DashboardLayout() {
   // reticula con su color; las demas paginas conservan las lineas de nivel
   const enInicio = /^\/dashboard\/[^/]+\/?$/.test(pathname)
   const acentoSeccion = FONDO_SECCION[enInicio ? 'inicio' : (pathname.split('/')[3] ?? '')]
+
+  // Quien no tiene Inicio (validador, centinela, supervisor...) recibe el saludo en su primera pantalla,
+  // la que ve al entrar
+  const conSaludo =
+    !canSee(auth.permissions, 'dashboard') && pathname.split('/')[3] === firstAllowedKey(auth.permissions)
 
   const dispatch = useAppDispatch()
   const hasPermissions = useAppSelector((state) => Object.keys(state.auth.permissions).length > 0)
@@ -167,7 +174,20 @@ export default function DashboardLayout() {
         {/* h-full: las pantallas que lo piden (ej. tablas con paginacion fija) pueden ocupar justo el alto disponible */}
         {/* zoom: tamano del contenido elegido con los botones - y + de la barra superior */}
         <div key={state?.openPendingInbox ? navigationKey : pathname} className="h-full animate-[pageIn_220ms_ease-out]" style={zoom !== 1 ? { zoom } : undefined}>
-          {ready ? <Outlet /> : <LoadingState label="Cargando tu sesión…" />}
+          {!ready ? (
+            <LoadingState label="Cargando tu sesión…" />
+          ) : conSaludo ? (
+            <div className="flex h-full flex-col">
+              <div className="mb-5 shrink-0">
+                <WelcomeCard eyebrow={auth.roleName ? `${auth.roleName} · Bienvenida` : 'Bienvenida'} />
+              </div>
+              <div className="min-h-0 flex-1">
+                <Outlet />
+              </div>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
     </div>

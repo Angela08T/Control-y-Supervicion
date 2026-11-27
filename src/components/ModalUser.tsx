@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { FiAtSign, FiCheck, FiEdit3, FiEye, FiEyeOff, FiKey, FiLock, FiSave, FiSearch, FiUser, FiUserPlus } from 'react-icons/fi'
+import { FiAtSign, FiCheck, FiLayers, FiEdit3, FiEye, FiEyeOff, FiKey, FiLock, FiSave, FiSearch, FiUser, FiUserPlus } from 'react-icons/fi'
 import Button from '@/components/UI/Button'
 import Modal from '@/components/UI/Modal'
 import { Field, Input } from '@/components/UI/Field'
+import Dropdown from '@/components/UI/Dropdown'
 import { ModalHero, StepSection } from '@/components/UI/FormSteps'
 import { estiloRol } from '@/components/UserTable'
 import { colorAvatar, iniciales } from '@/utils/incidenciaFormat'
@@ -466,13 +467,19 @@ export default function ModalUser({ initial, onClose, onSave, userRole, roles = 
           </Field>
           {isAdmin && form.rol === 'VALIDATOR' && (
             <Field label="Subgerencia del validador" required error={errors.validator_department}>
-              <select aria-label="Subgerencia del validador" className="w-full rounded-lg border border-line bg-surface p-2"
-                value={form.validator_department} onChange={e => handleChange('validator_department', e.target.value)}>
-                <option value="">Seleccione una subgerencia</option>
-                <option value="SERENAZGO">Serenazgo</option>
-                <option value="FISCALIZACION">Fiscalización</option>
-                <option value="TRANSPORTE">Transporte (Movilidad Urbana)</option>
-              </select>
+              <Dropdown
+                aria-label="Subgerencia del validador"
+                icon={<FiLayers />}
+                placeholder="Selecciona una subgerencia"
+                value={form.validator_department}
+                invalid={!!errors.validator_department}
+                onChange={value => handleChange('validator_department', value)}
+                options={[
+                  { value: 'SERENAZGO', label: 'Serenazgo' },
+                  { value: 'FISCALIZACION', label: 'Fiscalización' },
+                  { value: 'TRANSPORTE', label: 'Transporte', description: 'Movilidad Urbana' },
+                ]}
+              />
             </Field>
           )}
         </StepSection>

@@ -14,7 +14,8 @@ import Pagination from '@/components/UI/Pagination'
 import { PAGE_SIZE } from '@/hooks/usePagedList'
 import Badge from '@/components/UI/Badge'
 import Modal from '@/components/UI/Modal'
-import { Select, Field, Textarea } from '@/components/UI/Field'
+import { Field, Textarea } from '@/components/UI/Field'
+import Dropdown from '@/components/UI/Dropdown'
 import { EmptyState, LoadingState } from '@/components/UI/EmptyState'
 import { loadIncidencias, saveIncidencias } from '../../utils/storage'
 import { createReport, mapFormDataToAPI, getReports, getReportById, deleteReport, searchReport, sendToValidator, validateReport, exportReportsExcel } from '../../api/report'
@@ -24,7 +25,7 @@ import useLacks from '../../hooks/Lack/useLacks'
 import useJurisdictions from '../../hooks/Jurisdiction/useJurisdictions'
 import { getModulePermissions } from '../../utils/permissions'
 import { useAppSelector } from '../../store/hooks'
-import { FiDownload, FiFilter, FiPlus, FiX } from 'react-icons/fi'
+import { FiAlertTriangle, FiClock, FiDownload, FiFileText, FiFilter, FiLayers, FiMapPin, FiMoon, FiPlus, FiSend, FiSun, FiSunset, FiX } from 'react-icons/fi'
 import { initSocket, onReportStatusChanged, onReportStatusValidate } from '../../services/websocket'
 import type {
   ISODateString,
@@ -100,7 +101,8 @@ const STATUS_OPTIONS: { value: string; label: string; dot?: string }[] = [
 
 /** Clase de los selects de filtros avanzados (`!w-auto` porque el kit Select fuerza w-full) */
 const SENT_STATUS_OPTIONS = STATUS_OPTIONS.filter(option => option.value !== 'null')
-const advancedSelect = 'h-9 !w-auto max-w-[220px]'
+/** Ancho de cada filtro avanzado */
+const advancedSelect = 'w-[210px] max-sm:w-full'
 
 /** Convierte incidencias de la API al formato legado de localStorage (utils/storage.ts). */
 function toStoredList(list: Incidencia[]): StoredIncidencia[] {
@@ -800,136 +802,99 @@ export default function IncidenciasPage() {
 
         {showAdvanced && (
           <div id="incidencias-filtros-avanzados" className="flex w-full flex-wrap items-center gap-2 border-t border-line pt-3">
-            {/* Filtro por Asunto (Subject) - Usando datos de la API */}
-            {subjectsLoading ? (
-              <Select disabled aria-label="Asunto" className={advancedSelect}>
-                <option>Cargando asuntos...</option>
-              </Select>
-            ) : (
-              <Select
+            {/* Filtro por Asunto */}
+            <div className={advancedSelect}>
+              <Dropdown
                 aria-label="Asunto"
-                className={advancedSelect}
+                icon={<FiFileText />}
+                loading={subjectsLoading}
+                placeholder={subjectsLoading ? 'Cargando asuntos…' : 'Todos los asuntos'}
                 value={filters.subjectId}
-                onChange={e => {
-                  const selectedSubjectId = e.target.value
-                  setFilters(f => ({
-                    ...f,
-                    subjectId: selectedSubjectId,
-                    lackId: '' // Limpiar falta al cambiar asunto
-                  }))
-                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                onChange={selectedSubjectId => {
+                  setFilters(f => ({ ...f, subjectId: selectedSubjectId, lackId: '' })) // Limpiar falta al cambiar asunto
+                  setCurrentPage(1)
                 }}
-              >
-                <option value="">Todos los asuntos</option>
-                {subjects && subjects
-                  .filter(subject => !subject.deleted_at) // Solo mostrar asuntos activos
-                  .map(subject => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-              </Select>
-            )}
+                options={[
+                  { value: '', label: 'Todos los asuntos' },
+                  ...(subjects || []).filter(subject => !subject.deleted_at).map(subject => ({ value: subject.id, label: subject.name })),
+                ]}
+              />
+            </div>
 
-            {/* Filtro por Falta (Lack) - Usando lacks anidadas del subject seleccionado */}
-            {subjectsLoading ? (
-              <Select disabled aria-label="Falta" className={advancedSelect}>
-                <option>Cargando faltas...</option>
-              </Select>
-            ) : (
-              <Select
+            {/* Filtro por Falta: las del asunto elegido o todas */}
+            <div className={advancedSelect}>
+              <Dropdown
                 aria-label="Falta"
-                className={advancedSelect}
+                icon={<FiAlertTriangle />}
+                loading={subjectsLoading}
+                placeholder={subjectsLoading ? 'Cargando faltas…' : 'Todas las faltas'}
                 value={filters.lackId || ''}
-                onChange={e => {
-                  const selectedLackId = e.target.value
-                  setFilters(f => ({
-                    ...f,
-                    lackId: selectedLackId
-                  }))
-                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                onChange={selectedLackId => {
+                  setFilters(f => ({ ...f, lackId: selectedLackId }))
+                  setCurrentPage(1)
                 }}
-              >
-                <option value="">Todas las faltas</option>
-                {(() => {
-                  // Si hay un subject seleccionado, obtener sus lacks anidadas
-                  if (filters.subjectId) {
-                    const selectedSubject = subjects.find(s => s.id === filters.subjectId)
-                    return (selectedSubject?.lacks || [])
-                      .filter(lack => !lack.deleted_at) // Solo mostrar faltas activas
-                      .map(lack => (
-                        <option key={lack.id} value={lack.id}>
-                          {lack.name}
-                        </option>
-                      ))
-                  }
-                  // Si no hay subject seleccionado, mostrar todas las lacks de todos los subjects
-                  return subjects
-                    .filter(subject => !subject.deleted_at) // Solo subjects activos
-                    .flatMap(subject => subject.lacks || [])
-                    .filter(lack => !lack.deleted_at) // Solo faltas activas
-                    .map(lack => (
-                      <option key={lack.id} value={lack.id}>
-                        {lack.name}
-                      </option>
-                    ))
-                })()}
-              </Select>
-            )}
+                options={[
+                  { value: '', label: 'Todas las faltas' },
+                  ...(filters.subjectId
+                    ? subjects.find(s => s.id === filters.subjectId)?.lacks || []
+                    : subjects.filter(subject => !subject.deleted_at).flatMap(subject => subject.lacks || [])
+                  )
+                    .filter(lack => !lack.deleted_at)
+                    .map(lack => ({ value: lack.id, label: lack.name })),
+                ]}
+              />
+            </div>
 
             {/* Filtro por Jurisdicción - Envía ID al backend */}
-            {jurisdictionsLoading ? (
-              <Select disabled aria-label="Jurisdicción" className={advancedSelect}>
-                <option>Cargando jurisdicciones...</option>
-              </Select>
-            ) : (
-              <Select
+            <div className={advancedSelect}>
+              <Dropdown
                 aria-label="Jurisdicción"
-                className={advancedSelect}
+                icon={<FiMapPin />}
+                loading={jurisdictionsLoading}
+                placeholder={jurisdictionsLoading ? 'Cargando jurisdicciones…' : 'Todas las jurisdicciones'}
                 value={filters.jurisdictionId}
-                onChange={e => {
-                  setFilters(f => ({ ...f, jurisdictionId: e.target.value }))
-                  setCurrentPage(1) // Resetear a página 1 al cambiar filtro
+                onChange={value => {
+                  setFilters(f => ({ ...f, jurisdictionId: value }))
+                  setCurrentPage(1)
                 }}
-              >
-                <option value="">Todas las jurisdicciones</option>
-                {jurisdictions
-                  .filter(jurisdiction => !jurisdiction.deleted_at) // Solo mostrar jurisdicciones activas
-                  .map(jurisdiction => (
-                    <option key={jurisdiction.id} value={jurisdiction.id}>
-                      {jurisdiction.name}
-                    </option>
-                  ))}
-              </Select>
-            )}
+                options={[
+                  { value: '', label: 'Todas las jurisdicciones' },
+                  ...jurisdictions.filter(j => !j.deleted_at).map(j => ({ value: j.id, label: j.name })),
+                ]}
+              />
+            </div>
 
             {/* Filtro por Subgerencia */}
-            <Select
-              aria-label="Subgerencia"
-              className={advancedSelect}
-              value={filters.subgerencia}
-              onChange={e => {
-                setFilters(f => ({ ...f, subgerencia: e.target.value }))
-                setCurrentPage(1)
-              }}
-            >
-              <option value="">Todas las subgerencias</option>
-              {subgerencias.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </Select>
+            <div className={advancedSelect}>
+              <Dropdown
+                aria-label="Subgerencia"
+                icon={<FiLayers />}
+                placeholder="Todas las subgerencias"
+                value={filters.subgerencia}
+                onChange={value => {
+                  setFilters(f => ({ ...f, subgerencia: value }))
+                  setCurrentPage(1)
+                }}
+                options={[{ value: '', label: 'Todas las subgerencias' }, ...subgerencias.map(s => ({ value: s, label: s }))]}
+              />
+            </div>
 
-            <Select
-              aria-label="Turno"
-              className={advancedSelect}
-              value={filters.turno}
-              onChange={e => setFilters(f => ({ ...f, turno: e.target.value }))}
-            >
-              <option value="">Todos los turnos</option>
-              <option value="M">Mañana</option>
-              <option value="T">Tarde</option>
-              <option value="N">Noche</option>
-            </Select>
+            {/* Filtro por Turno */}
+            <div className={advancedSelect}>
+              <Dropdown
+                aria-label="Turno"
+                icon={<FiClock />}
+                placeholder="Todos los turnos"
+                value={filters.turno}
+                onChange={value => setFilters(f => ({ ...f, turno: value }))}
+                options={[
+                  { value: '', label: 'Todos los turnos' },
+                  { value: 'M', label: 'Mañana', icon: <FiSun /> },
+                  { value: 'T', label: 'Tarde', icon: <FiSunset /> },
+                  { value: 'N', label: 'Noche', icon: <FiMoon /> },
+                ]}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -1020,12 +985,20 @@ export default function IncidenciasPage() {
             <Button disabled={!department} loading={sending} onClick={confirmSend}>Confirmar envío</Button>
           </>}>
           <Field label="Subgerencia de destino" required error={sendError}>
-            <Select autoFocus required value={department} disabled={sending} onChange={e => setDepartment(e.target.value)}>
-              <option value="">Selecciona una subgerencia</option>
-              <option value="SERENAZGO">Serenazgo</option>
-              <option value="FISCALIZACION">Fiscalización</option>
-              <option value="TRANSPORTE">Transporte</option>
-            </Select>
+            <Dropdown
+              aria-label="Subgerencia de destino"
+              icon={<FiSend />}
+              placeholder="Selecciona una subgerencia"
+              value={department}
+              disabled={sending}
+              invalid={!!sendError}
+              onChange={setDepartment}
+              options={[
+                { value: 'SERENAZGO', label: 'Serenazgo' },
+                { value: 'FISCALIZACION', label: 'Fiscalización' },
+                { value: 'TRANSPORTE', label: 'Transporte', description: 'Movilidad Urbana' },
+              ]}
+            />
           </Field>
         </Modal>
       )}

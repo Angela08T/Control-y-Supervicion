@@ -12,6 +12,7 @@ export const MARCADORES = [
   { token: '{{offender.regime}}', label: 'Régimen', ejemplo: 'CAS 1057' },
   { token: '{{offender.shift}}', label: 'Turno', ejemplo: 'MAÑANA' },
   { token: '{{bodycam.name}}', label: 'Bodycam', ejemplo: 'SG004' },
+  { token: '{{medios}}', label: 'Medios', ejemplo: 'la BODYCAM SG004 y la CÁMARA 104A' },
   { token: '{{lack.name}}', label: 'Falta', ejemplo: 'TARDANZA REITERADA' },
   { token: '{{address}}', label: 'Dirección', ejemplo: 'AV. PRÓCERES DE LA INDEPENDENCIA 1632' },
   { token: '{{dates}}', label: 'Fecha', ejemplo: '11 de noviembre del 2026' },
